@@ -20,10 +20,15 @@ export interface DashboardSummary {
   trend: Array<{ label: string; feedCount: number; bottleMl: number; sleepMinutes: number }>;
 }
 
+function payloadOf(entry: EntryRecord) {
+  return entry.payload ?? {};
+}
+
 export function getEntryTitle(entry: EntryRecord) {
+  const payload = payloadOf(entry);
   switch (entry.type) {
     case 'feed':
-      return entry.payload.mode === 'bottle' ? 'Bottle feed' : 'Breast feed';
+      return payload.mode === 'bottle' ? 'Bottle feed' : 'Breast feed';
     case 'sleep':
       return 'Sleep session';
     case 'diaper':
@@ -33,9 +38,9 @@ export function getEntryTitle(entry: EntryRecord) {
     case 'measurement':
       return 'Measurement';
     case 'medication':
-      return entry.payload.name ?? entry.title;
+      return payload.name ?? entry.title;
     case 'milestone':
-      return entry.payload.title ?? entry.title;
+      return payload.title ?? entry.title;
     case 'symptom':
       return 'Symptom log';
     default:
@@ -45,32 +50,34 @@ export function getEntryTitle(entry: EntryRecord) {
 
 export function getEntrySubtitle(entry: EntryRecord) {
   const time = formatTime(entry.occurredAt);
+  const payload = payloadOf(entry);
+
   switch (entry.type) {
     case 'feed':
-      return entry.payload.mode === 'bottle'
-        ? `${entry.payload.amountMl ?? 0} ml · ${time}`
-        : `${entry.payload.durationMin ?? 0} min · ${entry.payload.side ?? 'side'} · ${time}`;
+      return payload.mode === 'bottle'
+        ? `${payload.amountMl ?? 0} ml · ${time}`
+        : `${payload.durationMin ?? 0} min · ${payload.side ?? 'side'} · ${time}`;
     case 'sleep':
-      return `${formatDuration(entry.payload.durationMin ?? 0)} · ${time}`;
+      return `${formatDuration(payload.durationMin ?? 0)} · ${time}`;
     case 'diaper':
-      return `P ${entry.payload.pee ?? 0} · C ${entry.payload.poop ?? 0} · V ${entry.payload.vomit ?? 0}`;
+      return `P ${payload.pee ?? 0} · C ${payload.poop ?? 0} · V ${payload.vomit ?? 0}`;
     case 'pump':
-      return `${formatDuration(entry.payload.durationMin ?? 0)} · ${entry.payload.amountMl ?? 0} ml`;
+      return `${formatDuration(payload.durationMin ?? 0)} · ${payload.amountMl ?? 0} ml`;
     case 'measurement':
       return [
-        entry.payload.weightKg ? `${entry.payload.weightKg} kg` : null,
-        entry.payload.heightCm ? `${entry.payload.heightCm} cm` : null,
-        entry.payload.headCircCm ? `${entry.payload.headCircCm} cm HC` : null,
-        entry.payload.tempC ? `${entry.payload.tempC} C` : null,
+        payload.weightKg ? `${payload.weightKg} kg` : null,
+        payload.heightCm ? `${payload.heightCm} cm` : null,
+        payload.headCircCm ? `${payload.headCircCm} cm HC` : null,
+        payload.tempC ? `${payload.tempC} C` : null,
       ]
         .filter(Boolean)
         .join(' · ') || time;
     case 'medication':
-      return [entry.payload.dosage ?? 'Dose recorded', time].filter(Boolean).join(' · ');
+      return [payload.dosage ?? 'Dose recorded', time].filter(Boolean).join(' · ');
     case 'milestone':
-      return [entry.payload.icon ?? 'Milestone', time].filter(Boolean).join(' · ');
+      return [payload.icon ?? 'Milestone', time].filter(Boolean).join(' · ');
     case 'symptom':
-      return [entry.payload.notes ?? 'Symptom log', time].filter(Boolean).join(' · ');
+      return [payload.notes ?? 'Symptom log', time].filter(Boolean).join(' · ');
     default:
       return time;
   }
@@ -108,11 +115,11 @@ export function getWeeklyTrend(entries: EntryRecord[]) {
     const items = entries.filter((entry) => isSameDay(entry.occurredAt, day));
     const feedCount = items.filter((entry) => entry.type === 'feed').length;
     const bottleMl = items
-      .filter((entry) => entry.type === 'feed' && entry.payload.mode === 'bottle')
-      .reduce((sum, entry) => sum + (entry.payload.amountMl ?? 0), 0);
+      .filter((entry) => entry.type === 'feed' && payloadOf(entry).mode === 'bottle')
+      .reduce((sum, entry) => sum + (payloadOf(entry).amountMl ?? 0), 0);
     const sleepMinutes = items
       .filter((entry) => entry.type === 'sleep' || entry.type === 'pump')
-      .reduce((sum, entry) => sum + (entry.payload.durationMin ?? 0), 0);
+      .reduce((sum, entry) => sum + (payloadOf(entry).durationMin ?? 0), 0);
 
     return {
       key: dateKey(day),
@@ -147,16 +154,16 @@ export function getTodaySummary(entries: EntryRecord[], profile?: UserProfile | 
 
   const feedEntries = todaysEntries.filter((entry) => entry.type === 'feed');
   const bottleMl = feedEntries
-    .filter((entry) => entry.payload.mode === 'bottle')
-    .reduce((sum, entry) => sum + (entry.payload.amountMl ?? 0), 0);
+    .filter((entry) => payloadOf(entry).mode === 'bottle')
+    .reduce((sum, entry) => sum + (payloadOf(entry).amountMl ?? 0), 0);
   const feedCount = feedEntries.length;
   const sleepMinutes = todaysEntries
     .filter((entry) => entry.type === 'sleep')
-    .reduce((sum, entry) => sum + (entry.payload.durationMin ?? 0), 0);
+    .reduce((sum, entry) => sum + (payloadOf(entry).durationMin ?? 0), 0);
   const diaperCount = todaysEntries.filter((entry) => entry.type === 'diaper').length;
   const pumpMinutes = todaysEntries
     .filter((entry) => entry.type === 'pump')
-    .reduce((sum, entry) => sum + (entry.payload.durationMin ?? 0), 0);
+    .reduce((sum, entry) => sum + (payloadOf(entry).durationMin ?? 0), 0);
 
   const recent = [...entries].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)).slice(0, 6);
   const trend = getWeeklyTrend(entries);

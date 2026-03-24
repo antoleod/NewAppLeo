@@ -19,6 +19,7 @@ export interface BabyProfile {
   birthWeightKg?: number;
   currentWeightKg?: number;
   heightCm?: number;
+  headCircCm?: number;
   notes?: string;
   photoUri?: string;
   language?: AppLanguage;
@@ -296,6 +297,7 @@ export async function buildBabyFromProfile(
     birthWeightKg: profile.birthWeightKg,
     currentWeightKg: profile.currentWeightKg,
     heightCm: profile.heightCm,
+    headCircCm: profile.headCircCm,
     notes: profile.babyNotes,
     photoUri: profile.babyPhotoUri,
     language: profile.language,

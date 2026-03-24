@@ -360,18 +360,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   eyebrow: {
+    ...typography.sectionLabel,
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontSize: 12,
-    fontWeight: '700',
   },
   title: {
-    fontSize: 30,
+    ...typography.heroName,
     lineHeight: 36,
-    fontWeight: '800',
   },
   subtitle: {
-    fontSize: 14,
+    ...typography.body,
     lineHeight: 20,
   },
   button: {
@@ -383,6 +380,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   buttonLabel: {
+    ...typography.pill,
     fontSize: 15,
     fontWeight: '800',
   },
@@ -390,7 +388,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontSize: 13,
+    ...typography.statLabel,
     fontWeight: '700',
   },
   input: {
@@ -399,14 +397,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    fontSize: 15,
+    ...typography.body,
   },
   textArea: {
     minHeight: 110,
     textAlignVertical: 'top',
   },
   hint: {
-    fontSize: 12,
+    ...typography.detail,
     lineHeight: 16,
   },
   segment: {
@@ -425,7 +423,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   segmentLabel: {
-    fontSize: 13,
+    ...typography.pill,
     fontWeight: '800',
   },
   chip: {
@@ -435,7 +433,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   chipLabel: {
-    fontSize: 13,
+    ...typography.pill,
     fontWeight: '700',
   },
   stat: {
@@ -447,13 +445,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statLabel: {
-    fontSize: 12,
+    ...typography.statLabel,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.7,
   },
   statValue: {
-    fontSize: 22,
+    ...typography.statValue,
     fontWeight: '800',
   },
   empty: {
@@ -464,11 +462,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyTitle: {
-    fontSize: 18,
+    ...typography.sectionTitle,
     fontWeight: '800',
   },
   emptyBody: {
-    fontSize: 14,
+    ...typography.body,
     lineHeight: 20,
   },
   entryCard: {
@@ -479,15 +477,17 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   entryTitle: {
+    ...typography.sectionTitle,
     fontSize: 16,
     fontWeight: '800',
   },
   entrySubtitle: {
+    ...typography.body,
     fontSize: 13,
     fontWeight: '700',
   },
   entryNotes: {
-    fontSize: 13,
+    ...typography.detail,
     lineHeight: 19,
   },
 });

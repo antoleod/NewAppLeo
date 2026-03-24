@@ -37,9 +37,9 @@ export default function InsightsScreen() {
   const trend = useMemo(() => getWeeklyTrend(entries), [entries]);
   const meanInterval = getMeanFeedingInterval(entries);
   const latestMeasurement = useMemo(() => [...entries].find((entry) => entry.type === 'measurement'), [entries]);
-  const latestWeight = Number(latestMeasurement?.payload.weightKg ?? 0) || null;
-  const latestHeight = Number(latestMeasurement?.payload.heightCm ?? 0) || null;
-  const latestHeadCirc = Number(latestMeasurement?.payload.headCircCm ?? 0) || null;
+  const latestWeight = Number(latestMeasurement?.payload?.weightKg ?? 0) || null;
+  const latestHeight = Number(latestMeasurement?.payload?.heightCm ?? 0) || null;
+  const latestHeadCirc = Number(latestMeasurement?.payload?.headCircCm ?? 0) || null;
   const sleepMinutes = summary.today.sleepMinutes;
 
   const sleepByDay = useMemo(() => {
@@ -49,7 +49,7 @@ export default function InsightsScreen() {
       const key = dateKey(day);
       const minutes = entries
         .filter((entry) => entry.type === 'sleep' && dateKey(entry.occurredAt) === key)
-        .reduce((sum, entry) => sum + (entry.payload.durationMin ?? 0), 0);
+        .reduce((sum, entry) => sum + (entry.payload?.durationMin ?? 0), 0);
       return {
         key,
         label: new Intl.DateTimeFormat(language, { weekday: 'short' }).format(day),
@@ -59,7 +59,7 @@ export default function InsightsScreen() {
   }, [entries, language, range]);
 
   const longestSleep = useMemo(
-    () => Math.max(0, ...entries.filter((entry) => entry.type === 'sleep').map((entry) => entry.payload.durationMin ?? 0)),
+    () => Math.max(0, ...entries.filter((entry) => entry.type === 'sleep').map((entry) => entry.payload?.durationMin ?? 0)),
     [entries],
   );
 

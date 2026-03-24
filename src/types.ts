@@ -64,6 +64,7 @@ export interface UserProfile {
   birthWeightKg?: number;
   currentWeightKg?: number;
   heightCm?: number;
+  headCircCm?: number;
   babyNotes?: string;
   babyPhotoUri?: string;
   language: AppLanguage;
@@ -92,6 +93,7 @@ export interface OnboardingPayload {
   birthWeightKg?: number;
   currentWeightKg?: number;
   heightCm?: number;
+  headCircCm?: number;
   babyNotes?: string;
   language: AppLanguage;
   goalFeedingsPerDay: number;

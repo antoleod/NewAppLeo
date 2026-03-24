@@ -34,7 +34,7 @@ const languageOptions = [
 ];
 
 export default function ProfileScreen() {
-  const { colors, themeMode, themeVariant, setThemeVariant, setCustomTheme } = useTheme();
+  const { colors, theme, paletteMode, themeMode, themeVariant, setThemeVariant, setCustomTheme, toggleTheme } = useTheme();
   const { t } = useLocale();
   const { profile, guestMode, saveProfile, setThemeMode, signOut } = useAuth();
   const { entries } = useAppData();
@@ -268,6 +268,25 @@ export default function ProfileScreen() {
 
       <Card>
         <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Theme and layout</Text>
+        <Pressable
+          onPress={() => void toggleTheme()}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.bgCard,
+            borderRadius: 12,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: theme.border,
+          }}
+        >
+          <Text style={{ color: theme.textPrimary, flex: 1, fontFamily: 'DMSans_400Regular', fontSize: 14, lineHeight: 20 }}>
+            {paletteMode === 'nuit' ? '🌙 Mode Nuit' : '☀️ Mode Jour'}
+          </Text>
+          <Text style={{ color: theme.accent, fontFamily: 'DMSans_400Regular', fontSize: 11 }}>
+            {paletteMode === 'nuit' ? 'Passer en Jour' : 'Passer en Nuit'}
+          </Text>
+        </Pressable>
         <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>Theme mode</Text>
         <Segment
           value={themeMode}
@@ -400,13 +419,13 @@ export default function ProfileScreen() {
           <View style={{ gap: 10 }}>
             {milestones.map((entry) => (
               <View key={entry.id} style={{ gap: 8 }}>
-                {entry.payload.photoUri ? (
+                {entry.payload?.photoUri ? (
                   <Image source={{ uri: entry.payload.photoUri }} style={{ width: '100%', height: 140, borderRadius: 18 }} resizeMode="cover" />
                 ) : null}
                 <EntryCard
                   title={getEntryTitle(entry)}
                   subtitle={getEntrySubtitle(entry)}
-                  notes={entry.notes ?? (entry.payload.photoUri ? 'Photo attached' : undefined)}
+                  notes={entry.notes ?? (entry.payload?.photoUri ? 'Photo attached' : undefined)}
                 />
               </View>
             ))}

@@ -28,6 +28,7 @@ import {
 } from '@/lib/storage';
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
+import { NextFeedingCard } from '@/components/NextFeedingCard';
 
 const BG = '#0D1117';
 const CARD = '#161B22';
@@ -286,8 +287,8 @@ export default function HomeScreen() {
 
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
   const lastFeed = useMemo(() => feedEntries[0], [feedEntries]);
-  const lastBreastFeed = useMemo(() => feedEntries.find((entry) => entry.payload.mode === 'breast'), [feedEntries]);
-  const lastBottleFeed = useMemo(() => feedEntries.find((entry) => entry.payload.mode === 'bottle'), [feedEntries]);
+  const lastBreastFeed = useMemo(() => feedEntries.find((entry) => entry.payload?.mode === 'breast'), [feedEntries]);
+  const lastBottleFeed = useMemo(() => feedEntries.find((entry) => entry.payload?.mode === 'bottle'), [feedEntries]);
   const lastDiaper = useMemo(() => entries.find((entry) => entry.type === 'diaper'), [entries]);
   const lastMeasurement = useMemo(() => entries.find((entry) => entry.type === 'measurement'), [entries]);
   const meanInterval = getMeanFeedingInterval(entries);
@@ -463,10 +464,10 @@ export default function HomeScreen() {
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ color: TEXT, fontSize: 15, fontWeight: '700' }}>
-                {lastMeasurement?.payload.weightKg ? `${lastMeasurement.payload.weightKg} kg` : '--'}
+                {lastMeasurement?.payload?.weightKg ? `${lastMeasurement.payload.weightKg} kg` : '--'}
               </Text>
               <Text style={{ color: MUTED, fontSize: 11 }}>
-                {lastMeasurement?.payload.heightCm ? `${lastMeasurement.payload.heightCm} cm` : '--'}
+                {lastMeasurement?.payload?.heightCm ? `${lastMeasurement.payload.heightCm} cm` : '--'}
               </Text>
             </View>
           </View>
@@ -497,6 +498,10 @@ export default function HomeScreen() {
             </View>
             <Text style={{ color: MUTED, fontSize: 11 }}>{milkStatus}</Text>
           </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeIn.duration(300).delay(200)} style={{ marginBottom: 10 }}>
+          <NextFeedingCard />
         </Animated.View>
 
         <Animated.View entering={FadeIn.duration(300).delay(240)} style={{ marginBottom: 10 }}>
@@ -640,7 +645,7 @@ export default function HomeScreen() {
                     title={entry.title}
                     detail={
                       entry.type === 'feed'
-                        ? `${entry.payload.amountMl ?? entry.payload.durationMin ?? 0} ${entry.payload.mode === 'bottle' ? 'ml' : 'min'}`
+                        ? `${entry.payload?.amountMl ?? entry.payload?.durationMin ?? 0} ${entry.payload?.mode === 'bottle' ? 'ml' : 'min'}`
                         : entry.notes ?? entry.type
                     }
                     time={formatClock(entry.occurredAt, locale)}

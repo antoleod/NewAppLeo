@@ -195,6 +195,7 @@ export async function completeOnboarding(uid: string, payload: OnboardingPayload
     birthWeightKg: payload.birthWeightKg,
     currentWeightKg: payload.currentWeightKg,
     heightCm: payload.heightCm,
+    headCircCm: payload.headCircCm,
     babyNotes: payload.babyNotes,
     language: payload.language,
     goalFeedingsPerDay: payload.goalFeedingsPerDay,

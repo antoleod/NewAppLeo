@@ -157,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             birthWeightKg: payload.birthWeightKg,
             currentWeightKg: payload.currentWeightKg,
             heightCm: payload.heightCm,
+            headCircCm: payload.headCircCm,
             babyNotes: payload.babyNotes,
             language: payload.language,
             goalFeedingsPerDay: payload.goalFeedingsPerDay,

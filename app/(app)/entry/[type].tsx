@@ -96,40 +96,40 @@ export default function EntryComposerScreen() {
 
     switch (editing.type) {
       case 'feed':
-        setMode(editing.payload.mode ?? 'bottle');
-        setAmountMl(String(editing.payload.amountMl ?? 150));
-        setSide(editing.payload.side ?? 'left');
-        setDurationMin(String(editing.payload.durationMin ?? 30));
+        setMode(editing.payload?.mode ?? 'bottle');
+        setAmountMl(String(editing.payload?.amountMl ?? 150));
+        setSide(editing.payload?.side ?? 'left');
+        setDurationMin(String(editing.payload?.durationMin ?? 30));
         break;
       case 'sleep':
       case 'pump':
-        setDurationMin(String(editing.payload.durationMin ?? 30));
+        setDurationMin(String(editing.payload?.durationMin ?? 30));
         if (editing.type === 'pump') {
-          setAmountMl(String(editing.payload.amountMl ?? 120));
+          setAmountMl(String(editing.payload?.amountMl ?? 120));
         }
         break;
       case 'diaper':
-        setPee(String(editing.payload.pee ?? 0));
-        setPoop(String(editing.payload.poop ?? 0));
-        setVomit(String(editing.payload.vomit ?? 0));
+        setPee(String(editing.payload?.pee ?? 0));
+        setPoop(String(editing.payload?.poop ?? 0));
+        setVomit(String(editing.payload?.vomit ?? 0));
         break;
       case 'measurement':
-        setWeightKg(editing.payload.weightKg ? String(editing.payload.weightKg) : '');
-        setHeightCm(editing.payload.heightCm ? String(editing.payload.heightCm) : '');
-        setHeadCircCm(editing.payload.headCircCm ? String(editing.payload.headCircCm) : '');
-        setTempC(editing.payload.tempC ? String(editing.payload.tempC) : '');
+        setWeightKg(editing.payload?.weightKg ? String(editing.payload.weightKg) : '');
+        setHeightCm(editing.payload?.heightCm ? String(editing.payload.heightCm) : '');
+        setHeadCircCm(editing.payload?.headCircCm ? String(editing.payload.headCircCm) : '');
+        setTempC(editing.payload?.tempC ? String(editing.payload.tempC) : '');
         break;
       case 'medication':
-        setName(editing.payload.name ?? '');
-        setDosage(editing.payload.dosage ?? '');
+        setName(editing.payload?.name ?? '');
+        setDosage(editing.payload?.dosage ?? '');
         break;
       case 'milestone':
-        setTitle(editing.payload.title ?? '');
-        setIcon(editing.payload.icon ?? 'sparkles');
-        setPhotoUri(editing.payload.photoUri ?? '');
+        setTitle(editing.payload?.title ?? '');
+        setIcon(editing.payload?.icon ?? 'sparkles');
+        setPhotoUri(editing.payload?.photoUri ?? '');
         break;
       case 'symptom':
-        setSymptoms((editing.payload as any).tags ?? ((editing.payload.notes ?? '') as string).split(',').map((value) => value.trim()).filter(Boolean));
+        setSymptoms((editing.payload as any)?.tags ?? ((editing.payload?.notes ?? '') as string).split(',').map((value) => value.trim()).filter(Boolean));
         break;
     }
   }, [editing]);
