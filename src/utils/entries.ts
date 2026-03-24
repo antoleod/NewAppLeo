@@ -60,7 +60,8 @@ export function getEntrySubtitle(entry: EntryRecord) {
       return [
         entry.payload.weightKg ? `${entry.payload.weightKg} kg` : null,
         entry.payload.heightCm ? `${entry.payload.heightCm} cm` : null,
-        entry.payload.tempC ? `${entry.payload.tempC}°C` : null,
+        entry.payload.headCircCm ? `${entry.payload.headCircCm} cm HC` : null,
+        entry.payload.tempC ? `${entry.payload.tempC} C` : null,
       ]
         .filter(Boolean)
         .join(' · ') || time;

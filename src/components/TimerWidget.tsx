@@ -67,7 +67,7 @@ export function TimerWidget({
         />
       ) : null}
 
-      <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+      <View>
         <Pressable
           onPress={() => {
             if (running) {
@@ -82,57 +82,14 @@ export function TimerWidget({
             setRunning(true);
           }}
           style={{
-            paddingHorizontal: largeTouchMode ? 18 : 14,
-            paddingVertical: largeTouchMode ? 16 : 12,
-            borderRadius: 16,
+            minHeight: largeTouchMode ? 64 : 56,
+            borderRadius: 18,
             backgroundColor: running ? colors.danger : colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: '800' }}>{running ? 'Stop' : 'Start'}</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            setRunning(false);
-            setStartedAt(null);
-            setLiveSeconds(0);
-            onChangeMinutes(0);
-          }}
-          style={{
-            paddingHorizontal: largeTouchMode ? 18 : 14,
-            paddingVertical: largeTouchMode ? 16 : 12,
-            borderRadius: 16,
-            backgroundColor: colors.backgroundAlt,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          <Text style={{ color: colors.text, fontWeight: '800' }}>Reset</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => onChangeMinutes(Math.max(0, valueMinutes - 5))}
-          style={{
-            paddingHorizontal: largeTouchMode ? 18 : 14,
-            paddingVertical: largeTouchMode ? 16 : 12,
-            borderRadius: 16,
-            backgroundColor: colors.backgroundAlt,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          <Text style={{ color: colors.text, fontWeight: '800' }}>-5m</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => onChangeMinutes(valueMinutes + 5)}
-          style={{
-            paddingHorizontal: largeTouchMode ? 18 : 14,
-            paddingVertical: largeTouchMode ? 16 : 12,
-            borderRadius: 16,
-            backgroundColor: colors.backgroundAlt,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          <Text style={{ color: colors.text, fontWeight: '800' }}>+5m</Text>
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>{running ? 'Stop' : 'Start'}</Text>
         </Pressable>
       </View>
     </View>

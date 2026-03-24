@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { EntryRecord, UserProfile } from '@/types';
+import { AppLanguage, EntryRecord, UserProfile } from '@/types';
 
 const ACTIVE_BABY_KEY = 'appleo.activeBabyId';
 const BABIES_KEY = 'appleo.babies';
@@ -16,10 +16,41 @@ export interface BabyProfile {
   name: string;
   birthDate: string;
   sex: 'female' | 'male' | 'unspecified';
+  birthWeightKg?: number;
+  currentWeightKg?: number;
+  heightCm?: number;
+  notes?: string;
+  photoUri?: string;
+  language?: AppLanguage;
   createdAt: string;
 }
 
 export type ModuleVisibility = Record<string, boolean>;
+
+export interface DashboardMetrics {
+  dailyStatus: boolean;
+  nextFeed: boolean;
+  lastFeeds: boolean;
+  timeline: boolean;
+  recentActivity: boolean;
+  hydration: boolean;
+  widget: boolean;
+  weeklyDigest: boolean;
+}
+
+export interface MotionEffects {
+  emojiPulse: boolean;
+  liveCountdown: boolean;
+  gradientCards: boolean;
+  pressScale: boolean;
+}
+
+export interface CustomThemeSettings {
+  enabled: boolean;
+  primary: string;
+  secondary: string;
+  backgroundAlt: string;
+}
 
 export const defaultModuleVisibility: ModuleVisibility = {
   feed: true,
@@ -37,6 +68,13 @@ export interface AppSettings {
   largeTouchMode: boolean;
   redNightMode: boolean;
   themeVariant: ThemeVariant;
+  language: AppLanguage;
+  hydrationGoalMl: number;
+  compactHomeCards: boolean;
+  hasImportedLeoData: boolean;
+  dashboardMetrics: DashboardMetrics;
+  effects: MotionEffects;
+  customTheme: CustomThemeSettings;
 }
 
 export const defaultAppSettings: AppSettings = {
@@ -44,6 +82,32 @@ export const defaultAppSettings: AppSettings = {
   largeTouchMode: false,
   redNightMode: false,
   themeVariant: 'sage',
+  language: 'fr',
+  hydrationGoalMl: 2500,
+  compactHomeCards: false,
+  hasImportedLeoData: false,
+  dashboardMetrics: {
+    dailyStatus: true,
+    nextFeed: true,
+    lastFeeds: true,
+    timeline: true,
+    recentActivity: true,
+    hydration: true,
+    widget: true,
+    weeklyDigest: true,
+  },
+  effects: {
+    emojiPulse: true,
+    liveCountdown: true,
+    gradientCards: true,
+    pressScale: true,
+  },
+  customTheme: {
+    enabled: false,
+    primary: '#4d7c6b',
+    secondary: '#c18f54',
+    backgroundAlt: '#eef4ef',
+  },
 };
 
 function safeParse<T>(raw: string | null, fallback: T): T {
@@ -121,7 +185,10 @@ export async function setMomHydration(babyId: string, value: number) {
 }
 
 export async function getModuleVisibility() {
-  return safeParse<ModuleVisibility>(await AsyncStorage.getItem(MODULE_VISIBILITY_KEY), defaultModuleVisibility);
+  return {
+    ...defaultModuleVisibility,
+    ...safeParse<ModuleVisibility>(await AsyncStorage.getItem(MODULE_VISIBILITY_KEY), defaultModuleVisibility),
+  };
 }
 
 export async function setModuleVisibility(next: ModuleVisibility) {
@@ -129,11 +196,49 @@ export async function setModuleVisibility(next: ModuleVisibility) {
 }
 
 export async function getAppSettings() {
-  return safeParse<AppSettings>(await AsyncStorage.getItem(APP_SETTINGS_KEY), defaultAppSettings);
+  const parsed = safeParse<Partial<AppSettings>>(await AsyncStorage.getItem(APP_SETTINGS_KEY), defaultAppSettings);
+  return {
+    ...defaultAppSettings,
+    ...parsed,
+    dashboardMetrics: {
+      ...defaultAppSettings.dashboardMetrics,
+      ...(parsed.dashboardMetrics ?? {}),
+    },
+    effects: {
+      ...defaultAppSettings.effects,
+      ...(parsed.effects ?? {}),
+    },
+    customTheme: {
+      ...defaultAppSettings.customTheme,
+      ...(parsed.customTheme ?? {}),
+    },
+  } as AppSettings;
 }
 
 export async function setAppSettings(next: AppSettings) {
   await AsyncStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(next));
+}
+
+export async function updateAppSettings(partial: Partial<AppSettings>) {
+  const current = await getAppSettings();
+  const next: AppSettings = {
+    ...current,
+    ...partial,
+    dashboardMetrics: {
+      ...current.dashboardMetrics,
+      ...(partial.dashboardMetrics ?? {}),
+    },
+    effects: {
+      ...current.effects,
+      ...(partial.effects ?? {}),
+    },
+    customTheme: {
+      ...current.customTheme,
+      ...(partial.customTheme ?? {}),
+    },
+  };
+  await setAppSettings(next);
+  return next;
 }
 
 export function createGuestProfile(): UserProfile {
@@ -152,6 +257,8 @@ export function createGuestProfile(): UserProfile {
     caregiverName: 'Guest',
     babyName: 'Leo',
     babyBirthDate: '2025-10-21',
+    babySex: 'unspecified',
+    language: 'fr',
     goalFeedingsPerDay: 8,
     goalSleepHoursPerDay: 14,
     goalDiapersPerDay: 6,
@@ -186,6 +293,12 @@ export async function buildBabyFromProfile(
     name: name || profile.babyName,
     birthDate,
     sex,
+    birthWeightKg: profile.birthWeightKg,
+    currentWeightKg: profile.currentWeightKg,
+    heightCm: profile.heightCm,
+    notes: profile.babyNotes,
+    photoUri: profile.babyPhotoUri,
+    language: profile.language,
     createdAt: new Date().toISOString(),
   });
 }

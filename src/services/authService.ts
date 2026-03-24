@@ -64,6 +64,8 @@ export async function registerAccount(payload: RegisterPayload) {
       caregiverName: payload.displayName || email.split('@')[0],
       babyName: 'Leo',
       babyBirthDate: '2025-10-21',
+      babySex: 'unspecified' as const,
+      language: 'fr' as const,
       goalFeedingsPerDay: 8,
       goalSleepHoursPerDay: 14,
       goalDiapersPerDay: 6,

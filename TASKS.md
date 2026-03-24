@@ -52,9 +52,67 @@
 - [x] Add a background sync flush action for queued entries
 - [x] Add a native voice capture bridge
 - [x] Add lock screen / home widget support
+- [x] Add guest mode to the app start flow
+- [x] Add startup theme presets for professional family branding
 
 ## Next Up
-- [x] Review and prune any stale tracker items that are already implemented
+- [ ] Build the requested visual/effects refactor pass from the latest brief
+- [ ] Propagate saved language into any remaining low-priority helper text and export copy
+- [x] Add undo toast after delete in history
+
+## Requested Improvements
+- [x] Move theme picker out of `app/index.tsx` and keep theme selection in `app/(app)/(tabs)/profile.tsx`
+- [x] Keep a single primary `Continuer` CTA on `app/index.tsx` with guest mode as the default path
+- [x] Keep `Sign in` as a small text link below the primary CTA on `app/index.tsx`
+- [x] Remove `Create account` from `app/index.tsx` and keep it only on `app/(auth)/login.tsx`
+- [x] Shorten the landing headline and keep it personal, family-oriented, and in French
+- [ ] Rebuild onboarding for three user types: Guest, PIN user, Authenticated user
+- [x] Extend onboarding data collection with baby name, birth date, birth weight, current weight, height, optional notes, and language choice
+- [x] Load and persist local data from `leodata.json` while staying future-ready for multiple babies
+- [x] Refactor dashboard into clean card sections: last feeding, hydration summary, recent activity, quick actions
+- [x] Add baby header stats on home with weight and height pulled from measurements
+- [x] Split feed quick action into `Sein` and `Biberon`
+- [x] Keep `DailyStatusCard` on home with milk total bar, 750-1050 ml zone, and status label
+- [x] Keep `NextFeedingCard` on home with countdown or `Possible maintenant` and last feed timestamp
+- [x] Keep side-by-side `LastFeedMiniCards` for the latest breast and bottle sessions
+- [x] Finish fullscreen timer flow for `Sein` and `Biberon`: black background, animated emoji, centered thin timer, single red `STOP` button, and save bottom sheet
+- [x] Keep notes collapsed by default behind `+ Ajouter une note` in `app/(app)/entry/[type].tsx`
+- [x] Keep native `DateTimePicker` on native platforms and safe web fallback in `app/(app)/entry/[type].tsx`
+- [x] Reduce new-entry logging to max two taps with quick amounts `100/130/150/180 ml`
+- [ ] Redesign history grouped by day with mini charts, feeding frequency, daily totals, and weight trend
+- [x] Redesign history grouped by day with mini charts, feeding frequency, daily totals, and weight trend
+- [x] Refine bottom tab navigation for Home / History / Insights / Profile with compact balanced spacing
+- [x] Add UI motion inspired by the live app: countdowns, progress feedback, slide-up sheets, undo toast, tap scale feedback, and smooth transitions
+- [x] Add multilingual i18n structure with French default plus Spanish, English, and Dutch
+- [x] Add built-in themes plus custom theme builder in profile, persisted locally
+- [x] Add baby photo upload and local personalization settings for visible dashboard metrics and hydration goals
+
+## Surprise Additions
+- [x] Seed guest/local sessions from `leodata.json` automatically on first launch
+- [x] Persist baby profile extras: birth weight, current weight, height, notes, photo, language
+- [x] Add a photo picker for the baby header/profile
+- [x] Add dashboard metric visibility toggles
+- [x] Add configurable hydration goal storage
+- [x] Add compact home-card mode
+- [x] Add live countdown toggle
+- [x] Add emoji pulse toggle for fullscreen timers
+- [x] Add gradient hero card toggle
+- [x] Add press-scale toggle for quick actions and recent activity cards
+- [x] Add locale-aware tab labels
+- [x] Add daily summary cards plus weight trend to history
+- [x] Add locale-aware insights range view
+- [x] Center high-visibility dashboard cards and bottom-sheet actions
+- [x] Improve button usability with consistent centered press targets
+- [x] Add custom palette controls persisted in profile
+- [x] Replace the old history list with a full report screen
+- [x] Add OMS reference cards and collapsible monthly OMS table
+- [x] Add SVG weight chart with OMS band
+- [x] Add structured CSV/PDF/share export for the selected day
+- [x] Refactor HomeScreen into a compact report-style layout
+- [x] Remove duplicated HomeScreen action buttons and add duplicate-label warnings
+- [x] Add reanimated micro-interactions to HomeScreen controls
+- [x] Add explicit head circumference support to measurements
+- [x] Polish Insights screen to match the compact dashboard/report visual system
 
 ## P1 - Critical
 - [x] Create `app/(app)/(tabs)/home.tsx` with:

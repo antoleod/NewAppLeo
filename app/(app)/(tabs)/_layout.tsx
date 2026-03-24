@@ -1,9 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { useLocale } from '@/context/LocaleContext';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const { t } = useLocale();
   return (
     <Tabs
       screenOptions={({ route }) => ({
@@ -13,9 +15,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 64,
-          paddingTop: 8,
-          paddingBottom: 8,
+          height: 62,
+          paddingTop: 6,
+          paddingBottom: 6,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -33,10 +35,10 @@ export default function TabsLayout() {
         },
       })}
     >
-      <Tabs.Screen name="home" options={{ title: 'Home' }} />
-      <Tabs.Screen name="history" options={{ title: 'History' }} />
-      <Tabs.Screen name="insights" options={{ title: 'Insights' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <Tabs.Screen name="home" options={{ title: t('tabs.home') }} />
+      <Tabs.Screen name="history" options={{ title: t('tabs.history') }} />
+      <Tabs.Screen name="insights" options={{ title: t('tabs.insights') }} />
+      <Tabs.Screen name="profile" options={{ title: t('tabs.profile') }} />
     </Tabs>
   );
 }

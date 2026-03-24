@@ -17,6 +17,9 @@ import { useAuth } from './AuthContext';
 import { getTodaySummary } from '@/utils/entries';
 import { deleteLocalEntry, getLocalEntries, setLocalEntries, upsertLocalEntry } from '@/services/localStore';
 import { flushQueuedOperations, queueDeletes, queueUpserts } from '@/lib/sync';
+import { buildLeoProfilePatch, importLeoEntries } from '@/lib/leoData';
+import { getAppSettings, saveBaby, setAppSettings } from '@/lib/storage';
+import { setGuestProfile } from '@/lib/storage';
 
 interface AppDataContextValue {
   entries: EntryRecord[];
@@ -88,6 +91,53 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [entries, setEntries] = useState<EntryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [remoteAvailable, setRemoteAvailable] = useState(true);
+
+  useEffect(() => {
+    if (!user || !guestMode || loading || entries.length) return;
+
+    let cancelled = false;
+
+    const bootstrapLeoData = async () => {
+      const settings = await getAppSettings();
+      if (settings.hasImportedLeoData || cancelled) return;
+
+      const importedEntries = importLeoEntries();
+      if (!importedEntries.length) return;
+
+      setLocalEntries(user.uid, importedEntries);
+      if (profile) {
+        const nextProfile = {
+          ...profile,
+          ...buildLeoProfilePatch(profile),
+          hasCompletedOnboarding: true,
+          updatedAt: new Date().toISOString(),
+        };
+        await setGuestProfile(nextProfile);
+        await saveBaby({
+          id: 'leo-import',
+          name: nextProfile.babyName,
+          birthDate: nextProfile.babyBirthDate,
+          sex: nextProfile.babySex ?? 'unspecified',
+          birthWeightKg: nextProfile.birthWeightKg,
+          currentWeightKg: nextProfile.currentWeightKg,
+          heightCm: nextProfile.heightCm,
+          notes: nextProfile.babyNotes,
+          photoUri: nextProfile.babyPhotoUri,
+          language: nextProfile.language,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      await setAppSettings({ ...settings, hasImportedLeoData: true });
+      if (!cancelled) {
+        setEntries(importedEntries);
+      }
+    };
+
+    void bootstrapLeoData();
+    return () => {
+      cancelled = true;
+    };
+  }, [entries.length, guestMode, loading, profile, user]);
 
   useEffect(() => {
     if (!user || guestMode) {

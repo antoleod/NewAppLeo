@@ -1,4 +1,5 @@
 export type ThemeMode = 'system' | 'light' | 'dark';
+export type AppLanguage = 'fr' | 'es' | 'en' | 'nl';
 
 export type EntryType =
   | 'feed'
@@ -23,6 +24,7 @@ export interface EntryPayload {
   vomit?: number;
   weightKg?: number;
   heightCm?: number;
+  headCircCm?: number;
   tempC?: number;
   name?: string;
   dosage?: string;
@@ -58,6 +60,13 @@ export interface UserProfile {
   caregiverName: string;
   babyName: string;
   babyBirthDate: string;
+  babySex?: 'female' | 'male' | 'unspecified';
+  birthWeightKg?: number;
+  currentWeightKg?: number;
+  heightCm?: number;
+  babyNotes?: string;
+  babyPhotoUri?: string;
+  language: AppLanguage;
   goalFeedingsPerDay: number;
   goalSleepHoursPerDay: number;
   goalDiapersPerDay: number;
@@ -79,6 +88,12 @@ export interface OnboardingPayload {
   caregiverName: string;
   babyName: string;
   babyBirthDate: string;
+  babySex?: 'female' | 'male' | 'unspecified';
+  birthWeightKg?: number;
+  currentWeightKg?: number;
+  heightCm?: number;
+  babyNotes?: string;
+  language: AppLanguage;
   goalFeedingsPerDay: number;
   goalSleepHoursPerDay: number;
   goalDiapersPerDay: number;

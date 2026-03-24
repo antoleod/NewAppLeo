@@ -4,10 +4,12 @@ import { router } from 'expo-router';
 import { Button, Card, Heading, Input, Page } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext';
 import { isValidPin, normalizeUsername } from '@/utils/crypto';
 
 export default function RegisterScreen() {
   const { colors } = useTheme();
+  const { language } = useLocale();
   const { register } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
@@ -52,7 +54,7 @@ export default function RegisterScreen() {
 
   return (
     <Page>
-      <Heading eyebrow="Get started" title="Create an account" subtitle="One account supports both login modes." />
+      <Heading eyebrow="Get started" title={language === 'fr' ? 'Creer un compte' : 'Create an account'} subtitle={language === 'fr' ? 'Un seul compte suffit pour le foyer.' : 'One account supports both login modes.'} />
       <Card>
         <Input label="Display name" value={displayName} onChangeText={setDisplayName} placeholder="Andrea" textContentType="name" />
         <Input
@@ -74,10 +76,10 @@ export default function RegisterScreen() {
           inputMode="numeric"
           error={pinError || undefined}
         />
-        <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
+        <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: 'center' }}>
           PIN sign-in remains available, but email and password are the default path.
         </Text>
-        {error ? <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text> : null}
+        {error ? <Text style={{ color: colors.danger, fontSize: 13, textAlign: 'center' }}>{error}</Text> : null}
         <Button label="Create account" onPress={handleSubmit} loading={loading} disabled={!canSubmit} fullWidth />
         <Button label="Pair device" onPress={() => router.push('/pair')} variant="ghost" fullWidth />
         <Button label="Back to sign in" onPress={() => router.back()} variant="ghost" fullWidth />

@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { typography } from '@/typography';
 
 export function Page({
   children,
@@ -48,15 +49,15 @@ export function Page({
 }
 
 export function Card({ children, style }: { children: React.ReactNode; style?: any }) {
-  const { colors } = useTheme();
+  const { theme } = useTheme();
   return (
     <View
       style={[
         styles.card,
         {
-          backgroundColor: colors.surface,
-          borderColor: colors.cardBorder,
-          shadowColor: colors.text,
+          backgroundColor: theme.bgCard,
+          borderColor: theme.border,
+          shadowColor: theme.textPrimary,
         },
         style,
       ]}
@@ -71,19 +72,21 @@ export function Heading({
   title,
   subtitle,
   action,
+  align = 'center',
 }: {
   eyebrow?: string;
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
+  align?: 'left' | 'center';
 }) {
-  const { colors } = useTheme();
+  const { theme } = useTheme();
   return (
-    <View style={styles.headingRow}>
-      <View style={{ flex: 1, gap: spacing.xs }}>
-        {eyebrow ? <Text style={[styles.eyebrow, { color: colors.primary }]}>{eyebrow}</Text> : null}
-        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-        {subtitle ? <Text style={[styles.subtitle, { color: colors.muted }]}>{subtitle}</Text> : null}
+    <View style={[styles.headingRow, align === 'center' && styles.headingCentered]}>
+      <View style={{ flex: 1, gap: spacing.xs, alignItems: align === 'center' ? 'center' : 'flex-start' }}>
+        {eyebrow ? <Text style={[styles.eyebrow, { color: theme.accent }, align === 'center' && { textAlign: 'center' }]}>{eyebrow}</Text> : null}
+        <Text style={[styles.title, { color: theme.textPrimary }, align === 'center' && { textAlign: 'center' }]}>{title}</Text>
+        {subtitle ? <Text style={[styles.subtitle, { color: theme.textMuted }, align === 'center' && { textAlign: 'center' }]}>{subtitle}</Text> : null}
       </View>
       {action}
     </View>
@@ -105,17 +108,17 @@ export function Button({
   disabled?: boolean;
   fullWidth?: boolean;
 }) {
-  const { colors } = useTheme();
+  const { theme } = useTheme();
   const background =
     variant === 'primary'
-      ? colors.primary
+      ? theme.accent
       : variant === 'secondary'
-        ? colors.secondary
+        ? theme.blue
         : variant === 'danger'
-          ? colors.danger
+          ? theme.red
           : 'transparent';
-  const color = variant === 'ghost' ? colors.text : '#ffffff';
-  const borderColor = variant === 'ghost' ? colors.border : 'transparent';
+  const color = variant === 'ghost' ? theme.textPrimary : variant === 'primary' ? theme.accentText : '#ffffff';
+  const borderColor = variant === 'ghost' ? theme.border : 'transparent';
 
   return (
     <Pressable
@@ -134,7 +137,7 @@ export function Button({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'ghost' ? colors.primary : '#ffffff'} />
+        <ActivityIndicator color={variant === 'ghost' ? theme.accent : '#ffffff'} />
       ) : (
         <Text style={[styles.buttonLabel, { color }]}>{label}</Text>
       )}
@@ -169,15 +172,15 @@ export function Input({
   textContentType?: any;
   inputMode?: any;
 }) {
-  const { colors } = useTheme();
+  const { theme } = useTheme();
   return (
     <View style={styles.field}>
-      <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+      <Text style={[styles.label, { color: theme.textPrimary }]}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.muted}
+        placeholderTextColor={theme.textMuted}
         secureTextEntry={secureTextEntry}
         multiline={multiline}
         keyboardType={keyboardType}
@@ -186,11 +189,11 @@ export function Input({
         inputMode={inputMode}
         style={[
           styles.input,
-          { color: colors.text, borderColor: error ? colors.danger : colors.border, backgroundColor: colors.backgroundAlt },
+          { color: theme.textPrimary, borderColor: error ? theme.red : theme.border, backgroundColor: theme.bgCardAlt },
           multiline && styles.textArea,
         ]}
       />
-      {error ? <Text style={[styles.hint, { color: colors.danger }]}>{error}</Text> : hint ? <Text style={[styles.hint, { color: colors.muted }]}>{hint}</Text> : null}
+      {error ? <Text style={[styles.hint, { color: theme.red }]}>{error}</Text> : hint ? <Text style={[styles.hint, { color: theme.textMuted }]}>{hint}</Text> : null}
     </View>
   );
 }
@@ -204,9 +207,9 @@ export function Segment({
   options: Array<{ label: string; value: string }>;
   onChange: (value: string) => void;
 }) {
-  const { colors } = useTheme();
+  const { theme } = useTheme();
   return (
-    <View style={[styles.segment, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
+    <View style={[styles.segment, { borderColor: theme.border, backgroundColor: theme.pillBg }]}>
       {options.map((option) => {
         const selected = option.value === value;
         return (
@@ -215,10 +218,10 @@ export function Segment({
             onPress={() => onChange(option.value)}
             style={[
               styles.segmentItem,
-              selected && { backgroundColor: colors.surface, borderColor: colors.border },
+              selected && { backgroundColor: theme.bgCard, borderColor: theme.borderActive },
             ]}
           >
-            <Text style={[styles.segmentLabel, { color: selected ? colors.text : colors.muted }]}>{option.label}</Text>
+            <Text style={[styles.segmentLabel, { color: selected ? theme.textPrimary : theme.textMuted }]}>{option.label}</Text>
           </Pressable>
         );
       })}
@@ -235,16 +238,16 @@ export function Chip({
   selected?: boolean;
   onPress: () => void;
 }) {
-  const { colors } = useTheme();
+  const { theme } = useTheme();
   return (
     <Pressable
       onPress={onPress}
       style={[
         styles.chip,
-        { borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primarySoft : colors.backgroundAlt },
+        { borderColor: selected ? theme.accent : theme.border, backgroundColor: selected ? `${theme.accent}22` : theme.bgCardAlt },
       ]}
     >
-      <Text style={[styles.chipLabel, { color: selected ? colors.primary : colors.muted }]}>{label}</Text>
+      <Text style={[styles.chipLabel, { color: selected ? theme.accent : theme.textMuted }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -258,13 +261,13 @@ export function StatPill({
   value: string;
   tone?: 'primary' | 'secondary' | 'success' | 'warning';
 }) {
-  const { colors } = useTheme();
-  const toneColor = tone === 'primary' ? colors.primary : tone === 'secondary' ? colors.secondary : tone === 'success' ? colors.success : colors.warning;
-  const toneBg = tone === 'primary' ? colors.primarySoft : tone === 'secondary' ? colors.secondarySoft : tone === 'success' ? colors.successSoft : colors.warningSoft;
+  const { theme } = useTheme();
+  const toneColor = tone === 'primary' ? theme.accent : tone === 'secondary' ? theme.blue : tone === 'success' ? theme.green : theme.accent;
+  const toneBg = `${toneColor}22`;
   return (
-    <View style={[styles.stat, { backgroundColor: toneBg, borderColor: colors.border }]}>
-      <Text style={[styles.statLabel, { color: colors.muted }]}>{label}</Text>
-      <Text style={[styles.statValue, { color: toneColor }]}>{value}</Text>
+    <View style={[styles.stat, { backgroundColor: toneBg, borderColor: theme.border }]}>
+      <Text style={[styles.statLabel, { color: theme.textMuted, textAlign: 'center' }]}>{label}</Text>
+      <Text style={[styles.statValue, { color: toneColor, textAlign: 'center' }]}>{value}</Text>
     </View>
   );
 }
@@ -278,11 +281,11 @@ export function EmptyState({
   body: string;
   action?: React.ReactNode;
 }) {
-  const { colors } = useTheme();
+  const { theme } = useTheme();
   return (
-    <View style={[styles.empty, { backgroundColor: colors.backgroundAlt, borderColor: colors.border }]}>
-      <Text style={[styles.emptyTitle, { color: colors.text }]}>{title}</Text>
-      <Text style={[styles.emptyBody, { color: colors.muted }]}>{body}</Text>
+    <View style={[styles.empty, { backgroundColor: theme.bgCardAlt, borderColor: theme.border }]}>
+      <Text style={[styles.emptyTitle, { color: theme.textPrimary, textAlign: 'center' }]}>{title}</Text>
+      <Text style={[styles.emptyBody, { color: theme.textMuted, textAlign: 'center' }]}>{body}</Text>
       {action}
     </View>
   );
@@ -301,20 +304,20 @@ export function EntryCard({
   right?: React.ReactNode;
   onPress?: () => void;
 }) {
-  const { colors } = useTheme();
+  const { theme } = useTheme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }: any) => [
         styles.entryCard,
-        { backgroundColor: colors.surface, borderColor: colors.cardBorder, opacity: pressed ? 0.92 : 1 },
+        { backgroundColor: theme.bgCard, borderColor: theme.border, opacity: pressed ? 0.92 : 1 },
       ]}
     >
       <View style={{ flex: 1, gap: 6 }}>
-        <Text style={[styles.entryTitle, { color: colors.text }]}>{title}</Text>
-        <Text style={[styles.entrySubtitle, { color: colors.muted }]}>{subtitle}</Text>
+        <Text style={[styles.entryTitle, { color: theme.textPrimary }]}>{title}</Text>
+        <Text style={[styles.entrySubtitle, { color: theme.textMuted }]}>{subtitle}</Text>
         {notes ? (
-          <Text style={[styles.entryNotes, { color: colors.muted }]} numberOfLines={2}>
+          <Text style={[styles.entryNotes, { color: theme.textMuted }]} numberOfLines={2}>
             {notes}
           </Text>
         ) : null}
@@ -352,6 +355,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: spacing.md,
     justifyContent: 'space-between',
+  },
+  headingCentered: {
+    justifyContent: 'center',
   },
   eyebrow: {
     textTransform: 'uppercase',
@@ -455,6 +461,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     padding: spacing.lg,
     gap: spacing.sm,
+    alignItems: 'center',
   },
   emptyTitle: {
     fontSize: 18,
