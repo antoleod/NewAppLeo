@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "App Leo",
+    "slug": "appleo",
+    "scheme": "appleo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "web": {
+      "bundler": "metro",
+      "favicon": "./source-repo/img/icon/icon-square-180.png"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}

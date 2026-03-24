@@ -1,0 +1,73 @@
+import { useMemo, useState } from 'react';
+import { Alert, Text } from 'react-native';
+import { router } from 'expo-router';
+import { Button, Card, Heading, Input, Page } from '@/components/ui';
+import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { isValidPin, normalizeUsername } from '@/utils/crypto';
+
+export default function RegisterScreen() {
+  const { colors } = useTheme();
+  const { register } = useAuth();
+  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [pin, setPin] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
+  const usernameError = username && !normalizedUsername ? 'Use letters, numbers, dots, dashes, or underscores.' : '';
+  const pinError = pin && !isValidPin(pin) ? 'PIN must be 6 to 12 digits.' : '';
+  const canSubmit =
+    displayName.trim() &&
+    normalizedUsername &&
+    email.trim() &&
+    password.trim().length >= 6 &&
+    isValidPin(pin) &&
+    !usernameError &&
+    !pinError;
+
+  async function handleSubmit() {
+    setLoading(true);
+    setError('');
+    try {
+      await register({
+        displayName,
+        username: normalizedUsername,
+        email,
+        password,
+        pin,
+      });
+      router.replace('/onboarding');
+    } catch (err: any) {
+      const message = err?.message ?? 'Unable to register.';
+      setError(message);
+      Alert.alert('Registration failed', message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Page>
+      <Heading eyebrow="Get started" title="Create an account" subtitle="One account supports both login modes." />
+      <Card>
+        <Input label="Display name" value={displayName} onChangeText={setDisplayName} placeholder="Andrea" textContentType="name" />
+        <Input label="Username" value={username} onChangeText={setUsername} placeholder="andrea.leo" />
+        {usernameError ? <Text style={{ color: colors.warning, fontSize: 12 }}>{usernameError}</Text> : null}
+        <Input label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" textContentType="emailAddress" />
+        <Input label="Password" value={password} onChangeText={setPassword} placeholder="Create a password" secureTextEntry textContentType="newPassword" />
+        <Input label="PIN" value={pin} onChangeText={setPin} placeholder="6-digit PIN" secureTextEntry keyboardType="numeric" inputMode="numeric" />
+        <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
+          The PIN is stored as a hash, and the password is encrypted with a PIN-derived key so it can be recovered for Firebase Auth sign-in later.
+        </Text>
+        {pinError ? <Text style={{ color: colors.warning, fontSize: 12 }}>{pinError}</Text> : null}
+        {error ? <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text> : null}
+        <Button label="Create account" onPress={handleSubmit} loading={loading} fullWidth />
+        <Button label="Back to sign in" onPress={() => router.back()} variant="ghost" fullWidth />
+      </Card>
+    </Page>
+  );
+}
