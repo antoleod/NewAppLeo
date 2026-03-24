@@ -1,34 +1,25 @@
 import { useMemo, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Page, Card, Heading, Input, Button, Segment } from '@/components/ui';
+import { Page, Card, Heading, Input, Button } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 
 export default function LoginScreen() {
   const { colors } = useTheme();
-  const { signInEmail, signInUsernamePin } = useAuth();
-  const [mode, setMode] = useState<'email' | 'username'>('email');
+  const { signInEmail, signInGuest } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const canSubmit = useMemo(() => {
-    return mode === 'email' ? email.trim() && password.trim() : username.trim() && pin.trim();
-  }, [email, mode, password, pin, username]);
+  const canSubmit = useMemo(() => Boolean(email.trim() && password.trim()), [email, password]);
 
   async function handleSubmit() {
     setLoading(true);
     setError('');
     try {
-      if (mode === 'email') {
-        await signInEmail({ email, password });
-      } else {
-        await signInUsernamePin({ username, pin });
-      }
+      await signInEmail({ email, password });
       router.replace('/home');
     } catch (err: any) {
       const message = err?.message ?? 'Unable to sign in.';
@@ -41,39 +32,25 @@ export default function LoginScreen() {
 
   return (
     <Page>
-      <Heading
-        eyebrow="Authentication"
-        title="Welcome back"
-        subtitle="Use email/password or username/PIN to sign in."
-      />
+      <Heading eyebrow="Authentication" title="Welcome back" subtitle="Sign in with email or continue as a guest." />
       <Card>
-        <Segment
-          value={mode}
-          onChange={(value) => setMode(value as 'email' | 'username')}
-          options={[
-            { label: 'Email', value: 'email' },
-            { label: 'Username + PIN', value: 'username' },
-          ]}
-        />
-
-        {mode === 'email' ? (
-          <>
-            <Input label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" textContentType="emailAddress" />
-            <Input label="Password" value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry textContentType="password" />
-          </>
-        ) : (
-          <>
-            <Input label="Username" value={username} onChangeText={setUsername} placeholder="your-username" />
-            <Input label="PIN" value={pin} onChangeText={setPin} placeholder="6-digit PIN" secureTextEntry keyboardType="numeric" inputMode="numeric" />
-            <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
-              The app resolves your username in Firestore, decrypts the stored credential with your PIN, and then signs into Firebase Auth.
-            </Text>
-          </>
-        )}
+        <Input label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" textContentType="emailAddress" />
+        <Input label="Password" value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry textContentType="password" />
 
         {error ? <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text> : null}
-        <Button label="Sign in" onPress={handleSubmit} loading={loading} fullWidth />
-        <Button label="Create account" onPress={() => router.push('/register')} variant="ghost" fullWidth />
+        <Button label="Sign in" onPress={handleSubmit} loading={loading} disabled={!canSubmit} fullWidth />
+        <Button label="Continue as guest" onPress={async () => { await signInGuest(); router.replace('/home'); }} variant="secondary" loading={loading} fullWidth />
+        <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
+          Guest mode stays on-device and uses the local dashboard only.
+        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <Pressable onPress={() => router.push('/register')}>
+            <Text style={{ color: colors.primary, fontWeight: '800' }}>Create account</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/pair')}>
+            <Text style={{ color: colors.primary, fontWeight: '800' }}>Pair device</Text>
+          </Pressable>
+        </View>
       </Card>
     </Page>
   );

@@ -7,7 +7,8 @@ export type EntryType =
   | 'pump'
   | 'measurement'
   | 'medication'
-  | 'milestone';
+  | 'milestone'
+  | 'symptom';
 
 export type FeedMode = 'breast' | 'bottle';
 export type BreastSide = 'left' | 'right' | 'both';
@@ -27,6 +28,8 @@ export interface EntryPayload {
   dosage?: string;
   title?: string;
   icon?: string;
+  photoUri?: string;
+  tags?: string[];
   notes?: string;
 }
 

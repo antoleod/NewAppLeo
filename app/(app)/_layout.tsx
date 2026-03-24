@@ -5,7 +5,7 @@ import { Page } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 
 export default function AppLayout() {
-  const { loading, user, profile } = useAuth();
+  const { loading, user, profile, guestMode } = useAuth();
   const { colors } = useTheme();
   const segments = useSegments();
   const onOnboardingRoute = segments.includes('onboarding');
@@ -21,7 +21,7 @@ export default function AppLayout() {
     );
   }
 
-  if (!user) {
+  if (!user && !guestMode) {
     return <Redirect href="/login" />;
   }
 

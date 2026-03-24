@@ -36,6 +36,8 @@ export function getEntryTitle(entry: EntryRecord) {
       return entry.payload.name ?? entry.title;
     case 'milestone':
       return entry.payload.title ?? entry.title;
+    case 'symptom':
+      return 'Symptom log';
     default:
       return entry.title;
   }
@@ -66,6 +68,8 @@ export function getEntrySubtitle(entry: EntryRecord) {
       return [entry.payload.dosage ?? 'Dose recorded', time].filter(Boolean).join(' · ');
     case 'milestone':
       return [entry.payload.icon ?? 'Milestone', time].filter(Boolean).join(' · ');
+    case 'symptom':
+      return [entry.payload.notes ?? 'Symptom log', time].filter(Boolean).join(' · ');
     default:
       return time;
   }

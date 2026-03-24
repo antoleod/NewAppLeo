@@ -1,6 +1,8 @@
 import { useColorScheme } from 'react-native';
 
-export const themeTokens = {
+export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand';
+
+const baseTokens = {
   light: {
     colors: {
       background: '#f6f4ef',
@@ -52,6 +54,144 @@ export const themeTokens = {
     },
   },
 } as const;
+
+const variantTokens: Record<ThemeVariant, { light: any; dark: any }> = {
+  sage: {
+    light: {
+      colors: {
+        primary: '#4d7c6b',
+        primarySoft: '#dcece5',
+        secondary: '#c18f54',
+        secondarySoft: '#f6ead9',
+        backgroundAlt: '#eef4ef',
+        cardBorder: 'rgba(77, 124, 107, 0.10)',
+      },
+      gradients: {
+        page: ['#f7f5f0', '#edf4ee', '#f6f1ea'] as const,
+        hero: ['#244d43', '#4d7c6b'] as const,
+      },
+    },
+    dark: {
+      colors: {
+        primary: '#8fd3bb',
+        primarySoft: 'rgba(143, 211, 187, 0.15)',
+        secondary: '#e3b37e',
+        secondarySoft: 'rgba(227, 179, 126, 0.16)',
+        backgroundAlt: '#10201c',
+        cardBorder: 'rgba(143, 211, 187, 0.10)',
+      },
+      gradients: {
+        page: ['#08110f', '#10231d', '#0f1a18'] as const,
+        hero: ['#123c31', '#3a7a63'] as const,
+      },
+    },
+  },
+  rose: {
+    light: {
+      colors: {
+        primary: '#b95b74',
+        primarySoft: '#f7dde4',
+        secondary: '#d98f57',
+        secondarySoft: '#f9e7dd',
+        backgroundAlt: '#f9eef2',
+        cardBorder: 'rgba(185, 91, 116, 0.10)',
+      },
+      gradients: {
+        page: ['#fbf6f8', '#f3e6ea', '#f8f2ef'] as const,
+        hero: ['#7c3146', '#b95b74'] as const,
+      },
+    },
+    dark: {
+      colors: {
+        primary: '#f29ab1',
+        primarySoft: 'rgba(242, 154, 177, 0.15)',
+        secondary: '#efb07b',
+        secondarySoft: 'rgba(239, 176, 123, 0.16)',
+        backgroundAlt: '#24151d',
+        cardBorder: 'rgba(242, 154, 177, 0.10)',
+      },
+      gradients: {
+        page: ['#120b10', '#23141d', '#20161c'] as const,
+        hero: ['#5f2a3a', '#b95b74'] as const,
+      },
+    },
+  },
+  navy: {
+    light: {
+      colors: {
+        primary: '#1d4e89',
+        primarySoft: '#dce9f7',
+        secondary: '#2d8c8c',
+        secondarySoft: '#dcefee',
+        backgroundAlt: '#eef3f8',
+        cardBorder: 'rgba(29, 78, 137, 0.10)',
+      },
+      gradients: {
+        page: ['#f5f8fb', '#e9f1f8', '#f4f8fb'] as const,
+        hero: ['#153255', '#1d4e89'] as const,
+      },
+    },
+    dark: {
+      colors: {
+        primary: '#91b7ea',
+        primarySoft: 'rgba(145, 183, 234, 0.16)',
+        secondary: '#5dc0c0',
+        secondarySoft: 'rgba(93, 192, 192, 0.16)',
+        backgroundAlt: '#111d33',
+        cardBorder: 'rgba(145, 183, 234, 0.10)',
+      },
+      gradients: {
+        page: ['#08111c', '#102035', '#111d33'] as const,
+        hero: ['#132946', '#1d4e89'] as const,
+      },
+    },
+  },
+  sand: {
+    light: {
+      colors: {
+        primary: '#8c6b3f',
+        primarySoft: '#efe4d1',
+        secondary: '#c97446',
+        secondarySoft: '#f7e4d7',
+        backgroundAlt: '#f6f0e6',
+        cardBorder: 'rgba(140, 107, 63, 0.10)',
+      },
+      gradients: {
+        page: ['#fbf7f0', '#f3eadc', '#f8f3ea'] as const,
+        hero: ['#5b4427', '#8c6b3f'] as const,
+      },
+    },
+    dark: {
+      colors: {
+        primary: '#d9b97d',
+        primarySoft: 'rgba(217, 185, 125, 0.16)',
+        secondary: '#e09c6b',
+        secondarySoft: 'rgba(224, 156, 107, 0.16)',
+        backgroundAlt: '#201b16',
+        cardBorder: 'rgba(217, 185, 125, 0.10)',
+      },
+      gradients: {
+        page: ['#0f0d0a', '#1b1712', '#17120f'] as const,
+        hero: ['#3f3120', '#8c6b3f'] as const,
+      },
+    },
+  },
+};
+
+export function getThemeTokens(mode: 'light' | 'dark', variant: ThemeVariant = 'sage') {
+  const base = baseTokens[mode];
+  const override = variantTokens[variant][mode];
+  return {
+    colors: {
+      ...base.colors,
+      ...override.colors,
+    },
+    gradients: {
+      ...base.gradients,
+      ...override.gradients,
+    },
+  };
+}
 
 export const spacing = {
   xs: 6,

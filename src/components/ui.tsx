@@ -49,7 +49,21 @@ export function Page({
 
 export function Card({ children, style }: { children: React.ReactNode; style?: any }) {
   const { colors } = useTheme();
-  return <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.cardBorder }, style]}>{children}</View>;
+  return (
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.cardBorder,
+          shadowColor: colors.text,
+        },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
 }
 
 export function Heading({
@@ -81,12 +95,14 @@ export function Button({
   onPress,
   variant = 'primary',
   loading = false,
+  disabled = false,
   fullWidth = true,
 }: {
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   loading?: boolean;
+  disabled?: boolean;
   fullWidth?: boolean;
 }) {
   const { colors } = useTheme();
@@ -103,16 +119,17 @@ export function Button({
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled || loading ? undefined : onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: disabled || loading }}
       style={({ pressed }) => [
         styles.button,
         {
           width: fullWidth ? '100%' : undefined,
           backgroundColor: background,
           borderColor,
-          opacity: pressed ? 0.85 : 1,
+          opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
         },
       ]}
     >
@@ -325,6 +342,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     padding: spacing.lg,
     gap: spacing.md,
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 3,
   },
   headingRow: {
     flexDirection: 'row',

@@ -13,18 +13,21 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 62,
+          height: 64,
+          paddingTop: 8,
+          paddingBottom: 8,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '700',
         },
+        tabBarHideOnKeyboard: true,
         tabBarIcon: ({ color, size }) => {
           const map: Record<string, keyof typeof Ionicons.glyphMap> = {
-            home: 'home',
-            history: 'time',
-            insights: 'analytics',
-            profile: 'person-circle',
+            home: 'home-outline',
+            history: 'time-outline',
+            insights: 'analytics-outline',
+            profile: 'person-outline',
           };
           return <Ionicons name={map[route.name] ?? 'ellipse'} color={color} size={size ?? 20} />;
         },

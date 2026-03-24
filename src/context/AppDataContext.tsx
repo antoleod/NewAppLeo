@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { AppState } from 'react-native';
 import {
   addDoc,
   collection,
@@ -15,6 +16,7 @@ import { EntryPayload, EntryRecord, EntryType } from '@/types';
 import { useAuth } from './AuthContext';
 import { getTodaySummary } from '@/utils/entries';
 import { deleteLocalEntry, getLocalEntries, setLocalEntries, upsertLocalEntry } from '@/services/localStore';
+import { flushQueuedOperations, queueDeletes, queueUpserts } from '@/lib/sync';
 
 interface AppDataContextValue {
   entries: EntryRecord[];
@@ -82,13 +84,19 @@ const DEMO_ENTRIES: Array<Omit<EntryRecord, 'id'>> = [
 ];
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
-  const { user, profile } = useAuth();
+  const { user, profile, guestMode } = useAuth();
   const [entries, setEntries] = useState<EntryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [remoteAvailable, setRemoteAvailable] = useState(true);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || guestMode) {
+      if (guestMode && user) {
+        setEntries(getLocalEntries(user.uid));
+        setLoading(false);
+        setRemoteAvailable(false);
+        return;
+      }
       setEntries([]);
       setLoading(false);
       setRemoteAvailable(true);
@@ -114,7 +122,38 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       },
     );
-  }, [user]);
+  }, [guestMode, user]);
+
+  useEffect(() => {
+    if (!profile?.uid) {
+      return;
+    }
+
+    let inFlight = false;
+    const flushQueue = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        await flushQueuedOperations(profile.uid);
+      } catch (error) {
+        console.warn('Background sync flush failed:', error);
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    void flushQueue();
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void flushQueue();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [profile?.uid]);
 
   const summary = useMemo(() => getTodaySummary(entries, profile), [entries, profile]);
 
@@ -132,7 +171,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       updatedAt: new Date().toISOString(),
     };
 
-    if (remoteAvailable) {
+    if (remoteAvailable && !guestMode) {
       try {
         const ref = await addDoc(entriesRef(user.uid), {
           type: input.type,
@@ -153,6 +192,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
 
     setLocalEntries(user.uid, [nextEntry, ...getLocalEntries(user.uid).filter((entry) => entry.id !== nextEntry.id)]);
+    if (!guestMode) {
+      void queueUpserts([nextEntry]);
+    }
     setEntries((current) => [nextEntry, ...current.filter((entry) => entry.id !== nextEntry.id)].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)));
   }
 
@@ -161,7 +203,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const current = entries.find((entry) => entry.id === id);
     const next = current ? { ...current, ...patch, updatedAt: new Date().toISOString() } : null;
 
-    if (remoteAvailable) {
+    if (remoteAvailable && !guestMode) {
       try {
         await updateDoc(doc(entriesRef(user.uid), id), {
           ...patch,
@@ -177,6 +219,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     if (next) {
       upsertLocalEntry(user.uid, next);
+      if (!guestMode) {
+        void queueUpserts([next]);
+      }
       setEntries((currentEntries) =>
         currentEntries
           .map((entry) => (entry.id === id ? next : entry))
@@ -187,7 +232,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   async function deleteEntry(id: string) {
     if (!user) throw new Error('You must be signed in.');
-    if (remoteAvailable) {
+    const current = entries.find((entry) => entry.id === id);
+    if (remoteAvailable && !guestMode) {
       try {
         await deleteDoc(doc(entriesRef(user.uid), id));
       } catch (error) {
@@ -199,6 +245,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
 
     deleteLocalEntry(user.uid, id);
+    if (!guestMode) {
+      void queueDeletes([{ id, occurredAt: current?.occurredAt ?? new Date().toISOString(), updatedAt: current?.updatedAt ?? new Date().toISOString() }]);
+    }
     setEntries((current) => current.filter((entry) => entry.id !== id));
   }
 
@@ -211,7 +260,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       updatedAt: new Date().toISOString(),
     }));
 
-    if (remoteAvailable) {
+    if (remoteAvailable && !guestMode) {
       try {
         for (const entry of DEMO_ENTRIES) {
           await addDoc(entriesRef(user.uid), {
@@ -232,6 +281,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       .filter((entry, index, array) => array.findIndex((candidate) => candidate.id === entry.id) === index)
       .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
     setLocalEntries(user.uid, nextEntries);
+    if (!guestMode) {
+      void queueUpserts(nextEntries);
+    }
     setEntries(nextEntries);
   }
 

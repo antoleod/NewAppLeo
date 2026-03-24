@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Button, Card, Heading, Input, Page, Segment } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { buildBabyFromProfile } from '@/lib/storage';
 
 export default function OnboardingScreen() {
   const { colors } = useTheme();
@@ -12,6 +13,7 @@ export default function OnboardingScreen() {
   const [caregiverName, setCaregiverName] = useState(profile?.caregiverName ?? '');
   const [babyName, setBabyName] = useState(profile?.babyName ?? 'Leo');
   const [babyBirthDate, setBabyBirthDate] = useState(profile?.babyBirthDate ?? '2025-10-21');
+  const [babySex, setBabySex] = useState<'female' | 'male' | 'unspecified'>('unspecified');
   const [goalFeedingsPerDay, setGoalFeedingsPerDay] = useState(String(profile?.goalFeedingsPerDay ?? 8));
   const [goalSleepHoursPerDay, setGoalSleepHoursPerDay] = useState(String(profile?.goalSleepHoursPerDay ?? 14));
   const [goalDiapersPerDay, setGoalDiapersPerDay] = useState(String(profile?.goalDiapersPerDay ?? 6));
@@ -22,6 +24,7 @@ export default function OnboardingScreen() {
     setCaregiverName(profile.caregiverName);
     setBabyName(profile.babyName);
     setBabyBirthDate(profile.babyBirthDate);
+    setBabySex('unspecified');
     setGoalFeedingsPerDay(String(profile.goalFeedingsPerDay));
     setGoalSleepHoursPerDay(String(profile.goalSleepHoursPerDay));
     setGoalDiapersPerDay(String(profile.goalDiapersPerDay));
@@ -38,6 +41,9 @@ export default function OnboardingScreen() {
         goalSleepHoursPerDay: Number(goalSleepHoursPerDay) || 14,
         goalDiapersPerDay: Number(goalDiapersPerDay) || 6,
       });
+      if (profile) {
+        await buildBabyFromProfile(profile, babyName.trim(), babyBirthDate.trim(), babySex);
+      }
       await saveProfile({ themeMode });
       router.replace('/home');
     } catch (error: any) {
@@ -54,6 +60,16 @@ export default function OnboardingScreen() {
             <Input label="Caregiver name" value={caregiverName} onChangeText={setCaregiverName} placeholder="Andrea" />
             <Input label="Baby name" value={babyName} onChangeText={setBabyName} placeholder="Leo" />
             <Input label="Baby birth date" value={babyBirthDate} onChangeText={setBabyBirthDate} placeholder="2025-10-21" />
+            <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16 }}>Baby sex</Text>
+            <Segment
+              value={babySex}
+              onChange={(value) => setBabySex(value as any)}
+              options={[
+                { label: 'Unspecified', value: 'unspecified' },
+                { label: 'Female', value: 'female' },
+                { label: 'Male', value: 'male' },
+              ]}
+            />
             <Button label="Continue" onPress={() => setStep(1)} />
           </>
         ) : null}

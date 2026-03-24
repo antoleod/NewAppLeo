@@ -55,17 +55,31 @@ export default function RegisterScreen() {
       <Heading eyebrow="Get started" title="Create an account" subtitle="One account supports both login modes." />
       <Card>
         <Input label="Display name" value={displayName} onChangeText={setDisplayName} placeholder="Andrea" textContentType="name" />
-        <Input label="Username" value={username} onChangeText={setUsername} placeholder="andrea.leo" />
-        {usernameError ? <Text style={{ color: colors.warning, fontSize: 12 }}>{usernameError}</Text> : null}
+        <Input
+          label="Username"
+          value={username}
+          onChangeText={setUsername}
+          placeholder="andrea.leo"
+          error={usernameError || undefined}
+        />
         <Input label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" textContentType="emailAddress" />
         <Input label="Password" value={password} onChangeText={setPassword} placeholder="Create a password" secureTextEntry textContentType="newPassword" />
-        <Input label="PIN" value={pin} onChangeText={setPin} placeholder="6-digit PIN" secureTextEntry keyboardType="numeric" inputMode="numeric" />
+        <Input
+          label="6-digit PIN"
+          value={pin}
+          onChangeText={setPin}
+          placeholder="6-digit PIN"
+          secureTextEntry
+          keyboardType="numeric"
+          inputMode="numeric"
+          error={pinError || undefined}
+        />
         <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
-          The PIN is stored as a hash, and the password is encrypted with a PIN-derived key so it can be recovered for Firebase Auth sign-in later.
+          PIN sign-in remains available, but email and password are the default path.
         </Text>
-        {pinError ? <Text style={{ color: colors.warning, fontSize: 12 }}>{pinError}</Text> : null}
         {error ? <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text> : null}
-        <Button label="Create account" onPress={handleSubmit} loading={loading} fullWidth />
+        <Button label="Create account" onPress={handleSubmit} loading={loading} disabled={!canSubmit} fullWidth />
+        <Button label="Pair device" onPress={() => router.push('/pair')} variant="ghost" fullWidth />
         <Button label="Back to sign in" onPress={() => router.back()} variant="ghost" fullWidth />
       </Card>
     </Page>
