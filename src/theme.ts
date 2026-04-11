@@ -2,12 +2,17 @@ import { useColorScheme } from 'react-native';
 
 export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand';
 export type ThemePaletteMode = 'nuit' | 'jour';
+export type ThemeStyle = 'default' | 'photo' | 'classic';
 
 export interface CustomThemeOverride {
   enabled?: boolean;
   primary?: string;
   secondary?: string;
   backgroundAlt?: string;
+}
+
+export interface ThemeSurfaceStyle {
+  surfaceMode: ThemeStyle;
 }
 
 const nuit = {
@@ -111,7 +116,65 @@ function toCompatColors(theme: Theme) {
   };
 }
 
-export function getThemeTokens(resolvedMode: 'light' | 'dark', variant: ThemeVariant = 'sage', custom?: CustomThemeOverride) {
+function applySurfaceStyle(theme: Theme, paletteMode: ThemePaletteMode, surfaceMode: ThemeStyle) {
+  const photoMode = surfaceMode === 'photo';
+  const defaultMode = surfaceMode === 'default';
+  const isDark = paletteMode === 'nuit';
+
+  if (surfaceMode === 'classic') {
+    return theme;
+  }
+
+  if (photoMode) {
+    return {
+      ...theme,
+      bg: isDark ? 'rgba(8, 10, 14, 0.18)' : 'rgba(255, 255, 255, 0.10)',
+      bgCard: isDark ? 'rgba(18, 24, 31, 0.34)' : 'rgba(255, 255, 255, 0.44)',
+      bgCardAlt: isDark ? 'rgba(27, 34, 43, 0.24)' : 'rgba(255, 255, 255, 0.28)',
+      border: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.22)',
+      navBg: isDark ? 'rgba(15, 20, 26, 0.48)' : 'rgba(255, 255, 255, 0.50)',
+      pillBg: isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.26)',
+      progressBg: isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.18)',
+    } as Theme;
+  }
+
+  if (defaultMode) {
+    return {
+      ...theme,
+      bg: isDark ? '#0B0F15' : 'rgba(245, 245, 240, 0.92)',
+      bgCard: isDark ? 'rgba(22, 27, 34, 0.86)' : 'rgba(255, 255, 255, 0.92)',
+      bgCardAlt: isDark ? 'rgba(28, 33, 40, 0.76)' : 'rgba(240, 239, 233, 0.82)',
+      border: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(224, 221, 213, 0.86)',
+      navBg: isDark ? 'rgba(22, 27, 34, 0.90)' : 'rgba(255, 255, 255, 0.90)',
+      pillBg: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(232, 230, 223, 0.88)',
+      progressBg: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(224, 221, 213, 0.86)',
+    } as Theme;
+  }
+
+  return theme;
+}
+
+function alphaFromTheme(theme: Theme, paletteMode: ThemePaletteMode, surfaceMode: ThemeStyle) {
+  if (surfaceMode === 'classic') {
+    return {
+      page: [theme.bg, theme.bgCardAlt, theme.bg] as const,
+      hero: [withAlpha(theme.accent, paletteMode === 'nuit' ? '88' : 'DD').slice(0, 7), theme.accent] as const,
+    };
+  }
+
+  const baseOverlay = paletteMode === 'nuit' ? 'rgba(4, 7, 10, 0.12)' : 'rgba(255, 255, 255, 0.14)';
+  return {
+    page: [baseOverlay, 'rgba(0,0,0,0.04)', baseOverlay] as const,
+    hero: [withAlpha(theme.accent, paletteMode === 'nuit' ? '66' : 'AA').slice(0, 7), theme.accent] as const,
+  };
+}
+
+export function getThemeTokens(
+  resolvedMode: 'light' | 'dark',
+  variant: ThemeVariant = 'sage',
+  custom?: CustomThemeOverride,
+  surfaceMode: ThemeStyle = 'default',
+) {
   const paletteMode: ThemePaletteMode = resolvedMode === 'dark' ? 'nuit' : 'jour';
   const baseTheme = themes[paletteMode];
   const variantTheme = variantOverrides[variant]?.[paletteMode] ?? {};
@@ -136,14 +199,14 @@ export function getThemeTokens(resolvedMode: 'light' | 'dark', variant: ThemeVar
     }
   }
 
+  const themedSurface = applySurfaceStyle(nextTheme, paletteMode, surfaceMode);
+
   return {
-    theme: nextTheme,
-    colors: toCompatColors(nextTheme),
-    gradients: {
-      page: [nextTheme.bg, nextTheme.bgCardAlt, nextTheme.bg] as const,
-      hero: [withAlpha(nextTheme.accent, paletteMode === 'nuit' ? '88' : 'DD').slice(0, 7), nextTheme.accent] as const,
-    },
+    theme: themedSurface,
+    colors: toCompatColors(themedSurface),
+    gradients: alphaFromTheme(themedSurface, paletteMode, surfaceMode),
     paletteMode,
+    surfaceMode,
   };
 }
 

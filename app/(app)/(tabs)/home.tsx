@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -16,6 +17,7 @@ import { Button, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
+import { BreastSide } from '@/types';
 import { buildSmartAlerts, getMeanFeedingInterval } from '@/lib/patterns';
 import {
   defaultAppSettings,
@@ -27,14 +29,15 @@ import {
   getMomHydration,
   setActiveBabyId,
   setMomHydration,
+  updateAppSettings,
 } from '@/lib/storage';
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
 import { NextFeedingCard } from '@/components/NextFeedingCard';
 
-const BG = '#0D1117';
-const CARD = '#161B22';
-const BORDER = '#21262D';
+const BG = 'rgba(13, 17, 23, 0.28)';
+const CARD = 'rgba(22, 27, 34, 0.78)';
+const BORDER = 'rgba(255, 255, 255, 0.08)';
 const GOLD = '#C9A227';
 const GREEN = '#3FB950';
 const BLUE = '#58A6FF';
@@ -55,6 +58,14 @@ function sectionEyebrowStyle() {
 
 function sectionTitleStyle() {
   return { color: TEXT, fontSize: 18, fontWeight: '700' as const, marginTop: 2 };
+}
+
+function alertToneColor(tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger') {
+  if (tone === 'danger') return RED;
+  if (tone === 'warning') return '#F2C86F';
+  if (tone === 'success') return GREEN;
+  if (tone === 'secondary') return BLUE;
+  return GOLD;
 }
 
 function localeTag(language: string) {
@@ -170,6 +181,11 @@ function HeaderAction({ label, onPress }: { label: string; onPress: () => void }
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
+            shadowColor: '#000',
+            shadowOpacity: 0.18,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 3,
           },
         ]}
       >
@@ -286,7 +302,11 @@ export default function HomeScreen() {
   const [timerElapsedSeconds, setTimerElapsedSeconds] = useState(0);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
   const [showBabySwitcher, setShowBabySwitcher] = useState(false);
+  const [showSmartSignalsMenu, setShowSmartSignalsMenu] = useState(false);
+  const [showHomeCustomizer, setShowHomeCustomizer] = useState(false);
+  const [showNextFeedPicker, setShowNextFeedPicker] = useState(false);
   const [quickAmount, setQuickAmount] = useState(150);
+  const [quickFeedSide, setQuickFeedSide] = useState<BreastSide>('left');
   const [now, setNow] = useState(Date.now());
 
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
@@ -394,6 +414,7 @@ export default function HomeScreen() {
   ];
   const hydrationButtons = ['+250ml', '+500ml'];
   const visibleActions = quickActions.filter(([, , key]) => visibility[key]);
+  const showSmartSignals = appSettings.dashboardMetrics.smartSignals;
   const timelineChips = useMemo(() => {
     const source = entries.slice(0, 24);
     const chips: Array<{ key: string; label: string; count: number; type: string }> = [];
@@ -429,9 +450,10 @@ export default function HomeScreen() {
     }
   }, [renderedLabels]);
 
-  function startQuickTimer(mode: 'breast' | 'bottle') {
+  function startQuickTimer(mode: 'breast' | 'bottle', side: BreastSide = 'left') {
     const startedAt = Date.now();
     setQuickTimerMode(mode);
+    setQuickFeedSide(side);
     setTimerStartedAt(startedAt);
     setTimerElapsedSeconds(0);
     setQuickAmount(mode === 'bottle' ? 150 : 90);
@@ -441,13 +463,20 @@ export default function HomeScreen() {
     if (!timerStartedAt) return;
     await addEntry({
       type: 'feed',
-      title: quickTimerMode === 'breast' ? 'Breast feed' : 'Bottle feed',
+      title:
+        quickTimerMode === 'breast'
+          ? quickFeedSide === 'both'
+            ? 'Breast feed both'
+            : quickFeedSide === 'right'
+              ? 'Breast feed right'
+              : 'Breast feed left'
+          : 'Bottle feed',
       occurredAt: new Date(timerStartedAt).toISOString(),
       payload:
         quickTimerMode === 'breast'
           ? {
               mode: 'breast',
-              side: 'left',
+              side: quickFeedSide,
               durationMin: Math.max(1, Math.round(timerElapsedSeconds / 60)),
               amountMl: quickAmount,
             }
@@ -462,10 +491,48 @@ export default function HomeScreen() {
     setTimerStartedAt(null);
     setTimerElapsedSeconds(0);
     setQuickAmount(150);
+    setQuickFeedSide('left');
+  }
+
+  async function updateDashboardMetric(key: keyof typeof appSettings.dashboardMetrics, enabled: boolean) {
+    const next = await updateAppSettings({
+      dashboardMetrics: {
+        ...appSettings.dashboardMetrics,
+        [key]: enabled,
+      },
+    });
+    setAppSettingsState(next);
+  }
+
+  async function restoreHomeCustomization() {
+    const next = await updateAppSettings({
+      dashboardMetrics: {
+        ...defaultAppSettings.dashboardMetrics,
+      },
+    });
+    setAppSettingsState(next);
+    setShowHomeCustomizer(false);
+    setShowSmartSignalsMenu(false);
   }
 
   const recentEntries = entries.slice(0, 6);
   const activeBabyName = babies.find((baby) => baby.id === babyId)?.name ?? profile?.babyName ?? 'Leo';
+  const activeFeedTitle =
+    quickTimerMode === 'bottle'
+      ? 'Biberon'
+      : quickFeedSide === 'both'
+        ? 'Sein des deux'
+        : quickFeedSide === 'right'
+          ? 'Sein droit'
+          : 'Sein gauche';
+  const activeFeedSubtitlePrefix =
+    quickTimerMode === 'bottle'
+      ? 'Biberon'
+      : quickFeedSide === 'both'
+        ? 'Les deux'
+        : quickFeedSide === 'right'
+          ? 'Droite'
+          : 'Gauche';
 
   async function switchBaby(nextBaby: { id: string }) {
     await setActiveBabyId(nextBaby.id);
@@ -474,9 +541,18 @@ export default function HomeScreen() {
     setShowBabySwitcher(false);
   }
 
+  function openNextFeedPicker() {
+    setShowNextFeedPicker(true);
+  }
+
+  function beginNextFeed(mode: 'bottle' | 'breast', side: BreastSide = 'left') {
+    setShowNextFeedPicker(false);
+    startQuickTimer(mode, side);
+  }
+
   return (
-    <Page contentStyle={{ width: '100%' }}>
-      <View style={{ backgroundColor: BG, borderRadius: 16, paddingTop: 12, paddingHorizontal: 12, paddingBottom: 80 }}>
+    <Page contentStyle={styles.pageContent}>
+      <View style={{ backgroundColor: 'transparent', borderRadius: 16, paddingTop: 6, paddingHorizontal: 4, paddingBottom: 80 }}>
         <Animated.View entering={FadeIn.duration(300)} style={{ marginBottom: 10 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <View style={{ flex: 1 }}>
@@ -497,19 +573,59 @@ export default function HomeScreen() {
                 })}
               >
                 <Text style={sectionTitleStyle()}>{activeBabyName}</Text>
-                <Text style={{ color: MUTED, fontSize: 12, fontWeight: '700' }}>⌄</Text>
+                <Text style={{ color: MUTED, fontSize: 12, fontWeight: '700' }}>v</Text>
               </Pressable>
             </View>
-            <HeaderAction label="Nouveau" onPress={() => router.push('/entry/feed')} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <HeaderAction label="Nouveau" onPress={() => router.push('/entry/feed')} />
+              <Pressable
+                onPress={() => setShowHomeCustomizer(true)}
+                style={({ pressed }) => ({
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  borderWidth: 1,
+                  borderColor: BORDER,
+                  backgroundColor: pressed ? '#1B2430' : CARD,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                })}
+              >
+                <Text style={{ color: TEXT, fontSize: 18, fontWeight: '900', lineHeight: 18 }}>...</Text>
+              </Pressable>
+            </View>
           </View>
         </Animated.View>
 
-        {smartAlerts.length ? (
-          <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
-              <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'RAPPELS' : 'REMINDERS'}</Text>
-              <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Signaux intelligents' : 'Smart signals'}</Text>
-              <View style={{ gap: 8 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ marginBottom: 10 }}>
+          <NextFeedingCard onPress={openNextFeedPicker} />
+        </Animated.View>
+
+        {showSmartSignals && smartAlerts.length ? (
+          <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: 10 }}>
+            <View style={{ paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'RAPPELS' : 'REMINDERS'}</Text>
+                  <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Signaux intelligents' : 'Smart signals'}</Text>
+                </View>
+                <Pressable
+                  onPress={() => setShowSmartSignalsMenu(true)}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 999,
+                    borderWidth: 1,
+                    borderColor: BORDER,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: BG,
+                  }}
+                >
+                  <Text style={{ color: TEXT, fontSize: 18, fontWeight: '800', lineHeight: 18 }}>...</Text>
+                </Pressable>
+              </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {smartAlerts.map((alert) => (
                   <Pressable
                     key={alert.id}
@@ -519,8 +635,10 @@ export default function HomeScreen() {
                       }
                     }}
                     style={({ pressed }) => ({
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
+                      flexBasis: '48%',
+                      minWidth: 150,
+                      paddingHorizontal: 10,
+                      paddingVertical: 8,
                       borderRadius: 14,
                       borderWidth: 1,
                       borderColor: BORDER,
@@ -528,8 +646,18 @@ export default function HomeScreen() {
                       gap: 4,
                     })}
                   >
-                    <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{alert.title}</Text>
-                    <Text style={{ color: MUTED, fontSize: 12 }}>{alert.body}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                        <Text style={{ fontSize: 15 }}>{alert.icon}</Text>
+                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '800' }}>{alert.value}</Text>
+                      </View>
+                      <View style={{ paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, backgroundColor: `${alertToneColor(alert.tone)}22` }}>
+                        <Text style={{ color: alertToneColor(alert.tone), fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>{alert.statusLabel}</Text>
+                      </View>
+                    </View>
+                    <Text style={{ color: MUTED, fontSize: 11 }} numberOfLines={1}>
+                      {alert.body}
+                    </Text>
                   </Pressable>
                 ))}
               </View>
@@ -537,29 +665,7 @@ export default function HomeScreen() {
           </Animated.View>
         ) : null}
 
-        <Animated.View entering={FadeIn.duration(300).delay(80)} style={{ marginBottom: 10 }}>
-          <View style={{ minHeight: 72, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <View style={{ gap: 2, flex: 1 }}>
-              <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-                {language === 'fr' ? 'STATUT' : 'STATUS'}
-              </Text>
-              <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>
-                {lastMeasurement?.payload?.weightKg ? `${lastMeasurement.payload.weightKg} kg` : '--'}
-              </Text>
-              <Text style={{ color: MUTED, fontSize: 11 }}>
-                {lastMeasurement?.payload?.heightCm ? `${lastMeasurement.payload.heightCm} cm` : '--'}
-              </Text>
-            </View>
-            <View style={{ alignItems: 'flex-end', gap: 2 }}>
-              <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-                {language === 'fr' ? 'CONTACT' : 'CONTACT'}
-              </Text>
-              <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{profile?.caregiverName ?? 'Parent'}</Text>
-            </View>
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeIn.duration(300).delay(160)} style={{ marginBottom: 10 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(180)} style={{ marginBottom: 10 }}>
           <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1, gap: 6 }}>
@@ -569,7 +675,7 @@ export default function HomeScreen() {
               <View style={{ flex: 1, gap: 6 }}>
                 <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'PROCHAINE PRISE' : 'NEXT FEED'}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ color: BLUE, fontSize: 14, fontWeight: '700' }}>◔</Text>
+                  <Ionicons name="time-outline" size={14} color={BLUE} />
                   <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
                   <Animated.View style={[nextBadgeStyle, { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${BLUE}22` : `${GOLD}22` }]}>
                     <Text style={{ color: nextFeedDueIn && nextFeedDueIn > 0 ? BLUE : GOLD, fontSize: 11, fontWeight: '700' }}>
@@ -586,11 +692,7 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(300).delay(200)} style={{ marginBottom: 10 }}>
-          <NextFeedingCard />
-        </Animated.View>
-
-        <Animated.View entering={FadeIn.duration(300).delay(240)} style={{ marginBottom: 10 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(220)} style={{ marginBottom: 10 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {[
               { label: 'Dernier sein', value: formatClock(lastBreastFeed?.occurredAt, locale), detail: formatRelative(lastBreastFeed?.occurredAt, locale) },
@@ -621,7 +723,7 @@ export default function HomeScreen() {
           <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
             <Text style={sectionEyebrowStyle()}>TIMELINE</Text>
             <Text style={sectionTitleStyle()}>24h strip</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 8, marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 8 }}>
               {timelineChips.map((chip) => (
                 <PressScale
                   key={chip.key}
@@ -640,7 +742,7 @@ export default function HomeScreen() {
                   </View>
                 </PressScale>
               ))}
-            </ScrollView>
+            </View>
           </View>
         </Animated.View>
 
@@ -648,13 +750,13 @@ export default function HomeScreen() {
           <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 6 }}>
             <Text style={sectionEyebrowStyle()}>ACTIONS RAPIDES</Text>
             <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Actions directes' : 'Quick actions'}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
               {visibleActions.map(([label, href]) => (
                 <PressScale
                   key={label}
                   onPress={() => {
                     if (href === 'quick-breast') {
-                      startQuickTimer('breast');
+                      openNextFeedPicker();
                       return;
                     }
                     if (href === 'quick-bottle') {
@@ -665,36 +767,39 @@ export default function HomeScreen() {
                   }}
                   pressedScale={0.92}
                   flashColor={GOLD}
+                  style={{ flexBasis: '31%', minWidth: 96, flexGrow: 1 }}
                 >
-                  <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 20, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{label}</Text>
+                  <View style={{ height: 38, paddingHorizontal: 12, borderRadius: 18, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
+                      {label}
+                    </Text>
                   </View>
                 </PressScale>
               ))}
-            </ScrollView>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
               {[
                 { label: '+150 ml', href: '/entry/feed?presetMode=bottle&presetAmount=150' },
                 { label: '+ diaper', href: '/entry/diaper' },
                 { label: '+ sleep', href: '/entry/sleep' },
                 { label: '+ food', href: '/entry/food' },
               ].map((item) => (
-                <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.95}>
+                <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.95} style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}>
                   <View style={{ height: 38, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{item.label}</Text>
+                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
                   </View>
                 </PressScale>
               ))}
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 6 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
               {presetActions.map((preset) => (
-                <PressScale key={preset.label} onPress={() => router.push(preset.href as any)} pressedScale={0.94}>
-                  <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{preset.label}</Text>
+                <PressScale key={preset.label} onPress={() => router.push(preset.href as any)} pressedScale={0.94} style={{ flexBasis: '48%', minWidth: 132, flexGrow: 1 }}>
+                  <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{preset.label}</Text>
                   </View>
                 </PressScale>
               ))}
-            </ScrollView>
+            </View>
           </View>
         </Animated.View>
 
@@ -770,6 +875,156 @@ export default function HomeScreen() {
         </Animated.View>
       </View>
 
+      <Modal visible={showSmartSignalsMenu} transparent animationType="fade" onRequestClose={() => setShowSmartSignalsMenu(false)}>
+        <View style={styles.menuOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowSmartSignalsMenu(false)} />
+          <View style={styles.menuSheet}>
+            <Text style={styles.menuTitle}>{language === 'fr' ? 'Signaux intelligents' : 'Smart signals'}</Text>
+            <Text style={styles.menuSubtitle}>
+              {showSmartSignals
+                ? language === 'fr'
+                  ? 'Tu peux cacher cette section si elle ne t aide pas.'
+                  : 'Hide this section if it does not help.'
+                : language === 'fr'
+                  ? 'Tu peux la remettre quand tu veux.'
+                  : 'You can bring it back anytime.'}
+            </Text>
+            <View style={{ gap: 8 }}>
+              <Button
+                label={showSmartSignals ? (language === 'fr' ? 'Masquer la section' : 'Hide section') : (language === 'fr' ? 'Afficher la section' : 'Show section')}
+                onPress={async () => {
+                  await updateDashboardMetric('smartSignals', !showSmartSignals);
+                  setShowSmartSignalsMenu(false);
+                }}
+                variant="secondary"
+              />
+              <Button
+                label={language === 'fr' ? 'Personnaliser l\'accueil' : 'Customize home'}
+                onPress={() => {
+                  setShowSmartSignalsMenu(false);
+                  setShowHomeCustomizer(true);
+                }}
+                variant="ghost"
+                size="sm"
+              />
+              <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowSmartSignalsMenu(false)} variant="ghost" />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showNextFeedPicker} transparent animationType="fade" onRequestClose={() => setShowNextFeedPicker(false)}>
+        <View style={styles.menuOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowNextFeedPicker(false)} />
+          <View style={styles.menuSheet}>
+            <Text style={styles.menuTitle}>{language === 'fr' ? 'Next feeding' : 'Next feeding'}</Text>
+            <Text style={styles.menuSubtitle}>
+              {language === 'fr'
+                ? 'Choisis biberon ou sein. Pour le sein, choisis le cote avant de lancer le timer.'
+                : 'Choose bottle or breast. For breast, pick the side before starting the timer.'}
+            </Text>
+            <View style={styles.choiceGrid}>
+              <PressScale
+                onPress={() => beginNextFeed('bottle')}
+                pressedScale={0.96}
+                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
+              >
+                <View style={[styles.choiceChip, { borderColor: BLUE, backgroundColor: `${BLUE}18` }]}>
+                  <View style={styles.choiceTitleRow}>
+                    <Ionicons name="water-outline" size={16} color={BLUE} />
+                    <Text style={[styles.choiceTitle, { color: BLUE }]}>Biberon</Text>
+                  </View>
+                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Lance le minuteur' : 'Start timer'}</Text>
+                </View>
+              </PressScale>
+              <PressScale
+                onPress={() => beginNextFeed('breast', 'left')}
+                pressedScale={0.96}
+                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
+              >
+                <View style={[styles.choiceChip, { borderColor: GOLD, backgroundColor: `${GOLD}18` }]}>
+                  <View style={styles.choiceTitleRow}>
+                    <Ionicons name="body-outline" size={16} color={GOLD} />
+                    <Text style={[styles.choiceTitle, { color: GOLD }]}>Sein gauche</Text>
+                  </View>
+                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Timer immediat' : 'Immediate timer'}</Text>
+                </View>
+              </PressScale>
+              <PressScale
+                onPress={() => beginNextFeed('breast', 'right')}
+                pressedScale={0.96}
+                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
+              >
+                <View style={[styles.choiceChip, { borderColor: GREEN, backgroundColor: `${GREEN}18` }]}>
+                  <View style={styles.choiceTitleRow}>
+                    <Ionicons name="body-outline" size={16} color={GREEN} />
+                    <Text style={[styles.choiceTitle, { color: GREEN }]}>Sein droit</Text>
+                  </View>
+                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Timer immediat' : 'Immediate timer'}</Text>
+                </View>
+              </PressScale>
+              <PressScale
+                onPress={() => beginNextFeed('breast', 'both')}
+                pressedScale={0.96}
+                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
+              >
+                <View style={[styles.choiceChip, { borderColor: TEXT, backgroundColor: `${TEXT}12` }]}>
+                  <View style={styles.choiceTitleRow}>
+                    <Ionicons name="body-outline" size={16} color={TEXT} />
+                    <Text style={[styles.choiceTitle, { color: TEXT }]}>Les deux</Text>
+                  </View>
+                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Alterner les deux' : 'Both sides'}</Text>
+                </View>
+              </PressScale>
+            </View>
+            <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowNextFeedPicker(false)} variant="ghost" />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showHomeCustomizer} transparent animationType="fade" onRequestClose={() => setShowHomeCustomizer(false)}>
+        <View style={styles.menuOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowHomeCustomizer(false)} />
+          <View style={styles.menuSheet}>
+            <Text style={styles.menuTitle}>{language === 'fr' ? 'Personnaliser l\'accueil' : 'Customize home'}</Text>
+            <Text style={styles.menuSubtitle}>
+              {language === 'fr'
+                ? 'Masque ou restaure les blocs visibles sans changer la logique.'
+                : 'Hide or restore visible blocks without changing logic.'}
+            </Text>
+            <View style={styles.customizerGrid}>
+              {[
+                { key: 'nextFeed', label: language === 'fr' ? 'Next feeding' : 'Next feeding' },
+                { key: 'smartSignals', label: language === 'fr' ? 'Signaux intelligents' : 'Smart signals' },
+                { key: 'lastFeeds', label: language === 'fr' ? 'Derniers biberons' : 'Last feeds' },
+                { key: 'timeline', label: 'Timeline' },
+                { key: 'recentActivity', label: language === 'fr' ? 'Historique court' : 'Recent activity' },
+                { key: 'hydration', label: 'Hydration' },
+                { key: 'dailyStatus', label: language === 'fr' ? 'Etat du jour' : 'Daily status' },
+                { key: 'weeklyDigest', label: language === 'fr' ? 'Digest hebdo' : 'Weekly digest' },
+                { key: 'widget', label: 'Widget' },
+              ].map((item) => {
+                const enabled = appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics];
+                return (
+                  <View key={item.key} style={styles.customizerItem}>
+                    <Button
+                      label={`${enabled ? (language === 'fr' ? 'Masquer' : 'Hide') : (language === 'fr' ? 'Afficher' : 'Show')} ${item.label}`}
+                      onPress={() => void updateDashboardMetric(item.key as keyof typeof appSettings.dashboardMetrics, !enabled)}
+                      variant={enabled ? 'secondary' : 'ghost'}
+                      size="sm"
+                    />
+                  </View>
+                );
+              })}
+            </View>
+            <View style={{ gap: 8 }}>
+              <Button label={language === 'fr' ? 'Tout restaurer' : 'Restore all'} onPress={() => void restoreHomeCustomization()} variant="secondary" />
+              <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowHomeCustomizer(false)} variant="ghost" />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={showBabySwitcher} transparent animationType="fade" onRequestClose={() => setShowBabySwitcher(false)}>
         <View style={styles.switcherOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowBabySwitcher(false)} />
@@ -815,8 +1070,8 @@ export default function HomeScreen() {
       <FullscreenTimerModal
         visible={Boolean(quickTimerMode && timerStartedAt && !showSaveSheet)}
         emoji={quickTimerMode === 'bottle' ? '\u{1F37C}' : '\u{1F931}'}
-        title={quickTimerMode === 'bottle' ? 'Biberon' : 'Sein'}
-        subtitlePrefix={quickTimerMode === 'bottle' ? 'Biberon' : 'Gauche'}
+        title={activeFeedTitle}
+        subtitlePrefix={activeFeedSubtitlePrefix}
         startedAt={timerStartedAt ?? Date.now()}
         elapsedSeconds={timerElapsedSeconds}
         animatePulse={appSettings.effects.emojiPulse}
@@ -828,7 +1083,7 @@ export default function HomeScreen() {
           <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
             <View style={styles.sheetCard}>
               <Text style={styles.sheetTitle}>
-                {quickTimerMode === 'bottle' ? 'Biberon termine' : 'Sein termine'}
+                {quickTimerMode === 'bottle' ? 'Biberon termine' : `${activeFeedTitle} termine`}
               </Text>
               <Text style={styles.sheetSubtitle}>
                 Duree {Math.max(1, Math.round(timerElapsedSeconds / 60))} min - commence a {formatClock(timerStartedAt ? new Date(timerStartedAt).toISOString() : undefined, locale)}
@@ -857,9 +1112,14 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  pageContent: {
+    width: '100%',
+    maxWidth: 1100,
+    alignSelf: 'center',
+  },
   sheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.62)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -874,12 +1134,17 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     alignSelf: 'center',
     borderRadius: 28,
-    backgroundColor: CARD,
+    backgroundColor: 'rgba(18, 23, 31, 0.96)',
     borderWidth: 1,
     borderColor: BORDER,
     paddingHorizontal: 22,
     paddingVertical: 22,
     gap: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   sheetTitle: {
     color: TEXT,
@@ -897,22 +1162,100 @@ const styles = StyleSheet.create({
   sheetActions: {
     gap: 12,
   },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.68)',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  menuSheet: {
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
+    maxHeight: '86%',
+    borderRadius: 22,
+    backgroundColor: 'rgba(18, 23, 31, 0.96)',
+    borderWidth: 1,
+    borderColor: BORDER,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 7,
+  },
+  menuTitle: {
+    color: TEXT,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  menuSubtitle: {
+    color: MUTED,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  choiceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  choiceChip: {
+    minHeight: 72,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  choiceTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  choiceTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  choiceSubtitle: {
+    color: MUTED,
+    fontSize: 11,
+  },
+  customizerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  customizerItem: {
+    flexBasis: '48%',
+    minWidth: 140,
+    flexGrow: 1,
+  },
   switcherOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.68)',
     justifyContent: 'flex-start',
     paddingHorizontal: 16,
     paddingTop: 80,
   },
   switcherSheet: {
     width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
     borderRadius: 24,
-    backgroundColor: CARD,
+    backgroundColor: 'rgba(18, 23, 31, 0.96)',
     borderWidth: 1,
     borderColor: BORDER,
     paddingHorizontal: 16,
     paddingVertical: 16,
     gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 7,
   },
   switcherTitle: {
     color: TEXT,
@@ -933,3 +1276,5 @@ const styles = StyleSheet.create({
     gap: 4,
   },
 });
+
+

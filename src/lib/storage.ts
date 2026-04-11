@@ -8,8 +8,10 @@ const MOM_HYDRATION_PREFIX = 'appleo.momHydration';
 const MODULE_VISIBILITY_KEY = 'appleo.moduleVisibility';
 const APP_SETTINGS_KEY = 'appleo.appSettings';
 const GUEST_PROFILE_KEY = 'appleo.guestProfile';
+const SAVED_MEDICINES_KEY = 'appleo.savedMedicines';
 
 export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand';
+export type ThemeStyle = 'default' | 'photo' | 'classic';
 
 export interface BabyProfile {
   id: string;
@@ -26,6 +28,13 @@ export interface BabyProfile {
   createdAt: string;
 }
 
+export interface SavedMedicine {
+  name: string;
+  dosage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type ModuleVisibility = Record<string, boolean>;
 
 export interface DashboardMetrics {
@@ -37,6 +46,7 @@ export interface DashboardMetrics {
   hydration: boolean;
   widget: boolean;
   weeklyDigest: boolean;
+  smartSignals: boolean;
 }
 
 export interface MotionEffects {
@@ -70,6 +80,7 @@ export interface AppSettings {
   largeTouchMode: boolean;
   redNightMode: boolean;
   themeVariant: ThemeVariant;
+  themeStyle: ThemeStyle;
   language: AppLanguage;
   hydrationGoalMl: number;
   compactHomeCards: boolean;
@@ -84,6 +95,7 @@ export const defaultAppSettings: AppSettings = {
   largeTouchMode: false,
   redNightMode: false,
   themeVariant: 'sage',
+  themeStyle: 'default',
   language: 'fr',
   hydrationGoalMl: 2500,
   compactHomeCards: false,
@@ -97,6 +109,7 @@ export const defaultAppSettings: AppSettings = {
     hydration: true,
     widget: true,
     weeklyDigest: true,
+    smartSignals: true,
   },
   effects: {
     emojiPulse: true,
@@ -230,6 +243,41 @@ export async function getAppSettings() {
       ...(parsed.customTheme ?? {}),
     },
   } as AppSettings;
+}
+
+export async function getSavedMedicines() {
+  const medicines = safeParse<SavedMedicine[]>(await AsyncStorage.getItem(SAVED_MEDICINES_KEY), []);
+  return medicines
+    .slice()
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, 24);
+}
+
+export async function upsertSavedMedicine(input: { name: string; dosage?: string }) {
+  const name = input.name.trim();
+  if (!name) return getSavedMedicines();
+
+  const now = new Date().toISOString();
+  const medicines = await getSavedMedicines();
+  const nextItem: SavedMedicine = {
+    name,
+    dosage: input.dosage?.trim() || undefined,
+    createdAt: medicines.find((item) => item.name.toLowerCase() === name.toLowerCase())?.createdAt ?? now,
+    updatedAt: now,
+  };
+  const next = [
+    nextItem,
+    ...medicines.filter((item) => item.name.toLowerCase() !== name.toLowerCase()),
+  ];
+  await AsyncStorage.setItem(SAVED_MEDICINES_KEY, JSON.stringify(next));
+  return next;
+}
+
+export async function deleteSavedMedicine(name: string) {
+  const medicines = await getSavedMedicines();
+  const next = medicines.filter((item) => item.name.toLowerCase() !== name.trim().toLowerCase());
+  await AsyncStorage.setItem(SAVED_MEDICINES_KEY, JSON.stringify(next));
+  return next;
 }
 
 export async function setAppSettings(next: AppSettings) {

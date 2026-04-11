@@ -17,6 +17,9 @@ export interface SmartAlert {
   id: string;
   title: string;
   body: string;
+  icon: string;
+  value: string;
+  statusLabel: string;
   tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
   actionLabel?: string;
   targetType?: EntryRecord['type'];
@@ -40,7 +43,10 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
       id: 'feed-due',
       title: 'Feeding due',
       body: `Last feed was ${Math.round(feedHours * 10) / 10}h ago.`,
-      tone: 'warning',
+      icon: '🍼',
+      value: formatCompactHours(feedHours),
+      statusLabel: 'overdue',
+      tone: feedHours >= 4 ? 'danger' : 'warning',
       actionLabel: 'Log feed',
       targetType: 'feed',
     });
@@ -52,6 +58,9 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
       id: 'sleep-due',
       title: 'Nap check',
       body: profile?.babyName ? `${profile.babyName} has been awake for a while.` : 'Baby may be ready for a nap.',
+      icon: '😴',
+      value: 'Awake',
+      statusLabel: 'active',
       tone: 'secondary',
       actionLabel: 'Log sleep',
       targetType: 'sleep',
@@ -64,6 +73,9 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
       id: 'med-due',
       title: 'Medication review',
       body: 'Check if the next dose or follow-up is due.',
+      icon: '💊',
+      value: 'Due',
+      statusLabel: 'pending',
       tone: 'danger',
       actionLabel: 'Log medication',
       targetType: 'medication',
@@ -71,4 +83,13 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   }
 
   return alerts.slice(0, 3);
+}
+
+function formatCompactHours(hours: number) {
+  const totalMinutes = Math.max(0, Math.round(hours * 60));
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (!h) return `${m}m`;
+  if (!m) return `${h}h`;
+  return `${h}h${String(m).padStart(2, '0')}`;
 }

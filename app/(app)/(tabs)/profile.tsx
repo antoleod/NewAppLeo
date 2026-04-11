@@ -35,7 +35,7 @@ const languageOptions = [
 ];
 
 export default function ProfileScreen() {
-  const { colors, theme, paletteMode, themeMode, themeVariant, setThemeVariant, setCustomTheme, toggleTheme } = useTheme();
+  const { colors, theme, paletteMode, themeMode, themeVariant, themeStyle, setThemeVariant, setThemeStyle, setCustomTheme, toggleTheme } = useTheme();
   const { t } = useLocale();
   const { profile, guestMode, saveProfile, setThemeMode, signOut } = useAuth();
   const { entries } = useAppData();
@@ -328,6 +328,19 @@ export default function ProfileScreen() {
             {paletteMode === 'nuit' ? 'Passer en Jour' : 'Passer en Nuit'}
           </Text>
         </Pressable>
+        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>Themes</Text>
+        <Segment
+          value={themeStyle}
+          onChange={async (value) => {
+            await updateAppSettings({ themeStyle: value as any });
+            await setThemeStyle(value as any);
+          }}
+          options={[
+            { label: 'Default AppLeo', value: 'default' },
+            { label: 'Transparent Photo', value: 'photo' },
+            { label: 'Dark Classic', value: 'classic' },
+          ]}
+        />
         <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>Theme mode</Text>
         <Segment
           value={themeMode}
@@ -338,7 +351,7 @@ export default function ProfileScreen() {
             { label: 'Dark', value: 'dark' },
           ]}
         />
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>Theme preset</Text>
+        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>Accent palette</Text>
         <Segment
           value={settings.themeVariant}
           onChange={async (value) => {

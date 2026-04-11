@@ -305,10 +305,13 @@ export default function HistoryScreen() {
   }, [entries]);
 
   useEffect(() => {
-    if (didAutoSelectLatest.current || !entries.length || dayEntries.length || !latestEntryDate) return;
+    if (didAutoSelectLatest.current || !entries.length || !latestEntryDate) return;
+    if (dayEntries.length) {
+      didAutoSelectLatest.current = true;
+      return;
+    }
     didAutoSelectLatest.current = true;
     setSelectedDate(latestEntryDate);
-    // Only shift the initial empty view to the latest available day.
   }, [dayEntries.length, entries.length, latestEntryDate]);
 
   const timelineEntries = useMemo(

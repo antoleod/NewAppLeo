@@ -10,7 +10,7 @@ import { BreastSide, EntryPayload, EntryType } from '@/types';
 import { TimerWidget } from '@/components/TimerWidget';
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { DateTimeField } from '@/components/DateTimeField';
-import { getAppSettings } from '@/lib/storage';
+import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
 import * as ImagePicker from 'expo-image-picker';
 
 const typeLabels: Record<EntryType, string> = {
@@ -175,6 +175,7 @@ export default function EntryComposerScreen() {
   const [occurredAt, setOccurredAt] = useState(new Date());
   const [saving, setSaving] = useState(false);
   const [largeTouchMode, setLargeTouchMode] = useState(false);
+  const [savedMedicines, setSavedMedicines] = useState<SavedMedicine[]>([]);
   const meta = typeMeta[type];
 
   useEffect(() => {
@@ -231,6 +232,7 @@ export default function EntryComposerScreen() {
     (async () => {
       const settings = await getAppSettings();
       setLargeTouchMode(settings.largeTouchMode);
+      setSavedMedicines(await getSavedMedicines());
     })();
   }, []);
 
@@ -311,6 +313,9 @@ export default function EntryComposerScreen() {
         await updateEntry(editing.id, { type, title: titleValue, notes, occurredAt: timestamp, payload } as any);
       } else {
         await addEntry({ type, title: titleValue, notes, occurredAt: timestamp, payload });
+      }
+      if (type === 'medication' && name.trim()) {
+        setSavedMedicines(await upsertSavedMedicine({ name, dosage }));
       }
       router.back();
     } catch (error: any) {
@@ -414,6 +419,17 @@ export default function EntryComposerScreen() {
                 { label: 'Breast', value: 'breast' },
               ]}
             />
+            <View style={styles.chipRow}>
+              <Pressable onPress={() => router.push('/entry/feed?presetMode=bottle&presetAmount=150')} style={styles.smallChip}>
+                <Text style={styles.smallChipText}>+150 ml</Text>
+              </Pressable>
+              <Pressable onPress={() => setMode('breast')} style={styles.smallChip}>
+                <Text style={styles.smallChipText}>Timer</Text>
+              </Pressable>
+              <Pressable onPress={() => setMode('bottle')} style={styles.smallChip}>
+                <Text style={styles.smallChipText}>Feed</Text>
+              </Pressable>
+            </View>
             {mode === 'bottle' ? (
               <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
             ) : (
@@ -504,12 +520,54 @@ export default function EntryComposerScreen() {
             <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'MEDICINE FLOW' : 'MEDICINE FLOW'}</Text>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Nom, dose et contexte' : 'Name, dosage and context'}</Text>
             <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-            <View style={styles.infoStrip}>
-              <Text style={styles.infoStripText}>💊 {language === 'fr' ? 'Medicament' : 'Medication'}</Text>
-              <Text style={styles.infoStripText}>🧾 {language === 'fr' ? 'Dosage' : 'Dosage'}</Text>
-              <Text style={styles.infoStripText}>📝 {language === 'fr' ? 'Contexte' : 'Context'}</Text>
+            <View style={styles.chipRow}>
+              <Pressable onPress={() => setName('Paracetamol')} style={styles.smallChip}>
+                <Text style={styles.smallChipText}>Med</Text>
+              </Pressable>
+              <Pressable onPress={() => setDosage('1 dose')} style={styles.smallChip}>
+                <Text style={styles.smallChipText}>Dose</Text>
+              </Pressable>
+              <Pressable onPress={() => setNotesOpen(true)} style={styles.smallChip}>
+                <Text style={styles.smallChipText}>Time</Text>
+              </Pressable>
+            </View>
+            <View style={styles.savedWrap}>
+              <Text style={[styles.savedLabel, { color: colors.muted }]}>{language === 'fr' ? 'Medicaments sauvegardes' : 'Saved medicines'}</Text>
+              <View style={styles.savedRow}>
+                {savedMedicines.length ? (
+                  savedMedicines.slice(0, 8).map((medicine) => (
+                    <Pressable
+                      key={`${medicine.name}-${medicine.dosage ?? ''}`}
+                      onPress={() => {
+                        setName(medicine.name);
+                        if (medicine.dosage) setDosage(medicine.dosage);
+                      }}
+                      style={styles.savedChip}
+                    >
+                      <Text style={styles.savedChipTitle}>{medicine.name}</Text>
+                      {medicine.dosage ? <Text style={styles.savedChipSubtitle}>{medicine.dosage}</Text> : null}
+                    </Pressable>
+                  ))
+                ) : (
+                  <Text style={[styles.sectionBody, { color: colors.muted }]}>{language === 'fr' ? 'Aucun modele garde.' : 'No saved medicine yet.'}</Text>
+                )}
+              </View>
+              {name.trim() ? (
+                <Pressable onPress={async () => setSavedMedicines(await upsertSavedMedicine({ name, dosage }))} style={styles.savePresetButton}>
+                  <Text style={styles.savePresetText}>{language === 'fr' ? 'Sauver en modele' : 'Save as preset'}</Text>
+                </Pressable>
+              ) : null}
             </View>
             <Input label={language === 'fr' ? 'Nom du medicament' : 'Medication name'} value={name} onChangeText={setName} />
+            <View style={styles.savedRow}>
+              {savedMedicines
+                .filter((medicine) => medicine.name.toLowerCase() === name.trim().toLowerCase())
+                .map((medicine) => (
+                  <Pressable key={`${medicine.name}-${medicine.dosage ?? ''}`} onPress={() => medicine.dosage && setDosage(medicine.dosage)} style={styles.smallChip}>
+                    <Text style={styles.smallChipText}>{medicine.dosage || 'Usual dose'}</Text>
+                  </Pressable>
+                ))}
+            </View>
             <Input label={language === 'fr' ? 'Dose' : 'Dosage'} value={dosage} onChangeText={setDosage} />
           </View>
         ) : null}
@@ -570,9 +628,9 @@ export default function EntryComposerScreen() {
 
 const styles = StyleSheet.create({
   heroCard: {
-    gap: 14,
-    padding: 20,
-    borderRadius: 28,
+    gap: 10,
+    padding: 14,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: '#21262D',
     backgroundColor: '#161B22',
@@ -584,55 +642,55 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   heroIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
   heroIconText: {
-    fontSize: 28,
+    fontSize: 22,
   },
   heroCopy: {
     flex: 1,
-    gap: 6,
+    gap: 4,
   },
   heroEyebrow: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
-    letterSpacing: 1.4,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   heroTitle: {
     color: '#F0F6FC',
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '900',
-    lineHeight: 34,
+    lineHeight: 26,
   },
   heroSubtitle: {
     color: '#8B949E',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 16,
   },
   badgeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   badge: {
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   badgeText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '800',
   },
   closeButton: {
-    width: 42,
-    height: 42,
+    width: 34,
+    height: 34,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -642,48 +700,116 @@ const styles = StyleSheet.create({
   },
   closeButtonLabel: {
     color: '#F0F6FC',
-    fontSize: 18,
-    lineHeight: 18,
+    fontSize: 16,
+    lineHeight: 16,
     fontWeight: '800',
   },
   sectionCard: {
-    gap: 14,
-    paddingVertical: 16,
+    gap: 10,
+    paddingVertical: 10,
   },
   sectionLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
-    letterSpacing: 1.4,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '900',
-    lineHeight: 24,
+    lineHeight: 21,
     textAlign: 'left',
   },
   sectionBody: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 16,
   },
   stack: {
-    gap: 16,
+    gap: 10,
   },
   infoStrip: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   infoStripText: {
     color: '#F0F6FC',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '800',
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#21262D',
     backgroundColor: '#1C2128',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  smallChip: {
+    minHeight: 32,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  smallChipText: {
+    color: '#F0F6FC',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  savedWrap: {
+    gap: 8,
+  },
+  savedLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  savedRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  savedChip: {
+    minHeight: 36,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1A2029',
+    paddingHorizontal: 10,
     paddingVertical: 8,
+    gap: 2,
+  },
+  savedChipTitle: {
+    color: '#F0F6FC',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  savedChipSubtitle: {
+    color: '#8B949E',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  savePresetButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#2B7A55',
+    backgroundColor: 'rgba(63,185,80,0.12)',
+  },
+  savePresetText: {
+    color: '#3FB950',
+    fontSize: 10,
+    fontWeight: '800',
   },
   notesToggleWrap: {
     alignItems: 'center',

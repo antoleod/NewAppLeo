@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { useAuth } from './AuthContext';
-import { getThemeTokens, type Theme, type ThemePaletteMode, type ThemeVariant } from '@/theme';
+import { getThemeTokens, type Theme, type ThemePaletteMode, type ThemeStyle, type ThemeVariant } from '@/theme';
 import { ThemeMode } from '@/types';
 import { defaultAppSettings, getAppSettings, setAppSettings } from '@/lib/storage';
 
@@ -10,7 +10,9 @@ interface ThemeContextValue {
   paletteMode: ThemePaletteMode;
   themeMode: ThemeMode;
   themeVariant: ThemeVariant;
+  themeStyle: ThemeStyle;
   setThemeVariant: (variant: ThemeVariant) => Promise<void>;
+  setThemeStyle: (style: ThemeStyle) => Promise<void>;
   setCustomTheme: (colors: { enabled?: boolean; primary?: string; secondary?: string; backgroundAlt?: string }) => Promise<void>;
   toggleTheme: () => Promise<void>;
   theme: Theme;
@@ -24,6 +26,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { profile, setThemeMode } = useAuth();
   const systemScheme = useColorScheme();
   const [themeVariant, setThemeVariantState] = useState<ThemeVariant>(defaultAppSettings.themeVariant);
+  const [themeStyle, setThemeStyleState] = useState<ThemeStyle>(defaultAppSettings.themeStyle);
   const [customTheme, setCustomThemeState] = useState(defaultAppSettings.customTheme);
   const themeMode = profile?.themeMode ?? 'system';
   const resolvedMode = themeMode === 'system' ? systemScheme ?? 'light' : themeMode;
@@ -34,6 +37,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const settings = await getAppSettings();
       if (active) {
         setThemeVariantState(settings.themeVariant);
+        setThemeStyleState(settings.themeStyle);
         setCustomThemeState(settings.customTheme);
       }
     })();
@@ -42,7 +46,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const tokens = getThemeTokens(resolvedMode, themeVariant, customTheme);
+  const tokens = getThemeTokens(resolvedMode, themeVariant, customTheme, themeStyle);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
@@ -50,10 +54,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       paletteMode: tokens.paletteMode,
       themeMode,
       themeVariant,
+      themeStyle,
       setThemeVariant: async (variant) => {
         setThemeVariantState(variant);
         const settings = await getAppSettings();
         await setAppSettings({ ...settings, themeVariant: variant });
+      },
+      setThemeStyle: async (style) => {
+        setThemeStyleState(style);
+        const settings = await getAppSettings();
+        await setAppSettings({ ...settings, themeStyle: style });
       },
       setCustomTheme: async (nextCustomTheme) => {
         const next = { ...customTheme, ...nextCustomTheme };
@@ -69,7 +79,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       colors: tokens.colors,
       gradients: tokens.gradients,
     }),
-    [customTheme, resolvedMode, setThemeMode, themeMode, themeVariant, tokens],
+    [customTheme, resolvedMode, setThemeMode, themeMode, themeStyle, themeVariant, tokens],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

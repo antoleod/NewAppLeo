@@ -1,6 +1,8 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  ImageBackground,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,7 +26,8 @@ export function Page({
   scroll?: boolean;
   contentStyle?: any;
 }) {
-  const { colors, gradients } = useTheme();
+  const { colors, gradients, themeStyle } = useTheme();
+  const usePhotoBackdrop = themeStyle !== 'classic';
   const content = (
     <View style={[styles.pageInner, contentStyle]}>
       {children}
@@ -32,7 +35,30 @@ export function Page({
   );
 
   return (
-    <LinearGradient colors={gradients.page as [string, string, ...string[]]} style={[styles.page, { backgroundColor: colors.background }]}>
+    <View style={[styles.page, { backgroundColor: usePhotoBackdrop ? 'transparent' : colors.background }]}>
+      {usePhotoBackdrop ? (
+        <ImageBackground
+          source={require('../../assets/img/baby1.f57cad83ec056a25eac37625af9c68fb.jpg')}
+          resizeMode="cover"
+          blurRadius={0}
+          style={styles.photoBackdrop}
+          imageStyle={[
+            styles.photoBackdropImage,
+            themeStyle === 'photo' ? null : styles.photoBackdropImageMuted,
+            Platform.OS === 'web' ? ({ objectPosition: 'center center' } as any) : null,
+          ]}
+        >
+          <LinearGradient colors={gradients.page as [string, string, ...string[]]} style={StyleSheet.absoluteFill} />
+          <View
+            style={[
+              StyleSheet.absoluteFillObject,
+              { backgroundColor: themeStyle === 'photo' ? 'rgba(6, 8, 12, 0.00)' : 'rgba(8, 10, 14, 0.03)' },
+            ]}
+          />
+        </ImageBackground>
+      ) : (
+        <LinearGradient colors={gradients.page as [string, string, ...string[]]} style={StyleSheet.absoluteFill} />
+      )}
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         {scroll ? (
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -42,7 +68,7 @@ export function Page({
           <View style={styles.scroll}>{content}</View>
         )}
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -338,14 +364,25 @@ export function EntryCard({
 
 const styles = StyleSheet.create({
   page: { flex: 1 },
-  safe: { flex: 1 },
+  photoBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  photoBackdropImage: {
+    opacity: 1,
+  },
+  photoBackdropImageMuted: {
+    opacity: 0.9,
+  },
+  safe: { flex: 1, zIndex: 1 },
   scroll: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.sm,
     paddingBottom: spacing.xxl,
     flexGrow: 1,
   },
   pageInner: {
     width: '100%',
+    maxWidth: 1100,
     alignSelf: 'center',
     gap: spacing.lg,
   },
@@ -354,10 +391,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     padding: spacing.lg,
     gap: spacing.md,
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 3,
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 1,
   },
   headingRow: {
     flexDirection: 'row',
