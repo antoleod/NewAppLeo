@@ -26,8 +26,12 @@ export function Page({
   scroll?: boolean;
   contentStyle?: any;
 }) {
-  const { colors, gradients, themeStyle } = useTheme();
+  const { colors, gradients, themeStyle, backgroundPhotoUri } = useTheme();
   const usePhotoBackdrop = themeStyle !== 'classic';
+  const backdropSource = backgroundPhotoUri
+    ? ({ uri: backgroundPhotoUri } as const)
+    : require('../../assets/img/baby1.f57cad83ec056a25eac37625af9c68fb.jpg');
+  const backdropBlur = themeStyle === 'photo' ? 0 : Platform.OS === 'web' ? 0 : 4;
   const content = (
     <View style={[styles.pageInner, contentStyle]}>
       {children}
@@ -38,21 +42,28 @@ export function Page({
     <View style={[styles.page, { backgroundColor: usePhotoBackdrop ? 'transparent' : colors.background }]}>
       {usePhotoBackdrop ? (
         <ImageBackground
-          source={require('../../assets/img/baby1.f57cad83ec056a25eac37625af9c68fb.jpg')}
+          source={backdropSource}
           resizeMode="cover"
-          blurRadius={0}
+          blurRadius={backdropBlur}
           style={styles.photoBackdrop}
           imageStyle={[
             styles.photoBackdropImage,
             themeStyle === 'photo' ? null : styles.photoBackdropImageMuted,
+            themeStyle === 'photo' ? styles.photoBackdropImagePunch : null,
             Platform.OS === 'web' ? ({ objectPosition: 'center center' } as any) : null,
           ]}
         >
           <LinearGradient colors={gradients.page as [string, string, ...string[]]} style={StyleSheet.absoluteFill} />
+          <LinearGradient
+            colors={themeStyle === 'photo' ? ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.22)'] : ['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.28)']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <View
             style={[
               StyleSheet.absoluteFillObject,
-              { backgroundColor: themeStyle === 'photo' ? 'rgba(6, 8, 12, 0.00)' : 'rgba(8, 10, 14, 0.03)' },
+              { backgroundColor: themeStyle === 'photo' ? 'rgba(6, 8, 12, 0.00)' : 'rgba(8, 10, 14, 0.05)' },
             ]}
           />
         </ImageBackground>
@@ -370,6 +381,10 @@ const styles = StyleSheet.create({
   },
   photoBackdropImage: {
     opacity: 1,
+  },
+  photoBackdropImagePunch: {
+    opacity: 0.98,
+    transform: [{ scale: 1.06 }],
   },
   photoBackdropImageMuted: {
     opacity: 0.9,

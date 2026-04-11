@@ -11,8 +11,10 @@ interface ThemeContextValue {
   themeMode: ThemeMode;
   themeVariant: ThemeVariant;
   themeStyle: ThemeStyle;
+  backgroundPhotoUri: string;
   setThemeVariant: (variant: ThemeVariant) => Promise<void>;
   setThemeStyle: (style: ThemeStyle) => Promise<void>;
+  setBackgroundPhotoUri: (uri: string) => Promise<void>;
   setCustomTheme: (colors: { enabled?: boolean; primary?: string; secondary?: string; backgroundAlt?: string }) => Promise<void>;
   toggleTheme: () => Promise<void>;
   theme: Theme;
@@ -27,6 +29,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
   const [themeVariant, setThemeVariantState] = useState<ThemeVariant>(defaultAppSettings.themeVariant);
   const [themeStyle, setThemeStyleState] = useState<ThemeStyle>(defaultAppSettings.themeStyle);
+  const [backgroundPhotoUri, setBackgroundPhotoUriState] = useState(defaultAppSettings.backgroundPhotoUri);
   const [customTheme, setCustomThemeState] = useState(defaultAppSettings.customTheme);
   const themeMode = profile?.themeMode ?? 'system';
   const resolvedMode = themeMode === 'system' ? systemScheme ?? 'light' : themeMode;
@@ -38,6 +41,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (active) {
         setThemeVariantState(settings.themeVariant);
         setThemeStyleState(settings.themeStyle);
+        setBackgroundPhotoUriState(settings.backgroundPhotoUri ?? '');
         setCustomThemeState(settings.customTheme);
       }
     })();
@@ -55,6 +59,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       themeMode,
       themeVariant,
       themeStyle,
+      backgroundPhotoUri,
       setThemeVariant: async (variant) => {
         setThemeVariantState(variant);
         const settings = await getAppSettings();
@@ -64,6 +69,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setThemeStyleState(style);
         const settings = await getAppSettings();
         await setAppSettings({ ...settings, themeStyle: style });
+      },
+      setBackgroundPhotoUri: async (uri) => {
+        setBackgroundPhotoUriState(uri);
+        const settings = await getAppSettings();
+        await setAppSettings({ ...settings, backgroundPhotoUri: uri });
       },
       setCustomTheme: async (nextCustomTheme) => {
         const next = { ...customTheme, ...nextCustomTheme };
@@ -79,7 +89,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       colors: tokens.colors,
       gradients: tokens.gradients,
     }),
-    [customTheme, resolvedMode, setThemeMode, themeMode, themeStyle, themeVariant, tokens],
+    [backgroundPhotoUri, customTheme, resolvedMode, setThemeMode, themeMode, themeStyle, themeVariant, tokens],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

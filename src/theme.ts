@@ -77,8 +77,8 @@ function withAlpha(hex: string, alpha: string) {
 
 const variantOverrides: Record<ThemeVariant, Partial<Record<ThemePaletteMode, Partial<Theme>>>> = {
   sage: {
-    nuit: { accent: '#BFA15A', green: '#74C69D', bgCardAlt: '#172219' },
-    jour: { accent: '#7A6540', green: '#2F7D57', bgCardAlt: '#EEF1EA' },
+    nuit: { accent: '#4d7c6b', blue: '#c18f54', green: '#74C69D', bgCardAlt: '#1B2A24' },
+    jour: { accent: '#4d7c6b', blue: '#c18f54', green: '#2F7D57', bgCardAlt: '#EEF4EF' },
   },
   rose: {
     nuit: { accent: '#D08BA0', green: '#66C28F', bgCardAlt: '#241A1F' },

@@ -61,9 +61,9 @@ function getDetail(entry: EntryRecord) {
       return `${entry.payload.amountMl ?? 0} ml · ${entry.payload.durationMin ?? 0} min`;
     case 'measurement':
       return [
-        entry.payload.weightKg ? `${entry.payload.weightKg} kg` : null,
-        entry.payload.heightCm ? `${entry.payload.heightCm} cm` : null,
-        (entry.payload as any).headCircCm ? `${(entry.payload as any).headCircCm} cm PC` : null,
+        entry.payload?.weightKg ? `${entry.payload.weightKg} kg` : null,
+        entry.payload?.heightCm ? `${entry.payload.heightCm} cm` : null,
+        (entry.payload as any)?.headCircCm ? `${(entry.payload as any).headCircCm} cm PC` : null,
       ]
         .filter(Boolean)
         .join(' · ');
@@ -348,7 +348,7 @@ export default function HistoryScreen() {
   const weightEntries = useMemo(
     () =>
       entries
-        .filter((entry) => entry.type === 'measurement' && entry.payload.weightKg)
+        .filter((entry) => entry.type === 'measurement' && entry.payload?.weightKg)
         .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))
         .slice(-7),
     [entries],
@@ -370,9 +370,9 @@ export default function HistoryScreen() {
     };
   });
 
-  const latestWeight = latestMeasure?.payload.weightKg ?? profile?.currentWeightKg ?? null;
-  const latestHeight = latestMeasure?.payload.heightCm ?? profile?.heightCm ?? null;
-  const latestHeadCirc = (latestMeasure?.payload as any).headCircCm ?? (profile as any)?.headCircCm ?? null;
+  const latestWeight = latestMeasure?.payload?.weightKg ?? profile?.currentWeightKg ?? null;
+  const latestHeight = latestMeasure?.payload?.heightCm ?? profile?.heightCm ?? null;
+  const latestHeadCirc = (latestMeasure?.payload as any)?.headCircCm ?? (profile as any)?.headCircCm ?? null;
   const bmi = latestWeight && latestHeight ? latestWeight / Math.pow(latestHeight / 100, 2) : null;
   const bmiBand = interpolatePercentileBand(13.5, 14.2, 15.7, 17.8, 19.4);
 

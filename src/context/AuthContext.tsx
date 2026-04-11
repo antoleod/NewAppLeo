@@ -9,7 +9,7 @@ import {
   updateThemeMode,
   watchProfile,
 } from '@/services/userProfileService';
-import { registerAccount, signInWithEmail, signInWithUsernamePin, signOutUser } from '@/services/authService';
+import { registerAccount, signInWithEmail, signInWithGoogle, signInWithUsernamePin, signOutUser } from '@/services/authService';
 import { clearGuestProfile, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
 
 interface AuthContextValue {
@@ -19,6 +19,7 @@ interface AuthContextValue {
   loading: boolean;
   profileLoading: boolean;
   signInEmail: (payload: { email: string; password: string }) => Promise<void>;
+  signInGoogle: () => Promise<void>;
   signInUsernamePin: (payload: { username: string; pin: string }) => Promise<void>;
   signInGuest: () => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
@@ -104,6 +105,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInEmail: async (payload) => {
         await clearGuestProfile();
         const result = await signInWithEmail(payload);
+        setGuestMode(false);
+        setUser(result.user);
+        setProfile(result.profile);
+      },
+      signInGoogle: async () => {
+        await clearGuestProfile();
+        const result = await signInWithGoogle();
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);

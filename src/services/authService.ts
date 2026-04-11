@@ -1,6 +1,8 @@
 import {
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
 } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -9,12 +11,15 @@ import { RegisterPayload } from '@/types';
 import {
   claimUsername,
   createProfileRecord,
+  defaultProfile,
   loadProfile,
+  userProfileRef,
   resolveUsernameToProfile,
   verifyPinAgainstProfile,
 } from './userProfileService';
 import { decryptWithPin, encryptWithPin, generateSalt, hashPin, normalizeEmail, normalizeUsername } from '@/utils/crypto';
 import { putLocalProfile, putLocalUsername } from './localStore';
+import { Platform } from 'react-native';
 
 export async function registerAccount(payload: RegisterPayload) {
   const email = normalizeEmail(payload.email);
@@ -83,6 +88,49 @@ export async function registerAccount(payload: RegisterPayload) {
 export async function signInWithEmail(payload: { email: string; password: string }) {
   const authResult = await signInWithEmailAndPassword(auth, normalizeEmail(payload.email), payload.password);
   const profile = await loadProfile(authResult.user.uid);
+  return { user: authResult.user, profile };
+}
+
+export async function signInWithGoogle() {
+  if (Platform.OS !== 'web') {
+    throw new Error('Google Sign-In is currently available on web only.');
+  }
+
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  const authResult = await signInWithPopup(auth, provider);
+  let profile = await loadProfile(authResult.user.uid);
+
+  if (!profile) {
+    const email = authResult.user.email ?? `google_${authResult.user.uid}@local.app`;
+    const displayName = authResult.user.displayName ?? email.split('@')[0];
+    const bootstrap = {
+      ...defaultProfile(authResult.user.uid, email, '', displayName),
+      displayName,
+      caregiverName: displayName,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      await setDoc(
+        userProfileRef(authResult.user.uid),
+        {
+          ...bootstrap,
+          createdAt: serverTimestamp() as any,
+          updatedAt: serverTimestamp() as any,
+        },
+        { merge: true },
+      );
+    } catch {
+      // fall back to local profile in restrictive Firestore environments
+    }
+
+    putLocalProfile(bootstrap);
+    profile = bootstrap;
+  }
+
   return { user: authResult.user, profile };
 }
 

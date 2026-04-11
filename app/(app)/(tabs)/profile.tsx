@@ -35,7 +35,7 @@ const languageOptions = [
 ];
 
 export default function ProfileScreen() {
-  const { colors, theme, paletteMode, themeMode, themeVariant, themeStyle, setThemeVariant, setThemeStyle, setCustomTheme, toggleTheme } = useTheme();
+  const { colors, theme, paletteMode, themeMode, themeVariant, themeStyle, backgroundPhotoUri, setBackgroundPhotoUri, setThemeVariant, setThemeStyle, setCustomTheme, toggleTheme } = useTheme();
   const { t } = useLocale();
   const { profile, guestMode, saveProfile, setThemeMode, signOut } = useAuth();
   const { entries } = useAppData();
@@ -130,6 +130,31 @@ export default function ProfileScreen() {
     if (!result.canceled && result.assets[0]?.uri) {
       setBabyPhotoUri(result.assets[0].uri);
     }
+  }
+
+  async function handlePickBackgroundPhoto() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Allow photo access to set a custom app background.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.9,
+      allowsEditing: true,
+    });
+
+    if (!result.canceled && result.assets[0]?.uri) {
+      const uri = result.assets[0].uri;
+      await patchSettings({ backgroundPhotoUri: uri });
+      await setBackgroundPhotoUri(uri);
+    }
+  }
+
+  async function handleResetBackgroundPhoto() {
+    await patchSettings({ backgroundPhotoUri: '' });
+    await setBackgroundPhotoUri('');
   }
 
   async function handleScheduleSummary() {
@@ -309,6 +334,35 @@ export default function ProfileScreen() {
 
       <Card>
         <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Theme and layout</Text>
+        <View
+          style={{
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: theme.border,
+            backgroundColor: theme.bgCardAlt,
+            padding: 10,
+            gap: 10,
+          }}
+        >
+          <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>Background photo</Text>
+          <View style={{ borderRadius: 12, overflow: 'hidden', height: 120, borderWidth: 1, borderColor: theme.border }}>
+            {backgroundPhotoUri ? (
+              <Image source={{ uri: backgroundPhotoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            ) : (
+              <View style={{ flex: 1, backgroundColor: theme.bgCard, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: colors.muted }}>No custom background selected</Text>
+              </View>
+            )}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Button label="Choose photo" onPress={() => void handlePickBackgroundPhoto()} variant="secondary" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button label="Use default" onPress={() => void handleResetBackgroundPhoto()} variant="ghost" />
+            </View>
+          </View>
+        </View>
         <Pressable
           onPress={() => void toggleTheme()}
           style={{

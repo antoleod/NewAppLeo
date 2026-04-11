@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AppState, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -1029,9 +1029,20 @@ export default function HomeScreen() {
         <View style={styles.switcherOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowBabySwitcher(false)} />
           <View style={styles.switcherSheet}>
-            <Text style={styles.switcherTitle}>{language === 'fr' ? 'Changer de bebe' : 'Switch child'}</Text>
-            <Text style={styles.switcherSubtitle}>{language === 'fr' ? 'Choisis le profil actif.' : 'Choose the active profile.'}</Text>
-            <View style={{ gap: 8 }}>
+            <View style={styles.switcherHeader}>
+              <View>
+                <Text style={styles.switcherTitle}>{language === 'fr' ? "Changer d'enfant" : 'Switch child profile'}</Text>
+                <Text style={styles.switcherSubtitle}>{language === 'fr' ? 'Choisis le profil actif pour ce tableau de bord.' : 'Choose the active profile for this dashboard.'}</Text>
+              </View>
+              <View style={styles.switcherBadge}>
+                <Text style={{ color: GOLD, fontSize: 11, fontWeight: '800' }}>{babies.length}</Text>
+              </View>
+            </View>
+            <ScrollView
+              style={styles.switcherList}
+              contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
+              showsVerticalScrollIndicator={false}
+            >
               {babies.length ? (
                 babies.map((baby) => {
                   const active = baby.id === babyId;
@@ -1046,23 +1057,43 @@ export default function HomeScreen() {
                         { borderColor: active ? GOLD : BORDER, backgroundColor: active ? `${GOLD}18` : CARD, opacity: pressed ? 0.88 : 1 },
                       ]}
                     >
-                      <Text style={{ color: active ? GOLD : TEXT, fontSize: 15, fontWeight: '700' }}>{baby.name}</Text>
-                      <Text style={{ color: MUTED, fontSize: 12 }}>{baby.birthDate}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <Text style={{ color: active ? GOLD : TEXT, fontSize: 15, fontWeight: '700' }}>{baby.name}</Text>
+                        <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: active ? `${GOLD}66` : BORDER, backgroundColor: active ? `${GOLD}22` : BG }}>
+                          <Text style={{ color: active ? GOLD : MUTED, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>
+                            {active ? (language === 'fr' ? 'Actif' : 'Active') : language === 'fr' ? 'Utiliser' : 'Use'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={{ color: MUTED, fontSize: 12 }}>{language === 'fr' ? 'Naissance:' : 'Birth:'} {baby.birthDate}</Text>
                     </Pressable>
                   );
                 })
               ) : (
-                <View style={styles.switcherItem}>
-                  <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>
-                    {language === 'fr' ? 'Aucun profil enfant.' : 'No child profile yet.'}
-                  </Text>
-                  <Text style={{ color: MUTED, fontSize: 12 }}>
-                    {language === 'fr' ? 'Va dans Profil pour en creer un.' : 'Go to Profile to create one.'}
+                <View style={styles.emptySwitcherCard}>
+                  <View style={styles.emptyIconWrap}>
+                    <Ionicons name="people-outline" size={18} color={MUTED} />
+                  </View>
+                  <Text style={styles.emptySwitcherTitle}>{language === 'fr' ? "Aucun profil d'enfant" : 'No child profile yet'}</Text>
+                  <Text style={styles.emptySwitcherSubtitle}>
+                    {language === 'fr'
+                      ? "Va dans Profil pour creer un enfant, puis reviens ici pour l'activer."
+                      : 'Go to Profile to create one, then return here to set it active.'}
                   </Text>
                 </View>
               )}
+            </ScrollView>
+            <View style={styles.switcherFooter}>
+              <Button
+                label={language === 'fr' ? 'Ouvrir Profil' : 'Open Profile'}
+                onPress={() => {
+                  setShowBabySwitcher(false);
+                  router.push('/profile');
+                }}
+                variant="secondary"
+              />
+              <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowBabySwitcher(false)} variant="ghost" />
             </View>
-            <Button label={language === 'fr' ? 'Ouvrir Profil' : 'Open Profile'} onPress={() => router.push('/profile')} variant="ghost" />
           </View>
         </View>
       </Modal>
@@ -1236,13 +1267,14 @@ const styles = StyleSheet.create({
   switcherOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.68)',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     paddingHorizontal: 16,
-    paddingTop: 80,
+    paddingVertical: 24,
   },
   switcherSheet: {
     width: '100%',
     maxWidth: 560,
+    maxHeight: '84%',
     alignSelf: 'center',
     borderRadius: 24,
     backgroundColor: 'rgba(18, 23, 31, 0.96)',
@@ -1262,9 +1294,27 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
   },
+  switcherHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  switcherBadge: {
+    minWidth: 26,
+    height: 26,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: `${GOLD}88`,
+    backgroundColor: `${GOLD}18`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
   switcherSubtitle: {
     color: MUTED,
     fontSize: 13,
+    marginTop: 2,
   },
   switcherItem: {
     borderRadius: 16,
@@ -1274,6 +1324,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 4,
+  },
+  switcherList: {
+    maxHeight: 320,
+  },
+  emptySwitcherCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: BG,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 8,
+    alignItems: 'flex-start',
+  },
+  emptyIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: CARD,
+  },
+  emptySwitcherTitle: {
+    color: TEXT,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  emptySwitcherSubtitle: {
+    color: MUTED,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  switcherFooter: {
+    gap: 8,
   },
 });
 

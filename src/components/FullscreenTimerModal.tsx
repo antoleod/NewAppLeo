@@ -17,6 +17,8 @@ function formatClock(timestamp: number) {
   return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(timestamp));
 }
 
+const CAN_USE_NATIVE_ANIMATION_DRIVER = Platform.OS !== 'web';
+
 export function FullscreenTimerModal({
   visible,
   emoji,
@@ -47,8 +49,8 @@ export function FullscreenTimerModal({
 
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.05, duration: 500, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.05, duration: 500, useNativeDriver: CAN_USE_NATIVE_ANIMATION_DRIVER }),
+        Animated.timing(pulse, { toValue: 1, duration: 500, useNativeDriver: CAN_USE_NATIVE_ANIMATION_DRIVER }),
       ]),
     );
     loop.start();

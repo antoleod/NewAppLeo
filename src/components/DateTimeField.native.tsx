@@ -1,13 +1,19 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useTheme } from '@/context/ThemeContext';
 
-function formatCompactDateTime(value: Date, locale = 'fr-FR') {
+function formatDate(value: Date, locale = 'fr-FR') {
   return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+  }).format(value);
+}
+
+function formatTime(value: Date, locale = 'fr-FR') {
+  return new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
   }).format(value);
@@ -22,19 +28,20 @@ export function DateTimeField({
   value: Date;
   onChange: (value: Date) => void;
 }) {
-  const { colors } = useTheme();
+  const { theme } = useTheme();
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
   const [draftValue, setDraftValue] = useState<Date | null>(null);
 
-  const displayValue = useMemo(() => formatCompactDateTime(value), [value]);
+  const dateDisplay = useMemo(() => formatDate(value), [value]);
+  const timeDisplay = useMemo(() => formatTime(value), [value]);
 
-  function openDatePicker() {
+  function openDateTimePicker() {
     setDraftValue(new Date(value));
     setPickerMode('date');
   }
 
-  function handleChange(_: DateTimePickerEvent, next?: Date) {
-    if (!next) {
+  function handleChange(event: DateTimePickerEvent, next?: Date) {
+    if (event.type === 'dismissed' || !next) {
       setPickerMode(null);
       setDraftValue(null);
       return;
@@ -57,20 +64,34 @@ export function DateTimeField({
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+      <Text style={[styles.label, { color: theme.textPrimary }]}>{label}</Text>
       <Pressable
-        onPress={openDatePicker}
+        onPress={openDateTimePicker}
         style={({ pressed }) => [
           styles.control,
           {
-            borderColor: colors.border,
-            backgroundColor: colors.backgroundAlt,
-            opacity: pressed ? 0.88 : 1,
+            borderColor: theme.border,
+            backgroundColor: theme.bgCardAlt,
+            opacity: pressed ? 0.9 : 1,
           },
         ]}
       >
-        <Text style={[styles.controlLabel, { color: colors.muted }]}>Date & time</Text>
-        <Text style={[styles.controlValue, { color: colors.text }]}>{displayValue}</Text>
+        <View style={styles.headerRow}>
+          <Text style={[styles.headerText, { color: theme.textMuted }]}>Date & time</Text>
+          <View style={styles.headerIcons}>
+            <Ionicons name="calendar-outline" size={15} color={theme.textMuted} />
+            <Ionicons name="time-outline" size={15} color={theme.textMuted} />
+          </View>
+        </View>
+        <View style={styles.valueRow}>
+          <View style={[styles.valuePill, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
+            <Text style={[styles.valueText, { color: theme.textPrimary }]}>{dateDisplay}</Text>
+          </View>
+          <Text style={[styles.dot, { color: theme.textMuted }]}>•</Text>
+          <View style={[styles.valuePill, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
+            <Text style={[styles.valueText, { color: theme.textPrimary }]}>{timeDisplay}</Text>
+          </View>
+        </View>
       </Pressable>
       {pickerMode ? <DateTimePicker value={draftValue ?? value} mode={pickerMode} display="default" onChange={handleChange} /> : null}
     </View>
@@ -90,18 +111,43 @@ const styles = StyleSheet.create({
   control: {
     borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 10,
   },
-  controlLabel: {
-    fontSize: 10,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerText: {
+    fontSize: 11,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  controlValue: {
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  valuePill: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  valueText: {
     fontSize: 14,
     fontWeight: '800',
+  },
+  dot: {
+    fontSize: 16,
+    fontWeight: '900',
   },
 });

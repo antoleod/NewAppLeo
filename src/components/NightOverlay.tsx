@@ -27,12 +27,13 @@ export function NightOverlay() {
 
   if (!visible) return null;
 
-  return <View pointerEvents="none" style={styles.overlay} />;
+  return <View style={styles.overlay} />;
 }
 
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
+    pointerEvents: 'none',
     backgroundColor: 'rgba(120, 0, 0, 0.08)',
   },
 });

@@ -31,6 +31,36 @@ export default function RegisterScreen() {
     !usernameError &&
     !pinError;
 
+  function mapRegisterError(err: any) {
+    const code = String(err?.code ?? '');
+    if (code === 'auth/email-already-in-use') {
+      return {
+        title: 'Email already in use',
+        message: 'This email is already registered. Use Sign in with your password.',
+        emailInUse: true,
+      };
+    }
+    if (code === 'auth/invalid-email') {
+      return {
+        title: 'Invalid email',
+        message: 'Please enter a valid email address.',
+        emailInUse: false,
+      };
+    }
+    if (code === 'auth/weak-password') {
+      return {
+        title: 'Weak password',
+        message: 'Use a stronger password (minimum 6 characters).',
+        emailInUse: false,
+      };
+    }
+    return {
+      title: 'Registration failed',
+      message: err?.message ?? 'Unable to register.',
+      emailInUse: false,
+    };
+  }
+
   async function handleSubmit() {
     setLoading(true);
     setError('');
@@ -44,9 +74,20 @@ export default function RegisterScreen() {
       });
       router.replace('/onboarding');
     } catch (err: any) {
-      const message = err?.message ?? 'Unable to register.';
-      setError(message);
-      Alert.alert('Registration failed', message);
+      const mapped = mapRegisterError(err);
+      setError(mapped.message);
+      if (mapped.emailInUse) {
+        Alert.alert(
+          mapped.title,
+          mapped.message,
+          [
+            { text: 'Go to sign in', onPress: () => router.replace('/login') },
+            { text: 'Close', style: 'cancel' },
+          ],
+        );
+      } else {
+        Alert.alert(mapped.title, mapped.message);
+      }
     } finally {
       setLoading(false);
     }

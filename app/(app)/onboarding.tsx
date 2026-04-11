@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInRight, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Input, Page, Segment } from '@/components/ui';
@@ -27,10 +28,33 @@ const pathCards: Array<{ key: OnboardingPath; title: string; body: string }> = [
   { key: 'account', title: 'Compte', body: 'Profil plus classique avec donnees locales.' },
 ];
 
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function computeAutoGoals(birthDate: Date, currentWeightKg?: number) {
+  const ageDays = Math.max(0, Math.floor((Date.now() - birthDate.getTime()) / 86400000));
+  const ageMonths = ageDays / 30.4375;
+
+  let feedings = ageMonths < 1 ? 8 : ageMonths < 3 ? 7 : ageMonths < 6 ? 6 : ageMonths < 9 ? 5 : 4;
+  const sleep = ageMonths < 1 ? 15 : ageMonths < 3 ? 14 : ageMonths < 6 ? 14 : ageMonths < 12 ? 13 : 12;
+  const diapers = ageMonths < 1 ? 8 : ageMonths < 3 ? 7 : ageMonths < 6 ? 6 : ageMonths < 12 ? 5 : 4;
+
+  if (typeof currentWeightKg === 'number' && currentWeightKg > 0 && ageMonths < 6 && currentWeightKg < 4) {
+    feedings += 1;
+  }
+
+  return {
+    feedings: clamp(Math.round(feedings), 3, 12),
+    sleep: clamp(Math.round(sleep), 8, 18),
+    diapers: clamp(Math.round(diapers), 2, 12),
+  };
+}
+
 export default function OnboardingScreen() {
   const { theme } = useTheme();
-  const { profile, guestMode, signInGuest, completeUserOnboarding } = useAuth();
-  const { path, setPath, step, next, back, progress } = useOnboarding(0);
+  const { user, profile, guestMode, signInGuest, completeUserOnboarding } = useAuth();
+  const { path, setPath, step, setStep, next, back, progress } = useOnboarding(1);
   const [caregiverName, setCaregiverName] = useState(profile?.caregiverName ?? '');
   const [babyName, setBabyName] = useState(profile?.babyName ?? 'Leo');
   const [babyBirthDate, setBabyBirthDate] = useState(new Date(profile?.babyBirthDate ?? '2025-10-21T08:00:00.000Z'));
@@ -41,25 +65,39 @@ export default function OnboardingScreen() {
   const [headCircCm, setHeadCircCm] = useState(profile?.headCircCm ? String(profile.headCircCm) : '');
   const [babyNotes, setBabyNotes] = useState(profile?.babyNotes ?? '');
   const [language, setLanguage] = useState<AppLanguage>(profile?.language ?? 'fr');
-  const [goalFeedingsPerDay, setGoalFeedingsPerDay] = useState(String(profile?.goalFeedingsPerDay ?? 8));
-  const [goalSleepHoursPerDay, setGoalSleepHoursPerDay] = useState(String(profile?.goalSleepHoursPerDay ?? 14));
-  const [goalDiapersPerDay, setGoalDiapersPerDay] = useState(String(profile?.goalDiapersPerDay ?? 6));
+  const [goalFeedingsPerDay, setGoalFeedingsPerDay] = useState(profile?.goalFeedingsPerDay ? String(profile.goalFeedingsPerDay) : '');
+  const [goalSleepHoursPerDay, setGoalSleepHoursPerDay] = useState(profile?.goalSleepHoursPerDay ? String(profile.goalSleepHoursPerDay) : '');
+  const [goalDiapersPerDay, setGoalDiapersPerDay] = useState(profile?.goalDiapersPerDay ? String(profile.goalDiapersPerDay) : '');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const shake = useSharedValue(0);
+  const autoGoals = useMemo(
+    () => computeAutoGoals(babyBirthDate, Number(currentWeightKg) || undefined),
+    [babyBirthDate, currentWeightKg],
+  );
 
   const progressStyle = useAnimatedStyle(() => ({
     width: `${progress}%`,
   }));
 
+  useEffect(() => {
+    setPath(guestMode ? 'guest' : 'account');
+    setStep((current) => (current < 1 ? 1 : current));
+  }, [guestMode, setPath, setStep]);
+
   const canContinueProfile = useMemo(() => {
-    return Boolean(babyName.trim() && caregiverName.trim() && birthWeightKg.trim() && currentWeightKg.trim() && heightCm.trim() && headCircCm.trim());
-  }, [babyName, caregiverName, birthWeightKg, currentWeightKg, heightCm, headCircCm]);
+    return Boolean(babyName.trim() && caregiverName.trim());
+  }, [babyName, caregiverName]);
 
   async function finishOnboarding() {
+    if (saving) return;
+    setSaving(true);
+    setSubmitError('');
     try {
-      if (!profile && !guestMode) {
-        await signInGuest();
+      if (!guestMode && !user) {
+        throw new Error('Session not ready yet. Please sign in again.');
       }
 
       if (path === 'pin') {
@@ -72,6 +110,14 @@ export default function OnboardingScreen() {
       }
 
       await AsyncStorage.setItem('appleo.onboardingPath', path);
+      const parsedFeedings = Number(goalFeedingsPerDay);
+      const parsedSleep = Number(goalSleepHoursPerDay);
+      const parsedDiapers = Number(goalDiapersPerDay);
+      const finalGoals = {
+        feedingsPerDay: Number.isFinite(parsedFeedings) && parsedFeedings > 0 ? clamp(Math.round(parsedFeedings), 3, 12) : autoGoals.feedings,
+        sleepHoursPerDay: Number.isFinite(parsedSleep) && parsedSleep > 0 ? clamp(Math.round(parsedSleep), 8, 18) : autoGoals.sleep,
+        diapersPerDay: Number.isFinite(parsedDiapers) && parsedDiapers > 0 ? clamp(Math.round(parsedDiapers), 2, 12) : autoGoals.diapers,
+      };
       await completeUserOnboarding({
         caregiverName: caregiverName.trim() || 'Parent',
         babyName: babyName.trim() || 'Leo',
@@ -83,9 +129,9 @@ export default function OnboardingScreen() {
         headCircCm: Number(headCircCm) || undefined,
         babyNotes: babyNotes.trim() || undefined,
         language,
-        goalFeedingsPerDay: Number(goalFeedingsPerDay) || 8,
-        goalSleepHoursPerDay: Number(goalSleepHoursPerDay) || 14,
-        goalDiapersPerDay: Number(goalDiapersPerDay) || 6,
+        goalFeedingsPerDay: finalGoals.feedingsPerDay,
+        goalSleepHoursPerDay: finalGoals.sleepHoursPerDay,
+        goalDiapersPerDay: finalGoals.diapersPerDay,
       });
 
       if (profile) {
@@ -111,7 +157,11 @@ export default function OnboardingScreen() {
 
       router.replace('/home');
     } catch (error: any) {
-      Alert.alert('Configuration impossible', error?.message ?? 'Verifie les champs et recommence.');
+      const message = error?.message ?? 'Verifie les champs et recommence.';
+      setSubmitError(message);
+      Alert.alert('Configuration impossible', message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -126,7 +176,7 @@ export default function OnboardingScreen() {
           <View style={{ height: 8, borderRadius: 999, backgroundColor: theme.progressBg, overflow: 'hidden' }}>
             <Animated.View style={[{ height: '100%', backgroundColor: theme.progressFill, borderRadius: 999 }, progressStyle]} />
           </View>
-          {step > 0 ? <Button label="Retour" onPress={back} variant="ghost" /> : null}
+          {step > 1 ? <Button label="Retour" onPress={back} variant="ghost" /> : null}
         </View>
       </Card>
 
@@ -176,18 +226,41 @@ export default function OnboardingScreen() {
       {step === 2 ? (
         <Card>
           <Animated.View entering={FadeInRight.duration(220)} style={{ gap: 12 }}>
-            <Input label="Parent" value={caregiverName} onChangeText={setCaregiverName} placeholder="Andrea" autoCapitalize="words" />
-            <Input label="Prenom de bebe" value={babyName} onChangeText={setBabyName} placeholder="Leo" autoCapitalize="words" />
-            <DateTimeField label="Date de naissance" value={babyBirthDate} onChange={setBabyBirthDate} />
-            <Segment
-              value={babySex}
-              onChange={(value) => setBabySex(value as BabySex)}
-              options={[
-                { label: 'Non precise', value: 'unspecified' },
-                { label: 'Fille', value: 'female' },
-                { label: 'Garcon', value: 'male' },
-              ]}
-            />
+            <Text style={[typography.body, { color: theme.textMuted, textAlign: 'center' }]}>Les champs avec * sont importants.</Text>
+            <Input label="Parent *" value={caregiverName} onChangeText={setCaregiverName} placeholder="Andrea" autoCapitalize="words" />
+            <Input label="Prenom de bebe *" value={babyName} onChangeText={setBabyName} placeholder="Leo" autoCapitalize="words" />
+            <DateTimeField label="Date de naissance *" value={babyBirthDate} onChange={setBabyBirthDate} />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {[
+                { value: 'unspecified' as const, label: 'Non precise', icon: 'help-circle-outline' as const },
+                { value: 'female' as const, label: 'Fille', icon: 'female-outline' as const },
+                { value: 'male' as const, label: 'Garcon', icon: 'male-outline' as const },
+              ].map((item) => {
+                const active = babySex === item.value;
+                return (
+                  <Pressable
+                    key={item.value}
+                    onPress={() => setBabySex(item.value)}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      minHeight: 44,
+                      borderRadius: 999,
+                      borderWidth: 1,
+                      borderColor: active ? theme.borderActive : theme.border,
+                      backgroundColor: active ? `${theme.accent}22` : theme.pillBg,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'row',
+                      gap: 6,
+                      opacity: pressed ? 0.88 : 1,
+                    })}
+                  >
+                    <Ionicons name={item.icon} size={16} color={active ? theme.accent : theme.textMuted} />
+                    <Text style={{ color: active ? theme.accent : theme.textMuted, fontWeight: '700' }}>{item.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
             <Input label="Poids de naissance (kg)" value={birthWeightKg} onChangeText={setBirthWeightKg} keyboardType="decimal-pad" inputMode="decimal" />
             <Input label="Poids actuel (kg)" value={currentWeightKg} onChangeText={setCurrentWeightKg} keyboardType="decimal-pad" inputMode="decimal" />
             <Input label="Taille actuelle (cm)" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" inputMode="decimal" />
@@ -213,10 +286,32 @@ export default function OnboardingScreen() {
       {((step === 3 && path !== 'pin') || (step === 4 && path === 'pin')) ? (
         <Card>
           <Animated.View entering={FadeInRight.duration(220)} style={{ gap: 12 }}>
-            <Input label="Objectif prises / jour" value={goalFeedingsPerDay} onChangeText={setGoalFeedingsPerDay} keyboardType="numeric" inputMode="numeric" />
-            <Input label="Objectif sommeil / jour" value={goalSleepHoursPerDay} onChangeText={setGoalSleepHoursPerDay} keyboardType="numeric" inputMode="numeric" />
-            <Input label="Objectif couches / jour" value={goalDiapersPerDay} onChangeText={setGoalDiapersPerDay} keyboardType="numeric" inputMode="numeric" />
-            <Button label="Tout est pret" onPress={finishOnboarding} />
+            <Input
+              label="Objectif prises / jour"
+              value={goalFeedingsPerDay}
+              onChangeText={setGoalFeedingsPerDay}
+              keyboardType="numeric"
+              inputMode="numeric"
+              hint={`Suggestion auto: ${autoGoals.feedings}`}
+            />
+            <Input
+              label="Objectif sommeil / jour"
+              value={goalSleepHoursPerDay}
+              onChangeText={setGoalSleepHoursPerDay}
+              keyboardType="numeric"
+              inputMode="numeric"
+              hint={`Suggestion auto: ${autoGoals.sleep}`}
+            />
+            <Input
+              label="Objectif couches / jour"
+              value={goalDiapersPerDay}
+              onChangeText={setGoalDiapersPerDay}
+              keyboardType="numeric"
+              inputMode="numeric"
+              hint={`Suggestion auto: ${autoGoals.diapers}`}
+            />
+            {submitError ? <Text style={[typography.body, { color: theme.red, textAlign: 'center' }]}>{submitError}</Text> : null}
+            <Button label="Tout est pret" onPress={finishOnboarding} loading={saving} disabled={saving} />
           </Animated.View>
         </Card>
       ) : null}

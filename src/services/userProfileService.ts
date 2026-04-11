@@ -15,6 +15,10 @@ import { getLocalProfile, getLocalProfileByUsername, putLocalProfile, putLocalUs
 const USERS = 'users';
 const USERNAMES = 'usernames';
 
+function stripUndefined<T extends Record<string, any>>(input: T): Partial<T> {
+  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)) as Partial<T>;
+}
+
 function isPermissionDenied(error: unknown) {
   return Boolean((error as any)?.code === 'permission-denied' || /permission/i.test((error as any)?.message ?? ''));
 }
@@ -162,11 +166,12 @@ export async function createProfileRecord(params: {
 }
 
 export async function updateProfile(uid: string, partial: Partial<UserProfile>) {
+  const cleanPartial = stripUndefined(partial);
   try {
     await setDoc(
       userProfileRef(uid),
       {
-        ...partial,
+        ...cleanPartial,
         updatedAt: serverTimestamp() as any,
       },
       { merge: true },
@@ -180,7 +185,7 @@ export async function updateProfile(uid: string, partial: Partial<UserProfile>) 
   const current = (await loadProfile(uid)) ?? defaultProfile(uid, 'local@example.com');
   const next = {
     ...current,
-    ...partial,
+    ...cleanPartial,
     updatedAt: new Date().toISOString(),
   } as UserProfile;
   withLocalFallback(next);

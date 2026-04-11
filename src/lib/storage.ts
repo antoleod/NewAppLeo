@@ -79,6 +79,7 @@ export interface AppSettings {
   dailySummaryTime: string;
   largeTouchMode: boolean;
   redNightMode: boolean;
+  backgroundPhotoUri: string;
   themeVariant: ThemeVariant;
   themeStyle: ThemeStyle;
   language: AppLanguage;
@@ -94,6 +95,7 @@ export const defaultAppSettings: AppSettings = {
   dailySummaryTime: '22:00',
   largeTouchMode: false,
   redNightMode: false,
+  backgroundPhotoUri: '',
   themeVariant: 'sage',
   themeStyle: 'default',
   language: 'fr',

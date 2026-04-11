@@ -49,7 +49,7 @@ export default function RootLayout() {
         const hasHardware = await LocalAuthentication.hasHardwareAsync();
         const isEnrolled = await LocalAuthentication.isEnrolledAsync();
         
-        // Bloqueamos solo si estaba en background, tiene biometría y la opción está activa
+        // Bloqueamos solo si estaba en background, tiene biometria y la opcion esta activa
         if (wasInBackground && hasHardware && isEnrolled && autoLockEnabled) {
           setIsLocked(true);
           handleUnlock();
@@ -65,7 +65,7 @@ export default function RootLayout() {
   const handleUnlock = async () => {
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: 'Desbloquear App Leo',
-      fallbackLabel: 'Usar código',
+      fallbackLabel: 'Usar codigo',
     });
     if (result.success) {
       setIsLocked(false);
@@ -97,16 +97,18 @@ export default function RootLayout() {
 
                   {isIncognito && (
                     <View style={[StyleSheet.absoluteFill, styles.incognitoOverlay, { backgroundColor: '#1A1C1E' }]}>
-                      <Text style={{ fontSize: 40 }}>✨</Text>
+                      <Text style={{ fontSize: 40 }}>\u2728</Text>
                       <Text style={{ color: '#fff', marginTop: 10, fontWeight: '600' }}>App Leo</Text>
                     </View>
                   )}
 
                   {isLocked && (
                     <View style={[StyleSheet.absoluteFill, styles.lockOverlay]}>
-                      <Text style={styles.lockEmoji}>🔒</Text>
+                      <Text style={styles.lockEmoji}>{'\u{1F512}'}</Text>
                       <Text style={styles.lockTitle}>App Bloqueada</Text>
-                      <Button label="Desbloquear" onPress={handleUnlock} style={{ width: 200 }} />
+                      <View style={{ width: 200 }}>
+                        <Button label="Desbloquear" onPress={handleUnlock} fullWidth />
+                      </View>
                     </View>
                   )}
                 </View>
