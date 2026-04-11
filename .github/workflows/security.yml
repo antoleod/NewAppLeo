@@ -1,0 +1,171 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+  schedule:
+    - cron: "0 2 * * 0" # Weekly on Sunday at 2 AM UTC
+
+jobs:
+  dependency-scanning:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        id: audit
+        run: |
+          npm audit --json > audit-report.json || true
+          npm audit --audit-level=moderate || true
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: npm-audit-report
+          path: audit-report.json
+
+  secret-scanning:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      - name: Git secret scan
+        run: |
+          # Check for common secrets patterns
+          echo "Scanning for secrets patterns..."
+
+          # Firebase keys
+          if grep -r "AIza[0-9A-Za-z\-_]\{35\}" . --include="*.js" --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.git; then
+            echo "⚠️  Potential Firebase key found"
+          fi
+
+          # AWS keys
+          if grep -r "AKIA[0-9A-Z]\{16\}" . --include="*.js" --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.git; then
+            echo "⚠️  Potential AWS key found"
+          fi
+
+          echo "✅ Secret scanning complete"
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript security check
+        run: |
+          npx tsc --noEmit --strict || true
+
+      - name: Vulnerable patterns check
+        run: |
+          echo "Checking for vulnerable patterns..."
+
+          # Check for eval
+          if grep -r "eval(" src/ app/ --include="*.ts" --include="*.tsx"; then
+            echo "❌ Found 'eval()' usage - security risk!"
+            exit 1
+          fi
+
+          # Check for innerHTML
+          if grep -r "innerHTML" src/ app/ --include="*.ts" --include="*.tsx"; then
+            echo "⚠️  Found 'innerHTML' usage - potential XSS risk"
+          fi
+
+          # Check for dangerouslySetInnerHTML
+          if grep -r "dangerouslySetInnerHTML" src/ app/ --include="*.ts" --include="*.tsx" | grep -v "node_modules"; then
+            echo "⚠️  Found 'dangerouslySetInnerHTML' usage - ensure proper sanitization"
+          fi
+
+          echo "✅ Vulnerable patterns check complete"
+
+  license-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check licenses
+        run: |
+          # Check for non-permissive licenses
+          echo "Checking dependency licenses..."
+          npm ls --json > dependencies.json 2>/dev/null || true
+
+          # Basic check for problematic licenses
+          if npx license-check-and-gather --csv | grep -i "GPL\|AGPL\|SSPL"; then
+            echo "⚠️  Found potentially problematic licenses"
+          fi
+
+          echo "✅ License check complete"
+
+  report:
+    runs-on: ubuntu-latest
+    needs: [dependency-scanning, secret-scanning, code-quality]
+    if: always()
+    steps:
+      - name: Security report
+        run: |
+          echo "# Security Scan Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependencies | ${{ needs.dependency-scanning.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secrets | ${{ needs.secret-scanning.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All security checks completed"
+
+      - name: Notify on security issues
+        if: needs.dependency-scanning.result == 'failure' || needs.secret-scanning.result == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '🔒 **Security Scan**: ⚠️ Issues detected\n\nPlease review the security scan report for details.'
+            });

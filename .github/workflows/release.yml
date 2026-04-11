@@ -1,0 +1,80 @@
+name: Release & Tagging
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - package.json
+      - src/**
+      - app/**
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 1.0.0)"
+        required: false
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      should-release: ${{ steps.version.outputs.should-release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: version
+        run: |
+          CURRENT_VERSION=$(grep '"version"' package.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+          if [ "$CURRENT_VERSION" != "$LAST_TAG" ] && [ ! -z "$CURRENT_VERSION" ]; then
+            echo "should-release=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-release=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Current version: $CURRENT_VERSION"
+          echo "Last tag: $LAST_TAG"
+
+  create-release:
+    needs: check-version
+    if: needs.check-version.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.check-version.outputs.version }}
+          release_name: Release v${{ needs.check-version.outputs.version }}
+          body: |
+            # Release v${{ needs.check-version.outputs.version }}
+
+            See [CHANGELOG](./CHANGELOG.md) for details.
+
+            **Deployment**: Automatic deploy to GitHub Pages will start shortly.
+          draft: false
+          prerelease: false
+
+      - name: Comment on commits
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createReaction({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              content: 'rocket'
+            });
