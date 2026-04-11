@@ -1,9 +1,9 @@
-# AppLeo Task Tracker
-
 ## Current Focus
+
 - [x] Define the target app structure and map live-site features to the new Expo app
 
 ## Done
+
 - [x] Create `app/_layout.tsx` with root stack, auth gate, theme provider, and `useColorScheme`
 - [x] Create `app/(app)/(tabs)/_layout.tsx` with tabs: `home`, `history`, `insights`, `profile`
 - [x] Create `app/(app)/onboarding.tsx` for baby profile creation
@@ -56,11 +56,13 @@
 - [x] Add startup theme presets for professional family branding
 
 ## Next Up
+
 - [ ] Build the requested visual/effects refactor pass from the latest brief
 - [ ] Propagate saved language into any remaining low-priority helper text and export copy
 - [x] Add undo toast after delete in history
 
 ## Requested Improvements
+
 - [x] Move theme picker out of `app/index.tsx` and keep theme selection in `app/(app)/(tabs)/profile.tsx`
 - [x] Keep a single primary `Continuer` CTA on `app/index.tsx` with guest mode as the default path
 - [x] Keep `Sign in` as a small text link below the primary CTA on `app/index.tsx`
@@ -88,6 +90,7 @@
 - [x] Add baby photo upload and local personalization settings for visible dashboard metrics and hydration goals
 
 ## Surprise Additions
+
 - [x] Seed guest/local sessions from `leodata.json` automatically on first launch
 - [x] Persist baby profile extras: birth weight, current weight, height, notes, photo, language
 - [x] Add a photo picker for the baby header/profile
@@ -115,6 +118,7 @@
 - [x] Polish Insights screen to match the compact dashboard/report visual system
 
 ## P1 - Critical
+
 - [x] Create `app/(app)/(tabs)/home.tsx` with:
   - [x] `QuickActionBar`
   - [x] `DailyStatusCard`
@@ -126,6 +130,7 @@
 - [x] Connect `src/lib/notifications.ts` to Expo Notifications when dependency is added
 
 ## P2 - Important
+
 - [x] Create `app/(app)/(tabs)/insights.tsx` with stats and charts
 - [x] Add `GrowthChart` with WHO percentile curves
 - [x] Add `SleepAnalysis` with fragmentation and heatmap
@@ -137,12 +142,15 @@
 - [x] Create `app/(auth)/pair.tsx` for partner pairing
 
 ## P3 - Optional Polish
+
 - [x] Finish cloud auth screens in `app/(auth)/login.tsx` and `register.tsx`
 - [x] Create `src/lib/voice.ts` for voice logging
 
 ## UI Components To Recover Or Improve
+
 - [x] `NightOverlay`
 
 ## Notes
+
 - Mark items as completed with `x` as they are implemented.
 - Keep this file updated before and after each coding step.
