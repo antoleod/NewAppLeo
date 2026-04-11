@@ -432,7 +432,7 @@ export default function HistoryScreen() {
   }
 
   return (
-    <Page contentStyle={{ maxWidth: 1040, width: '100%' }}>
+    <Page contentStyle={{ width: '100%' }}>
       <View style={{ gap: 18 }}>
         <Heading eyebrow="REPORT" title="Historique & OMS" subtitle="Resume quotidien, courbes de croissance, timeline unifiee et export docteur." />
 

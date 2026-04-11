@@ -25,10 +25,8 @@ export function Page({
   contentStyle?: any;
 }) {
   const { colors, gradients } = useTheme();
-  const { width } = useWindowDimensions();
-  const maxWidth = width >= 1080 ? 1120 : width >= 768 ? 920 : '100%';
   const content = (
-    <View style={[styles.pageInner, { maxWidth }, contentStyle]}>
+    <View style={[styles.pageInner, contentStyle]}>
       {children}
     </View>
   );
@@ -81,12 +79,14 @@ export function Heading({
   align?: 'left' | 'center';
 }) {
   const { theme } = useTheme();
+  const { width } = useWindowDimensions();
+  const scale = width >= 900 ? 1.08 : width >= 700 ? 1.04 : 1;
   return (
     <View style={[styles.headingRow, align === 'center' && styles.headingCentered]}>
       <View style={{ flex: 1, gap: spacing.xs, alignItems: align === 'center' ? 'center' : 'flex-start' }}>
-        {eyebrow ? <Text style={[styles.eyebrow, { color: theme.accent }, align === 'center' && { textAlign: 'center' }]}>{eyebrow}</Text> : null}
-        <Text style={[styles.title, { color: theme.textPrimary }, align === 'center' && { textAlign: 'center' }]}>{title}</Text>
-        {subtitle ? <Text style={[styles.subtitle, { color: theme.textMuted }, align === 'center' && { textAlign: 'center' }]}>{subtitle}</Text> : null}
+        {eyebrow ? <Text style={[styles.eyebrow, { color: theme.accent, fontSize: 11 * scale }, align === 'center' && { textAlign: 'center' }]}>{eyebrow}</Text> : null}
+        <Text style={[styles.title, { color: theme.textPrimary, fontSize: 22 * scale }, align === 'center' && { textAlign: 'center' }]}>{title}</Text>
+        {subtitle ? <Text style={[styles.subtitle, { color: theme.textMuted, fontSize: 13 * scale }, align === 'center' && { textAlign: 'center' }]}>{subtitle}</Text> : null}
       </View>
       {action}
     </View>

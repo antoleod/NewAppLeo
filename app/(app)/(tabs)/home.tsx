@@ -285,6 +285,7 @@ export default function HomeScreen() {
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [timerElapsedSeconds, setTimerElapsedSeconds] = useState(0);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
+  const [showBabySwitcher, setShowBabySwitcher] = useState(false);
   const [quickAmount, setQuickAmount] = useState(150);
   const [now, setNow] = useState(Date.now());
 
@@ -464,21 +465,40 @@ export default function HomeScreen() {
   }
 
   const recentEntries = entries.slice(0, 6);
+  const activeBabyName = babies.find((baby) => baby.id === babyId)?.name ?? profile?.babyName ?? 'Leo';
 
   async function switchBaby(nextBaby: { id: string }) {
     await setActiveBabyId(nextBaby.id);
     setBabyId(nextBaby.id);
     setHydration(await getMomHydration(nextBaby.id));
+    setShowBabySwitcher(false);
   }
 
   return (
-    <Page contentStyle={{ maxWidth: 980, width: '100%' }}>
+    <Page contentStyle={{ width: '100%' }}>
       <View style={{ backgroundColor: BG, borderRadius: 16, paddingTop: 12, paddingHorizontal: 12, paddingBottom: 80 }}>
         <Animated.View entering={FadeIn.duration(300)} style={{ marginBottom: 10 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'ACCUEIL' : 'HOME'}</Text>
-              <Text style={sectionTitleStyle()}>{profile?.babyName ?? 'Leo'}</Text>
+              <Pressable
+                onPress={() => setShowBabySwitcher(true)}
+                style={({ pressed }) => ({
+                  alignSelf: 'flex-start',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: BORDER,
+                  backgroundColor: pressed ? '#1B2430' : CARD,
+                })}
+              >
+                <Text style={sectionTitleStyle()}>{activeBabyName}</Text>
+                <Text style={{ color: MUTED, fontSize: 12, fontWeight: '700' }}>⌄</Text>
+              </Pressable>
             </View>
             <HeaderAction label="Nouveau" onPress={() => router.push('/entry/feed')} />
           </View>
@@ -518,73 +538,26 @@ export default function HomeScreen() {
         ) : null}
 
         <Animated.View entering={FadeIn.duration(300).delay(80)} style={{ marginBottom: 10 }}>
-          <View style={{ minHeight: 80, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ width: 40, height: 40, borderRadius: 999, backgroundColor: `${GOLD}22`, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: GOLD, fontWeight: '700' }}>{(profile?.babyName ?? 'L').slice(0, 1)}</Text>
-            </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{profile?.babyName ?? 'Leo'}</Text>
-              <Text style={{ color: MUTED, fontSize: 11 }}>{profile?.caregiverName ?? 'Parent'}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={{ color: TEXT, fontSize: 15, fontWeight: '700' }}>
+          <View style={{ minHeight: 72, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <View style={{ gap: 2, flex: 1 }}>
+              <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                {language === 'fr' ? 'STATUT' : 'STATUS'}
+              </Text>
+              <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>
                 {lastMeasurement?.payload?.weightKg ? `${lastMeasurement.payload.weightKg} kg` : '--'}
               </Text>
               <Text style={{ color: MUTED, fontSize: 11 }}>
                 {lastMeasurement?.payload?.heightCm ? `${lastMeasurement.payload.heightCm} cm` : '--'}
               </Text>
             </View>
+            <View style={{ alignItems: 'flex-end', gap: 2 }}>
+              <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                {language === 'fr' ? 'CONTACT' : 'CONTACT'}
+              </Text>
+              <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{profile?.caregiverName ?? 'Parent'}</Text>
+            </View>
           </View>
         </Animated.View>
-
-        {babies.length ? (
-          <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
-              <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'PROFILS' : 'PROFILES'}</Text>
-              <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Changer de bebe' : 'Switch baby'}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 6 }}>
-                {babies.slice(0, 4).map((baby) => {
-                  const active = baby.id === babyId;
-                  return (
-                    <Pressable
-                      key={baby.id}
-                      onPress={() => {
-                        void switchBaby(baby);
-                      }}
-                      style={{
-                        minHeight: 40,
-                        paddingHorizontal: 14,
-                        borderRadius: 999,
-                        borderWidth: 1,
-                        borderColor: active ? GOLD : BORDER,
-                        backgroundColor: active ? `${GOLD}22` : BG,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text style={{ color: active ? GOLD : TEXT, fontWeight: '700' }}>{baby.name}</Text>
-                    </Pressable>
-                  );
-                })}
-                <Pressable
-                  onPress={() => router.push('/profile')}
-                  style={{
-                    minHeight: 40,
-                    paddingHorizontal: 14,
-                    borderRadius: 999,
-                    borderWidth: 1,
-                    borderColor: BORDER,
-                    backgroundColor: BG,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ color: TEXT, fontWeight: '700' }}>{language === 'fr' ? 'Gestion' : 'Manage'}</Text>
-                </Pressable>
-              </ScrollView>
-            </View>
-          </Animated.View>
-        ) : null}
 
         <Animated.View entering={FadeIn.duration(300).delay(160)} style={{ marginBottom: 10 }}>
           <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
@@ -797,6 +770,48 @@ export default function HomeScreen() {
         </Animated.View>
       </View>
 
+      <Modal visible={showBabySwitcher} transparent animationType="fade" onRequestClose={() => setShowBabySwitcher(false)}>
+        <View style={styles.switcherOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowBabySwitcher(false)} />
+          <View style={styles.switcherSheet}>
+            <Text style={styles.switcherTitle}>{language === 'fr' ? 'Changer de bebe' : 'Switch child'}</Text>
+            <Text style={styles.switcherSubtitle}>{language === 'fr' ? 'Choisis le profil actif.' : 'Choose the active profile.'}</Text>
+            <View style={{ gap: 8 }}>
+              {babies.length ? (
+                babies.map((baby) => {
+                  const active = baby.id === babyId;
+                  return (
+                    <Pressable
+                      key={baby.id}
+                      onPress={() => {
+                        void switchBaby(baby);
+                      }}
+                      style={({ pressed }) => [
+                        styles.switcherItem,
+                        { borderColor: active ? GOLD : BORDER, backgroundColor: active ? `${GOLD}18` : CARD, opacity: pressed ? 0.88 : 1 },
+                      ]}
+                    >
+                      <Text style={{ color: active ? GOLD : TEXT, fontSize: 15, fontWeight: '700' }}>{baby.name}</Text>
+                      <Text style={{ color: MUTED, fontSize: 12 }}>{baby.birthDate}</Text>
+                    </Pressable>
+                  );
+                })
+              ) : (
+                <View style={styles.switcherItem}>
+                  <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>
+                    {language === 'fr' ? 'Aucun profil enfant.' : 'No child profile yet.'}
+                  </Text>
+                  <Text style={{ color: MUTED, fontSize: 12 }}>
+                    {language === 'fr' ? 'Va dans Profil pour en creer un.' : 'Go to Profile to create one.'}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Button label={language === 'fr' ? 'Ouvrir Profil' : 'Open Profile'} onPress={() => router.push('/profile')} variant="ghost" />
+          </View>
+        </View>
+      </Modal>
+
       <FullscreenTimerModal
         visible={Boolean(quickTimerMode && timerStartedAt && !showSaveSheet)}
         emoji={quickTimerMode === 'bottle' ? '\u{1F37C}' : '\u{1F931}'}
@@ -881,5 +896,40 @@ const styles = StyleSheet.create({
   },
   sheetActions: {
     gap: 12,
+  },
+  switcherOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 16,
+    paddingTop: 80,
+  },
+  switcherSheet: {
+    width: '100%',
+    borderRadius: 24,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  switcherTitle: {
+    color: TEXT,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  switcherSubtitle: {
+    color: MUTED,
+    fontSize: 13,
+  },
+  switcherItem: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: BG,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
   },
 });

@@ -73,7 +73,7 @@ export default function InsightsScreen() {
 
   if (!entries.length) {
     return (
-      <Page contentStyle={{ maxWidth: 980, width: '100%' }}>
+      <Page contentStyle={{ width: '100%' }}>
         <Heading eyebrow={t('insights.eyebrow')} title={t('insights.title')} subtitle={t('insights.subtitle.none')} />
         <EmptyState
           title={t('insights.noDataTitle')}
@@ -85,7 +85,7 @@ export default function InsightsScreen() {
   }
 
   return (
-    <Page contentStyle={{ maxWidth: 980, width: '100%' }}>
+    <Page contentStyle={{ width: '100%' }}>
       <View style={{ backgroundColor: BG, borderRadius: 16, paddingTop: 12, paddingHorizontal: 12, paddingBottom: 80 }}>
         <Animated.View entering={FadeIn.duration(280)} style={{ marginBottom: 10 }}>
           <Heading

@@ -15,6 +15,7 @@ import {
   getModuleVisibility,
   saveBaby,
   setActiveBabyId,
+  removeBaby,
   setModuleVisibility,
   updateAppSettings,
 } from '@/lib/storage';
@@ -194,6 +195,27 @@ export default function ProfileScreen() {
     setBabyActiveId(baby.id);
   }
 
+  async function handleRemoveBaby(babyId: string, babyName: string) {
+    Alert.alert(
+      'Remove child',
+      `Delete ${babyName} from local profiles?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            await removeBaby(babyId);
+            const items = await getBabies();
+            setBabies(items);
+            const active = await getActiveBaby();
+            setBabyActiveId(active?.id ?? null);
+          },
+        },
+      ],
+    );
+  }
+
   async function patchSettings(patch: Partial<typeof settings>) {
     const next = await updateAppSettings(patch);
     setSettings(next);
@@ -234,36 +256,55 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Baby switcher</Text>
+        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Children</Text>
         {babies.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+          <View style={{ gap: 10 }}>
             {babies.map((baby) => (
-              <Pressable
+              <View
                 key={baby.id}
-                onPress={async () => {
-                  await setActiveBabyId(baby.id);
-                  setBabyActiveId(baby.id);
-                }}
                 style={{
-                  minWidth: 180,
-                  padding: 14,
                   borderRadius: 18,
                   borderWidth: 1,
                   borderColor: activeBabyId === baby.id ? colors.primary : colors.border,
                   backgroundColor: activeBabyId === baby.id ? colors.primarySoft : colors.backgroundAlt,
+                  padding: 14,
+                  gap: 10,
                 }}
               >
-                <Text style={{ color: colors.text, fontWeight: '800' }}>
-                  {baby.name} {activeBabyId === baby.id ? '(Active)' : ''}
-                </Text>
-                <Text style={{ color: colors.muted }}>{baby.birthDate}</Text>
-              </Pressable>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text, fontWeight: '800' }}>
+                      {baby.name} {activeBabyId === baby.id ? '(Active)' : ''}
+                    </Text>
+                    <Text style={{ color: colors.muted }}>{baby.birthDate}</Text>
+                  </View>
+                  <Button
+                    label="Remove"
+                    onPress={() => {
+                      void handleRemoveBaby(baby.id, baby.name);
+                    }}
+                    variant="ghost"
+                    fullWidth={false}
+                    size="sm"
+                  />
+                </View>
+                <Button
+                  label="Set active"
+                  onPress={async () => {
+                    await setActiveBabyId(baby.id);
+                    setBabyActiveId(baby.id);
+                  }}
+                  variant={activeBabyId === baby.id ? 'secondary' : 'ghost'}
+                  fullWidth={false}
+                  size="sm"
+                />
+              </View>
             ))}
-          </ScrollView>
+            <Button label="Add baby profile" onPress={handleAddBaby} variant="ghost" />
+          </View>
         ) : (
           <EmptyState title="No baby profiles yet" body="Create the first local baby profile to switch between kids later." action={<Button label="Add baby profile" onPress={handleAddBaby} />} />
         )}
-        {babies.length ? <Button label="Add baby profile" onPress={handleAddBaby} variant="ghost" /> : null}
       </Card>
 
       <Card>

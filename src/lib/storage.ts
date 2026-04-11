@@ -137,6 +137,21 @@ export async function saveBaby(profile: BabyProfile) {
   return profile;
 }
 
+export async function removeBaby(babyId: string) {
+  const babies = await getBabies();
+  const next = babies.filter((baby) => baby.id !== babyId);
+  await AsyncStorage.setItem(BABIES_KEY, JSON.stringify(next));
+  const activeBabyId = await getActiveBabyId();
+  if (activeBabyId === babyId) {
+    if (next[0]) {
+      await AsyncStorage.setItem(ACTIVE_BABY_KEY, next[0].id);
+    } else {
+      await AsyncStorage.removeItem(ACTIVE_BABY_KEY);
+    }
+  }
+  return next;
+}
+
 export async function getActiveBabyId() {
   return (await AsyncStorage.getItem(ACTIVE_BABY_KEY)) ?? null;
 }
