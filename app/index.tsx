@@ -36,25 +36,55 @@ export default function IndexRoute() {
 
   return (
     <Page>
-      <Card>
-        <View style={{ gap: 14, alignItems: 'center' }}>
-          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase', textAlign: 'center' }}>
+      <Card style={{ gap: 18, padding: 20 }}>
+        <View style={{ alignItems: 'center', gap: 10 }}>
+          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '900', letterSpacing: 1.4, textTransform: 'uppercase', textAlign: 'center' }}>
             App Leo
           </Text>
           <Text style={{ color: colors.text, fontSize: 30, fontWeight: '900', lineHeight: 36, textAlign: 'center' }}>{headline}</Text>
           <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22, textAlign: 'center' }}>
-            Une app familiale simple pour maman, papa et le quotidien de bebe.
+            Una experiencia familiar simple, visual y rapida para registrar tomas, sueno, medidas y momentos importantes.
           </Text>
         </View>
-        <Button label="Continuer" onPress={async () => { await signInGuest(); router.replace('/home'); }} />
-        <Pressable onPress={() => router.push('/login')}>
-          <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13, textAlign: 'center' }}>Sign in</Text>
+
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+          {['Modo invitado', 'Datos locales', 'UI React Native', 'Sincronizacion futura'].map((item) => (
+            <View
+              key={item}
+              style={{
+                borderRadius: 999,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.backgroundAlt,
+              }}
+            >
+              <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700' }}>{item}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Button
+          label="Continuar"
+          onPress={async () => {
+            await signInGuest();
+            router.replace('/home');
+          }}
+        />
+        <Pressable onPress={() => router.push('/login')} style={{ alignItems: 'center', paddingVertical: 4 }}>
+          <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 13, textAlign: 'center' }}>Sign in</Text>
         </Pressable>
         <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: 'center' }}>
           {language === 'fr' ? "Le choix du theme se trouve dans l'onglet profil." : 'Theme controls live in the profile tab.'}
         </Text>
       </Card>
-      <Card style={{ backgroundColor: gradients.hero[0] }}>
+      <Card
+        style={{
+          backgroundColor: gradients.hero[0],
+          borderColor: 'transparent',
+        }}
+      >
         <Text style={{ color: '#fff', fontSize: 18, fontWeight: '900', textAlign: 'center' }}>Built for two parents, one shared view.</Text>
         <Text style={{ color: 'rgba(255,255,255,0.82)', marginTop: 8, lineHeight: 20, textAlign: 'center' }}>
           Track feeds, sleep, diapers, and milestones with a calmer visual language.

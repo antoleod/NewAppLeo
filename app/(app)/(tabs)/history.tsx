@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Card, EmptyState, Heading, Page } from '@/components/ui';
@@ -286,6 +286,7 @@ export default function HistoryScreen() {
   const [showOmsTable, setShowOmsTable] = useState(false);
   const [omsSex, setOmsSex] = useState<OmsSex>(profile?.babySex === 'male' ? 'male' : 'female');
   const [undoEntry, setUndoEntry] = useState<EntryRecord | null>(null);
+  const didAutoSelectLatest = useRef(false);
 
   const dayEntries = useMemo(
     () =>
@@ -294,6 +295,18 @@ export default function HistoryScreen() {
         .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
     [entries, selectedDate],
   );
+  const latestEntryDate = useMemo(() => {
+    const latest = entries[0];
+    return latest ? startOfDay(new Date(latest.occurredAt)) : null;
+  }, [entries]);
+
+  useEffect(() => {
+    if (didAutoSelectLatest.current || !entries.length || dayEntries.length || !latestEntryDate) return;
+    didAutoSelectLatest.current = true;
+    setSelectedDate(latestEntryDate);
+    // Only shift the initial empty view to the latest available day.
+  }, [dayEntries.length, entries.length, latestEntryDate]);
+
   const filteredEntries = useMemo(
     () => dayEntries.filter((entry) => filter === 'all' || entry.type === filter),
     [dayEntries, filter],
@@ -421,11 +434,23 @@ export default function HistoryScreen() {
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <Button label="<" onPress={() => setSelectedDate((current) => subtractDays(current, 1))} variant="ghost" fullWidth={false} />
+            <Button
+              label="<"
+              onPress={() => setSelectedDate((current) => subtractDays(current, 1))}
+              variant="ghost"
+              fullWidth={false}
+              size="sm"
+            />
             <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', textAlign: 'center', flex: 1 }}>
               {new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
             </Text>
-            <Button label=">" onPress={() => setSelectedDate((current) => subtractDays(current, -1))} variant="ghost" fullWidth={false} />
+            <Button
+              label=">"
+              onPress={() => setSelectedDate((current) => subtractDays(current, -1))}
+              variant="ghost"
+              fullWidth={false}
+              size="sm"
+            />
           </View>
           <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
             {[

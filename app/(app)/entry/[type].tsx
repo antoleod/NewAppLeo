@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Button, Card, Heading, Input, Page, Segment } from '@/components/ui';
+import { Button, Card, Input, Page, Segment } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useLocale } from '@/context/LocaleContext';
@@ -30,6 +30,83 @@ const symptomOptions = [
   { label: 'Green stool', value: 'green stool' },
   { label: 'Colic', value: 'colic' },
 ];
+
+const typeMeta: Record<
+  EntryType,
+  {
+    icon: string;
+    eyebrow: string;
+    tone: string;
+    toneSoft: string;
+    details: string[];
+    badges: string[];
+  }
+> = {
+  feed: {
+    icon: '🍼',
+    eyebrow: 'Feeding session',
+    tone: '#C9A227',
+    toneSoft: 'rgba(201,162,39,0.16)',
+    details: ['Timer', 'Quick amount', 'Breast or bottle'],
+    badges: ['🍼 Feed', '⏱ Timer', '⚡ Fast log'],
+  },
+  sleep: {
+    icon: '😴',
+    eyebrow: 'Sleep session',
+    tone: '#58A6FF',
+    toneSoft: 'rgba(88,166,255,0.16)',
+    details: ['Duration first', 'Calm layout', 'Minimal taps'],
+    badges: ['😴 Sleep', '⏱ Duration', '🌙 Quiet flow'],
+  },
+  diaper: {
+    icon: '🧷',
+    eyebrow: 'Diaper log',
+    tone: '#E74C3C',
+    toneSoft: 'rgba(231,76,60,0.16)',
+    details: ['Pee, poop, vomit', 'Quick count', 'Short note'],
+    badges: ['🧷 Diaper', '💧 Count', '📝 Note'],
+  },
+  pump: {
+    icon: '🍼',
+    eyebrow: 'Pump session',
+    tone: '#3FB950',
+    toneSoft: 'rgba(63,185,80,0.16)',
+    details: ['Timer + output', 'Milk amount', 'Focused save flow'],
+    badges: ['🍼 Pump', '⏱ Timer', '📦 ml output'],
+  },
+  measurement: {
+    icon: '📏',
+    eyebrow: 'Measurement',
+    tone: '#A371F7',
+    toneSoft: 'rgba(163,113,247,0.16)',
+    details: ['Weight, height, temp', 'Growth friendly', 'Fast entry'],
+    badges: ['📏 Measure', '⚖️ Weight', '🌡 Temp'],
+  },
+  medication: {
+    icon: '💊',
+    eyebrow: 'Medication',
+    tone: '#7CC2FF',
+    toneSoft: 'rgba(124,194,255,0.16)',
+    details: ['Name + dosage', 'Clean text input', 'Add context'],
+    badges: ['💊 Med', '🧾 Dose', '🕒 Time'],
+  },
+  milestone: {
+    icon: '✨',
+    eyebrow: 'Milestone',
+    tone: '#D9B97D',
+    toneSoft: 'rgba(217,185,125,0.16)',
+    details: ['Title + icon', 'Optional photo', 'Memory log'],
+    badges: ['✨ Milestone', '🖼 Photo', '📝 Memory'],
+  },
+  symptom: {
+    icon: '💬',
+    eyebrow: 'Symptom log',
+    tone: '#8EB5EA',
+    toneSoft: 'rgba(142,181,234,0.16)',
+    details: ['Tags + note', 'Observations first', 'Review later'],
+    badges: ['💬 Symptom', '🏷 Tags', '📝 Context'],
+  },
+};
 
 function typeSubtitle(type: EntryType) {
   switch (type) {
@@ -85,8 +162,7 @@ export default function EntryComposerScreen() {
   const [occurredAt, setOccurredAt] = useState(new Date());
   const [saving, setSaving] = useState(false);
   const [largeTouchMode, setLargeTouchMode] = useState(false);
-
-  const titleLabel = useMemo(() => (editing ? `Edit ${typeLabels[editing.type]}` : `New ${typeLabels[type]}`), [editing, type]);
+  const meta = typeMeta[type];
 
   useEffect(() => {
     if (!editing) return;
@@ -273,12 +349,42 @@ export default function EntryComposerScreen() {
 
   return (
     <Page>
-      <Heading eyebrow={language === 'fr' ? 'Composer' : 'Composer'} title={copy.title} subtitle={copy.subtitle} />
+      <View style={styles.heroCard}>
+        <View style={styles.heroTopRow}>
+          <View style={[styles.heroIcon, { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+            <Text style={styles.heroIconText}>{meta.icon}</Text>
+          </View>
+          <Pressable onPress={() => router.back()} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={language === 'fr' ? 'Fermer' : 'Close'}>
+            <Text style={styles.closeButtonLabel}>X</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.heroCopy}>
+          <Text style={[styles.heroEyebrow, { color: meta.tone }]}>{language === 'fr' ? 'Composer' : 'Composer'}</Text>
+          <Text style={styles.heroTitle}>{copy.title}</Text>
+          <Text style={styles.heroSubtitle}>{copy.subtitle}</Text>
+        </View>
+        <View style={styles.badgeRow}>
+          {meta.badges.map((badge) => (
+            <View key={badge} style={[styles.badge, { borderColor: meta.tone, backgroundColor: meta.toneSoft }]}>
+              <Text style={[styles.badgeText, { color: meta.tone }]}>{badge}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
       <Card>
-        <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={occurredAt} onChange={setOccurredAt} />
+        <View style={styles.sectionCard}>
+          <Text style={[styles.sectionLabel, { color: meta.tone }]}>{meta.eyebrow}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Quand cela a eu lieu' : 'When it happened'}</Text>
+          <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
+          <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={occurredAt} onChange={setOccurredAt} />
+        </View>
 
         {type === 'feed' ? (
-          <View style={{ gap: 16 }}>
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'FEED FLOW' : 'FEED FLOW'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Sein ou biberon' : 'Breast or bottle'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[1]}</Text>
             <Segment
               value={mode}
               onChange={(value) => setMode(value as 'breast' | 'bottle')}
@@ -290,7 +396,7 @@ export default function EntryComposerScreen() {
             {mode === 'bottle' ? (
               <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
             ) : (
-              <>
+              <View style={styles.stack}>
                 <TimerWidget
                   label={language === 'fr' ? 'Session sein' : 'Breast session'}
                   valueMinutes={Number(durationMin) || 0}
@@ -301,46 +407,87 @@ export default function EntryComposerScreen() {
                   largeTouchMode={largeTouchMode}
                 />
                 <QuantityPicker label={language === 'fr' ? 'Ml estimes' : 'Estimated ml'} value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
-              </>
+              </View>
             )}
           </View>
         ) : null}
 
-        {type === 'sleep' ? <Input label={language === 'fr' ? 'Duree (min)' : 'Duration (min)'} value={durationMin} onChangeText={setDurationMin} keyboardType="numeric" inputMode="numeric" /> : null}
+        {type === 'sleep' ? (
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'SLEEP FLOW' : 'SLEEP FLOW'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Duree et repos' : 'Duration and rest'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[1]}</Text>
+            <View style={styles.infoStrip}>
+              <Text style={styles.infoStripText}>😴 {language === 'fr' ? 'Sommeil' : 'Sleep'}</Text>
+              <Text style={styles.infoStripText}>⏱ {language === 'fr' ? 'Durée' : 'Duration'}</Text>
+              <Text style={styles.infoStripText}>🌙 {language === 'fr' ? 'Nuit / sieste' : 'Night / nap'}</Text>
+            </View>
+            <TimerWidget label={language === 'fr' ? 'Duree (min)' : 'Duration (min)'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
+          </View>
+        ) : null}
 
         {type === 'diaper' ? (
-          <View style={{ gap: 16 }}>
-            <Input label={language === 'fr' ? 'Pipi' : 'Pee'} value={pee} onChangeText={setPee} keyboardType="numeric" inputMode="numeric" />
-            <Input label={language === 'fr' ? 'Caca' : 'Poop'} value={poop} onChangeText={setPoop} keyboardType="numeric" inputMode="numeric" />
-            <Input label={language === 'fr' ? 'Vomi' : 'Vomit'} value={vomit} onChangeText={setVomit} keyboardType="numeric" inputMode="numeric" />
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'DIAPER FLOW' : 'DIAPER FLOW'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Compteurs rapides' : 'Quick counts'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
+            <View style={styles.stack}>
+              <Input label={language === 'fr' ? 'Pipi' : 'Pee'} value={pee} onChangeText={setPee} keyboardType="numeric" inputMode="numeric" />
+              <Input label={language === 'fr' ? 'Caca' : 'Poop'} value={poop} onChangeText={setPoop} keyboardType="numeric" inputMode="numeric" />
+              <Input label={language === 'fr' ? 'Vomi' : 'Vomit'} value={vomit} onChangeText={setVomit} keyboardType="numeric" inputMode="numeric" />
+            </View>
           </View>
         ) : null}
 
         {type === 'pump' ? (
-          <View style={{ gap: 16 }}>
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'PUMP FLOW' : 'PUMP FLOW'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Minuteur + quantite' : 'Timer + amount'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
+            <View style={styles.infoStrip}>
+              <Text style={styles.infoStripText}>🍼 {language === 'fr' ? 'Tire-lait' : 'Pump'}</Text>
+              <Text style={styles.infoStripText}>⏱ {language === 'fr' ? 'Minuteur' : 'Timer'}</Text>
+              <Text style={styles.infoStripText}>💧 {language === 'fr' ? 'Quantité' : 'Amount'}</Text>
+            </View>
             <TimerWidget label={language === 'fr' ? 'Session tire-lait' : 'Pump session'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
             <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
           </View>
         ) : null}
 
         {type === 'measurement' ? (
-          <View style={{ gap: 16 }}>
-            <Input label={language === 'fr' ? 'Poids (kg)' : 'Weight (kg)'} value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" inputMode="decimal" />
-            <Input label={language === 'fr' ? 'Taille (cm)' : 'Height (cm)'} value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" inputMode="decimal" />
-            <Input label={language === 'fr' ? 'Perimetre cranien (cm)' : 'Head circumference (cm)'} value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" inputMode="decimal" />
-            <Input label={language === 'fr' ? 'Temperature (C)' : 'Temperature (C)'} value={tempC} onChangeText={setTempC} keyboardType="decimal-pad" inputMode="decimal" />
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'MEASURE FLOW' : 'MEASURE FLOW'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Croissance et taille' : 'Growth and size'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
+            <View style={styles.stack}>
+              <Input label={language === 'fr' ? 'Poids (kg)' : 'Weight (kg)'} value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" inputMode="decimal" />
+              <Input label={language === 'fr' ? 'Taille (cm)' : 'Height (cm)'} value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" inputMode="decimal" />
+              <Input label={language === 'fr' ? 'Perimetre cranien (cm)' : 'Head circumference (cm)'} value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" inputMode="decimal" />
+              <Input label={language === 'fr' ? 'Temperature (C)' : 'Temperature (C)'} value={tempC} onChangeText={setTempC} keyboardType="decimal-pad" inputMode="decimal" />
+            </View>
           </View>
         ) : null}
 
         {type === 'medication' ? (
-          <View style={{ gap: 16 }}>
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'MEDICINE FLOW' : 'MEDICINE FLOW'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Nom, dose et contexte' : 'Name, dosage and context'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
+            <View style={styles.infoStrip}>
+              <Text style={styles.infoStripText}>💊 {language === 'fr' ? 'Medicament' : 'Medication'}</Text>
+              <Text style={styles.infoStripText}>🧾 {language === 'fr' ? 'Dosage' : 'Dosage'}</Text>
+              <Text style={styles.infoStripText}>📝 {language === 'fr' ? 'Contexte' : 'Context'}</Text>
+            </View>
             <Input label={language === 'fr' ? 'Nom du medicament' : 'Medication name'} value={name} onChangeText={setName} />
             <Input label={language === 'fr' ? 'Dose' : 'Dosage'} value={dosage} onChangeText={setDosage} />
           </View>
         ) : null}
 
         {type === 'milestone' ? (
-          <View style={{ gap: 16 }}>
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'MILESTONE FLOW' : 'MILESTONE FLOW'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Etape et photo' : 'Milestone and photo'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[1]}</Text>
             <Input label={language === 'fr' ? 'Titre' : 'Title'} value={title} onChangeText={setTitle} />
             <Input label="Icon" value={icon} onChangeText={setIcon} />
             <Button
@@ -361,7 +508,10 @@ export default function EntryComposerScreen() {
         ) : null}
 
         {type === 'symptom' ? (
-          <View style={{ gap: 10 }}>
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'SYMPTOM FLOW' : 'SYMPTOM FLOW'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Tags et notes' : 'Tags and notes'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
             <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16, textAlign: 'center' }}>{language === 'fr' ? 'Tags' : 'Tags'}</Text>
             <Segment
               value={symptoms[0] ?? 'irritable'}
@@ -371,14 +521,147 @@ export default function EntryComposerScreen() {
           </View>
         ) : null}
 
-        <Pressable onPress={() => setNotesOpen((current) => !current)} style={{ alignItems: 'center' }}>
-          <Text style={{ color: colors.primary, fontWeight: '800', textAlign: 'center' }}>{notesOpen ? '- Masquer la note' : '+ Ajouter une note'}</Text>
-        </Pressable>
+        <View style={styles.notesToggleWrap}>
+          <Pressable onPress={() => setNotesOpen((current) => !current)} style={styles.notesToggle}>
+            <Text style={{ color: colors.primary, fontWeight: '800', textAlign: 'center' }}>{notesOpen ? '- Masquer la note' : '+ Ajouter une note'}</Text>
+          </Pressable>
+        </View>
         {notesOpen ? <Input label={language === 'fr' ? 'Notes' : 'Notes'} value={notes} onChangeText={setNotes} multiline placeholder={language === 'fr' ? 'Details optionnels' : 'Optional details'} /> : null}
 
-        <Button label={editing ? (language === 'fr' ? 'Mettre a jour' : 'Update entry') : language === 'fr' ? 'Enregistrer' : 'Save entry'} onPress={handleSave} loading={saving} />
-        {editing ? <Button label={language === 'fr' ? 'Supprimer' : 'Delete entry'} onPress={handleDelete} variant="danger" /> : null}
+        <View style={styles.actions}>
+          <Button label={editing ? (language === 'fr' ? 'Mettre a jour' : 'Update entry') : language === 'fr' ? 'Enregistrer' : 'Save entry'} onPress={handleSave} loading={saving} />
+          {editing ? <Button label={language === 'fr' ? 'Supprimer' : 'Delete entry'} onPress={handleDelete} variant="danger" /> : null}
+        </View>
       </Card>
     </Page>
   );
 }
+
+const styles = StyleSheet.create({
+  heroCard: {
+    gap: 14,
+    padding: 20,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#161B22',
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  heroIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  heroIconText: {
+    fontSize: 28,
+  },
+  heroCopy: {
+    flex: 1,
+    gap: 6,
+  },
+  heroEyebrow: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  heroTitle: {
+    color: '#F0F6FC',
+    fontSize: 28,
+    fontWeight: '900',
+    lineHeight: 34,
+  },
+  heroSubtitle: {
+    color: '#8B949E',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  badge: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  closeButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#161B22',
+    borderWidth: 1,
+    borderColor: '#21262D',
+  },
+  closeButtonLabel: {
+    color: '#F0F6FC',
+    fontSize: 18,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  sectionCard: {
+    gap: 14,
+    paddingVertical: 16,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    lineHeight: 24,
+    textAlign: 'left',
+  },
+  sectionBody: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  stack: {
+    gap: 16,
+  },
+  infoStrip: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  infoStripText: {
+    color: '#F0F6FC',
+    fontSize: 12,
+    fontWeight: '800',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  notesToggleWrap: {
+    alignItems: 'center',
+  },
+  notesToggle: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  actions: {
+    gap: 12,
+  },
+});

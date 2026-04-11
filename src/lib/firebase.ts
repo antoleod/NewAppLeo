@@ -10,6 +10,8 @@ const requiredEnv = (name: string, value: string | undefined) => {
   return value;
 };
 
+// Firebase web config is public client configuration, not a secret.
+// Sensitive keys must live in backend secrets or Cloud Functions, not in the Expo bundle.
 export const firebaseConfig = {
   apiKey: requiredEnv('EXPO_PUBLIC_FIREBASE_API_KEY', process.env.EXPO_PUBLIC_FIREBASE_API_KEY),
   authDomain: requiredEnv('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN', process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN),
@@ -17,7 +19,7 @@ export const firebaseConfig = {
   storageBucket: requiredEnv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET', process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET),
   messagingSenderId: requiredEnv('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID', process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
   appId: requiredEnv('EXPO_PUBLIC_FIREBASE_APP_ID', process.env.EXPO_PUBLIC_FIREBASE_APP_ID),
-  measurementId: requiredEnv('EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID', process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID),
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || undefined,
 } as const;
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);

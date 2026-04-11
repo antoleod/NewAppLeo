@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AppState, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Animated, {
   FadeIn,
@@ -387,6 +387,25 @@ export default function HomeScreen() {
   ];
   const hydrationButtons = ['+250ml', '+500ml'];
   const visibleActions = quickActions.filter(([, , key]) => visibility[key]);
+  const timelineChips = useMemo(() => {
+    const source = entries.slice(0, 24);
+    const chips: Array<{ key: string; label: string; count: number; type: string }> = [];
+    const seen = new Map<string, number>();
+
+    for (const entry of source) {
+      const current = seen.get(entry.type) ?? 0;
+      seen.set(entry.type, current + 1);
+      if (current > 0) continue;
+      const label = entry.type.slice(0, 3).toUpperCase();
+      chips.push({ key: `${entry.id}`, label, count: 1, type: entry.type });
+    }
+
+    return chips.map((chip) => ({
+      ...chip,
+      count: seen.get(chip.type) ?? 1,
+    }));
+
+  }, [entries]);
 
   const renderedLabels = useMemo(
     () => ['Nouveau', ...visibleActions.map(([label]) => label), ...presetActions.map((item) => item.label), ...hydrationButtons],
@@ -535,14 +554,21 @@ export default function HomeScreen() {
             <Text style={sectionEyebrowStyle()}>TIMELINE</Text>
             <Text style={sectionTitleStyle()}>24h strip</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 8, marginBottom: 8 }}>
-              {entries.slice(0, 24).map((entry) => (
+              {timelineChips.map((chip) => (
                 <PressScale
-                  key={entry.id}
-                  onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
+                  key={chip.key}
+                  onPress={() => {
+                    const entry = [...entries].find((candidate) => candidate.type === chip.type);
+                    if (!entry) return;
+                    router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } });
+                  }}
                   pressedScale={0.96}
                 >
                   <View style={{ height: 36, minWidth: 48, paddingHorizontal: 12, borderRadius: 20, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 11, fontWeight: '600' }}>{entry.type.slice(0, 3)}</Text>
+                    <Text style={{ color: TEXT, fontSize: 11, fontWeight: '600' }}>
+                      {chip.label}
+                      {chip.count > 1 ? ` ${chip.count}` : ''}
+                    </Text>
                   </View>
                 </PressScale>
               ))}
@@ -674,28 +700,30 @@ export default function HomeScreen() {
       />
 
       <Modal visible={showSaveSheet} transparent animationType="slide" onRequestClose={() => setShowSaveSheet(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.48)', justifyContent: 'flex-end' }}>
-          <SafeAreaView edges={['bottom']} style={{ backgroundColor: CARD, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
-            <View style={{ padding: 20, gap: 16 }}>
-              <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center' }}>
+        <View style={styles.sheetOverlay}>
+          <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
+            <View style={styles.sheetCard}>
+              <Text style={styles.sheetTitle}>
                 {quickTimerMode === 'bottle' ? 'Biberon termine' : 'Sein termine'}
               </Text>
-              <Text style={{ color: MUTED, textAlign: 'center' }}>
+              <Text style={styles.sheetSubtitle}>
                 Duree {Math.max(1, Math.round(timerElapsedSeconds / 60))} min - commence a {formatClock(timerStartedAt ? new Date(timerStartedAt).toISOString() : undefined, locale)}
               </Text>
               <QuantityPicker value={quickAmount} onChange={setQuickAmount} largeTouchMode={appSettings.largeTouchMode} />
-              <Button label="Save" onPress={saveQuickTimerEntry} />
-              <Button
-                label="Cancel"
-                variant="ghost"
-                onPress={() => {
-                  setQuickTimerMode(null);
-                  setShowSaveSheet(false);
-                  setTimerStartedAt(null);
-                  setTimerElapsedSeconds(0);
-                  setQuickAmount(150);
-                }}
-              />
+              <View style={styles.sheetActions}>
+                <Button label="Save" onPress={saveQuickTimerEntry} />
+                <Button
+                  label="Cancel"
+                  variant="ghost"
+                  onPress={() => {
+                    setQuickTimerMode(null);
+                    setShowSaveSheet(false);
+                    setTimerStartedAt(null);
+                    setTimerElapsedSeconds(0);
+                    setQuickAmount(150);
+                  }}
+                />
+              </View>
             </View>
           </SafeAreaView>
         </View>
@@ -703,3 +731,46 @@ export default function HomeScreen() {
     </Page>
   );
 }
+
+const styles = StyleSheet.create({
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  sheetSafeArea: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetCard: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    borderRadius: 28,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+    paddingHorizontal: 22,
+    paddingVertical: 22,
+    gap: 18,
+  },
+  sheetTitle: {
+    color: TEXT,
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  sheetSubtitle: {
+    color: MUTED,
+    textAlign: 'center',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  sheetActions: {
+    gap: 12,
+  },
+});

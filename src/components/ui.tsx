@@ -97,6 +97,7 @@ export function Button({
   label,
   onPress,
   variant = 'primary',
+  size = 'md',
   loading = false,
   disabled = false,
   fullWidth = true,
@@ -104,6 +105,7 @@ export function Button({
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  size?: 'sm' | 'md';
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
@@ -115,10 +117,11 @@ export function Button({
       : variant === 'secondary'
         ? theme.blue
         : variant === 'danger'
-          ? theme.red
+      ? theme.red
           : 'transparent';
   const color = variant === 'ghost' ? theme.textPrimary : variant === 'primary' ? theme.accentText : '#ffffff';
   const borderColor = variant === 'ghost' ? theme.border : 'transparent';
+  const isSmall = size === 'sm';
 
   return (
     <Pressable
@@ -129,17 +132,23 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         {
+          minHeight: isSmall ? 40 : 48,
           width: fullWidth ? '100%' : undefined,
           backgroundColor: background,
           borderColor,
           opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
+          shadowColor: variant === 'ghost' ? 'transparent' : theme.textPrimary,
+          shadowOpacity: variant === 'ghost' ? 0 : 0.08,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: variant === 'ghost' ? 0 : 2,
         },
       ]}
     >
       {loading ? (
         <ActivityIndicator color={variant === 'ghost' ? theme.accent : '#ffffff'} />
       ) : (
-        <Text style={[styles.buttonLabel, { color }]}>{label}</Text>
+        <Text style={[styles.buttonLabel, { color, fontSize: isSmall ? 13 : 15 }]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -374,15 +383,15 @@ const styles = StyleSheet.create({
   button: {
     minHeight: 48,
     paddingHorizontal: spacing.lg,
-    borderRadius: radii.md,
+    borderRadius: radii.pill,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
   buttonLabel: {
     ...typography.pill,
-    fontSize: 15,
     fontWeight: '800',
+    letterSpacing: 0.2,
   },
   field: {
     gap: 8,
