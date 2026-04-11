@@ -1,4 +1,4 @@
-import { EntryRecord } from '@/types';
+import { EntryRecord, UserProfile } from '@/types';
 
 export function getMeanFeedingInterval(entries: EntryRecord[]) {
   const feeds = entries
@@ -11,4 +11,64 @@ export function getMeanFeedingInterval(entries: EntryRecord[]) {
 
   const intervals = feeds.slice(1).map((value, index) => value - feeds[index]);
   return intervals.reduce((sum, value) => sum + value, 0) / intervals.length;
+}
+
+export interface SmartAlert {
+  id: string;
+  title: string;
+  body: string;
+  tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
+  actionLabel?: string;
+  targetType?: EntryRecord['type'];
+}
+
+function hoursSince(timestamp?: string) {
+  if (!timestamp) return null;
+  return (Date.now() - new Date(timestamp).getTime()) / 36e5;
+}
+
+export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile | null): SmartAlert[] {
+  const alerts: SmartAlert[] = [];
+  const sorted = [...entries].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+  const lastFeed = sorted.find((entry) => entry.type === 'feed');
+  const lastSleep = sorted.find((entry) => entry.type === 'sleep');
+  const lastMedication = sorted.find((entry) => entry.type === 'medication');
+
+  const feedHours = hoursSince(lastFeed?.occurredAt);
+  if (feedHours !== null && feedHours >= 3) {
+    alerts.push({
+      id: 'feed-due',
+      title: 'Feeding due',
+      body: `Last feed was ${Math.round(feedHours * 10) / 10}h ago.`,
+      tone: 'warning',
+      actionLabel: 'Log feed',
+      targetType: 'feed',
+    });
+  }
+
+  const sleepHours = hoursSince(lastSleep?.occurredAt);
+  if (sleepHours !== null && sleepHours >= 6) {
+    alerts.push({
+      id: 'sleep-due',
+      title: 'Nap check',
+      body: profile?.babyName ? `${profile.babyName} has been awake for a while.` : 'Baby may be ready for a nap.',
+      tone: 'secondary',
+      actionLabel: 'Log sleep',
+      targetType: 'sleep',
+    });
+  }
+
+  const medicationHours = hoursSince(lastMedication?.occurredAt);
+  if (medicationHours !== null && medicationHours >= 6) {
+    alerts.push({
+      id: 'med-due',
+      title: 'Medication review',
+      body: 'Check if the next dose or follow-up is due.',
+      tone: 'danger',
+      actionLabel: 'Log medication',
+      targetType: 'medication',
+    });
+  }
+
+  return alerts.slice(0, 3);
 }

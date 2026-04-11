@@ -23,6 +23,7 @@ const MUTED = '#8B949E';
 const FILTERS: Array<{ label: string; value: EntryType | 'all' }> = [
   { label: 'Tout', value: 'all' },
   { label: 'Feed', value: 'feed' },
+  { label: 'Food', value: 'food' },
   { label: 'Sleep', value: 'sleep' },
   { label: 'Diaper', value: 'diaper' },
   { label: 'Pump', value: 'pump' },
@@ -34,6 +35,7 @@ const FILTERS: Array<{ label: string; value: EntryType | 'all' }> = [
 
 function iconColor(type: EntryType) {
   if (type === 'feed') return GOLD;
+  if (type === 'food') return '#F0B85A';
   if (type === 'sleep') return BLUE;
   if (type === 'diaper') return RED;
   if (type === 'medication') return GREEN;
@@ -49,6 +51,8 @@ function getDetail(entry: EntryRecord) {
       return entry.payload.mode === 'bottle'
         ? `${entry.payload.amountMl ?? 0} ml`
         : `${entry.payload.durationMin ?? 0} min · ${entry.payload.side ?? 'left'}`;
+    case 'food':
+      return [entry.payload.foodName, entry.payload.quantity].filter(Boolean).join(' · ') || 'Food';
     case 'sleep':
       return `${entry.payload.durationMin ?? 0} min`;
     case 'diaper':
@@ -307,11 +311,11 @@ export default function HistoryScreen() {
     // Only shift the initial empty view to the latest available day.
   }, [dayEntries.length, entries.length, latestEntryDate]);
 
-  const filteredEntries = useMemo(
-    () => dayEntries.filter((entry) => filter === 'all' || entry.type === filter),
-    [dayEntries, filter],
+  const timelineEntries = useMemo(
+    () => entries.filter((entry) => filter === 'all' || entry.type === filter).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
+    [entries, filter],
   );
-  const groupedTimeline = useMemo(() => groupByDay(filteredEntries), [filteredEntries]);
+  const unifiedTimeline = useMemo(() => groupByDay(timelineEntries), [timelineEntries]);
   const yesterdayEntries = useMemo(
     () => entries.filter((entry) => isSameDay(entry.occurredAt, subtractDays(selectedDate, 1))),
     [entries, selectedDate],
@@ -430,7 +434,7 @@ export default function HistoryScreen() {
   return (
     <Page contentStyle={{ maxWidth: 1040, width: '100%' }}>
       <View style={{ gap: 18 }}>
-        <Heading eyebrow="REPORT" title="Historique & OMS" subtitle="Resume quotidien, courbes de croissance et timeline editable." />
+        <Heading eyebrow="REPORT" title="Historique & OMS" subtitle="Resume quotidien, courbes de croissance, timeline unifiee et export docteur." />
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -605,8 +609,8 @@ export default function HistoryScreen() {
           ) : null}
         </Card>
 
-        {groupedTimeline.length ? (
-          groupedTimeline.map(([day, items]) => (
+        {unifiedTimeline.length ? (
+          unifiedTimeline.map(([day, items]) => (
             <Card key={day} style={{ backgroundColor: CARD, borderColor: BORDER }}>
               <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700' }}>{formatLongDate(day)}</Text>
               <View style={{ gap: 10 }}>

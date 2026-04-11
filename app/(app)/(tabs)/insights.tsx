@@ -68,6 +68,7 @@ export default function InsightsScreen() {
     { label: language === 'fr' ? 'Lait' : 'Bottle', value: `${summary.today.bottleMl} ml`, color: BLUE },
     { label: language === 'fr' ? 'Sommeil' : 'Sleep', value: formatDuration(summary.today.sleepMinutes), color: GREEN },
     { label: language === 'fr' ? 'Couches' : 'Diapers', value: String(summary.today.diaperCount), color: '#F778BA' },
+    { label: language === 'fr' ? 'Repas' : 'Food', value: String(summary.today.foodCount), color: '#F0B85A' },
   ];
 
   if (!entries.length) {

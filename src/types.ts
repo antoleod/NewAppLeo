@@ -3,6 +3,7 @@ export type AppLanguage = 'fr' | 'es' | 'en' | 'nl';
 
 export type EntryType =
   | 'feed'
+  | 'food'
   | 'sleep'
   | 'diaper'
   | 'pump'
@@ -19,6 +20,8 @@ export interface EntryPayload {
   side?: BreastSide;
   durationMin?: number;
   amountMl?: number;
+  foodName?: string;
+  quantity?: string;
   pee?: number;
   poop?: number;
   vomit?: number;

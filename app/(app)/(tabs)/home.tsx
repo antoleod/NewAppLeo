@@ -16,14 +16,16 @@ import { Button, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
-import { getMeanFeedingInterval } from '@/lib/patterns';
+import { buildSmartAlerts, getMeanFeedingInterval } from '@/lib/patterns';
 import {
   defaultAppSettings,
   defaultModuleVisibility,
   getActiveBaby,
+  getBabies,
   getAppSettings,
   getModuleVisibility,
   getMomHydration,
+  setActiveBabyId,
   setMomHydration,
 } from '@/lib/storage';
 import { QuantityPicker } from '@/components/QuantityPicker';
@@ -276,6 +278,7 @@ export default function HomeScreen() {
   const { entries, summary, addEntry } = useAppData();
   const [hydration, setHydration] = useState(0);
   const [babyId, setBabyId] = useState<string | null>(null);
+  const [babies, setBabies] = useState<Array<{ id: string; name: string; birthDate: string }>>([]);
   const [visibility, setVisibility] = useState(defaultModuleVisibility);
   const [appSettings, setAppSettingsState] = useState(defaultAppSettings);
   const [quickTimerMode, setQuickTimerMode] = useState<QuickTimerMode>(null);
@@ -292,6 +295,7 @@ export default function HomeScreen() {
   const lastDiaper = useMemo(() => entries.find((entry) => entry.type === 'diaper'), [entries]);
   const lastMeasurement = useMemo(() => entries.find((entry) => entry.type === 'measurement'), [entries]);
   const meanInterval = getMeanFeedingInterval(entries);
+  const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
   const nextFeedDueIn = useMemo(() => {
     if (!meanInterval || !lastFeed) return null;
     return new Date(lastFeed.occurredAt).getTime() + meanInterval - now;
@@ -339,6 +343,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const refresh = async () => {
+      setBabies(await getBabies());
       const activeBaby = await getActiveBaby();
       if (!activeBaby) return;
       setBabyId(activeBaby.id);
@@ -376,6 +381,7 @@ export default function HomeScreen() {
     ['Sommeil', '/entry/sleep', 'sleep'],
     ['Tire-lait', '/entry/pump', 'pump'],
     ['Medicament', '/entry/medication', 'medication'],
+    ['Repas', '/entry/food', 'food'],
     ['Mesure', '/entry/measurement', 'measurement'],
     ['Etape', '/entry/milestone', 'milestone'],
   ];
@@ -459,6 +465,12 @@ export default function HomeScreen() {
 
   const recentEntries = entries.slice(0, 6);
 
+  async function switchBaby(nextBaby: { id: string }) {
+    await setActiveBabyId(nextBaby.id);
+    setBabyId(nextBaby.id);
+    setHydration(await getMomHydration(nextBaby.id));
+  }
+
   return (
     <Page contentStyle={{ maxWidth: 980, width: '100%' }}>
       <View style={{ backgroundColor: BG, borderRadius: 16, paddingTop: 12, paddingHorizontal: 12, paddingBottom: 80 }}>
@@ -471,6 +483,39 @@ export default function HomeScreen() {
             <HeaderAction label="Nouveau" onPress={() => router.push('/entry/feed')} />
           </View>
         </Animated.View>
+
+        {smartAlerts.length ? (
+          <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ marginBottom: 10 }}>
+            <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+              <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'RAPPELS' : 'REMINDERS'}</Text>
+              <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Signaux intelligents' : 'Smart signals'}</Text>
+              <View style={{ gap: 8 }}>
+                {smartAlerts.map((alert) => (
+                  <Pressable
+                    key={alert.id}
+                    onPress={() => {
+                      if (alert.targetType) {
+                        router.push({ pathname: '/entry/[type]', params: { type: alert.targetType } });
+                      }
+                    }}
+                    style={({ pressed }) => ({
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      backgroundColor: pressed ? '#1B2430' : BG,
+                      gap: 4,
+                    })}
+                  >
+                    <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{alert.title}</Text>
+                    <Text style={{ color: MUTED, fontSize: 12 }}>{alert.body}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </Animated.View>
+        ) : null}
 
         <Animated.View entering={FadeIn.duration(300).delay(80)} style={{ marginBottom: 10 }}>
           <View style={{ minHeight: 80, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -491,6 +536,55 @@ export default function HomeScreen() {
             </View>
           </View>
         </Animated.View>
+
+        {babies.length ? (
+          <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: 10 }}>
+            <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+              <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'PROFILS' : 'PROFILES'}</Text>
+              <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Changer de bebe' : 'Switch baby'}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 6 }}>
+                {babies.slice(0, 4).map((baby) => {
+                  const active = baby.id === babyId;
+                  return (
+                    <Pressable
+                      key={baby.id}
+                      onPress={() => {
+                        void switchBaby(baby);
+                      }}
+                      style={{
+                        minHeight: 40,
+                        paddingHorizontal: 14,
+                        borderRadius: 999,
+                        borderWidth: 1,
+                        borderColor: active ? GOLD : BORDER,
+                        backgroundColor: active ? `${GOLD}22` : BG,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ color: active ? GOLD : TEXT, fontWeight: '700' }}>{baby.name}</Text>
+                    </Pressable>
+                  );
+                })}
+                <Pressable
+                  onPress={() => router.push('/profile')}
+                  style={{
+                    minHeight: 40,
+                    paddingHorizontal: 14,
+                    borderRadius: 999,
+                    borderWidth: 1,
+                    borderColor: BORDER,
+                    backgroundColor: BG,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ color: TEXT, fontWeight: '700' }}>{language === 'fr' ? 'Gestion' : 'Manage'}</Text>
+                </Pressable>
+              </ScrollView>
+            </View>
+          </Animated.View>
+        ) : null}
 
         <Animated.View entering={FadeIn.duration(300).delay(160)} style={{ marginBottom: 10 }}>
           <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
@@ -544,6 +638,7 @@ export default function HomeScreen() {
             { label: 'BOTTLE', value: `${summary.today.bottleMl} ml` },
             { label: 'SLEEP', value: `${summary.today.sleepMinutes}m` },
             { label: 'DIAPERS', value: String(summary.today.diaperCount) },
+            { label: 'FOOD', value: String(summary.today.foodCount) },
           ].map((item, index) => (
             <StatCell key={item.label} label={item.label} value={item.value} index={index} />
           ))}
@@ -579,7 +674,7 @@ export default function HomeScreen() {
         <Animated.View entering={FadeIn.duration(300).delay(400)} style={{ marginBottom: 10 }}>
           <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 6 }}>
             <Text style={sectionEyebrowStyle()}>ACTIONS RAPIDES</Text>
-            <Text style={sectionTitleStyle()}>QuickActionBar</Text>
+            <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Actions directes' : 'Quick actions'}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {visibleActions.map(([label, href]) => (
                 <PressScale
@@ -604,6 +699,20 @@ export default function HomeScreen() {
                 </PressScale>
               ))}
             </ScrollView>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+              {[
+                { label: '+150 ml', href: '/entry/feed?presetMode=bottle&presetAmount=150' },
+                { label: '+ diaper', href: '/entry/diaper' },
+                { label: '+ sleep', href: '/entry/sleep' },
+                { label: '+ food', href: '/entry/food' },
+              ].map((item) => (
+                <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.95}>
+                  <View style={{ height: 38, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{item.label}</Text>
+                  </View>
+                </PressScale>
+              ))}
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 6 }}>
               {presetActions.map((preset) => (
                 <PressScale key={preset.label} onPress={() => router.push(preset.href as any)} pressedScale={0.94}>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -57,24 +57,56 @@ export function DateTimeField({
   }
 
   return (
-    <View style={{ gap: 8 }}>
-      <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{label}</Text>
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <Pressable
-          onPress={() => setPickerMode('date')}
-          style={{ flex: 1, minHeight: 48, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.backgroundAlt, justifyContent: 'center', paddingHorizontal: 14 }}
-        >
-          <Text style={{ color: colors.text, fontWeight: '700' }}>{formatDate(value)}</Text>
+    <View style={styles.container}>
+      <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+      <View style={styles.row}>
+        <Pressable onPress={() => setPickerMode('date')} style={[styles.pill, { backgroundColor: colors.backgroundAlt, borderColor: colors.border }]}>
+          <Text style={[styles.pillLabel, { color: colors.muted }]}>Date</Text>
+          <Text style={[styles.pillValue, { color: colors.text }]}>{formatDate(value)}</Text>
         </Pressable>
-        <Pressable
-          onPress={() => setPickerMode('time')}
-          style={{ flex: 1, minHeight: 48, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.backgroundAlt, justifyContent: 'center', paddingHorizontal: 14 }}
-        >
-          <Text style={{ color: colors.text, fontWeight: '700' }}>{formatTime(value)}</Text>
+        <Pressable onPress={() => setPickerMode('time')} style={[styles.pill, { backgroundColor: colors.backgroundAlt, borderColor: colors.border }]}>
+          <Text style={[styles.pillLabel, { color: colors.muted }]}>Heure</Text>
+          <Text style={[styles.pillValue, { color: colors.text }]}>{formatTime(value)}</Text>
         </Pressable>
       </View>
-      <Text style={{ color: colors.muted, fontSize: 12 }}>{formatDateTime(value)}</Text>
+      <Text style={[styles.summary, { color: colors.muted }]}>{formatDateTime(value)}</Text>
       {pickerMode ? <DateTimePicker value={value} mode={pickerMode} display="default" onChange={handleChange} /> : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  pill: {
+    flex: 1,
+    minHeight: 56,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+  },
+  pillLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+  },
+  pillValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  summary: {
+    fontSize: 12,
+  },
+});

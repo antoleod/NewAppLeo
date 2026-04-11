@@ -55,6 +55,7 @@ export interface CustomThemeSettings {
 
 export const defaultModuleVisibility: ModuleVisibility = {
   feed: true,
+  food: true,
   sleep: true,
   diaper: true,
   pump: true,

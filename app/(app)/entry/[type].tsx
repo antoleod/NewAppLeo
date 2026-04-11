@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 const typeLabels: Record<EntryType, string> = {
   feed: 'Feed',
+  food: 'Food',
   sleep: 'Sleep',
   diaper: 'Diaper',
   pump: 'Pump',
@@ -49,6 +50,14 @@ const typeMeta: Record<
     toneSoft: 'rgba(201,162,39,0.16)',
     details: ['Timer', 'Quick amount', 'Breast or bottle'],
     badges: ['🍼 Feed', '⏱ Timer', '⚡ Fast log'],
+  },
+  food: {
+    icon: '🍲',
+    eyebrow: 'Food tracking',
+    tone: '#F0B85A',
+    toneSoft: 'rgba(240,184,90,0.16)',
+    details: ['Food name', 'Quantity', 'Optional notes'],
+    badges: ['🍲 Meal', '🥄 Quantity', '📝 Notes'],
   },
   sleep: {
     icon: '😴',
@@ -112,6 +121,8 @@ function typeSubtitle(type: EntryType) {
   switch (type) {
     case 'feed':
       return 'Track breast or bottle sessions with a timer or quick amount picker.';
+    case 'food':
+      return 'Log meals with a name, quantity, and optional notes.';
     case 'sleep':
       return 'Capture a nap or overnight block with a simple duration.';
     case 'diaper':
@@ -143,6 +154,8 @@ export default function EntryComposerScreen() {
   const [mode, setMode] = useState<'breast' | 'bottle'>('bottle');
   const [side, setSide] = useState('left');
   const [amountMl, setAmountMl] = useState('150');
+  const [foodName, setFoodName] = useState('');
+  const [quantity, setQuantity] = useState('');
   const [durationMin, setDurationMin] = useState('30');
   const [pee, setPee] = useState('1');
   const [poop, setPoop] = useState('0');
@@ -176,6 +189,10 @@ export default function EntryComposerScreen() {
         setAmountMl(String(editing.payload?.amountMl ?? 150));
         setSide(editing.payload?.side ?? 'left');
         setDurationMin(String(editing.payload?.durationMin ?? 30));
+        break;
+      case 'food':
+        setFoodName(editing.payload?.foodName ?? '');
+        setQuantity(editing.payload?.quantity ?? '');
         break;
       case 'sleep':
       case 'pump':
@@ -230,6 +247,8 @@ export default function EntryComposerScreen() {
         return mode === 'bottle'
           ? { mode: 'bottle', amountMl: Number(amountMl) || 0, notes }
           : { mode: 'breast', side: side as BreastSide, durationMin: Number(durationMin) || 0, amountMl: Number(amountMl) || 0, notes };
+      case 'food':
+        return { foodName, quantity, notes };
       case 'sleep':
         return { durationMin: Number(durationMin) || 0, notes };
       case 'diaper':
@@ -262,6 +281,8 @@ export default function EntryComposerScreen() {
     switch (type) {
       case 'feed':
         return mode === 'bottle' ? 'Bottle feed' : 'Breast feed';
+      case 'food':
+        return foodName || 'Food log';
       case 'sleep':
         return 'Sleep session';
       case 'diaper':
@@ -409,6 +430,16 @@ export default function EntryComposerScreen() {
                 <QuantityPicker label={language === 'fr' ? 'Ml estimes' : 'Estimated ml'} value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
               </View>
             )}
+          </View>
+        ) : null}
+
+        {type === 'food' ? (
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'FOOD FLOW' : 'FOOD FLOW'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Repas et portions' : 'Meals and portions'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
+            <Input label={language === 'fr' ? 'Nom de l aliment' : 'Food name'} value={foodName} onChangeText={setFoodName} placeholder={language === 'fr' ? 'Pomme, riz, puree...' : 'Apple, rice, puree...'} />
+            <Input label={language === 'fr' ? 'Quantite' : 'Quantity'} value={quantity} onChangeText={setQuantity} placeholder="250 ml / 120 g / 1 portion" />
           </View>
         ) : null}
 

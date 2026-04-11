@@ -1,5 +1,4 @@
-import { Text, View } from 'react-native';
-import { Input } from '@/components/ui';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 
 function toDateInputValue(value: Date) {
@@ -37,33 +36,76 @@ export function DateTimeField({
   const { colors } = useTheme();
 
   return (
-    <View style={{ gap: 8 }}>
-      <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{label}</Text>
-      <Input
-        label="Date"
-        value={toDateInputValue(value)}
-        onChangeText={(next) => {
-          const [year, month, day] = next.split('-').map(Number);
-          if (!year || !month || !day) return;
-          const merged = new Date(value);
-          merged.setFullYear(year, month - 1, day);
-          onChange(merged);
-        }}
-        placeholder="YYYY-MM-DD"
-      />
-      <Input
-        label="Heure"
-        value={toTimeInputValue(value)}
-        onChangeText={(next) => {
-          const [hours, minutes] = next.split(':').map(Number);
-          if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return;
-          const merged = new Date(value);
-          merged.setHours(hours, minutes, 0, 0);
-          onChange(merged);
-        }}
-        placeholder="HH:mm"
-      />
-      <Text style={{ color: colors.muted, fontSize: 12 }}>{formatDateTime(value)}</Text>
+    <View style={styles.container}>
+      <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+      <View style={styles.row}>
+        <View style={styles.field}>
+          <Text style={[styles.fieldLabel, { color: colors.muted }]}>Date</Text>
+          <TextInput
+            value={toDateInputValue(value)}
+            onChangeText={(next) => {
+              const [year, month, day] = next.split('-').map(Number);
+              if (!year || !month || !day) return;
+              const merged = new Date(value);
+              merged.setFullYear(year, month - 1, day);
+              onChange(merged);
+            }}
+            style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}
+            placeholder="YYYY-MM-DD"
+          />
+        </View>
+        <View style={styles.field}>
+          <Text style={[styles.fieldLabel, { color: colors.muted }]}>Heure</Text>
+          <TextInput
+            value={toTimeInputValue(value)}
+            onChangeText={(next) => {
+              const [hours, minutes] = next.split(':').map(Number);
+              if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return;
+              const merged = new Date(value);
+              merged.setHours(hours, minutes, 0, 0);
+              onChange(merged);
+            }}
+            style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}
+            placeholder="HH:mm"
+          />
+        </View>
+      </View>
+      <Text style={[styles.summary, { color: colors.muted }]}>{formatDateTime(value)}</Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  field: {
+    flex: 1,
+    gap: 6,
+  },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  input: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  summary: {
+    fontSize: 12,
+  },
+});

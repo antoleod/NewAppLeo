@@ -10,6 +10,7 @@ export interface TimelineSection {
 export interface DashboardSummary {
   today: {
     feedCount: number;
+    foodCount: number;
     bottleMl: number;
     sleepMinutes: number;
     diaperCount: number;
@@ -29,6 +30,8 @@ export function getEntryTitle(entry: EntryRecord) {
   switch (entry.type) {
     case 'feed':
       return payload.mode === 'bottle' ? 'Bottle feed' : 'Breast feed';
+    case 'food':
+      return payload.foodName ?? 'Food log';
     case 'sleep':
       return 'Sleep session';
     case 'diaper':
@@ -57,6 +60,8 @@ export function getEntrySubtitle(entry: EntryRecord) {
       return payload.mode === 'bottle'
         ? `${payload.amountMl ?? 0} ml · ${time}`
         : `${payload.durationMin ?? 0} min · ${payload.side ?? 'side'} · ${time}`;
+    case 'food':
+      return [payload.foodName ?? 'Food', payload.quantity, time].filter(Boolean).join(' · ');
     case 'sleep':
       return `${formatDuration(payload.durationMin ?? 0)} · ${time}`;
     case 'diaper':
@@ -153,6 +158,7 @@ export function getTodaySummary(entries: EntryRecord[], profile?: UserProfile | 
   const todaysEntries = entries.filter((entry) => isSameDay(entry.occurredAt, today));
 
   const feedEntries = todaysEntries.filter((entry) => entry.type === 'feed');
+  const foodEntries = todaysEntries.filter((entry) => entry.type === 'food');
   const bottleMl = feedEntries
     .filter((entry) => payloadOf(entry).mode === 'bottle')
     .reduce((sum, entry) => sum + (payloadOf(entry).amountMl ?? 0), 0);
@@ -171,6 +177,7 @@ export function getTodaySummary(entries: EntryRecord[], profile?: UserProfile | 
   return {
     today: {
       feedCount,
+      foodCount: foodEntries.length,
       bottleMl,
       sleepMinutes,
       diaperCount,
@@ -200,6 +207,12 @@ export function getTodaySummary(entries: EntryRecord[], profile?: UserProfile | 
         value: String(diaperCount),
         detail: `${profile?.goalDiapersPerDay ?? 6} daily goal`,
         tone: 'warning',
+      },
+      {
+        label: 'Food',
+        value: String(foodEntries.length),
+        detail: 'Meals logged today',
+        tone: 'secondary',
       },
     ],
     recent,
