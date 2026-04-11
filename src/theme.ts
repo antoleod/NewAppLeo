@@ -77,20 +77,91 @@ function withAlpha(hex: string, alpha: string) {
 
 const variantOverrides: Record<ThemeVariant, Partial<Record<ThemePaletteMode, Partial<Theme>>>> = {
   sage: {
-    nuit: { accent: '#4d7c6b', blue: '#c18f54', green: '#74C69D', bgCardAlt: '#1B2A24' },
-    jour: { accent: '#4d7c6b', blue: '#c18f54', green: '#2F7D57', bgCardAlt: '#EEF4EF' },
+    nuit: { 
+      accent: '#4d7c6b', 
+      blue: '#c18f54', 
+      green: '#74C69D', 
+      bgCardAlt: '#1B2A24',
+      borderActive: '#4d7c6b',
+    },
+    jour: { 
+      accent: '#4d7c6b', 
+      blue: '#c18f54', 
+      green: '#2F7D57', 
+      bgCardAlt: '#EEF4EF',
+      borderActive: '#4d7c6b',
+    },
   },
   rose: {
-    nuit: { accent: '#D08BA0', green: '#66C28F', bgCardAlt: '#241A1F' },
-    jour: { accent: '#B95B74', green: '#3D865A', bgCardAlt: '#F7ECEF' },
+    nuit: { 
+      accent: '#D08BA0', 
+      green: '#66C28F', 
+      bgCardAlt: '#241A1F',
+      blue: '#E8A1C3',
+      borderActive: '#D08BA0',
+    },
+    jour: { 
+      accent: '#B95B74', 
+      green: '#3D865A', 
+      bgCardAlt: '#F7ECEF',
+      blue: '#D97998',
+      borderActive: '#B95B74',
+    },
   },
   navy: {
-    nuit: { accent: '#8EB5EA', blue: '#7CC2FF', bgCardAlt: '#132033' },
-    jour: { accent: '#1D4E89', blue: '#2D78D0', bgCardAlt: '#EEF3F8' },
+    nuit: { 
+      accent: '#8EB5EA', 
+      blue: '#7CC2FF', 
+      bgCardAlt: '#132033',
+      green: '#6EC994',
+      borderActive: '#8EB5EA',
+    },
+    jour: { 
+      accent: '#1D4E89', 
+      blue: '#2D78D0', 
+      bgCardAlt: '#EEF3F8',
+      green: '#2D7A3A',
+      borderActive: '#1D4E89',
+    },
   },
   sand: {
-    nuit: { accent: '#D9B97D', green: '#7AB58E', bgCardAlt: '#201B16' },
-    jour: { accent: '#8C6B3F', green: '#4B8A59', bgCardAlt: '#F6F0E6' },
+    nuit: { 
+      accent: '#D9B97D', 
+      green: '#7AB58E', 
+      bgCardAlt: '#201B16',
+      blue: '#E8C493',
+      borderActive: '#D9B97D',
+    },
+    jour: { 
+      accent: '#8C6B3F', 
+      green: '#4B8A59', 
+      bgCardAlt: '#F6F0E6',
+      blue: '#B89968',
+      borderActive: '#8C6B3F',
+    },
+  },
+};
+
+export const themeVariantDescriptions: Record<ThemeVariant, { label: string; description: string; emoji: string }> = {
+  sage: {
+    label: 'Sage',
+    emoji: '🌿',
+    description: 'Calming greens and earthy tones – perfect for a soothing parenting experience',
+  },
+  rose: {
+    label: 'Rose',
+    emoji: '🌸',
+    description: 'Warm pinks and natural accents – gentle and nurturing for baby care',
+  },
+  navy: {
+    label: 'Navy',
+    emoji: '🌊',
+    description: 'Professional blues – structured and clear for organized tracking',
+  },
+  sand: {
+    label: 'Sand',
+    emoji: '🏜️',
+    description: 'Warm neutrals – cozy and natural, inspired by desert sunsets',
   },
 };
 

@@ -373,6 +373,116 @@ export function EntryCard({
   );
 }
 
+export function Toggle({
+  value,
+  onChange,
+  label,
+}: {
+  value: boolean;
+  onChange: (value: boolean) => void;
+  label?: string;
+}) {
+  const { theme } = useTheme();
+  return (
+    <Pressable
+      onPress={() => onChange(!value)}
+      style={[
+        styles.toggleContainer,
+        {
+          backgroundColor: value ? theme.accent : theme.pillBg,
+          borderColor: value ? theme.accent : theme.border,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.toggleThumb,
+          {
+            backgroundColor: value ? theme.accentText : theme.textMuted,
+            transform: [{ translateX: value ? 22 : 2 }],
+          },
+        ]}
+      />
+      {label ? (
+        <Text style={[styles.toggleLabel, { color: value ? theme.accentText : theme.textPrimary }]}>
+          {label}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+export function ColorSwatch({
+  color,
+  label,
+}: {
+  color: string;
+  label?: string;
+}) {
+  const { theme } = useTheme();
+  return (
+    <View style={styles.swatchContainer}>
+      <View
+        style={[
+          styles.swatch,
+          {
+            backgroundColor: color,
+            borderColor: theme.border,
+            shadowColor: color,
+          },
+        ]}
+      />
+      {label ? (
+        <Text style={[styles.swatchLabel, { color: theme.textMuted }]}>
+          {label}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+export function SectionHeader({
+  title,
+  action,
+}: {
+  title: string;
+  action?: React.ReactNode;
+}) {
+  const { theme } = useTheme();
+  return (
+    <View style={styles.sectionHeaderContainer}>
+      <Text style={[styles.sectionHeaderTitle, { color: theme.textPrimary }]}>
+        {title}
+      </Text>
+      {action}
+    </View>
+  );
+}
+
+export function ButtonGroup({
+  buttons,
+  direction = 'row',
+}: {
+  buttons: Array<{ label: string; onPress: () => void; variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; size?: 'sm' | 'md' }>;
+  direction?: 'row' | 'column';
+}) {
+  return (
+    <View style={[styles.buttonGroup, { flexDirection: direction }]}>
+      {buttons.map((btn, idx) => (
+        <View key={idx} style={{ flex: direction === 'row' ? 1 : undefined }}>
+          <Button
+            label={btn.label}
+            onPress={btn.onPress}
+            variant={btn.variant}
+            size={btn.size}
+            fullWidth
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   page: { flex: 1 },
   photoBackdrop: {
@@ -550,5 +660,55 @@ const styles = StyleSheet.create({
   entryNotes: {
     ...typography.detail,
     lineHeight: 19,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.sm,
+    height: 48,
+    gap: spacing.md,
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: radii.pill,
+  },
+  toggleLabel: {
+    ...typography.pill,
+    fontWeight: '700',
+  },
+  swatchContainer: {
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  swatch: {
+    width: 48,
+    height: 48,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  swatchLabel: {
+    ...typography.detail,
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  sectionHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  sectionHeaderTitle: {
+    ...typography.sectionTitle,
+    fontWeight: '800',
+  },
+  buttonGroup: {
+    gap: spacing.md,
   },
 });
