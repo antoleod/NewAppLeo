@@ -282,14 +282,15 @@ const styles = StyleSheet.create({
   keyboard: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
   loadingText: { fontSize: 19, fontWeight: '700' },
-  shell: { flexGrow: 1, justifyContent: 'flex-start', gap: 18 },
+  shell: { flexGrow: 1, justifyContent: 'space-between' },
   hero: {
-    minHeight: 300,
+    flex: 1,
+    minHeight: 250,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 26,
     paddingTop: 14,
-    paddingBottom: 12,
+    paddingBottom: 8,
     gap: 14,
   },
   heroMoonGlowOuter: {
@@ -372,6 +373,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 20,
+    marginTop: 12,
   },
   brand: {
     fontSize: 15,
