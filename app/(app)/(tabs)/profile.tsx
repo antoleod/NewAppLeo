@@ -99,20 +99,24 @@ export default function ProfileScreen() {
   }, []);
 
   async function handleSave() {
-    const nextPhoto = babyPhotoUri || undefined;
-    await saveProfile({
-      caregiverName: caregiverName.trim(),
-      babyName: babyName.trim(),
-      babyBirthDate: babyBirthDate.trim(),
-      birthWeightKg: Number(birthWeightKg) || undefined,
-      currentWeightKg: Number(currentWeightKg) || undefined,
-      heightCm: Number(heightCm) || undefined,
-      babyNotes: babyNotes.trim() || undefined,
-      babyPhotoUri: nextPhoto,
-      language: language as any,
-    });
-    setBabyPhotoUri(nextPhoto ?? '');
+    try {
+      const nextPhoto = babyPhotoUri || undefined;
+      await saveProfile({
+        caregiverName: caregiverName.trim(),
+        babyName: babyName.trim(),
+        babyBirthDate: babyBirthDate.trim(),
+        birthWeightKg: Number(birthWeightKg) || undefined,
+        currentWeightKg: Number(currentWeightKg) || undefined,
+        heightCm: Number(heightCm) || undefined,
+        babyNotes: babyNotes.trim() || undefined,
+        babyPhotoUri: nextPhoto,
+        language: language as any,
+      });
+      setBabyPhotoUri(nextPhoto ?? '');
       Alert.alert(t('settings.update_success', 'Profile updated'), t('settings.update_success_body', 'Your preferences are now in sync across the app.'));
+    } catch (error: any) {
+      Alert.alert(t('settings.update_failed', 'Update failed'), error?.message ?? t('settings.update_failed_body', 'Please try again.'));
+    }
   }
 
   async function handlePickPhoto() {

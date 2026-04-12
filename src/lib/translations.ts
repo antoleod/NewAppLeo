@@ -120,6 +120,8 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
     'settings.change_language': 'Change language',
     'settings.update_success': 'Profile updated',
     'settings.update_success_body': 'Your language and preferences are now in sync across the app.',
+    'settings.update_failed': 'Update failed',
+    'settings.update_failed_body': 'Please try again.',
     'profile.save_profile': 'Save profile',
   },
   fr: {
@@ -223,6 +225,8 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
     'settings.change_language': 'Changer de langue',
     'settings.update_success': 'Profil mis à jour',
     'settings.update_success_body': "La langue et les préférences sont synchronisées dans l'application.",
+    'settings.update_failed': 'Échec de la mise à jour',
+    'settings.update_failed_body': 'Veuillez réessayer.',
     'profile.save_profile': 'Enregistrer le profil',
   },
   es: {
@@ -326,6 +330,8 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
     'settings.change_language': 'Cambiar idioma',
     'settings.update_success': 'Perfil actualizado',
     'settings.update_success_body': 'El idioma y las preferencias ya están sincronizados en toda la app.',
+    'settings.update_failed': 'Error al actualizar',
+    'settings.update_failed_body': 'Inténtalo de nuevo.',
     'profile.save_profile': 'Guardar perfil',
   },
   nl: {
@@ -429,6 +435,8 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
     'settings.change_language': 'Taal wijzigen',
     'settings.update_success': 'Profiel bijgewerkt',
     'settings.update_success_body': 'De taal en voorkeuren zijn nu overal in sync.',
+    'settings.update_failed': 'Bijwerken mislukt',
+    'settings.update_failed_body': 'Probeer het opnieuw.',
     'profile.save_profile': 'Profiel opslaan',
   },
 };
