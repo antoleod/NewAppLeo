@@ -21,7 +21,7 @@ import { buildLeoProfilePatch, importLeoEntries } from '@/lib/leoData';
 import { getAppSettings, saveBaby, setAppSettings } from '@/lib/storage';
 import { setGuestProfile } from '@/lib/storage';
 
-interface AppDataContextValue {
+export interface AppDataContextValue {
   entries: EntryRecord[];
   loading: boolean;
   summary: ReturnType<typeof getTodaySummary>;
@@ -31,6 +31,8 @@ interface AppDataContextValue {
   seedDemoData: () => Promise<void>;
   entryById: (id: string) => EntryRecord | undefined;
 }
+
+export type AppDataContextType = AppDataContextValue;
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 

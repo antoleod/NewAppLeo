@@ -9,7 +9,14 @@ import {
   updateThemeMode,
   watchProfile,
 } from '@/services/userProfileService';
-import { registerAccount, signInWithEmail, signInWithGoogle, signInWithUsernamePin, signOutUser } from '@/services/authService';
+import {
+  registerAccount,
+  resetPasswordWithEmail,
+  signInWithEmail,
+  signInWithGoogle,
+  signInWithUsernamePin,
+  signOutUser,
+} from '@/services/authService';
 import { clearGuestProfile, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
 
 interface AuthContextValue {
@@ -18,7 +25,9 @@ interface AuthContextValue {
   guestMode: boolean;
   loading: boolean;
   profileLoading: boolean;
-  signInEmail: (payload: { email: string; password: string }) => Promise<void>;
+  signInEmail: (payload: { email: string; password: string } | string, password?: string) => Promise<void>;
+  signUpEmail: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signInGoogle: () => Promise<void>;
   signInUsernamePin: (payload: { username: string; pin: string }) => Promise<void>;
   signInGuest: () => Promise<void>;
@@ -102,12 +111,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       guestMode,
       loading,
       profileLoading,
-      signInEmail: async (payload) => {
+      signInEmail: async (payloadOrEmail, maybePassword) => {
+        const payload =
+          typeof payloadOrEmail === 'string'
+            ? { email: payloadOrEmail, password: maybePassword ?? '' }
+            : payloadOrEmail;
         await clearGuestProfile();
         const result = await signInWithEmail(payload);
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);
+      },
+      signUpEmail: async (email, password) => {
+        const localPart = email.split('@')[0] || 'caregiver';
+        const usernameBase = localPart.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'caregiver';
+        const username = `${usernameBase}${Math.floor(Math.random() * 9000 + 1000)}`;
+        const result = await registerAccount({
+          displayName: localPart,
+          username,
+          email,
+          password,
+          pin: `${Math.floor(Math.random() * 9000 + 1000)}`,
+        });
+        setGuestMode(false);
+        setUser(result.user);
+        setProfile(result.profile);
+      },
+      resetPassword: async (email) => {
+        await resetPasswordWithEmail(email);
       },
       signInGoogle: async () => {
         await clearGuestProfile();

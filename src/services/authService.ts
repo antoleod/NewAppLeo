@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -151,6 +152,10 @@ export async function signInWithUsernamePin(payload: { username: string; pin: st
 
 export async function signOutUser() {
   await signOut(auth);
+}
+
+export async function resetPasswordWithEmail(email: string) {
+  await sendPasswordResetEmail(auth, normalizeEmail(email));
 }
 
 export async function linkUsername(uid: string, username: string) {

@@ -138,14 +138,16 @@ export function Button({
   loading = false,
   disabled = false,
   fullWidth = true,
+  style,
 }: {
   label: string;
-  onPress: () => void;
+  onPress: () => void | Promise<void>;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md';
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
+  style?: any;
 }) {
   const { theme } = useTheme();
   const background =
@@ -180,6 +182,7 @@ export function Button({
           shadowOffset: { width: 0, height: 8 },
           elevation: variant === 'ghost' ? 0 : 2,
         },
+        style,
       ]}
     >
       {loading ? (
