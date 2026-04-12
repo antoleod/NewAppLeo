@@ -117,13 +117,13 @@ export function Heading({
 }) {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
-  const scale = width >= 900 ? 1.08 : width >= 700 ? 1.04 : 1;
+  const scale = width >= 900 ? 1.08 : width >= 700 ? 1.04 : 1.12;
   return (
     <View style={[styles.headingRow, align === 'center' && styles.headingCentered]}>
       <View style={{ flex: 1, gap: spacing.xs, alignItems: align === 'center' ? 'center' : 'flex-start' }}>
-        {eyebrow ? <Text style={[styles.eyebrow, { color: theme.accent, fontSize: 11 * scale }, align === 'center' && { textAlign: 'center' }]}>{eyebrow}</Text> : null}
-        <Text style={[styles.title, { color: theme.textPrimary, fontSize: 22 * scale }, align === 'center' && { textAlign: 'center' }]}>{title}</Text>
-        {subtitle ? <Text style={[styles.subtitle, { color: theme.textMuted, fontSize: 13 * scale }, align === 'center' && { textAlign: 'center' }]}>{subtitle}</Text> : null}
+        {eyebrow ? <Text style={[styles.eyebrow, { color: theme.accent, fontSize: 13 * scale }, align === 'center' && { textAlign: 'center' }]}>{eyebrow}</Text> : null}
+        <Text style={[styles.title, { color: theme.textPrimary, fontSize: 27 * scale }, align === 'center' && { textAlign: 'center' }]}>{title}</Text>
+        {subtitle ? <Text style={[styles.subtitle, { color: theme.textMuted, fontSize: 16 * scale }, align === 'center' && { textAlign: 'center' }]}>{subtitle}</Text> : null}
       </View>
       {action}
     </View>
@@ -171,7 +171,7 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         {
-          minHeight: isSmall ? 40 : 48,
+          minHeight: isSmall ? 50 : 62,
           width: fullWidth ? '100%' : undefined,
           backgroundColor: background,
           borderColor,
@@ -188,7 +188,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={variant === 'ghost' ? theme.accent : '#ffffff'} />
       ) : (
-        <Text style={[styles.buttonLabel, { color, fontSize: isSmall ? 13 : 15 }]}>{label}</Text>
+        <Text style={[styles.buttonLabel, { color, fontSize: isSmall ? 16 : 19 }]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -402,7 +402,7 @@ export function Toggle({
           styles.toggleThumb,
           {
             backgroundColor: value ? theme.accentText : theme.textMuted,
-            transform: [{ translateX: value ? 22 : 2 }],
+            transform: [{ translateX: value ? 26 : 2 }],
           },
         ]}
       />
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
   },
   safe: { flex: 1, zIndex: 1 },
   scroll: {
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     paddingBottom: spacing.xxl,
     flexGrow: 1,
   },
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderRadius: radii.lg,
-    padding: spacing.lg,
+    padding: spacing.xl,
     gap: spacing.md,
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -539,15 +539,15 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.heroName,
-    lineHeight: 36,
+    lineHeight: 42,
   },
   subtitle: {
     ...typography.body,
-    lineHeight: 20,
+    lineHeight: 24,
   },
   button: {
-    minHeight: 48,
-    paddingHorizontal: spacing.lg,
+    minHeight: 62,
+    paddingHorizontal: spacing.xl,
     borderRadius: radii.pill,
     alignItems: 'center',
     justifyContent: 'center',
@@ -559,22 +559,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   field: {
-    gap: 8,
+    gap: 10,
   },
   label: {
     ...typography.statLabel,
     fontWeight: '700',
   },
   input: {
-    minHeight: 48,
+    minHeight: 62,
     borderRadius: radii.md,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
+    paddingVertical: 16,
     ...typography.body,
   },
   textArea: {
-    minHeight: 110,
+    minHeight: 132,
     textAlignVertical: 'top',
   },
   hint: {
@@ -585,13 +585,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderWidth: 1,
     borderRadius: radii.pill,
-    padding: 4,
-    gap: 4,
+    padding: 5,
+    gap: 6,
   },
   segmentItem: {
     flex: 1,
     borderRadius: radii.pill,
-    paddingVertical: 10,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -603,8 +603,8 @@ const styles = StyleSheet.create({
   chip: {
     borderWidth: 1,
     borderRadius: radii.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   chipLabel: {
     ...typography.pill,
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
   },
   stat: {
     flexBasis: '48%',
-    minWidth: 145,
+    minWidth: 170,
     borderWidth: 1,
     borderRadius: radii.md,
     padding: spacing.md,
@@ -652,12 +652,12 @@ const styles = StyleSheet.create({
   },
   entryTitle: {
     ...typography.sectionTitle,
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '800',
   },
   entrySubtitle: {
     ...typography.body,
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
   },
   entryNotes: {
@@ -670,12 +670,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radii.pill,
     paddingHorizontal: spacing.sm,
-    height: 48,
+    height: 60,
     gap: spacing.md,
   },
   toggleThumb: {
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
     borderRadius: radii.pill,
   },
   toggleLabel: {
@@ -687,8 +687,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   swatch: {
-    width: 48,
-    height: 48,
+    width: 58,
+    height: 58,
     borderRadius: radii.md,
     borderWidth: 1,
     shadowOpacity: 0.2,
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
   },
   swatchLabel: {
     ...typography.detail,
-    fontSize: 11,
+    fontSize: 13,
     textAlign: 'center',
   },
   sectionHeaderContainer: {
