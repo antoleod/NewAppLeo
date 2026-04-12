@@ -184,14 +184,10 @@ jobs:
           Last updated: $(date -u +%Y-%m-%d\ %H:%M:%S)
           EOF
 
-      - name: Commit documentation changes
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Documentation generation summary
+        if: always()
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add docs/
-          git commit -m "docs: auto-generate documentation" --allow-empty || true
-          git push
+          echo "Documentation files generated in CI (no auto-push)." >> $GITHUB_STEP_SUMMARY
 
       - name: PR comment
         if: github.event_name == 'pull_request'
