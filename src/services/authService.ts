@@ -85,7 +85,34 @@ export async function registerAccount(payload: RegisterPayload) {
 
 export async function signInWithEmail(payload: { email: string; password: string }) {
   const authResult = await signInWithEmailAndPassword(auth, normalizeEmail(payload.email), payload.password);
-  const profile = await loadProfile(authResult.user.uid);
+  let profile = null;
+  try {
+    profile = await loadProfile(authResult.user.uid);
+  } catch (error) {
+    if ((error as any)?.code !== 'permission-denied' && !/permission/i.test((error as any)?.message ?? '')) {
+      throw error;
+    }
+  }
+
+  if (!profile) {
+    profile = await createProfileRecord({
+      uid: authResult.user.uid,
+      authEmail: normalizeEmail(payload.email),
+      username: normalizeUsername(payload.email.split('@')[0] || authResult.user.uid.slice(0, 8)),
+      displayName: payload.email.split('@')[0] || 'Parent',
+      password: payload.password,
+      pin: '0000',
+    });
+    await setDoc(
+      doc(db, 'emails', normalizeEmail(payload.email)),
+      {
+        uid: authResult.user.uid,
+        email: normalizeEmail(payload.email),
+        createdAt: serverTimestamp(),
+      },
+      { merge: true },
+    ).catch(() => undefined);
+  }
   return { user: authResult.user, profile };
 }
 
