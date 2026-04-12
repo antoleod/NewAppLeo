@@ -25,7 +25,8 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
       - name: Check PR title
         run: |
@@ -34,9 +35,9 @@ jobs:
 
           # Check if title follows convention (optional but recommended)
           if [[ "$TITLE" =~ ^(feat|fix|docs|style|refactor|perf|test|chore|ci)(\(.+\))?!?:\ .+ ]]; then
-            echo "✓ PR title follows conventional commits"
+            echo "[OK] PR title follows conventional commits"
           else
-            echo "⚠ PR title doesn't follow conventional commits (optional)"
+            echo "[WARN] PR title doesn't follow conventional commits (optional)"
           fi
 
       - name: Type check
@@ -52,7 +53,7 @@ jobs:
           echo ""
           echo "Checking for large files..."
           git diff --name-only origin/main HEAD | while read file; do
-            [ -f "$file" ] && SIZE=$(wc -c < "$file") && [ "$SIZE" -gt 5242880 ] && echo "⚠ Large file: $file ($(($SIZE / 1024 / 1024))MB)"
+            [ -f "$file" ] && SIZE=$(wc -c < "$file") && [ "$SIZE" -gt 5242880 ] && echo "[WARN] Large file: $file ($(($SIZE / 1024 / 1024))MB)"
           done || true
 
       - name: Build test
@@ -73,7 +74,7 @@ jobs:
           script: |
             const fs = require('fs');
             const buildExists = fs.existsSync('./dist');
-            const status = buildExists ? '✓ Build successful' : '✗ Build failed';
+            const status = buildExists ? '[OK] Build successful' : '[FAIL] Build failed';
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -81,3 +82,4 @@ jobs:
               repo: context.repo.repo,
               body: `## PR Validation\n\n${status}\n\nPlease ensure all checks pass before merging.`
             });
+

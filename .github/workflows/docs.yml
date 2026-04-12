@@ -26,7 +26,8 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
       - name: Generate API documentation
         run: |
@@ -67,21 +68,21 @@ jobs:
 
           ```
           src/
-          ├── components/      # React components
-          ├── context/         # Context providers
-          ├── hooks/          # Custom React hooks
-          ├── lib/            # Business logic & services
-          ├── services/       # External service integrations
-          ├── theme.ts        # Design system tokens
-          └── types/          # TypeScript type definitions
+          |- components/      # React components
+          |- context/         # Context providers
+          |- hooks/           # Custom React hooks
+          |- lib/             # Business logic & services
+          |- services/        # External service integrations
+          |- theme.ts         # Design system tokens
+          `- types/           # TypeScript type definitions
 
           app/
-          ├── (app)/          # Main app navigation
-          ├── (auth)/         # Authentication flows
-          └── _layout.tsx     # Root layout
+          |- (app)/           # Main app navigation
+          |- (auth)/          # Authentication flows
+          `- _layout.tsx      # Root layout
 
           .github/
-          └── workflows/      # GitHub Actions
+          `- workflows/       # GitHub Actions
           ```
 
           ## Key Technologies
@@ -104,7 +105,7 @@ jobs:
 
           ### Deploy (`deploy.yml`)
           - Triggers on: Push to main branch
-          - Actions: Build → Export → Deploy to GitHub Pages
+          - Actions: Build -> Export -> Deploy to GitHub Pages
           - Requires: Firebase environment secrets
 
           ### Build (`build.yml`)
@@ -175,10 +176,10 @@ jobs:
           \`\`\`
 
           ## Theme Palettes
-          - Sage 🌿
-          - Rose 🌸
-          - Navy 🌊
-          - Sand 🏜️
+          - Sage
+          - Rose
+          - Navy
+          - Sand
 
           Last updated: $(date -u +%Y-%m-%d\ %H:%M:%S)
           EOF
@@ -201,5 +202,6 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '📚 **Documentation Check**:\n- [API Docs](../docs/API.md)\n- [Architecture](../docs/architecture/project-structure.md)\n- [Workflows](../docs/workflows/ci-cd.md)'
+              body: '**Documentation Check**:\n- [API Docs](../docs/API.md)\n- [Architecture](../docs/architecture/project-structure.md)\n- [Workflows](../docs/workflows/ci-cd.md)'
             });
+

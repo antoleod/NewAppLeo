@@ -22,7 +22,8 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
       - name: Run npm audit
         id: audit
@@ -60,15 +61,15 @@ jobs:
 
           # Firebase keys
           if grep -r "AIza[0-9A-Za-z\-_]\{35\}" . --include="*.js" --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.git; then
-            echo "⚠️  Potential Firebase key found"
+            echo "[WARN] Potential Firebase key found"
           fi
 
           # AWS keys
           if grep -r "AKIA[0-9A-Z]\{16\}" . --include="*.js" --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.git; then
-            echo "⚠️  Potential AWS key found"
+            echo "[WARN] Potential AWS key found"
           fi
 
-          echo "✅ Secret scanning complete"
+          echo "[OK] Secret scanning complete"
 
   code-quality:
     runs-on: ubuntu-latest
@@ -83,7 +84,8 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
       - name: TypeScript security check
         run: |
@@ -95,21 +97,21 @@ jobs:
 
           # Check for eval
           if grep -r "eval(" src/ app/ --include="*.ts" --include="*.tsx"; then
-            echo "❌ Found 'eval()' usage - security risk!"
+            echo "[ERROR] Found 'eval()' usage - security risk!"
             exit 1
           fi
 
           # Check for innerHTML
           if grep -r "innerHTML" src/ app/ --include="*.ts" --include="*.tsx"; then
-            echo "⚠️  Found 'innerHTML' usage - potential XSS risk"
+            echo "[WARN] Found 'innerHTML' usage - potential XSS risk"
           fi
 
           # Check for dangerouslySetInnerHTML
           if grep -r "dangerouslySetInnerHTML" src/ app/ --include="*.ts" --include="*.tsx" | grep -v "node_modules"; then
-            echo "⚠️  Found 'dangerouslySetInnerHTML' usage - ensure proper sanitization"
+            echo "[WARN] Found 'dangerouslySetInnerHTML' usage - ensure proper sanitization"
           fi
 
-          echo "✅ Vulnerable patterns check complete"
+          echo "[OK] Vulnerable patterns check complete"
 
   license-check:
     runs-on: ubuntu-latest
@@ -124,7 +126,8 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
       - name: Check licenses
         run: |
@@ -134,14 +137,14 @@ jobs:
 
           # Basic check for problematic licenses
           if npx license-check-and-gather --csv | grep -i "GPL\|AGPL\|SSPL"; then
-            echo "⚠️  Found potentially problematic licenses"
+            echo "[WARN] Found potentially problematic licenses"
           fi
 
-          echo "✅ License check complete"
+          echo "[OK] License check complete"
 
   report:
     runs-on: ubuntu-latest
-    needs: [dependency-scanning, secret-scanning, code-quality]
+    needs: [dependency-scanning, secret-scanning, code-quality, license-check]
     if: always()
     steps:
       - name: Security report
@@ -155,11 +158,12 @@ jobs:
           echo "| Dependencies | ${{ needs.dependency-scanning.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Secrets | ${{ needs.secret-scanning.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| License Check | ${{ needs.license-check.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ All security checks completed"
+          echo "[OK] All security checks completed"
 
       - name: Notify on security issues
-        if: needs.dependency-scanning.result == 'failure' || needs.secret-scanning.result == 'failure'
+        if: github.event_name == 'pull_request' && (needs.dependency-scanning.result == 'failure' || needs.secret-scanning.result == 'failure' || needs.code-quality.result == 'failure' || needs.license-check.result == 'failure')
         uses: actions/github-script@v7
         with:
           script: |
@@ -167,5 +171,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '🔒 **Security Scan**: ⚠️ Issues detected\n\nPlease review the security scan report for details.'
+              body: '**Security Scan**: issues detected.\n\nPlease review the security scan report for details.'
             });
+
