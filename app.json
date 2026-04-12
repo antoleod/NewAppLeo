@@ -19,6 +19,9 @@
       "expo-font",
       "expo-localization",
       "expo-secure-store"
-    ]
+    ],
+    "experiments": {
+      "baseUrl": "/NewAppLeo"
+    }
   }
 }
