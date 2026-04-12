@@ -13,6 +13,15 @@ export interface PairingSession {
 
 const PAIRING_KEY = 'appleo.pairingSession';
 const COLLECTION = 'pairingSessions';
+const PAIRING_EVENT = 'appleo:pairing-session-changed';
+
+function emitPairingChange() {
+  try {
+    globalThis.dispatchEvent?.(new Event(PAIRING_EVENT));
+  } catch {
+    // ignore
+  }
+}
 
 function createCode() {
   const raw = globalThis.crypto?.getRandomValues ? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(3))) : [1, 2, 3];
@@ -26,9 +35,11 @@ function normalizeCode(code: string) {
 async function saveLocal(session: PairingSession | null) {
   if (!session) {
     await AsyncStorage.removeItem(PAIRING_KEY);
+    emitPairingChange();
     return;
   }
   await AsyncStorage.setItem(PAIRING_KEY, JSON.stringify(session));
+  emitPairingChange();
 }
 
 export async function getLocalPairingSession() {
@@ -107,6 +118,19 @@ export async function joinPairingSession(codeInput: string, uid: string) {
 
   await saveLocal(next);
   return next;
+}
+
+export async function getActivePairingScope(defaultUid: string) {
+  const session = await getLocalPairingSession();
+  return session?.status ? session.code : defaultUid;
+}
+
+export function subscribeToPairingSessionChanges(onChange: () => void) {
+  const handler = () => onChange();
+  globalThis.addEventListener?.(PAIRING_EVENT, handler as EventListener);
+  return () => {
+    globalThis.removeEventListener?.(PAIRING_EVENT, handler as EventListener);
+  };
 }
 
 export function watchPairingSession(code: string, onChange: (session: PairingSession | null) => void) {

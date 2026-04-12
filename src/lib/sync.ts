@@ -18,8 +18,8 @@ function safeParse<T>(raw: string | null, fallback: T): T {
   }
 }
 
-function entriesCollection(uid: string) {
-  return collection(db, 'users', uid, 'entries');
+function entriesCollection(scopeId: string) {
+  return collection(db, 'users', scopeId, 'entries');
 }
 
 function queueKeyFor(operation: SyncOperation) {
@@ -95,12 +95,12 @@ export async function queueDeletes(ids: Array<{ id: string; occurredAt: string; 
   return { queued: queue.length };
 }
 
-export async function flushQueuedOperations(uid: string) {
+export async function flushQueuedOperations(scopeId: string) {
   const queue = await loadQueuedOperations();
   for (const operation of queue) {
     if (operation.kind === 'upsert') {
       await setDoc(
-        doc(entriesCollection(uid), operation.entry.id),
+        doc(entriesCollection(scopeId), operation.entry.id),
         {
           ...operation.entry,
           createdAt: operation.entry.createdAt ?? serverTimestamp(),
@@ -111,7 +111,7 @@ export async function flushQueuedOperations(uid: string) {
       continue;
     }
 
-    await deleteDoc(doc(entriesCollection(uid), operation.id));
+    await deleteDoc(doc(entriesCollection(scopeId), operation.id));
   }
 
   await saveQueuedOperations([]);

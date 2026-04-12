@@ -20,6 +20,7 @@ import { flushQueuedOperations, queueDeletes, queueUpserts } from '@/lib/sync';
 import { buildLeoProfilePatch, importLeoEntries } from '@/lib/leoData';
 import { getAppSettings, saveBaby, setAppSettings } from '@/lib/storage';
 import { setGuestProfile } from '@/lib/storage';
+import { getActivePairingScope, getLocalPairingSession, subscribeToPairingSessionChanges } from '@/services/pairingService';
 
 export interface AppDataContextValue {
   entries: EntryRecord[];
@@ -93,6 +94,34 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [entries, setEntries] = useState<EntryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [remoteAvailable, setRemoteAvailable] = useState(true);
+  const [syncScope, setSyncScope] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshScope = async () => {
+      if (!profile?.uid) {
+        setSyncScope(null);
+        return;
+      }
+      const localSession = await getLocalPairingSession();
+      if (cancelled) return;
+      setSyncScope(localSession?.code ?? profile.uid);
+      if (!localSession) {
+        const fallbackScope = await getActivePairingScope(profile.uid);
+        if (!cancelled) setSyncScope(fallbackScope);
+      }
+    };
+
+    void refreshScope();
+    const unsubscribe = subscribeToPairingSessionChanges(() => {
+      void refreshScope();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [profile?.uid]);
 
   useEffect(() => {
     if (!user || !guestMode || loading || entries.length) return;
@@ -177,7 +206,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, [guestMode, user]);
 
   useEffect(() => {
-    if (!profile?.uid) {
+    const scopeId = syncScope ?? profile?.uid;
+    if (!scopeId) {
       return;
     }
 
@@ -186,7 +216,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       if (inFlight) return;
       inFlight = true;
       try {
-        await flushQueuedOperations(profile.uid);
+        await flushQueuedOperations(scopeId);
       } catch (error) {
         console.warn('Background sync flush failed:', error);
       } finally {
@@ -205,7 +235,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.remove();
     };
-  }, [profile?.uid]);
+  }, [profile?.uid, syncScope]);
 
   const summary = useMemo(() => getTodaySummary(entries, profile), [entries, profile]);
 
@@ -223,9 +253,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       updatedAt: new Date().toISOString(),
     };
 
+    const scopeId = syncScope ?? user.uid;
+
     if (remoteAvailable && !guestMode) {
       try {
-        const ref = await addDoc(entriesRef(user.uid), {
+        const ref = await addDoc(entriesRef(scopeId), {
           type: input.type,
           title: input.title ?? input.type,
           notes: input.notes ?? '',
@@ -243,7 +275,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    setLocalEntries(user.uid, [nextEntry, ...getLocalEntries(user.uid).filter((entry) => entry.id !== nextEntry.id)]);
+    setLocalEntries(scopeId, [nextEntry, ...getLocalEntries(scopeId).filter((entry) => entry.id !== nextEntry.id)]);
     if (!guestMode) {
       void queueUpserts([nextEntry]);
     }
@@ -255,9 +287,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const current = entries.find((entry) => entry.id === id);
     const next = current ? { ...current, ...patch, updatedAt: new Date().toISOString() } : null;
 
+    const scopeId = syncScope ?? user.uid;
+
     if (remoteAvailable && !guestMode) {
       try {
-        await updateDoc(doc(entriesRef(user.uid), id), {
+        await updateDoc(doc(entriesRef(scopeId), id), {
           ...patch,
           updatedAt: serverTimestamp(),
         });
@@ -270,7 +304,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (next) {
-      upsertLocalEntry(user.uid, next);
+      upsertLocalEntry(scopeId, next);
       if (!guestMode) {
         void queueUpserts([next]);
       }
@@ -285,9 +319,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   async function deleteEntry(id: string) {
     if (!user) throw new Error('You must be signed in.');
     const current = entries.find((entry) => entry.id === id);
+    const scopeId = syncScope ?? user.uid;
+
     if (remoteAvailable && !guestMode) {
       try {
-        await deleteDoc(doc(entriesRef(user.uid), id));
+        await deleteDoc(doc(entriesRef(scopeId), id));
       } catch (error) {
         if (!isPermissionDenied(error)) {
           throw error;
@@ -296,7 +332,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    deleteLocalEntry(user.uid, id);
+    deleteLocalEntry(scopeId, id);
     if (!guestMode) {
       void queueDeletes([{ id, occurredAt: current?.occurredAt ?? new Date().toISOString(), updatedAt: current?.updatedAt ?? new Date().toISOString() }]);
     }
@@ -312,10 +348,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       updatedAt: new Date().toISOString(),
     }));
 
+    const scopeId = syncScope ?? user.uid;
+
     if (remoteAvailable && !guestMode) {
       try {
         for (const entry of DEMO_ENTRIES) {
-          await addDoc(entriesRef(user.uid), {
+          await addDoc(entriesRef(scopeId), {
             ...entry,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -329,10 +367,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const nextEntries = [...seeded, ...getLocalEntries(user.uid)]
+    const nextEntries = [...seeded, ...getLocalEntries(scopeId)]
       .filter((entry, index, array) => array.findIndex((candidate) => candidate.id === entry.id) === index)
       .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
-    setLocalEntries(user.uid, nextEntries);
+    setLocalEntries(scopeId, nextEntries);
     if (!guestMode) {
       void queueUpserts(nextEntries);
     }
