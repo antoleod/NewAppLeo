@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInRight, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
@@ -10,6 +10,7 @@ import { buildBabyFromProfile } from '@/lib/storage';
 import { DateTimeField } from '@/components/DateTimeField';
 import { useOnboarding, type OnboardingPath } from '@/hooks/useOnboarding';
 import { useTheme } from '@/context/ThemeContext';
+import { useLocale } from '@/context/LocaleContext';
 import { typography } from '@/typography';
 
 type BabySex = 'female' | 'male' | 'unspecified';
@@ -53,6 +54,7 @@ function computeAutoGoals(birthDate: Date, currentWeightKg?: number) {
 
 export default function OnboardingScreen() {
   const { theme } = useTheme();
+  const { t } = useLocale();
   const { width } = useWindowDimensions();
   const { user, profile, guestMode, signInGuest, completeUserOnboarding } = useAuth();
   const { path, setPath, step, setStep, next, back, progress } = useOnboarding(1);
@@ -180,6 +182,7 @@ export default function OnboardingScreen() {
 
   return (
     <Page>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24, gap: 12 }}>
       <Card style={containerCardStyle}>
         <View style={{ gap: 12 }}>
           <View style={{ gap: 8 }}>
@@ -194,14 +197,14 @@ export default function OnboardingScreen() {
                 },
               ]}
             >
-              Bienvenue
+              {t('app.name', 'App Leo')}
             </Text>
             <Text style={[typography.body, { color: theme.textMuted, textAlign: 'center' }]}>Suivez chaque moment de Leo.</Text>
           </View>
           <View style={{ height: 8, borderRadius: 999, backgroundColor: theme.progressBg, overflow: 'hidden' }}>
             <Animated.View style={[{ height: '100%', backgroundColor: theme.progressFill, borderRadius: 999 }, progressStyle]} />
           </View>
-          {step > 1 ? <Button label="Retour" onPress={back} variant="ghost" /> : null}
+          {step > 1 ? <Button label={t('common.back', 'Back')} onPress={back} variant="ghost" /> : null}
         </View>
       </Card>
 
@@ -233,7 +236,7 @@ export default function OnboardingScreen() {
                 </Pressable>
               );
             })}
-            <Button label={path === 'guest' ? 'Continuer en invite' : 'Continuer'} onPress={next} />
+            <Button label={path === 'guest' ? 'Continuer en invite' : t('common.continue', 'Continue')} onPress={next} />
           </Animated.View>
         </Card>
       ) : null}
@@ -241,9 +244,9 @@ export default function OnboardingScreen() {
       {step === 1 ? (
         <Card style={containerCardStyle}>
           <Animated.View entering={FadeInRight.duration(220)} style={{ gap: 12 }}>
-            <Text style={[typography.sectionTitle, { color: theme.textPrimary, textAlign: 'center' }]}>Langue</Text>
+            <Text style={[typography.sectionTitle, { color: theme.textPrimary, textAlign: 'center' }]}>{t('common.language', 'Language')}</Text>
             <Segment value={language} onChange={(value) => setLanguage(value as AppLanguage)} options={languageOptions} />
-            <Button label="Continuer" onPress={next} />
+            <Button label={t('common.continue', 'Continue')} onPress={next} />
           </Animated.View>
         </Card>
       ) : null}
@@ -292,7 +295,7 @@ export default function OnboardingScreen() {
             <Input label="Taille actuelle (cm)" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" inputMode="decimal" />
             <Input label="Perimetre cranien (cm)" value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" inputMode="decimal" />
             <Input label="Notes" value={babyNotes} onChangeText={setBabyNotes} multiline placeholder="Optionnel" />
-            <Button label="Continuer" onPress={next} disabled={!canContinueProfile} />
+            <Button label={t('common.continue', 'Continue')} onPress={next} disabled={!canContinueProfile} />
           </Animated.View>
         </Card>
       ) : null}
@@ -304,7 +307,7 @@ export default function OnboardingScreen() {
               <Input label="PIN 4 chiffres" value={pin} onChangeText={setPin} keyboardType="number-pad" inputMode="numeric" />
               <Input label="Confirmer le PIN" value={confirmPin} onChangeText={setConfirmPin} keyboardType="number-pad" inputMode="numeric" />
             </Animated.View>
-            <Button label="Continuer" onPress={next} disabled={pin.length < 4 || confirmPin.length < 4} />
+            <Button label={t('common.continue', 'Continue')} onPress={next} disabled={pin.length < 4 || confirmPin.length < 4} />
           </Animated.View>
         </Card>
       ) : null}
@@ -337,10 +340,11 @@ export default function OnboardingScreen() {
               hint={`Suggestion auto: ${autoGoals.diapers}`}
             />
             {submitError ? <Text style={[typography.body, { color: theme.red, textAlign: 'center' }]}>{submitError}</Text> : null}
-            <Button label="Tout est pret" onPress={finishOnboarding} loading={saving} disabled={saving} />
+            <Button label={t('common.done', 'Done')} onPress={finishOnboarding} loading={saving} disabled={saving} />
           </Animated.View>
         </Card>
       ) : null}
+      </ScrollView>
     </Page>
   );
 }

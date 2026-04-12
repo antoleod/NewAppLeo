@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, Text } from 'react-native';
+import { Alert, ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Card, Heading, Input, Page } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
@@ -9,7 +9,7 @@ import { isValidPin, normalizeUsername } from '@/utils/crypto';
 
 export default function RegisterScreen() {
   const { colors } = useTheme();
-  const { language } = useLocale();
+  const { language, t } = useLocale();
   const { register } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
@@ -95,20 +95,21 @@ export default function RegisterScreen() {
 
   return (
     <Page>
-      <Heading eyebrow="Get started" title={language === 'fr' ? 'Creer un compte' : 'Create an account'} subtitle={language === 'fr' ? 'Un seul compte suffit pour le foyer.' : 'One account supports both login modes.'} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+      <Heading eyebrow={t('auth.create_account')} title={language === 'fr' ? 'Creer un compte' : 'Create an account'} subtitle={language === 'fr' ? 'Un seul compte suffit pour le foyer.' : 'One account supports both login modes.'} />
       <Card>
-        <Input label="Display name" value={displayName} onChangeText={setDisplayName} placeholder="Andrea" textContentType="name" />
+        <Input label={t('auth.display_name', 'Display name')} value={displayName} onChangeText={setDisplayName} placeholder="Andrea" textContentType="name" />
         <Input
-          label="Username"
+          label={t('auth.username', 'Username')}
           value={username}
           onChangeText={setUsername}
           placeholder="andrea.leo"
           error={usernameError || undefined}
         />
-        <Input label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" textContentType="emailAddress" />
-        <Input label="Password" value={password} onChangeText={setPassword} placeholder="Create a password" secureTextEntry textContentType="newPassword" />
+        <Input label={t('auth.email', 'Email')} value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" textContentType="emailAddress" />
+        <Input label={t('auth.password', 'Password')} value={password} onChangeText={setPassword} placeholder="Create a password" secureTextEntry textContentType="newPassword" />
         <Input
-          label="6-digit PIN"
+          label={t('auth.pin', 'PIN')}
           value={pin}
           onChangeText={setPin}
           placeholder="6-digit PIN"
@@ -121,10 +122,11 @@ export default function RegisterScreen() {
           PIN sign-in remains available, but email and password are the default path.
         </Text>
         {error ? <Text style={{ color: colors.danger, fontSize: 13, textAlign: 'center' }}>{error}</Text> : null}
-        <Button label="Create account" onPress={handleSubmit} loading={loading} disabled={!canSubmit} fullWidth />
-        <Button label="Pair device" onPress={() => router.push('/pair')} variant="ghost" fullWidth />
-        <Button label="Back to sign in" onPress={() => router.back()} variant="ghost" fullWidth />
+        <Button label={t('auth.create_account', 'Create account')} onPress={handleSubmit} loading={loading} disabled={!canSubmit} fullWidth />
+        <Button label={t('auth.pair', 'Pair device')} onPress={() => router.push('/pair')} variant="ghost" fullWidth />
+        <Button label={t('auth.back_to_signin', 'Back to sign in')} onPress={() => router.back()} variant="ghost" fullWidth />
       </Card>
+      </ScrollView>
     </Page>
   );
 }

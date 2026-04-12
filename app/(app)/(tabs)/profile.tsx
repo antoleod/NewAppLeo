@@ -99,6 +99,7 @@ export default function ProfileScreen() {
   }, []);
 
   async function handleSave() {
+    const nextPhoto = babyPhotoUri || undefined;
     await saveProfile({
       caregiverName: caregiverName.trim(),
       babyName: babyName.trim(),
@@ -107,10 +108,11 @@ export default function ProfileScreen() {
       currentWeightKg: Number(currentWeightKg) || undefined,
       heightCm: Number(heightCm) || undefined,
       babyNotes: babyNotes.trim() || undefined,
-      babyPhotoUri: babyPhotoUri || undefined,
+      babyPhotoUri: nextPhoto,
       language: language as any,
     });
-    Alert.alert(t('settings.update_success', 'Profile updated'), t('settings.update_success_body', 'Your preferences are now in sync across the app.'));
+    setBabyPhotoUri(nextPhoto ?? '');
+      Alert.alert(t('settings.update_success', 'Profile updated'), t('settings.update_success_body', 'Your preferences are now in sync across the app.'));
   }
 
   async function handlePickPhoto() {
@@ -248,18 +250,19 @@ export default function ProfileScreen() {
 
   return (
     <Page>
-      <Heading eyebrow={t('tabs.profile')} title="Famille et preferences" subtitle="Langue, themes, effets, photo, dashboard et synchronisation locale." />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 24 }}>
+      <Heading eyebrow={t('tabs.profile')} title={t('profile.title', 'Family and preferences')} subtitle={t('profile.subtitle', 'Language, themes, effects, photos, and sync.')} />
 
       <Card>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Family profile</Text>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.family_profile', 'Family profile')}</Text>
         <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
           <Pressable onPress={handlePickPhoto} style={{ width: 86, height: 86, borderRadius: 28, overflow: 'hidden', backgroundColor: colors.backgroundAlt, alignItems: 'center', justifyContent: 'center' }}>
             {babyPhotoUri ? <Image source={{ uri: babyPhotoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={{ color: colors.primary, fontWeight: '900' }}>Photo</Text>}
           </Pressable>
           <View style={{ flex: 1, minWidth: 220, gap: 6 }}>
             <Text style={{ color: colors.muted }}>Mode: {guestMode ? 'Guest' : 'Cloud account'}</Text>
-            <Text style={{ color: colors.muted }}>Theme preset: {themeVariant}</Text>
-            <Text style={{ color: colors.muted }}>Language: {language.toUpperCase()}</Text>
+            <Text style={{ color: colors.muted }}>{t('profile.theme_layout', 'Theme and layout')}: {themeVariant}</Text>
+            <Text style={{ color: colors.muted }}>{t('common.language', 'Language')}: {language.toUpperCase()}</Text>
           </View>
         </View>
         <Input label="Parent" value={caregiverName} onChangeText={setCaregiverName} />
@@ -274,14 +277,14 @@ export default function ProfileScreen() {
           </View>
         </View>
         <Input label="Taille (cm)" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" inputMode="decimal" />
-        <Input label="Notes" value={babyNotes} onChangeText={setBabyNotes} multiline />
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>Language</Text>
+        <Input label={t('common.notes', 'Notes')} value={babyNotes} onChangeText={setBabyNotes} multiline />
+        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>{t('common.language', 'Language')}</Text>
         <Segment value={language} onChange={(value) => setLanguage(value as typeof language)} options={languageOptions} />
-        <Button label="Save profile" onPress={handleSave} />
+        <Button label={t('profile.save_profile', 'Save profile')} onPress={handleSave} />
       </Card>
 
       <Card>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Children</Text>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.children', 'Children')}</Text>
         {babies.length ? (
           <View style={{ gap: 10 }}>
             {babies.map((baby) => (
@@ -333,7 +336,7 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Theme and layout</Text>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.theme_layout', 'Theme and layout')}</Text>
         <View
           style={{
             borderRadius: 14,
@@ -382,7 +385,7 @@ export default function ProfileScreen() {
             {paletteMode === 'nuit' ? 'Passer en Jour' : 'Passer en Nuit'}
           </Text>
         </Pressable>
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>Themes</Text>
+        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>Themes</Text>
         <Segment
           value={themeStyle}
           onChange={async (value) => {
@@ -395,7 +398,7 @@ export default function ProfileScreen() {
             { label: 'Dark Classic', value: 'classic' },
           ]}
         />
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>Theme mode</Text>
+        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>Theme mode</Text>
         <Segment
           value={themeMode}
           onChange={(value) => setThemeMode(value as any)}
@@ -405,7 +408,7 @@ export default function ProfileScreen() {
             { label: 'Dark', value: 'dark' },
           ]}
         />
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>Accent palette</Text>
+        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>Accent palette</Text>
         <Segment
           value={settings.themeVariant}
           onChange={async (value) => {
@@ -434,7 +437,7 @@ export default function ProfileScreen() {
           onPress={() => patchSettings({ redNightMode: !settings.redNightMode })}
           variant="ghost"
         />
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800', textAlign: 'center' }}>Custom theme builder</Text>
+        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>Custom theme builder</Text>
         <Input label="Primary hex" value={customPrimary} onChangeText={setCustomPrimary} placeholder="#4d7c6b" />
         <Input label="Secondary hex" value={customSecondary} onChangeText={setCustomSecondary} placeholder="#c18f54" />
         <Input label="Background alt hex" value={customBackgroundAlt} onChangeText={setCustomBackgroundAlt} placeholder="#eef4ef" />
@@ -456,7 +459,7 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Dashboard personalization</Text>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.dashboard', 'Dashboard personalization')}</Text>
         <Input
           label="Hydration goal (ml)"
           value={String(settings.hydrationGoalMl)}
@@ -478,7 +481,7 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Effects</Text>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.effects', 'Effects')}</Text>
         <Text style={{ color: colors.muted }}>All motion stays optional and can be switched off here.</Text>
         <Button
           label={settings.effects.emojiPulse ? 'Disable emoji pulse' : 'Enable emoji pulse'}
@@ -503,7 +506,7 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Module visibility</Text>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.module_visibility', 'Module visibility')}</Text>
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           {Object.entries(visibility).map(([key, enabled]) => (
             <Button
@@ -522,7 +525,7 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Milestones</Text>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.milestones', 'Milestones')}</Text>
         {milestones.length ? (
           <View style={{ gap: 10 }}>
             {milestones.map((entry) => (
@@ -544,7 +547,7 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Session</Text>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.session', 'Session')}</Text>
         <Text style={{ color: colors.muted }}>Signed in as {profile?.authEmail}</Text>
         <Text style={{ color: colors.muted }}>Username: {profile?.username}</Text>
         <Text style={{ color: colors.muted }}>Pairing: {pairingCode ?? 'none'}</Text>
@@ -562,13 +565,14 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Voice bridge</Text>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.voice_bridge', 'Voice bridge')}</Text>
         <Text style={{ color: colors.muted, lineHeight: 20 }}>
           Try a browser-only speech capture path that converts a short transcript into a parsed intent.
         </Text>
         <Text style={{ color: colors.muted }}>Status: {voiceStatus}</Text>
         <Button label="Test voice capture" onPress={handleVoiceBridge} variant="ghost" />
       </Card>
+      </ScrollView>
     </Page>
   );
 }

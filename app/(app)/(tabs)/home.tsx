@@ -289,7 +289,7 @@ function ActivityRow({
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
-  const { language } = useLocale();
+  const { language, t } = useLocale();
   const locale = localeTag(language);
   const { profile } = useAuth();
   const { entries, summary, addEntry } = useAppData();
@@ -403,23 +403,23 @@ export default function HomeScreen() {
   }, []);
 
   const quickActions: Array<[string, string, string]> = [
-    ['Sein', 'quick-breast', 'feed'],
-    ['Biberon', 'quick-bottle', 'feed'],
-    ['Couche', '/entry/diaper', 'diaper'],
-    ['Sommeil', '/entry/sleep', 'sleep'],
-    ['Tire-lait', '/entry/pump', 'pump'],
-    ['Medicament', '/entry/medication', 'medication'],
-    ['Repas', '/entry/food', 'food'],
-    ['Mesure', '/entry/measurement', 'measurement'],
-    ['Etape', '/entry/milestone', 'milestone'],
+    [t('home.breast', 'Breast'), 'quick-breast', 'feed'],
+    [t('home.bottle', 'Bottle'), 'quick-bottle', 'feed'],
+    ['Diaper', '/entry/diaper', 'diaper'],
+    ['Sleep', '/entry/sleep', 'sleep'],
+    [t('home.pump', 'Pump'), '/entry/pump', 'pump'],
+    ['Medication', '/entry/medication', 'medication'],
+    [t('home.food', 'Food'), '/entry/food', 'food'],
+    ['Measurement', '/entry/measurement', 'measurement'],
+    ['Milestone', '/entry/milestone', 'milestone'],
   ];
   const presetActions = [
-    { label: 'Biberon 150ml', href: '/entry/feed?presetMode=bottle&presetAmount=150' },
-    { label: 'Biberon 180ml', href: '/entry/feed?presetMode=bottle&presetAmount=180' },
-    { label: 'Sein gauche', href: '/entry/feed?presetMode=breast&presetSide=left' },
-    { label: 'Tire-lait 20m', href: '/entry/pump' },
+    { label: `150 ml`, href: '/entry/feed?presetMode=bottle&presetAmount=150' },
+    { label: `180 ml`, href: '/entry/feed?presetMode=bottle&presetAmount=180' },
+    { label: t('home.left_breast', 'Left breast'), href: '/entry/feed?presetMode=breast&presetSide=left' },
+    { label: `20 min`, href: '/entry/pump' },
   ];
-  const hydrationButtons = ['+250ml', '+500ml'];
+  const hydrationButtons = ['+250 ml', '+500 ml'];
   const visibleActions = quickActions.filter(([, , key]) => visibility[key]);
   const showSmartSignals = appSettings.dashboardMetrics.smartSignals;
   const timelineChips = useMemo(() => {
@@ -443,7 +443,7 @@ export default function HomeScreen() {
   }, [entries]);
 
   const renderedLabels = useMemo(
-    () => ['Nouveau', ...visibleActions.map(([label]) => label), ...presetActions.map((item) => item.label), ...hydrationButtons],
+    () => [t('home.new', 'New'), ...visibleActions.map(([label]) => label), ...presetActions.map((item) => item.label), ...hydrationButtons],
     [visibleActions],
   );
 
@@ -473,11 +473,11 @@ export default function HomeScreen() {
       title:
         quickTimerMode === 'breast'
           ? quickFeedSide === 'both'
-            ? 'Breast feed both'
+            ? t('home.breast_both', 'Breast feed both')
             : quickFeedSide === 'right'
-              ? 'Breast feed right'
-              : 'Breast feed left'
-          : 'Bottle feed',
+              ? t('home.breast_right', 'Breast feed right')
+              : t('home.breast_left', 'Breast feed left')
+          : t('home.bottle_feed', 'Bottle feed'),
       occurredAt: new Date(timerStartedAt).toISOString(),
       payload:
         quickTimerMode === 'breast'
@@ -526,20 +526,20 @@ export default function HomeScreen() {
   const activeBabyName = babies.find((baby) => baby.id === babyId)?.name ?? profile?.babyName ?? 'Leo';
   const activeFeedTitle =
     quickTimerMode === 'bottle'
-      ? 'Biberon'
+      ? t('home.bottle', 'Bottle')
       : quickFeedSide === 'both'
-        ? 'Sein des deux'
+        ? t('home.breast_both', 'Breast both')
         : quickFeedSide === 'right'
-          ? 'Sein droit'
-          : 'Sein gauche';
+          ? t('home.breast_right', 'Breast right')
+          : t('home.breast_left', 'Breast left');
   const activeFeedSubtitlePrefix =
     quickTimerMode === 'bottle'
-      ? 'Biberon'
+      ? t('home.bottle', 'Bottle')
       : quickFeedSide === 'both'
-        ? 'Les deux'
+        ? t('home.both', 'Both')
         : quickFeedSide === 'right'
-          ? 'Droite'
-          : 'Gauche';
+          ? t('home.right', 'Right')
+          : t('home.left', 'Left');
 
   async function switchBaby(nextBaby: { id: string }) {
     await setActiveBabyId(nextBaby.id);
@@ -579,7 +579,7 @@ export default function HomeScreen() {
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'ACCUEIL' : 'HOME'}</Text>
+              <Text style={sectionEyebrowStyle()}>{t('home.home', 'Home')}</Text>
               <Pressable
                 onPress={() => setShowBabySwitcher(true)}
                 style={({ pressed }) => ({
@@ -600,7 +600,7 @@ export default function HomeScreen() {
               </Pressable>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: isCompactPhone ? 'auto' : 0 }}>
-              <HeaderAction label="Nouveau" onPress={() => router.push('/entry/feed')} />
+              <HeaderAction label={t('home.new', 'New')} onPress={() => router.push('/entry/feed')} />
               <Pressable
                 onPress={() => setShowHomeCustomizer(true)}
                 style={({ pressed }) => ({
@@ -629,8 +629,8 @@ export default function HomeScreen() {
             <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'RAPPELS' : 'REMINDERS'}</Text>
-                  <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Signaux intelligents' : 'Smart signals'}</Text>
+                  <Text style={sectionEyebrowStyle()}>{t('home.reminders', 'Reminders')}</Text>
+                  <Text style={sectionTitleStyle()}>{t('home.smart_signals', 'Smart signals')}</Text>
                 </View>
                 <Pressable
                   onPress={() => setShowSmartSignalsMenu(true)}
@@ -692,11 +692,11 @@ export default function HomeScreen() {
           <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
             <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
               <View style={{ flex: 1, gap: 6 }}>
-                <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'LAIT' : 'MILK'}</Text>
+                <Text style={sectionEyebrowStyle()}>{t('home.milk', 'Milk')}</Text>
                 <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{totalMilkToday} ml</Text>
               </View>
               <View style={{ flex: 1, gap: 6 }}>
-                <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'PROCHAINE PRISE' : 'NEXT FEED'}</Text>
+                <Text style={sectionEyebrowStyle()}>{t('home.next_feed_label', 'Next feed')}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="time-outline" size={14} color={BLUE} />
                   <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
@@ -718,8 +718,8 @@ export default function HomeScreen() {
         <Animated.View entering={FadeIn.duration(300).delay(220)} style={{ marginBottom: 10 }}>
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
             {[
-              { label: 'Dernier sein', value: formatClock(lastBreastFeed?.occurredAt, locale), detail: formatRelative(lastBreastFeed?.occurredAt, locale) },
-              { label: 'Dernier biberon', value: formatClock(lastBottleFeed?.occurredAt, locale), detail: formatRelative(lastBottleFeed?.occurredAt, locale) },
+              { label: t('home.last_breast', 'Last breast'), value: formatClock(lastBreastFeed?.occurredAt, locale), detail: formatRelative(lastBreastFeed?.occurredAt, locale) },
+              { label: t('home.last_bottle', 'Last bottle'), value: formatClock(lastBottleFeed?.occurredAt, locale), detail: formatRelative(lastBottleFeed?.occurredAt, locale) },
             ].map((item) => (
               <View key={item.label} style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
                 <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 }}>{item.label.toUpperCase()}</Text>
@@ -732,11 +732,11 @@ export default function HomeScreen() {
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
           {[
-            { label: 'FEEDS', value: String(summary.today.feedCount) },
-            { label: 'BOTTLE', value: `${summary.today.bottleMl} ml` },
-            { label: 'SLEEP', value: `${summary.today.sleepMinutes}m` },
-            { label: 'DIAPERS', value: String(summary.today.diaperCount) },
-            { label: 'FOOD', value: String(summary.today.foodCount) },
+            { label: t('home.feeds', 'Feeds'), value: String(summary.today.feedCount) },
+            { label: t('home.bottle', 'Bottle'), value: `${summary.today.bottleMl} ml` },
+            { label: t('insights.sleep', 'Sleep'), value: `${summary.today.sleepMinutes}m` },
+            { label: t('home.diapers', 'Diapers'), value: String(summary.today.diaperCount) },
+            { label: t('home.food', 'Food'), value: String(summary.today.foodCount) },
           ].map((item, index) => (
             <StatCell key={item.label} label={item.label} value={item.value} index={index} />
           ))}
@@ -744,8 +744,8 @@ export default function HomeScreen() {
 
         <Animated.View entering={FadeIn.duration(300).delay(320)} style={{ marginBottom: 10 }}>
           <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-            <Text style={sectionEyebrowStyle()}>TIMELINE</Text>
-            <Text style={sectionTitleStyle()}>24h strip</Text>
+            <Text style={sectionEyebrowStyle()}>{t('home.timeline', 'Timeline')}</Text>
+            <Text style={sectionTitleStyle()}>24h</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 8 }}>
               {timelineChips.map((chip) => (
                 <PressScale
@@ -771,8 +771,8 @@ export default function HomeScreen() {
 
         <Animated.View entering={FadeIn.duration(300).delay(400)} style={{ marginBottom: 10 }}>
           <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 6 }}>
-            <Text style={sectionEyebrowStyle()}>ACTIONS RAPIDES</Text>
-            <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Actions directes' : 'Quick actions'}</Text>
+            <Text style={sectionEyebrowStyle()}>{t('home.rapid_actions', 'Quick actions')}</Text>
+            <Text style={sectionTitleStyle()}>{t('home.direct_actions', 'Direct actions')}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
               {visibleActions.map(([label, href]) => (
                 <PressScale
@@ -828,8 +828,8 @@ export default function HomeScreen() {
 
         <Animated.View entering={FadeIn.duration(300).delay(480)} style={{ marginBottom: 10 }}>
           <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-            <Text style={sectionEyebrowStyle()}>HYDRATION</Text>
-            <Text style={sectionTitleStyle()}>Hydration</Text>
+            <Text style={sectionEyebrowStyle()}>{t('home.hydration', 'Hydration')}</Text>
+            <Text style={sectionTitleStyle()}>{t('home.hydration', 'Hydration')}</Text>
             <Text style={{ color: MUTED, fontSize: 11 }}>{hydration} ml / {appSettings.hydrationGoalMl} ml</Text>
             <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
               <View style={{ width: `${Math.max(0, Math.min(100, (hydration / appSettings.hydrationGoalMl) * 100))}%`, height: '100%', backgroundColor: BLUE }} />
@@ -860,8 +860,8 @@ export default function HomeScreen() {
 
         <Animated.View entering={FadeIn.duration(300).delay(560)} style={{ marginBottom: 10 }}>
           <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER }}>
-            <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'HISTORIQUE' : 'RECENT'}</Text>
-            <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Dernieres activites' : 'Recent activity'}</Text>
+            <Text style={sectionEyebrowStyle()}>{t('home.recent', 'Recent')}</Text>
+            <Text style={sectionTitleStyle()}>{t('home.recent_activity', 'Recent activity')}</Text>
             <View style={{ marginTop: 8 }}>
               {recentEntries.length ? (
                 recentEntries.map((entry) => (
@@ -902,7 +902,7 @@ export default function HomeScreen() {
         <View style={styles.menuOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowSmartSignalsMenu(false)} />
           <View style={[styles.menuSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
-            <Text style={styles.menuTitle}>{language === 'fr' ? 'Signaux intelligents' : 'Smart signals'}</Text>
+            <Text style={styles.menuTitle}>{t('home.smart_signals', 'Smart signals')}</Text>
             <Text style={styles.menuSubtitle}>
               {showSmartSignals
                 ? language === 'fr'
@@ -914,7 +914,7 @@ export default function HomeScreen() {
             </Text>
             <View style={{ gap: 8 }}>
               <Button
-                label={showSmartSignals ? (language === 'fr' ? 'Masquer la section' : 'Hide section') : (language === 'fr' ? 'Afficher la section' : 'Show section')}
+                label={showSmartSignals ? t('home.hide_section', 'Hide section') : t('home.show_section', 'Show section')}
                 onPress={async () => {
                   await updateDashboardMetric('smartSignals', !showSmartSignals);
                   setShowSmartSignalsMenu(false);
@@ -922,7 +922,7 @@ export default function HomeScreen() {
                 variant="secondary"
               />
               <Button
-                label={language === 'fr' ? 'Personnaliser l\'accueil' : 'Customize home'}
+                label={t('home.customize_home', 'Customize home')}
                 onPress={() => {
                   setShowSmartSignalsMenu(false);
                   setShowHomeCustomizer(true);
@@ -930,7 +930,7 @@ export default function HomeScreen() {
                 variant="ghost"
                 size="sm"
               />
-              <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowSmartSignalsMenu(false)} variant="ghost" />
+              <Button label={t('common.close', 'Close')} onPress={() => setShowSmartSignalsMenu(false)} variant="ghost" />
             </View>
           </View>
         </View>
@@ -940,7 +940,7 @@ export default function HomeScreen() {
         <View style={styles.menuOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowNextFeedPicker(false)} />
           <View style={[styles.menuSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
-            <Text style={styles.menuTitle}>{language === 'fr' ? 'Next feeding' : 'Next feeding'}</Text>
+            <Text style={styles.menuTitle}>{t('home.next_feeding_title', 'Next feeding')}</Text>
             <Text style={styles.menuSubtitle}>
               {language === 'fr'
                 ? 'Choisis biberon ou sein. Pour le sein, choisis le cote avant de lancer le timer.'
@@ -955,7 +955,7 @@ export default function HomeScreen() {
                 <View style={[styles.choiceChip, { borderColor: BLUE, backgroundColor: `${BLUE}18` }]}>
                   <View style={styles.choiceTitleRow}>
                     <Ionicons name="water-outline" size={16} color={BLUE} />
-                    <Text style={[styles.choiceTitle, { color: BLUE }]}>Biberon</Text>
+                    <Text style={[styles.choiceTitle, { color: BLUE }]}>{t('home.bottle', 'Bottle')}</Text>
                   </View>
                   <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Lance le minuteur' : 'Start timer'}</Text>
                 </View>
@@ -968,7 +968,7 @@ export default function HomeScreen() {
                 <View style={[styles.choiceChip, { borderColor: GOLD, backgroundColor: `${GOLD}18` }]}>
                   <View style={styles.choiceTitleRow}>
                     <Ionicons name="body-outline" size={16} color={GOLD} />
-                    <Text style={[styles.choiceTitle, { color: GOLD }]}>Sein gauche</Text>
+                    <Text style={[styles.choiceTitle, { color: GOLD }]}>{t('home.left_breast', 'Left breast')}</Text>
                   </View>
                   <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Timer immediat' : 'Immediate timer'}</Text>
                 </View>
@@ -981,7 +981,7 @@ export default function HomeScreen() {
                 <View style={[styles.choiceChip, { borderColor: GREEN, backgroundColor: `${GREEN}18` }]}>
                   <View style={styles.choiceTitleRow}>
                     <Ionicons name="body-outline" size={16} color={GREEN} />
-                    <Text style={[styles.choiceTitle, { color: GREEN }]}>Sein droit</Text>
+                    <Text style={[styles.choiceTitle, { color: GREEN }]}>{t('home.right_breast', 'Right breast')}</Text>
                   </View>
                   <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Timer immediat' : 'Immediate timer'}</Text>
                 </View>
@@ -994,13 +994,13 @@ export default function HomeScreen() {
                 <View style={[styles.choiceChip, { borderColor: TEXT, backgroundColor: `${TEXT}12` }]}>
                   <View style={styles.choiceTitleRow}>
                     <Ionicons name="body-outline" size={16} color={TEXT} />
-                    <Text style={[styles.choiceTitle, { color: TEXT }]}>Les deux</Text>
+                    <Text style={[styles.choiceTitle, { color: TEXT }]}>{t('home.breast_both', 'Both sides')}</Text>
                   </View>
-                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Alterner les deux' : 'Both sides'}</Text>
+                  <Text style={styles.choiceSubtitle}>{t('home.both_sides', 'Both sides')}</Text>
                 </View>
               </PressScale>
             </View>
-            <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowNextFeedPicker(false)} variant="ghost" />
+            <Button label={t('common.close', 'Close')} onPress={() => setShowNextFeedPicker(false)} variant="ghost" />
           </View>
         </View>
       </Modal>
@@ -1009,7 +1009,7 @@ export default function HomeScreen() {
         <View style={styles.menuOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowHomeCustomizer(false)} />
           <View style={[styles.menuSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
-            <Text style={styles.menuTitle}>{language === 'fr' ? 'Personnaliser l\'accueil' : 'Customize home'}</Text>
+            <Text style={styles.menuTitle}>{t('home.customize_home', 'Customize home')}</Text>
             <Text style={styles.menuSubtitle}>
               {language === 'fr'
                 ? 'Masque ou restaure les blocs visibles sans changer la logique.'
@@ -1017,21 +1017,21 @@ export default function HomeScreen() {
             </Text>
             <View style={styles.customizerGrid}>
               {[
-                { key: 'nextFeed', label: language === 'fr' ? 'Next feeding' : 'Next feeding' },
-                { key: 'smartSignals', label: language === 'fr' ? 'Signaux intelligents' : 'Smart signals' },
-                { key: 'lastFeeds', label: language === 'fr' ? 'Derniers biberons' : 'Last feeds' },
-                { key: 'timeline', label: 'Timeline' },
-                { key: 'recentActivity', label: language === 'fr' ? 'Historique court' : 'Recent activity' },
-                { key: 'hydration', label: 'Hydration' },
-                { key: 'dailyStatus', label: language === 'fr' ? 'Etat du jour' : 'Daily status' },
-                { key: 'weeklyDigest', label: language === 'fr' ? 'Digest hebdo' : 'Weekly digest' },
+                { key: 'nextFeed', label: t('home.next_feed_label', 'Next feed') },
+                { key: 'smartSignals', label: t('home.smart_signals', 'Smart signals') },
+                { key: 'lastFeeds', label: t('home.last_bottle', 'Last feeds') },
+                { key: 'timeline', label: t('home.timeline', 'Timeline') },
+                { key: 'recentActivity', label: t('home.recent_activity', 'Recent activity') },
+                { key: 'hydration', label: t('home.hydration', 'Hydration') },
+                { key: 'dailyStatus', label: 'Daily status' },
+                { key: 'weeklyDigest', label: 'Weekly digest' },
                 { key: 'widget', label: 'Widget' },
               ].map((item) => {
                 const enabled = appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics];
                 return (
                   <View key={item.key} style={styles.customizerItem}>
                     <Button
-                      label={`${enabled ? (language === 'fr' ? 'Masquer' : 'Hide') : (language === 'fr' ? 'Afficher' : 'Show')} ${item.label}`}
+                      label={`${enabled ? t('home.hide_section', 'Hide') : t('home.show_section', 'Show')} ${item.label}`}
                       onPress={() => void updateDashboardMetric(item.key as keyof typeof appSettings.dashboardMetrics, !enabled)}
                       variant={enabled ? 'secondary' : 'ghost'}
                       size="sm"
@@ -1041,8 +1041,8 @@ export default function HomeScreen() {
               })}
             </View>
             <View style={{ gap: 8 }}>
-              <Button label={language === 'fr' ? 'Tout restaurer' : 'Restore all'} onPress={() => void restoreHomeCustomization()} variant="secondary" />
-              <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowHomeCustomizer(false)} variant="ghost" />
+              <Button label={t('home.restore_all', 'Restore all')} onPress={() => void restoreHomeCustomization()} variant="secondary" />
+              <Button label={t('common.close', 'Close')} onPress={() => setShowHomeCustomizer(false)} variant="ghost" />
             </View>
           </View>
         </View>
@@ -1054,8 +1054,8 @@ export default function HomeScreen() {
           <View style={[styles.switcherSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
             <View style={styles.switcherHeader}>
               <View>
-                <Text style={styles.switcherTitle}>{language === 'fr' ? "Changer d'enfant" : 'Switch child profile'}</Text>
-                <Text style={styles.switcherSubtitle}>{language === 'fr' ? 'Choisis le profil actif pour ce tableau de bord.' : 'Choose the active profile for this dashboard.'}</Text>
+                <Text style={styles.switcherTitle}>{t('home.switch_profile', 'Switch child profile')}</Text>
+                <Text style={styles.switcherSubtitle}>{t('home.choose_profile', 'Choose the active profile for this dashboard.')}</Text>
               </View>
               <View style={styles.switcherBadge}>
                 <Text style={{ color: GOLD, fontSize: 11, fontWeight: '800' }}>{babies.length}</Text>
@@ -1097,25 +1097,25 @@ export default function HomeScreen() {
                   <View style={styles.emptyIconWrap}>
                     <Ionicons name="people-outline" size={18} color={MUTED} />
                   </View>
-                  <Text style={styles.emptySwitcherTitle}>{language === 'fr' ? "Aucun profil d'enfant" : 'No child profile yet'}</Text>
+                  <Text style={styles.emptySwitcherTitle}>{t('home.no_child_profile', 'No child profile yet')}</Text>
                   <Text style={styles.emptySwitcherSubtitle}>
                     {language === 'fr'
-                      ? "Va dans Profil pour creer un enfant, puis reviens ici pour l'activer."
-                      : 'Go to Profile to create one, then return here to set it active.'}
+                      ? t('home.go_profile', 'Go to Profile to create one, then return here to set it active.')
+                      : t('home.go_profile', 'Go to Profile to create one, then return here to set it active.')}
                   </Text>
                 </View>
               )}
             </ScrollView>
             <View style={styles.switcherFooter}>
               <Button
-                label={language === 'fr' ? 'Ouvrir Profil' : 'Open Profile'}
+                label={t('home.open_profile_cta', 'Open Profile')}
                 onPress={() => {
                   setShowBabySwitcher(false);
                   router.push('/profile');
                 }}
                 variant="secondary"
               />
-              <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowBabySwitcher(false)} variant="ghost" />
+              <Button label={t('common.close', 'Close')} onPress={() => setShowBabySwitcher(false)} variant="ghost" />
             </View>
           </View>
         </View>
@@ -1137,16 +1137,16 @@ export default function HomeScreen() {
           <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
             <View style={[styles.sheetCard, { maxWidth: isLargePhone ? 480 : 420, paddingHorizontal: isCompactPhone ? 16 : 22, paddingVertical: isCompactPhone ? 16 : 22 }]}>
               <Text style={styles.sheetTitle}>
-                {quickTimerMode === 'bottle' ? 'Biberon termine' : `${activeFeedTitle} termine`}
+                {quickTimerMode === 'bottle' ? `${t('home.bottle', 'Bottle')} ${t('home.end', 'ended')}` : `${activeFeedTitle} ${t('home.end', 'ended')}`}
               </Text>
               <Text style={styles.sheetSubtitle}>
-                Duree {Math.max(1, Math.round(timerElapsedSeconds / 60))} min - commence a {formatClock(timerStartedAt ? new Date(timerStartedAt).toISOString() : undefined, locale)}
+                {language === 'fr' ? 'Durée' : 'Duration'} {Math.max(1, Math.round(timerElapsedSeconds / 60))} min - {language === 'fr' ? 'commencé à' : 'started at'} {formatClock(timerStartedAt ? new Date(timerStartedAt).toISOString() : undefined, locale)}
               </Text>
               <QuantityPicker value={quickAmount} onChange={setQuickAmount} largeTouchMode={appSettings.largeTouchMode} />
               <View style={styles.sheetActions}>
-                <Button label="Save" onPress={saveQuickTimerEntry} />
+                <Button label={t('common.save', 'Save')} onPress={saveQuickTimerEntry} />
                 <Button
-                  label="Cancel"
+                  label={t('common.cancel', 'Cancel')}
                   variant="ghost"
                   onPress={() => {
                     setQuickTimerMode(null);

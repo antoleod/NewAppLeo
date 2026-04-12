@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Page, Card, Heading, Input, Button } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
+import { getLocalPairingSession, joinPairingSession } from '@/services/pairingService';
 
 export default function LoginScreen() {
   const { colors } = useTheme();
@@ -12,6 +13,7 @@ export default function LoginScreen() {
   const { signInEmail, signInGuest } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,15 +34,37 @@ export default function LoginScreen() {
     }
   }
 
+  async function handleTokenLogin() {
+    setLoading(true);
+    setError('');
+    try {
+      const session = await getLocalPairingSession();
+      if (!session || session.code !== token.trim()) {
+        throw new Error('Invalid token');
+      }
+      await joinPairingSession(token.trim(), 'anonymous');
+      router.replace('/home');
+    } catch (err: any) {
+      const message = err?.message ?? 'Unable to sign in.';
+      setError(message);
+      Alert.alert('Login failed', message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <Page>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
       <Heading eyebrow="Authentication" title={language === 'fr' ? 'Bon retour' : 'Welcome back'} subtitle={language === 'fr' ? "Connectez-vous ou continuez en invite." : 'Sign in with email or continue as a guest.'} />
       <Card>
         <Input label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" textContentType="emailAddress" />
         <Input label="Password" value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry textContentType="password" />
+        <Input label="Login with Token" value={token} onChangeText={setToken} placeholder="123456" keyboardType="numeric" inputMode="numeric" />
 
         {error ? <Text style={{ color: colors.danger, fontSize: 13, textAlign: 'center' }}>{error}</Text> : null}
         <Button label={language === 'fr' ? 'Se connecter' : 'Sign in'} onPress={handleSubmit} loading={loading} disabled={!canSubmit} fullWidth />
+        <Button label="Use token" onPress={() => void handleTokenLogin()} variant="secondary" loading={loading} fullWidth />
         <Button label={language === 'fr' ? 'Continuer en invite' : 'Continue as guest'} onPress={async () => { await signInGuest(); router.replace('/home'); }} variant="secondary" loading={loading} fullWidth />
         <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: 'center' }}>
           {language === 'fr' ? "Le mode invite reste sur l'appareil et utilise uniquement le stockage local." : 'Guest mode stays on-device and uses the local dashboard only.'}
@@ -54,6 +78,7 @@ export default function LoginScreen() {
           </Pressable>
         </View>
       </Card>
+      </ScrollView>
     </Page>
   );
 }

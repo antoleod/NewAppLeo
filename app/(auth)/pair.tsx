@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Card, Heading, Input, Page } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext';
 import { createPairingSession, joinPairingSession, getLocalPairingSession, type PairingSession } from '@/services/pairingService';
 
 function makeCode() {
@@ -13,6 +14,7 @@ function makeCode() {
 
 export default function PairScreen() {
   const { colors } = useTheme();
+  const { t } = useLocale();
   const { user } = useAuth();
   const [code, setCode] = useState(makeCode);
   const [session, setSession] = useState<PairingSession | null>(null);
@@ -25,12 +27,13 @@ export default function PairScreen() {
 
   return (
     <Page>
-      <Heading eyebrow="Pairing" title="Connect a partner device" subtitle="Use a short code to share the same baby session." />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+      <Heading eyebrow={t('auth.pair', 'Pair device')} title="Connect a partner device" subtitle="Use a short code to share the same baby session." />
       <Card>
-        <View style={{ gap: 12 }}>
-          <Text style={{ color: colors.muted }}>Share this code with the other device:</Text>
-          <Text style={{ color: colors.text, fontSize: 34, fontWeight: '900', letterSpacing: 6 }}>{session?.code ?? code}</Text>
-          <Text style={{ color: colors.muted }}>Status: {session?.status ?? 'local only'}</Text>
+        <View style={{ gap: 10 }}>
+          <Text style={{ color: colors.muted, fontSize: 12 }}>Share this code with the other device:</Text>
+          <Text style={{ color: colors.text, fontSize: 28, fontWeight: '900', letterSpacing: 4, textAlign: 'center' }}>{session?.code ?? code}</Text>
+          <Text style={{ color: colors.muted, fontSize: 12 }}>Status: {session?.status ?? 'local only'}</Text>
           <Button
             label="Create new code"
             onPress={async () => {
@@ -65,6 +68,7 @@ export default function PairScreen() {
         </View>
       </Card>
       <Button label="Back to app" onPress={() => router.back()} variant="ghost" />
+      </ScrollView>
     </Page>
   );
 }

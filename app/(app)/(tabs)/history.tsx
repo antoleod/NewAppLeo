@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Button, Card, EmptyState, Heading, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext';
 import { EntryRecord, EntryType } from '@/types';
 import { generateWeeklyPdf } from '@/lib/pdf';
 import { dateKey, formatLongDate, formatTime, isSameDay, startOfDay, subtractDays, toDate } from '@/utils/date';
@@ -19,6 +20,113 @@ const RED = '#E74C3C';
 const PURPLE = '#A371F7';
 const TEXT = '#F0F6FC';
 const MUTED = '#8B949E';
+
+const COPY = {
+  en: {
+    report: 'REPORT',
+    day: 'DAY',
+    weight: 'WEIGHT',
+    oms: 'OMS',
+    history: 'History',
+    subtitle: 'Browse, filter, and export entries by day.',
+    overview: 'Daily history and OMS',
+    overviewSub: 'Daily summary, growth charts, unified timeline, and doctor export.',
+    daySummary: 'Day Summary',
+    daySub: 'Smart daily summary with deltas and reference points.',
+    weightTrend: 'Weight Trend Chart',
+    weightSub: 'Baby curve plus OMS median band.',
+    referenceCard: 'Reference Card',
+    showTable: 'Show OMS table',
+    hideTable: 'Hide OMS table',
+    today: 'Today',
+    share: 'Share',
+    edit: 'Edit',
+    delete: 'Delete',
+    addEntry: 'Add entry',
+    none: 'No entries yet',
+    noneBody: 'Add an entry or change the filter for this day.',
+    removed: 'Item removed.',
+    undo: 'Undo',
+  },
+  fr: {
+    report: 'RAPPORT',
+    day: 'JOUR',
+    weight: 'POIDS',
+    oms: 'OMS',
+    history: 'Historique',
+    subtitle: 'Parcourez, filtrez et exportez les entrées par jour.',
+    overview: 'Historique quotidien et OMS',
+    overviewSub: 'Résumé du jour, courbes de croissance, timeline unifiée et export docteur.',
+    daySummary: 'Résumé du jour',
+    daySub: 'Résumé intelligent du jour avec deltas et repères.',
+    weightTrend: 'Courbe de poids',
+    weightSub: 'Courbe réelle bébé + bande OMS médiane.',
+    referenceCard: 'Carte de référence',
+    showTable: 'Afficher la table OMS',
+    hideTable: 'Masquer la table OMS',
+    today: "Aujourd'hui",
+    share: 'Partager',
+    edit: 'Éditer',
+    delete: 'Supprimer',
+    addEntry: 'Ajouter une entrée',
+    none: 'Aucune entrée',
+    noneBody: "Aucune entrée ne correspond au filtre pour cette date.",
+    removed: 'Élément supprimé.',
+    undo: 'Annuler',
+  },
+  es: {
+    report: 'INFORME',
+    day: 'DÍA',
+    weight: 'PESO',
+    oms: 'OMS',
+    history: 'Historial',
+    subtitle: 'Explora, filtra y exporta entradas por día.',
+    overview: 'Historial diario y OMS',
+    overviewSub: 'Resumen diario, curvas de crecimiento, línea de tiempo unificada y exportación médica.',
+    daySummary: 'Resumen del día',
+    daySub: 'Resumen inteligente con deltas y referencias.',
+    weightTrend: 'Tendencia de peso',
+    weightSub: 'Curva real del bebé + banda mediana OMS.',
+    referenceCard: 'Tarjeta de referencia',
+    showTable: 'Mostrar tabla OMS',
+    hideTable: 'Ocultar tabla OMS',
+    today: 'Hoy',
+    share: 'Compartir',
+    edit: 'Editar',
+    delete: 'Eliminar',
+    addEntry: 'Agregar entrada',
+    none: 'Todavía no hay entradas',
+    noneBody: 'Agrega una entrada o cambia el filtro de este día.',
+    removed: 'Elemento eliminado.',
+    undo: 'Deshacer',
+  },
+  nl: {
+    report: 'RAPPORT',
+    day: 'DAG',
+    weight: 'GEWICHT',
+    oms: 'OMS',
+    history: 'Historiek',
+    subtitle: 'Blader, filter en exporteer items per dag.',
+    overview: 'Daghistoriek en OMS',
+    overviewSub: 'Dagoverzicht, groeigrafieken, uniforme tijdlijn en dokters-export.',
+    daySummary: 'Dagoverzicht',
+    daySub: 'Slim dagoverzicht met verschillen en referenties.',
+    weightTrend: 'Gewichtstrend',
+    weightSub: 'Babycurve plus OMS-mediënband.',
+    referenceCard: 'Referentiekaart',
+    showTable: 'OMS-tabel tonen',
+    hideTable: 'OMS-tabel verbergen',
+    today: 'Vandaag',
+    share: 'Delen',
+    edit: 'Bewerken',
+    delete: 'Verwijderen',
+    addEntry: 'Item toevoegen',
+    none: 'Nog geen items',
+    noneBody: 'Voeg een item toe of wijzig het filter voor deze dag.',
+    removed: 'Item verwijderd.',
+    undo: 'Ongedaan maken',
+  },
+} as const;
 
 const FILTERS: Array<{ label: string; value: EntryType | 'all' }> = [
   { label: 'Tout', value: 'all' },
@@ -448,7 +556,7 @@ export default function HistoryScreen() {
               fullWidth={false}
               size="sm"
             />
-            <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', textAlign: 'center', flex: 1 }}>
+            <Text style={{ color: TEXT, fontSize: 15, fontWeight: '700', textAlign: 'center', flex: 1 }}>
               {new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
             </Text>
             <Button
@@ -459,7 +567,7 @@ export default function HistoryScreen() {
               size="sm"
             />
           </View>
-          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
             {[
               { label: 'CSV', action: exportCsv, active: false },
               { label: 'PDF', action: exportPdf, active: false },
@@ -469,10 +577,10 @@ export default function HistoryScreen() {
               <Pressable
                 key={item.label}
                 onPress={item.action}
-                style={{
-                  minHeight: 42,
-                  paddingHorizontal: 18,
-                  borderRadius: 20,
+                  style={{
+                    minHeight: 36,
+                    paddingHorizontal: 12,
+                    borderRadius: 16,
                   borderWidth: 1,
                   borderColor: item.active ? GOLD : BORDER,
                   backgroundColor: item.active ? `${GOLD}22` : BG,
@@ -484,7 +592,7 @@ export default function HistoryScreen() {
               </Pressable>
             ))}
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 6 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 6 }}>
             {FILTERS.map((item) => {
               const active = filter === item.value;
               return (
@@ -492,9 +600,9 @@ export default function HistoryScreen() {
                   key={item.value}
                   onPress={() => setFilter(item.value)}
                   style={{
-                    minHeight: 40,
-                    paddingHorizontal: 16,
-                    borderRadius: 20,
+                    minHeight: 34,
+                    paddingHorizontal: 12,
+                    borderRadius: 16,
                     borderWidth: 1,
                     borderColor: active ? GOLD : BORDER,
                     backgroundColor: active ? GOLD : BG,

@@ -25,6 +25,277 @@ const typeLabels: Record<EntryType, string> = {
   symptom: 'Symptom',
 };
 
+const entryCopy = {
+  en: {
+    close: 'Close',
+    composer: 'Composer',
+    whenItHappened: 'When it happened',
+    when: 'When',
+    feedFlow: 'FEED FLOW',
+    breastOrBottle: 'Breast or bottle',
+    bottle: 'Bottle',
+    breast: 'Breast',
+    sessionBreast: 'Breast session',
+    estimatedMl: 'Estimated ml',
+    foodFlow: 'FOOD FLOW',
+    mealsAndPortions: 'Meals and portions',
+    foodName: 'Food name',
+    quantity: 'Quantity',
+    sleepFlow: 'SLEEP FLOW',
+    durationAndRest: 'Duration and rest',
+    sleep: 'Sleep',
+    duration: 'Duration',
+    nightNap: 'Night / nap',
+    durationMin: 'Duration (min)',
+    diaperFlow: 'DIAPER FLOW',
+    quickCounts: 'Quick counts',
+    pee: 'Pee',
+    poop: 'Poop',
+    vomit: 'Vomit',
+    pumpFlow: 'PUMP FLOW',
+    timerAmount: 'Timer + amount',
+    pump: 'Pump',
+    timer: 'Timer',
+    amount: 'Amount',
+    sessionPump: 'Pump session',
+    measureFlow: 'MEASURE FLOW',
+    growthAndSize: 'Growth and size',
+    weightKg: 'Weight (kg)',
+    heightCm: 'Height (cm)',
+    headCirc: 'Head circumference (cm)',
+    temperature: 'Temperature (C)',
+    medicineFlow: 'MEDICINE FLOW',
+    nameDosageContext: 'Name, dosage and context',
+    savedMedicines: 'Saved medicines',
+    noSavedMedicine: 'No saved medicine yet.',
+    savePreset: 'Save as preset',
+    medicationName: 'Medication name',
+    usualDose: 'Usual dose',
+    dosage: 'Dosage',
+    milestoneFlow: 'MILESTONE FLOW',
+    milestoneAndPhoto: 'Milestone and photo',
+    title: 'Title',
+    replacePhoto: 'Replace photo',
+    attachPhoto: 'Attach photo',
+    photoAttached: 'Photo attached.',
+    symptomFlow: 'SYMPTOM FLOW',
+    tagsAndNotes: 'Tags and notes',
+    tags: 'Tags',
+    addNote: '+ Add note',
+    hideNote: '- Hide note',
+    notes: 'Notes',
+    optionalDetails: 'Optional details',
+    updateEntry: 'Update entry',
+    saveEntry: 'Save entry',
+    deleteEntry: 'Delete entry',
+    saveFailed: 'Save failed',
+    saveFailedBody: 'Could not save this record.',
+    edit: 'Edit',
+    newEntry: 'New',
+  },
+  fr: {
+    close: 'Fermer',
+    composer: 'Composer',
+    whenItHappened: 'Quand cela a eu lieu',
+    when: 'Quand',
+    feedFlow: 'FLUX TÉTÉE',
+    breastOrBottle: 'Sein ou biberon',
+    bottle: 'Biberon',
+    breast: 'Sein',
+    sessionBreast: 'Session sein',
+    estimatedMl: 'Ml estimés',
+    foodFlow: 'FLUX REPAS',
+    mealsAndPortions: 'Repas et portions',
+    foodName: "Nom de l'aliment",
+    quantity: 'Quantité',
+    sleepFlow: 'FLUX SOMMEIL',
+    durationAndRest: 'Durée et repos',
+    sleep: 'Sommeil',
+    duration: 'Durée',
+    nightNap: 'Nuit / sieste',
+    durationMin: 'Durée (min)',
+    diaperFlow: 'FLUX COUCHE',
+    quickCounts: 'Comptages rapides',
+    pee: 'Pipi',
+    poop: 'Caca',
+    vomit: 'Vomi',
+    pumpFlow: 'FLUX TIRE-LAIT',
+    timerAmount: 'Minuteur + quantité',
+    pump: 'Tire-lait',
+    timer: 'Minuteur',
+    amount: 'Quantité',
+    sessionPump: 'Session tire-lait',
+    measureFlow: 'FLUX MESURE',
+    growthAndSize: 'Croissance et taille',
+    weightKg: 'Poids (kg)',
+    heightCm: 'Taille (cm)',
+    headCirc: 'Périmètre crânien (cm)',
+    temperature: 'Température (C)',
+    medicineFlow: 'FLUX MÉDICAMENT',
+    nameDosageContext: 'Nom, dose et contexte',
+    savedMedicines: 'Médicaments sauvegardés',
+    noSavedMedicine: 'Aucun modèle gardé.',
+    savePreset: 'Sauver en modèle',
+    medicationName: 'Nom du médicament',
+    usualDose: 'Dose habituelle',
+    dosage: 'Dose',
+    milestoneFlow: 'FLUX ÉTAPE',
+    milestoneAndPhoto: 'Étape et photo',
+    title: 'Titre',
+    replacePhoto: 'Remplacer la photo',
+    attachPhoto: 'Ajouter une photo',
+    photoAttached: 'Photo jointe.',
+    symptomFlow: 'FLUX SYMPTÔME',
+    tagsAndNotes: 'Tags et notes',
+    tags: 'Tags',
+    addNote: '+ Ajouter une note',
+    hideNote: '- Masquer la note',
+    notes: 'Notes',
+    optionalDetails: 'Détails optionnels',
+    updateEntry: 'Mettre à jour',
+    saveEntry: 'Enregistrer',
+    deleteEntry: 'Supprimer',
+    saveFailed: 'Échec de l’enregistrement',
+    saveFailedBody: 'Impossible d’enregistrer cette entrée.',
+    edit: 'Modifier',
+    newEntry: 'Nouvelle',
+  },
+  es: {
+    close: 'Cerrar',
+    composer: 'Componer',
+    whenItHappened: 'Cuándo ocurrió',
+    when: 'Cuándo',
+    feedFlow: 'FLUJO DE TOMA',
+    breastOrBottle: 'Pecho o biberón',
+    bottle: 'Biberón',
+    breast: 'Pecho',
+    sessionBreast: 'Sesión de pecho',
+    estimatedMl: 'Ml estimados',
+    foodFlow: 'FLUJO DE COMIDA',
+    mealsAndPortions: 'Comidas y porciones',
+    foodName: 'Nombre del alimento',
+    quantity: 'Cantidad',
+    sleepFlow: 'FLUJO DE SUEÑO',
+    durationAndRest: 'Duración y descanso',
+    sleep: 'Sueño',
+    duration: 'Duración',
+    nightNap: 'Noche / siesta',
+    durationMin: 'Duración (min)',
+    diaperFlow: 'FLUJO DE PAÑAL',
+    quickCounts: 'Conteos rápidos',
+    pee: 'Pipi',
+    poop: 'Caca',
+    vomit: 'Vómito',
+    pumpFlow: 'FLUJO DE SACALECHE',
+    timerAmount: 'Temporizador + cantidad',
+    pump: 'Sacaleche',
+    timer: 'Temporizador',
+    amount: 'Cantidad',
+    sessionPump: 'Sesión de sacaleche',
+    measureFlow: 'FLUJO DE MEDICIÓN',
+    growthAndSize: 'Crecimiento y tamaño',
+    weightKg: 'Peso (kg)',
+    heightCm: 'Altura (cm)',
+    headCirc: 'Perímetro cefálico (cm)',
+    temperature: 'Temperatura (C)',
+    medicineFlow: 'FLUJO DE MEDICACIÓN',
+    nameDosageContext: 'Nombre, dosis y contexto',
+    savedMedicines: 'Medicamentos guardados',
+    noSavedMedicine: 'Aún no hay medicamentos guardados.',
+    savePreset: 'Guardar como modelo',
+    medicationName: 'Nombre del medicamento',
+    usualDose: 'Dosis habitual',
+    dosage: 'Dosis',
+    milestoneFlow: 'FLUJO DE HITO',
+    milestoneAndPhoto: 'Hito y foto',
+    title: 'Título',
+    replacePhoto: 'Reemplazar foto',
+    attachPhoto: 'Adjuntar foto',
+    photoAttached: 'Foto adjuntada.',
+    symptomFlow: 'FLUJO DE SÍNTOMA',
+    tagsAndNotes: 'Etiquetas y notas',
+    tags: 'Etiquetas',
+    addNote: '+ Añadir nota',
+    hideNote: '- Ocultar nota',
+    notes: 'Notas',
+    optionalDetails: 'Detalles opcionales',
+    updateEntry: 'Actualizar entrada',
+    saveEntry: 'Guardar entrada',
+    deleteEntry: 'Eliminar entrada',
+    saveFailed: 'Error al guardar',
+    saveFailedBody: 'No se pudo guardar este registro.',
+    edit: 'Editar',
+    newEntry: 'Nuevo',
+  },
+  nl: {
+    close: 'Sluiten',
+    composer: 'Opstellen',
+    whenItHappened: 'Wanneer het gebeurde',
+    when: 'Wanneer',
+    feedFlow: 'VOEDINGSSTROOM',
+    breastOrBottle: 'Borstvoeding of fles',
+    bottle: 'Fles',
+    breast: 'Borstvoeding',
+    sessionBreast: 'Borstvoedingssessie',
+    estimatedMl: 'Geschatte ml',
+    foodFlow: 'VOEDINGSSTROOM',
+    mealsAndPortions: 'Maaltijden en porties',
+    foodName: 'Voedingsnaam',
+    quantity: 'Hoeveelheid',
+    sleepFlow: 'SLAAPSTROOM',
+    durationAndRest: 'Duur en rust',
+    sleep: 'Slaap',
+    duration: 'Duur',
+    nightNap: 'Nacht / dutje',
+    durationMin: 'Duur (min)',
+    diaperFlow: 'LUIERSTROOM',
+    quickCounts: 'Snelle tellingen',
+    pee: 'Plas',
+    poop: 'Poep',
+    vomit: 'Braken',
+    pumpFlow: 'KOLFSTROOM',
+    timerAmount: 'Timer + hoeveelheid',
+    pump: 'Kolf',
+    timer: 'Timer',
+    amount: 'Hoeveelheid',
+    sessionPump: 'Kolfsessie',
+    measureFlow: 'METINGSTROOM',
+    growthAndSize: 'Groei en grootte',
+    weightKg: 'Gewicht (kg)',
+    heightCm: 'Lengte (cm)',
+    headCirc: 'Hoofdomtrek (cm)',
+    temperature: 'Temperatuur (C)',
+    medicineFlow: 'MEDICATIESTROOM',
+    nameDosageContext: 'Naam, dosering en context',
+    savedMedicines: 'Opgeslagen medicijnen',
+    noSavedMedicine: 'Nog geen opgeslagen medicijn.',
+    savePreset: 'Opslaan als preset',
+    medicationName: 'Medicijnnaam',
+    usualDose: 'Gebruikelijke dosis',
+    dosage: 'Dosering',
+    milestoneFlow: 'MIJLPAALSTROOM',
+    milestoneAndPhoto: 'Mijlpaal en foto',
+    title: 'Titel',
+    replacePhoto: 'Foto vervangen',
+    attachPhoto: 'Foto toevoegen',
+    photoAttached: 'Foto toegevoegd.',
+    symptomFlow: 'SYMPTOMENSTROOM',
+    tagsAndNotes: 'Tags en notities',
+    tags: 'Tags',
+    addNote: '+ Notitie toevoegen',
+    hideNote: '- Notitie verbergen',
+    notes: 'Notities',
+    optionalDetails: 'Optionele details',
+    updateEntry: 'Item bijwerken',
+    saveEntry: 'Item opslaan',
+    deleteEntry: 'Item verwijderen',
+    saveFailed: 'Opslaan mislukt',
+    saveFailedBody: 'Kon dit record niet opslaan.',
+    edit: 'Bewerken',
+    newEntry: 'Nieuw',
+  },
+} as const;
+
 const symptomOptions = [
   { label: 'Irritable', value: 'irritable' },
   { label: 'Cry', value: 'cry' },
@@ -143,6 +414,7 @@ function typeSubtitle(type: EntryType) {
 export default function EntryComposerScreen() {
   const { colors } = useTheme();
   const { language } = useLocale();
+  const copy = entryCopy[language as keyof typeof entryCopy] ?? entryCopy.en;
   const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string }>();
   const { addEntry, updateEntry, deleteEntry, entryById } = useAppData();
   const type = (params.type as EntryType) || 'feed';
@@ -319,7 +591,7 @@ export default function EntryComposerScreen() {
       }
       router.back();
     } catch (error: any) {
-      Alert.alert('Save failed', error?.message ?? 'Could not save this record.');
+      Alert.alert(copy.saveFailed, error?.message ?? copy.saveFailedBody);
     } finally {
       setSaving(false);
     }
@@ -331,14 +603,10 @@ export default function EntryComposerScreen() {
     router.back();
   }
 
-  const copy = {
+  const screenCopy = {
     title: editing
-      ? language === 'fr'
-        ? `Modifier ${typeLabels[editing.type]}`
-        : `Edit ${typeLabels[editing.type]}`
-      : language === 'fr'
-        ? `Nouvelle entree ${typeLabels[type]}`
-        : `New ${typeLabels[type]}`,
+      ? `${copy.edit} ${typeLabels[editing.type]}`
+      : `${copy.newEntry} ${typeLabels[type]}`,
     subtitle:
       type === 'feed'
         ? language === 'fr'
@@ -380,15 +648,15 @@ export default function EntryComposerScreen() {
           <View style={[styles.heroIcon, { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
             <Text style={styles.heroIconText}>{meta.icon}</Text>
           </View>
-          <Pressable onPress={() => router.back()} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={language === 'fr' ? 'Fermer' : 'Close'}>
+          <Pressable onPress={() => router.back()} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={copy.close}>
             <Text style={styles.closeButtonLabel}>X</Text>
           </Pressable>
         </View>
 
         <View style={styles.heroCopy}>
-          <Text style={[styles.heroEyebrow, { color: meta.tone }]}>{language === 'fr' ? 'Composer' : 'Composer'}</Text>
-          <Text style={styles.heroTitle}>{copy.title}</Text>
-          <Text style={styles.heroSubtitle}>{copy.subtitle}</Text>
+          <Text style={[styles.heroEyebrow, { color: meta.tone }]}>{copy.composer}</Text>
+          <Text style={styles.heroTitle}>{screenCopy.title}</Text>
+          <Text style={styles.heroSubtitle}>{screenCopy.subtitle}</Text>
         </View>
         <View style={styles.badgeRow}>
           {meta.badges.map((badge) => (
@@ -401,22 +669,22 @@ export default function EntryComposerScreen() {
       <Card>
         <View style={styles.sectionCard}>
           <Text style={[styles.sectionLabel, { color: meta.tone }]}>{meta.eyebrow}</Text>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Quand cela a eu lieu' : 'When it happened'}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{copy.whenItHappened}</Text>
           <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-          <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={occurredAt} onChange={setOccurredAt} />
+          <DateTimeField label={copy.when} value={occurredAt} onChange={setOccurredAt} />
         </View>
 
         {type === 'feed' ? (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'FEED FLOW' : 'FEED FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Sein ou biberon' : 'Breast or bottle'}</Text>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{copy.feedFlow}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{copy.breastOrBottle}</Text>
             <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[1]}</Text>
             <Segment
               value={mode}
               onChange={(value) => setMode(value as 'breast' | 'bottle')}
               options={[
-                { label: 'Bottle', value: 'bottle' },
-                { label: 'Breast', value: 'breast' },
+                { label: copy.bottle, value: 'bottle' },
+                { label: copy.breast, value: 'breast' },
               ]}
             />
             <View style={styles.chipRow}>
@@ -424,10 +692,10 @@ export default function EntryComposerScreen() {
                 <Text style={styles.smallChipText}>+150 ml</Text>
               </Pressable>
               <Pressable onPress={() => setMode('breast')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>Timer</Text>
+                <Text style={styles.smallChipText}>{copy.timer}</Text>
               </Pressable>
               <Pressable onPress={() => setMode('bottle')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>Feed</Text>
+                <Text style={styles.smallChipText}>{typeLabels.feed}</Text>
               </Pressable>
             </View>
             {mode === 'bottle' ? (
@@ -435,7 +703,7 @@ export default function EntryComposerScreen() {
             ) : (
               <View style={styles.stack}>
                 <TimerWidget
-                  label={language === 'fr' ? 'Session sein' : 'Breast session'}
+                  label={copy.sessionBreast}
                   valueMinutes={Number(durationMin) || 0}
                   onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
                   allowSides
@@ -443,7 +711,7 @@ export default function EntryComposerScreen() {
                   onSideChange={(nextSide) => setSide(nextSide)}
                   largeTouchMode={largeTouchMode}
                 />
-                <QuantityPicker label={language === 'fr' ? 'Ml estimes' : 'Estimated ml'} value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
+                <QuantityPicker label={copy.estimatedMl} value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
               </View>
             )}
           </View>
@@ -454,8 +722,8 @@ export default function EntryComposerScreen() {
             <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'FOOD FLOW' : 'FOOD FLOW'}</Text>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Repas et portions' : 'Meals and portions'}</Text>
             <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-            <Input label={language === 'fr' ? 'Nom de l aliment' : 'Food name'} value={foodName} onChangeText={setFoodName} placeholder={language === 'fr' ? 'Pomme, riz, puree...' : 'Apple, rice, puree...'} />
-            <Input label={language === 'fr' ? 'Quantite' : 'Quantity'} value={quantity} onChangeText={setQuantity} placeholder="250 ml / 120 g / 1 portion" />
+            <Input label={copy.foodName} value={foodName} onChangeText={setFoodName} placeholder={language === 'fr' ? 'Pomme, riz, puree...' : 'Apple, rice, puree...'} />
+            <Input label={copy.quantity} value={quantity} onChangeText={setQuantity} placeholder="250 ml / 120 g / 1 portion" />
           </View>
         ) : null}
 
@@ -469,7 +737,7 @@ export default function EntryComposerScreen() {
               <Text style={styles.infoStripText}>⏱ {language === 'fr' ? 'Durée' : 'Duration'}</Text>
               <Text style={styles.infoStripText}>🌙 {language === 'fr' ? 'Nuit / sieste' : 'Night / nap'}</Text>
             </View>
-            <TimerWidget label={language === 'fr' ? 'Duree (min)' : 'Duration (min)'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
+            <TimerWidget label={copy.durationMin} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
           </View>
         ) : null}
 
@@ -488,15 +756,15 @@ export default function EntryComposerScreen() {
 
         {type === 'pump' ? (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'PUMP FLOW' : 'PUMP FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Minuteur + quantite' : 'Timer + amount'}</Text>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{copy.pumpFlow}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{copy.timerAmount}</Text>
             <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
             <View style={styles.infoStrip}>
-              <Text style={styles.infoStripText}>🍼 {language === 'fr' ? 'Tire-lait' : 'Pump'}</Text>
-              <Text style={styles.infoStripText}>⏱ {language === 'fr' ? 'Minuteur' : 'Timer'}</Text>
-              <Text style={styles.infoStripText}>💧 {language === 'fr' ? 'Quantité' : 'Amount'}</Text>
+              <Text style={styles.infoStripText}>🍼 {copy.pump}</Text>
+              <Text style={styles.infoStripText}>⏱ {copy.timer}</Text>
+              <Text style={styles.infoStripText}>💧 {copy.amount}</Text>
             </View>
-            <TimerWidget label={language === 'fr' ? 'Session tire-lait' : 'Pump session'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
+            <TimerWidget label={copy.sessionPump} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
             <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
           </View>
         ) : null}
