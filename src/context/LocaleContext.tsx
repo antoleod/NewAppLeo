@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { AppLanguage } from '@/types';
 import { translate } from '@/lib/translations';
+import { getAppSettings, updateAppSettings } from '@/lib/storage';
 
 interface LocaleContextValue {
   language: AppLanguage;
@@ -20,11 +21,13 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
     const loadLanguage = async () => {
-      const stored = (await AsyncStorage.getItem(LOCAL_LANGUAGE_KEY)) as AppLanguage | null;
-      if (!mounted || !stored) return;
-      if (stored === 'fr' || stored === 'es' || stored === 'en' || stored === 'nl') {
-        setLocalLanguage(stored);
-      }
+      const [stored, settings] = await Promise.all([
+        AsyncStorage.getItem(LOCAL_LANGUAGE_KEY),
+        getAppSettings(),
+      ]);
+      const candidate = (stored ?? settings.language ?? 'en') as AppLanguage;
+      if (!mounted) return;
+      setLocalLanguage(candidate === 'fr' || candidate === 'es' || candidate === 'en' || candidate === 'nl' ? candidate : 'en');
     };
     void loadLanguage();
     return () => {
@@ -40,6 +43,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
       setLanguage: async (nextLanguage) => {
         if (nextLanguage === language) return;
         await AsyncStorage.setItem(LOCAL_LANGUAGE_KEY, nextLanguage);
+        await updateAppSettings({ language: nextLanguage });
         setLocalLanguage(nextLanguage);
         if (user || guestMode) {
           await saveProfile({ language: nextLanguage });

@@ -47,7 +47,7 @@ export default function ProfileScreen() {
   const [heightCm, setHeightCm] = useState(profile?.heightCm ? String(profile.heightCm) : '');
   const [babyNotes, setBabyNotes] = useState(profile?.babyNotes ?? '');
   const [babyPhotoUri, setBabyPhotoUri] = useState(profile?.babyPhotoUri ?? '');
-  const [language, setLanguage] = useState(profile?.language ?? 'fr');
+  const [language, setLanguage] = useState(profile?.language ?? 'en');
   const [babies, setBabies] = useState<Array<{ id: string; name: string; birthDate: string }>>([]);
   const [activeBabyId, setBabyActiveId] = useState<string | null>(null);
   const [visibility, setVisibility] = useState(defaultModuleVisibility);
@@ -69,7 +69,7 @@ export default function ProfileScreen() {
     setHeightCm(profile?.heightCm ? String(profile.heightCm) : '');
     setBabyNotes(profile?.babyNotes ?? '');
     setBabyPhotoUri(profile?.babyPhotoUri ?? '');
-    setLanguage(profile?.language ?? 'fr');
+    setLanguage(profile?.language ?? 'en');
   }, [profile]);
 
   useEffect(() => {
@@ -110,13 +110,13 @@ export default function ProfileScreen() {
       babyPhotoUri: babyPhotoUri || undefined,
       language: language as any,
     });
-    Alert.alert('Profile updated', 'Local family data is now in sync across the app.');
+    Alert.alert(t('settings.update_success', 'Profile updated'), t('settings.update_success_body', 'Your preferences are now in sync across the app.'));
   }
 
   async function handlePickPhoto() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission required', 'Allow photo access to attach a baby picture.');
+      Alert.alert(t('common.cancel', 'Cancel'), 'Allow photo access to attach a baby picture.');
       return;
     }
 
@@ -135,7 +135,7 @@ export default function ProfileScreen() {
   async function handlePickBackgroundPhoto() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission required', 'Allow photo access to set a custom app background.');
+      Alert.alert(t('common.cancel', 'Cancel'), 'Allow photo access to set a custom app background.');
       return;
     }
 

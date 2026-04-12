@@ -63,9 +63,9 @@ export default function RootLayout() {
   }, []);
 
   const handleUnlock = async () => {
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Desbloquear App Leo',
-      fallbackLabel: 'Usar codigo',
+      const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: 'Unlock App Leo',
+      fallbackLabel: 'Use passcode',
     });
     if (result.success) {
       setIsLocked(false);
@@ -105,9 +105,9 @@ export default function RootLayout() {
                   {isLocked && (
                     <View style={[StyleSheet.absoluteFill, styles.lockOverlay]}>
                       <Text style={styles.lockEmoji}>{'\u{1F512}'}</Text>
-                      <Text style={styles.lockTitle}>App Bloqueada</Text>
+                      <Text style={styles.lockTitle}>App Locked</Text>
                       <View style={{ width: 200 }}>
-                        <Button label="Desbloquear" onPress={handleUnlock} fullWidth />
+                        <Button label="Unlock" onPress={handleUnlock} fullWidth />
                       </View>
                     </View>
                   )}
