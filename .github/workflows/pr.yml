@@ -57,7 +57,14 @@ jobs:
           done || true
 
       - name: Build test
-        run: npx expo export --platform web
+        run: |
+          npx expo export --platform web
+          if [ "${{ github.event.repository.name }}" = "${{ github.repository_owner }}.github.io" ]; then
+            BASE_PATH="/"
+          else
+            BASE_PATH="/${{ github.event.repository.name }}/"
+          fi
+          sed -i "s|href=\"/|href=\"${BASE_PATH}|g; s|src=\"/|src=\"${BASE_PATH}|g" dist/index.html
         env:
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
