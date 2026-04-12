@@ -88,12 +88,12 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
 
   return (
     <Page>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24, gap: 12 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120, gap: 12, paddingHorizontal: 2 }}>
         <Animated.View entering={FadeIn.duration(220)}>
           <Heading eyebrow="Personalization" title="Theme & Design" subtitle="Customize colors, palette, visual style, and background" />
         </Animated.View>
 
-        <Card>
+        <Card style={{ shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 5 }}>
           <SectionHeader title="Light/Dark Mode" />
           <Segment
             value={themeMode}
@@ -107,7 +107,7 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
           <Button label={paletteMode === 'nuit' ? 'Switch to Light' : 'Switch to Dark'} onPress={() => void toggleTheme()} variant="ghost" fullWidth />
         </Card>
 
-        <Card>
+        <Card style={{ shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 5 }}>
           <SectionHeader title="Quick palette" />
           <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginBottom: spacing.md }}>
             Choose from several ready-made palettes, then fine-tune with HEX.
@@ -133,7 +133,7 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
           <ThemeVariantGrid value={themeVariant} onChange={async (variant) => setThemeVariant(variant)} />
         </Card>
 
-        <Card>
+        <Card style={{ shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 5 }}>
           <SectionHeader title="Visual Style" />
           <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginBottom: spacing.md }}>
             Select how backgrounds and cards appear
@@ -143,33 +143,38 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
 
         <BackgroundPhotoSelector currentPhotoUri={backgroundPhotoUri} onPhotoSelected={handlePhotoSelected} onPhotoRemoved={handlePhotoRemoved} isLoading={uploadingPhoto} />
 
-        <Card>
+        <Card style={{ shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 5 }}>
           <SectionHeader title="Live Preview" />
           <ThemePreview />
         </Card>
 
-        <Card>
+        <Card style={{ shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 12 }, elevation: 6 }}>
           <Animated.View entering={FadeInDown.duration(220)}>
             <SectionHeader title="Advanced Colors" />
             <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginBottom: spacing.md }}>
-              Pick a base color or fine-tune with HEX values.
+              Advanced Colors
             </Text>
           </Animated.View>
           <View style={{ gap: spacing.md }}>
             <View style={{ gap: 8 }}>
-              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>Advanced Colors</Text>
+              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>Quick palette</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                 {quickPalette.map((color) => (
                   <Pressable
                     key={color}
                     onPress={() => setPresetColor(color)}
                     style={{
-                      width: 34,
-                      height: 34,
+                      width: 38,
+                      height: 38,
                       borderRadius: 999,
                       backgroundColor: color,
                       borderWidth: presetColor === color ? 3 : 1,
                       borderColor: presetColor === color ? colors.text : colors.border,
+                      shadowColor: '#000',
+                      shadowOpacity: presetColor === color ? 0.18 : 0.08,
+                      shadowRadius: 10,
+                      shadowOffset: { width: 0, height: 6 },
+                      elevation: presetColor === color ? 4 : 2,
                     }}
                   />
                 ))}
@@ -191,7 +196,7 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
 
         <DataImporter />
 
-        <Card>
+        <Card style={{ shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 5 }}>
           <Text style={{ color: theme.textPrimary, fontWeight: '700', marginBottom: spacing.sm }}>Tips for best results</Text>
           <Text style={{ color: theme.textMuted, fontSize: 12, lineHeight: 18 }}>
             {"• Hex colors should be in format #RRGGBB\n• Test custom themes in both light and dark modes\n• Use complementary colors for better contrast\n• Background photo works with all styles\n• Import JSON with feeds, diapers, or sleep data"}

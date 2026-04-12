@@ -96,7 +96,11 @@ export default function RegisterScreen() {
   return (
     <Page>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-      <Heading eyebrow={t('auth.create_account')} title={language === 'fr' ? 'Creer un compte' : 'Create an account'} subtitle={language === 'fr' ? 'Un seul compte suffit pour le foyer.' : 'One account supports both login modes.'} />
+      <Heading
+        eyebrow={t('auth.create_account')}
+        title={language === 'fr' ? 'Creer un compte' : 'Create an account'}
+        subtitle={language === 'fr' ? 'Un seul compte suffit pour le foyer.' : 'One account supports both login modes.'}
+      />
       <Card>
         <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: 'center', marginBottom: 4 }}>
           {t('auth.password_or_pin', 'You can sign in with either a password or a PIN.')}
