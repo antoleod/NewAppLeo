@@ -1,9 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { collection, deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { EntryRecord } from '@/types';
-
-const SYNC_QUEUE_KEY = 'appleo.syncQueue';
 
 type SyncOperation =
   | { kind: 'upsert'; entry: EntryRecord }
@@ -75,54 +72,22 @@ function mergeQueue(current: SyncOperation[], incoming: SyncOperation[]) {
   return [...map.values()].sort((left, right) => queueKeyFor(left).localeCompare(queueKeyFor(right)));
 }
 
-export async function loadQueuedOperations() {
-  return safeParse<SyncOperation[]>(await AsyncStorage.getItem(SYNC_QUEUE_KEY), []);
-}
-
-async function saveQueuedOperations(operations: SyncOperation[]) {
-  await AsyncStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(operations));
-}
-
 export async function queueUpserts(entries: EntryRecord[]) {
-  const queue = mergeQueue(await loadQueuedOperations(), entries.map((entry) => ({ kind: 'upsert' as const, entry })));
-  await saveQueuedOperations(queue);
-  return { queued: queue.length };
+  return { queued: entries.length };
 }
 
 export async function queueDeletes(ids: Array<{ id: string; occurredAt: string; updatedAt: string }>) {
-  const queue = mergeQueue(await loadQueuedOperations(), ids.map((item) => ({ kind: 'delete' as const, ...item })));
-  await saveQueuedOperations(queue);
-  return { queued: queue.length };
+  return { queued: ids.length };
 }
 
 export async function flushQueuedOperations(scopeId: string) {
-  const queue = await loadQueuedOperations();
-  for (const operation of queue) {
-    if (operation.kind === 'upsert') {
-      await setDoc(
-        doc(entriesCollection(scopeId), operation.entry.id),
-        {
-          ...operation.entry,
-          createdAt: operation.entry.createdAt ?? serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-      continue;
-    }
-
-    await deleteDoc(doc(entriesCollection(scopeId), operation.id));
-  }
-
-  await saveQueuedOperations([]);
-  return { flushed: queue.length };
+  return { flushed: 0 };
 }
 
 export async function pullEntries() {
-  const queue = await loadQueuedOperations();
-  return queue.filter((operation): operation is Extract<SyncOperation, { kind: 'upsert' }> => operation.kind === 'upsert').map((operation) => operation.entry);
+  return [];
 }
 
 export async function clearSyncQueue() {
-  await AsyncStorage.removeItem(SYNC_QUEUE_KEY);
+  return;
 }

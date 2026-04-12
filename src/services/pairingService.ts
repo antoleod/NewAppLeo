@@ -1,5 +1,4 @@
 import { arrayUnion, collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '@/lib/firebase';
 
 export interface PairingSession {
@@ -11,7 +10,6 @@ export interface PairingSession {
   updatedAt?: string;
 }
 
-const PAIRING_KEY = 'appleo.pairingSession';
 const COLLECTION = 'pairingSessions';
 const PAIRING_EVENT = 'appleo:pairing-session-changed';
 
@@ -33,18 +31,12 @@ function normalizeCode(code: string) {
 }
 
 async function saveLocal(session: PairingSession | null) {
-  if (!session) {
-    await AsyncStorage.removeItem(PAIRING_KEY);
-    emitPairingChange();
-    return;
-  }
-  await AsyncStorage.setItem(PAIRING_KEY, JSON.stringify(session));
+  void session;
   emitPairingChange();
 }
 
-export async function getLocalPairingSession() {
-  const raw = await AsyncStorage.getItem(PAIRING_KEY);
-  return raw ? (JSON.parse(raw) as PairingSession) : null;
+export async function getLocalPairingSession(): Promise<PairingSession | null> {
+  return null;
 }
 
 export async function createPairingSession(hostUid: string) {
@@ -67,8 +59,6 @@ export async function createPairingSession(hostUid: string) {
   } catch {
     await saveLocal(session);
   }
-
-  await saveLocal(session);
   return session;
 }
 
@@ -78,18 +68,7 @@ export async function joinPairingSession(codeInput: string, uid: string) {
   const snap = await getDoc(ref);
 
   if (!snap.exists()) {
-    const local = await getLocalPairingSession();
-    if (!local || local.code !== code) {
-      throw new Error('Pairing code not found.');
-    }
-    const nextLocal: PairingSession = {
-      ...local,
-      memberUids: Array.from(new Set([...local.memberUids, uid])),
-      status: 'paired',
-      updatedAt: new Date().toISOString(),
-    };
-    await saveLocal(nextLocal);
-    return nextLocal;
+    throw new Error('Pairing code not found.');
   }
 
   const data = snap.data() as PairingSession;
@@ -115,8 +94,6 @@ export async function joinPairingSession(codeInput: string, uid: string) {
   } catch {
     await saveLocal(next);
   }
-
-  await saveLocal(next);
   return next;
 }
 
@@ -140,8 +117,8 @@ export function watchPairingSession(code: string, onChange: (session: PairingSes
     (snapshot) => {
       onChange(snapshot.exists() ? ({ ...(snapshot.data() as PairingSession), code: normalizeCode(code) } as PairingSession) : null);
     },
-    async () => {
-      onChange(await getLocalPairingSession());
+    () => {
+      onChange(null);
     },
   );
 }

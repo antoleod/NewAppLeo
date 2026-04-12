@@ -24,7 +24,6 @@ import { useAppData } from '@/context/AppDataContext';
 import { getEntrySubtitle, getEntryTitle } from '@/utils/entries';
 import { buildDailySummary } from '@/lib/notifications';
 import { getLocalPairingSession } from '@/services/pairingService';
-import { flushQueuedOperations, loadQueuedOperations } from '@/lib/sync';
 import { isVoiceCaptureAvailable, startVoiceCapture } from '@/lib/voiceCapture';
 
 const languageOptions = [
@@ -85,7 +84,7 @@ export default function ProfileScreen() {
       setCustomSecondary(nextSettings.customTheme.secondary);
       setCustomBackgroundAlt(nextSettings.customTheme.backgroundAlt);
       setPairingCode((await getLocalPairingSession())?.code ?? null);
-      setQueuedSyncCount((await loadQueuedOperations()).length);
+      setQueuedSyncCount(0);
     };
 
     void refresh();
@@ -175,9 +174,8 @@ export default function ProfileScreen() {
   async function handleSyncNow() {
     try {
       if (!profile) throw new Error('You must be signed in.');
-      const result = await flushQueuedOperations(profile.uid);
       setQueuedSyncCount(0);
-      Alert.alert('Sync complete', `Flushed ${result.flushed} queued operations.`);
+      Alert.alert('Sync complete', 'No local sync queue is used anymore.');
     } catch (error: any) {
       Alert.alert('Sync failed', error?.message ?? 'Could not sync queued changes.');
     }

@@ -5,9 +5,59 @@ import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
 import { Button, Card, SectionHeader } from '@/components/ui';
 import { parseImportData, importJsonData, ImportValidator } from '@/lib/importExport';
+import { useAppData } from '@/context/AppDataContext';
+
+function mapImportedEntry(entry: any) {
+  if (!entry || typeof entry !== 'object') return null;
+
+  if (entry.type === 'feeding') {
+    return {
+      type: 'feed' as const,
+      title: 'Imported feed',
+      occurredAt: entry.dateISO,
+      notes: entry.notes || '',
+      payload: {
+        mode: entry.source === 'breast' ? 'breast' : 'bottle',
+        amountMl: entry.amountMl || undefined,
+        durationMin: entry.durationSec ? Math.round(entry.durationSec / 60) : undefined,
+        notes: entry.notes || '',
+      },
+    };
+  }
+
+  if (entry.type === 'diaper') {
+    return {
+      type: 'diaper' as const,
+      title: 'Imported diaper',
+      occurredAt: entry.dateISO,
+      notes: entry.notes || '',
+      payload: {
+        pee: entry.kind?.includes('pee') ? 1 : 0,
+        poop: entry.kind?.includes('poo') ? 1 : 0,
+        notes: entry.notes || '',
+      },
+    };
+  }
+
+  if (entry.type === 'sleep') {
+    return {
+      type: 'sleep' as const,
+      title: 'Imported sleep',
+      occurredAt: entry.endISO || entry.dateISO,
+      notes: entry.notes || '',
+      payload: {
+        durationMin: entry.durationSec ? Math.round(entry.durationSec / 60) : undefined,
+        notes: entry.notes || '',
+      },
+    };
+  }
+
+  return null;
+}
 
 export function DataImporter() {
   const { theme, colors } = useTheme();
+  const { addEntry } = useAppData();
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [importedData, setImportedData] = useState<any[]>([]);
@@ -39,7 +89,20 @@ export function DataImporter() {
   const handleConfirmImport = async (entries: any[]) => {
     try {
       setImporting(true);
-      Alert.alert('Import Success', `${entries.length} entries are ready to import.`);
+      const imported = entries.map(mapImportedEntry).filter(Boolean);
+      let success = 0;
+      let failed = 0;
+
+      for (const item of imported) {
+        try {
+          await addEntry(item as any);
+          success += 1;
+        } catch {
+          failed += 1;
+        }
+      }
+
+      Alert.alert('Import Success', `${success} entries imported${failed ? `, ${failed} failed` : ''}.`);
       setImportedData([]);
       setPreview(null);
       setJsonInput('');

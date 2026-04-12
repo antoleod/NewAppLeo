@@ -14,7 +14,6 @@ import { AppDataProvider } from '@/context/AppDataContext';
 import { NightOverlay } from '@/components/NightOverlay';
 import { LocaleProvider } from '@/context/LocaleContext';
 import * as LocalAuthentication from 'expo-local-authentication';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from '@/components/ui';
 
 void SplashScreen.preventAutoHideAsync();
@@ -32,16 +31,10 @@ export default function RootLayout() {
 
   const [isLocked, setIsLocked] = useState(false);
   const [isIncognito, setIsIncognito] = useState(false);
-  const [autoLockEnabled, setAutoLockEnabled] = useState(true);
+  const [autoLockEnabled] = useState(true);
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    const loadLockPreference = async () => {
-      const val = await AsyncStorage.getItem('pref_auto_lock');
-      if (val !== null) setAutoLockEnabled(val === 'true');
-    };
-    loadLockPreference();
-
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (nextAppState === 'active') {
         setIsIncognito(false);
@@ -60,7 +53,7 @@ export default function RootLayout() {
       appState.current = nextAppState;
     });
     return () => subscription.remove();
-  }, []);
+  }, [autoLockEnabled]);
 
   const handleUnlock = async () => {
       const result = await LocalAuthentication.authenticateAsync({

@@ -33,7 +33,7 @@ interface AuthContextValue {
   signInGuest: () => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   signOut: () => Promise<void>;
-  completeUserOnboarding: (payload: OnboardingPayload) => Promise<void>;
+  completeUserOnboarding: (payload: OnboardingPayload) => Promise<UserProfile>;
   saveProfile: (partial: Partial<UserProfile>) => Promise<void>;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -206,10 +206,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } as UserProfile;
           await setGuestProfile(nextProfile);
           setProfile(nextProfile);
-          return;
+          return nextProfile;
         }
         await completeOnboarding(user.uid, payload);
-        setProfile(await loadProfile(user.uid));
+        const nextProfile = await loadProfile(user.uid);
+        setProfile(nextProfile);
+        return nextProfile as UserProfile;
       },
       saveProfile: async (partial) => {
         if (!user) throw new Error('You must be signed in.');

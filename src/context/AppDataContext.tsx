@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { AppState } from 'react-native';
 import {
   addDoc,
   collection,
@@ -15,11 +14,8 @@ import { db } from '@/lib/firebase';
 import { EntryPayload, EntryRecord, EntryType } from '@/types';
 import { useAuth } from './AuthContext';
 import { getTodaySummary } from '@/utils/entries';
-import { deleteLocalEntry, getLocalEntries, setLocalEntries, upsertLocalEntry } from '@/services/localStore';
-import { flushQueuedOperations, queueDeletes, queueUpserts } from '@/lib/sync';
 import { buildLeoProfilePatch, importLeoEntries } from '@/lib/leoData';
 import { getAppSettings, saveBaby, setAppSettings } from '@/lib/storage';
-import { setGuestProfile } from '@/lib/storage';
 import { getActivePairingScope, getLocalPairingSession, subscribeToPairingSessionChanges } from '@/services/pairingService';
 
 export interface AppDataContextValue {
@@ -131,37 +127,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const bootstrapLeoData = async () => {
       const settings = await getAppSettings();
       if (settings.hasImportedLeoData || cancelled) return;
-
       const importedEntries = importLeoEntries();
       if (!importedEntries.length) return;
-
-      setLocalEntries(user.uid, importedEntries);
-      if (profile) {
-        const nextProfile = {
-          ...profile,
-          ...buildLeoProfilePatch(profile),
-          hasCompletedOnboarding: true,
-          updatedAt: new Date().toISOString(),
-        };
-        await setGuestProfile(nextProfile);
-        await saveBaby({
-          id: 'leo-import',
-          name: nextProfile.babyName,
-          birthDate: nextProfile.babyBirthDate,
-          sex: nextProfile.babySex ?? 'unspecified',
-          birthWeightKg: nextProfile.birthWeightKg,
-          currentWeightKg: nextProfile.currentWeightKg,
-          heightCm: nextProfile.heightCm,
-          notes: nextProfile.babyNotes,
-          photoUri: nextProfile.babyPhotoUri,
-          language: nextProfile.language,
-          createdAt: new Date().toISOString(),
-        });
-      }
       await setAppSettings({ ...settings, hasImportedLeoData: true });
-      if (!cancelled) {
-        setEntries(importedEntries);
-      }
+      if (!cancelled) setEntries(importedEntries);
     };
 
     void bootstrapLeoData();
@@ -172,12 +141,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user || guestMode) {
-      if (guestMode && user) {
-        setEntries(getLocalEntries(user.uid));
-        setLoading(false);
-        setRemoteAvailable(false);
-        return;
-      }
       setEntries([]);
       setLoading(false);
       setRemoteAvailable(true);
@@ -196,7 +159,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       (error) => {
         if (isPermissionDenied(error)) {
           setRemoteAvailable(false);
-          setEntries(getLocalEntries(user.uid));
+          setEntries([]);
           return;
         }
         console.error('Entry listener error:', error);
@@ -204,38 +167,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       },
     );
   }, [guestMode, user]);
-
-  useEffect(() => {
-    const scopeId = syncScope ?? profile?.uid;
-    if (!scopeId) {
-      return;
-    }
-
-    let inFlight = false;
-    const flushQueue = async () => {
-      if (inFlight) return;
-      inFlight = true;
-      try {
-        await flushQueuedOperations(scopeId);
-      } catch (error) {
-        console.warn('Background sync flush failed:', error);
-      } finally {
-        inFlight = false;
-      }
-    };
-
-    void flushQueue();
-
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        void flushQueue();
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [profile?.uid, syncScope]);
 
   const summary = useMemo(() => getTodaySummary(entries, profile), [entries, profile]);
 
@@ -255,7 +186,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     const scopeId = syncScope ?? user.uid;
 
-    if (remoteAvailable && !guestMode) {
+    if (remoteAvailable) {
       try {
         const ref = await addDoc(entriesRef(scopeId), {
           type: input.type,
@@ -275,10 +206,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    setLocalEntries(scopeId, [nextEntry, ...getLocalEntries(scopeId).filter((entry) => entry.id !== nextEntry.id)]);
-    if (!guestMode) {
-      void queueUpserts([nextEntry]);
-    }
     setEntries((current) => [nextEntry, ...current.filter((entry) => entry.id !== nextEntry.id)].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)));
   }
 
@@ -289,7 +216,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     const scopeId = syncScope ?? user.uid;
 
-    if (remoteAvailable && !guestMode) {
+    if (remoteAvailable) {
       try {
         await updateDoc(doc(entriesRef(scopeId), id), {
           ...patch,
@@ -304,10 +231,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (next) {
-      upsertLocalEntry(scopeId, next);
-      if (!guestMode) {
-        void queueUpserts([next]);
-      }
       setEntries((currentEntries) =>
         currentEntries
           .map((entry) => (entry.id === id ? next : entry))
@@ -321,7 +244,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const current = entries.find((entry) => entry.id === id);
     const scopeId = syncScope ?? user.uid;
 
-    if (remoteAvailable && !guestMode) {
+    if (remoteAvailable) {
       try {
         await deleteDoc(doc(entriesRef(scopeId), id));
       } catch (error) {
@@ -332,10 +255,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    deleteLocalEntry(scopeId, id);
-    if (!guestMode) {
-      void queueDeletes([{ id, occurredAt: current?.occurredAt ?? new Date().toISOString(), updatedAt: current?.updatedAt ?? new Date().toISOString() }]);
-    }
     setEntries((current) => current.filter((entry) => entry.id !== id));
   }
 
@@ -350,7 +269,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     const scopeId = syncScope ?? user.uid;
 
-    if (remoteAvailable && !guestMode) {
+    if (remoteAvailable) {
       try {
         for (const entry of DEMO_ENTRIES) {
           await addDoc(entriesRef(scopeId), {
@@ -367,14 +286,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const nextEntries = [...seeded, ...getLocalEntries(scopeId)]
-      .filter((entry, index, array) => array.findIndex((candidate) => candidate.id === entry.id) === index)
-      .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
-    setLocalEntries(scopeId, nextEntries);
-    if (!guestMode) {
-      void queueUpserts(nextEntries);
-    }
-    setEntries(nextEntries);
+    setEntries(seeded.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)));
   }
 
   function entryById(id: string) {

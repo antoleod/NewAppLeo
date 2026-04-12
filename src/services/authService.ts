@@ -19,7 +19,6 @@ import {
   verifyPinAgainstProfile,
 } from './userProfileService';
 import { decryptWithPin, encryptWithPin, generateSalt, hashPin, normalizeEmail, normalizeUsername } from '@/utils/crypto';
-import { putLocalProfile, putLocalUsername } from './localStore';
 import { Platform } from 'react-native';
 
 export async function registerAccount(payload: RegisterPayload) {
@@ -80,8 +79,6 @@ export async function registerAccount(payload: RegisterPayload) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    putLocalProfile(profile);
-    putLocalUsername(username, authResult.user.uid);
     return { user: authResult.user, profile };
   }
 }
@@ -128,7 +125,6 @@ export async function signInWithGoogle() {
       // fall back to local profile in restrictive Firestore environments
     }
 
-    putLocalProfile(bootstrap);
     profile = bootstrap;
   }
 

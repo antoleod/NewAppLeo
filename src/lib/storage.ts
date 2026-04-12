@@ -1,14 +1,12 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth, db } from '@/lib/firebase';
+import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { AppLanguage, EntryRecord, UserProfile } from '@/types';
 
-const ACTIVE_BABY_KEY = 'appleo.activeBabyId';
-const BABIES_KEY = 'appleo.babies';
-const ENTRY_PREFIX = 'appleo.entries';
 const MOM_HYDRATION_PREFIX = 'appleo.momHydration';
-const MODULE_VISIBILITY_KEY = 'appleo.moduleVisibility';
-const APP_SETTINGS_KEY = 'appleo.appSettings';
-const GUEST_PROFILE_KEY = 'appleo.guestProfile';
-const SAVED_MEDICINES_KEY = 'appleo.savedMedicines';
+const SETTINGS_DOC = 'settings';
+const BABIES_COLLECTION = 'babies';
+const ACTIVE_BABY_DOC = 'meta';
+const SAVED_MEDICINES_COLLECTION = 'savedMedicines';
 
 export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand';
 export type ThemeStyle = 'default' | 'photo' | 'classic';
@@ -86,6 +84,7 @@ export interface AppSettings {
   hydrationGoalMl: number;
   compactHomeCards: boolean;
   hasImportedLeoData: boolean;
+  moduleVisibility: ModuleVisibility;
   dashboardMetrics: DashboardMetrics;
   effects: MotionEffects;
   customTheme: CustomThemeSettings;
@@ -102,6 +101,7 @@ export const defaultAppSettings: AppSettings = {
   hydrationGoalMl: 2500,
   compactHomeCards: false,
   hasImportedLeoData: false,
+  moduleVisibility: defaultModuleVisibility,
   dashboardMetrics: {
     dailyStatus: true,
     nextFeed: true,
@@ -136,43 +136,50 @@ function safeParse<T>(raw: string | null, fallback: T): T {
   }
 }
 
-function babyEntryKey(babyId: string) {
-  return `${ENTRY_PREFIX}:${babyId}`;
-}
-
 export async function getBabies() {
-  return safeParse<BabyProfile[]>(await AsyncStorage.getItem(BABIES_KEY), []);
+  const uid = auth.currentUser?.uid;
+  if (!uid) return [];
+  const snap = await getDocs(query(collection(db, 'users', uid, BABIES_COLLECTION), orderBy('createdAt', 'desc')));
+  return snap.docs.map((item) => item.data() as BabyProfile);
 }
 
 export async function saveBaby(profile: BabyProfile) {
-  const babies = await getBabies();
-  const next = [...babies.filter((baby) => baby.id !== profile.id), profile];
-  await AsyncStorage.setItem(BABIES_KEY, JSON.stringify(next));
-  await AsyncStorage.setItem(ACTIVE_BABY_KEY, profile.id);
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('You must be signed in.');
+  await setDoc(doc(db, 'users', uid, BABIES_COLLECTION, profile.id), {
+    ...profile,
+    createdAt: profile.createdAt ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  await setDoc(doc(db, 'users', uid, SETTINGS_DOC, ACTIVE_BABY_DOC), { activeBabyId: profile.id, updatedAt: serverTimestamp() }, { merge: true });
   return profile;
 }
 
 export async function removeBaby(babyId: string) {
-  const babies = await getBabies();
-  const next = babies.filter((baby) => baby.id !== babyId);
-  await AsyncStorage.setItem(BABIES_KEY, JSON.stringify(next));
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('You must be signed in.');
+  await deleteDoc(doc(db, 'users', uid, BABIES_COLLECTION, babyId));
+  const next = await getBabies();
   const activeBabyId = await getActiveBabyId();
   if (activeBabyId === babyId) {
-    if (next[0]) {
-      await AsyncStorage.setItem(ACTIVE_BABY_KEY, next[0].id);
-    } else {
-      await AsyncStorage.removeItem(ACTIVE_BABY_KEY);
-    }
+    const firstBaby = next[0] as BabyProfile | undefined;
+    if (firstBaby) await setActiveBabyId(firstBaby.id);
   }
   return next;
 }
 
 export async function getActiveBabyId() {
-  return (await AsyncStorage.getItem(ACTIVE_BABY_KEY)) ?? null;
+  const uid = auth.currentUser?.uid;
+  if (!uid) return null;
+  const snap = await getDoc(doc(db, 'users', uid, SETTINGS_DOC, ACTIVE_BABY_DOC));
+  return (snap.data()?.activeBabyId as string | undefined) ?? null;
 }
 
 export async function setActiveBabyId(babyId: string) {
-  await AsyncStorage.setItem(ACTIVE_BABY_KEY, babyId);
+  const uid = auth.currentUser?.uid;
+  if (uid) {
+    await setDoc(doc(db, 'users', uid, SETTINGS_DOC, ACTIVE_BABY_DOC), { activeBabyId: babyId, updatedAt: serverTimestamp() }, { merge: true });
+  }
 }
 
 export async function getActiveBaby() {
@@ -183,11 +190,11 @@ export async function getActiveBaby() {
 }
 
 export async function getEntries(babyId: string) {
-  return safeParse<EntryRecord[]>(await AsyncStorage.getItem(babyEntryKey(babyId)), []);
+  return [] as EntryRecord[];
 }
 
 export async function saveEntries(babyId: string, entries: EntryRecord[]) {
-  await AsyncStorage.setItem(babyEntryKey(babyId), JSON.stringify(entries));
+  return;
 }
 
 export async function upsertEntry(babyId: string, entry: EntryRecord) {
@@ -209,26 +216,27 @@ function hydrationKey(babyId: string) {
 }
 
 export async function getMomHydration(babyId: string) {
-  return Number((await AsyncStorage.getItem(hydrationKey(babyId))) ?? '0') || 0;
+  return 0;
 }
 
 export async function setMomHydration(babyId: string, value: number) {
-  await AsyncStorage.setItem(hydrationKey(babyId), String(Math.max(0, value)));
+  return;
 }
 
 export async function getModuleVisibility() {
-  return {
-    ...defaultModuleVisibility,
-    ...safeParse<ModuleVisibility>(await AsyncStorage.getItem(MODULE_VISIBILITY_KEY), defaultModuleVisibility),
-  };
+  const settings = await getAppSettings();
+  return settings.moduleVisibility ?? defaultModuleVisibility;
 }
 
 export async function setModuleVisibility(next: ModuleVisibility) {
-  await AsyncStorage.setItem(MODULE_VISIBILITY_KEY, JSON.stringify(next));
+  await updateAppSettings({ moduleVisibility: next });
 }
 
 export async function getAppSettings() {
-  const parsed = safeParse<Partial<AppSettings>>(await AsyncStorage.getItem(APP_SETTINGS_KEY), defaultAppSettings);
+  const uid = auth.currentUser?.uid;
+  if (!uid) return defaultAppSettings;
+  const snap = await getDoc(doc(db, 'users', uid, SETTINGS_DOC, 'main'));
+  const parsed = (snap.exists() ? (snap.data() as Partial<AppSettings>) : {}) ?? {};
   return {
     ...defaultAppSettings,
     ...parsed,
@@ -248,11 +256,10 @@ export async function getAppSettings() {
 }
 
 export async function getSavedMedicines() {
-  const medicines = safeParse<SavedMedicine[]>(await AsyncStorage.getItem(SAVED_MEDICINES_KEY), []);
-  return medicines
-    .slice()
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .slice(0, 24);
+  const uid = auth.currentUser?.uid;
+  if (!uid) return [];
+  const snap = await getDocs(query(collection(db, 'users', uid, SAVED_MEDICINES_COLLECTION), orderBy('updatedAt', 'desc')));
+  return snap.docs.map((item) => item.data() as SavedMedicine).slice(0, 24);
 }
 
 export async function upsertSavedMedicine(input: { name: string; dosage?: string }) {
@@ -271,19 +278,27 @@ export async function upsertSavedMedicine(input: { name: string; dosage?: string
     nextItem,
     ...medicines.filter((item) => item.name.toLowerCase() !== name.toLowerCase()),
   ];
-  await AsyncStorage.setItem(SAVED_MEDICINES_KEY, JSON.stringify(next));
+  const uid = auth.currentUser?.uid;
+  if (uid) {
+    await setDoc(doc(db, 'users', uid, SAVED_MEDICINES_COLLECTION, name.toLowerCase()), nextItem, { merge: true });
+  }
   return next;
 }
 
 export async function deleteSavedMedicine(name: string) {
   const medicines = await getSavedMedicines();
   const next = medicines.filter((item) => item.name.toLowerCase() !== name.trim().toLowerCase());
-  await AsyncStorage.setItem(SAVED_MEDICINES_KEY, JSON.stringify(next));
+  const uid = auth.currentUser?.uid;
+  if (uid) {
+    await deleteDoc(doc(db, 'users', uid, SAVED_MEDICINES_COLLECTION, name.trim().toLowerCase()));
+  }
   return next;
 }
 
 export async function setAppSettings(next: AppSettings) {
-  await AsyncStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(next));
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  await setDoc(doc(db, 'users', uid, SETTINGS_DOC, 'main'), next, { merge: true });
 }
 
 export async function updateAppSettings(partial: Partial<AppSettings>) {
@@ -336,16 +351,18 @@ export function createGuestProfile(): UserProfile {
   };
 }
 
+let guestProfileMemory: UserProfile | null = null;
+
 export async function getGuestProfile() {
-  return safeParse<UserProfile | null>(await AsyncStorage.getItem(GUEST_PROFILE_KEY), null);
+  return guestProfileMemory;
 }
 
 export async function setGuestProfile(profile: UserProfile) {
-  await AsyncStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile));
+  guestProfileMemory = profile;
 }
 
 export async function clearGuestProfile() {
-  await AsyncStorage.removeItem(GUEST_PROFILE_KEY);
+  guestProfileMemory = null;
 }
 
 export async function buildBabyFromProfile(

@@ -10,7 +10,6 @@ import {
 import { db } from '@/lib/firebase';
 import { OnboardingPayload, ThemeMode, UserProfile } from '@/types';
 import { encryptWithPin, generateSalt, hashPin, normalizeUsername } from '@/utils/crypto';
-import { getLocalProfile, getLocalProfileByUsername, putLocalProfile, putLocalUsername } from './localStore';
 
 const USERS = 'users';
 const USERNAMES = 'usernames';
@@ -60,32 +59,9 @@ export function defaultProfile(uid: string, authEmail: string, username = '', di
   };
 }
 
-function profileToLocal(profile: UserProfile) {
-  return {
-    ...profile,
-    createdAt: profile.createdAt ?? new Date().toISOString(),
-    updatedAt: profile.updatedAt ?? new Date().toISOString(),
-  };
-}
-
-function withLocalFallback(profile: UserProfile) {
-  putLocalProfile(profileToLocal(profile));
-  if (profile.usernameLower) {
-    putLocalUsername(profile.usernameLower, profile.uid);
-  }
-  return profileToLocal(profile);
-}
-
 export async function loadProfile(uid: string) {
-  try {
-    const snap = await getDoc(userProfileRef(uid));
-    return snap.exists() ? (snap.data() as UserProfile) : getLocalProfile(uid);
-  } catch (error) {
-    if (isPermissionDenied(error)) {
-      return getLocalProfile(uid);
-    }
-    throw error;
-  }
+  const snap = await getDoc(userProfileRef(uid));
+  return snap.exists() ? (snap.data() as UserProfile) : null;
 }
 
 export function watchProfile(uid: string, onChange: (profile: UserProfile | null) => void, onError?: (error: unknown) => void) {
@@ -93,12 +69,12 @@ export function watchProfile(uid: string, onChange: (profile: UserProfile | null
     return onSnapshot(
       userProfileRef(uid),
       (snapshot) => {
-        const profile = snapshot.exists() ? (snapshot.data() as UserProfile) : getLocalProfile(uid);
+        const profile = snapshot.exists() ? (snapshot.data() as UserProfile) : null;
         onChange(profile);
       },
       (error) => {
         if (isPermissionDenied(error)) {
-          onChange(getLocalProfile(uid));
+          onChange(null);
           return;
         }
         console.error('Profile listener error:', error);
@@ -106,7 +82,7 @@ export function watchProfile(uid: string, onChange: (profile: UserProfile | null
       },
     );
   } catch (error) {
-    onChange(getLocalProfile(uid));
+    onChange(null);
     return () => undefined;
   }
 }
@@ -159,10 +135,10 @@ export async function createProfileRecord(params: {
     return profile;
   } catch (error) {
     if (isPermissionDenied(error)) {
-      return withLocalFallback(profile);
-    }
-    throw error;
+    return profile;
   }
+  throw error;
+}
 }
 
 export async function updateProfile(uid: string, partial: Partial<UserProfile>) {
@@ -188,7 +164,7 @@ export async function updateProfile(uid: string, partial: Partial<UserProfile>) 
     ...cleanPartial,
     updatedAt: new Date().toISOString(),
   } as UserProfile;
-  withLocalFallback(next);
+  return;
 }
 
 export async function completeOnboarding(uid: string, payload: OnboardingPayload) {
@@ -236,7 +212,7 @@ export async function claimUsername(uid: string, username: string) {
   }
 
   const current = (await loadProfile(uid)) ?? defaultProfile(uid, 'local@example.com');
-  withLocalFallback({
+  await updateProfile(uid, {
     ...current,
     username: normalized,
     usernameLower: normalized,
@@ -259,11 +235,7 @@ export async function resolveUsernameToProfile(username: string) {
     return profile;
   } catch (error) {
     if (isPermissionDenied(error)) {
-      const localProfile = getLocalProfileByUsername(normalized);
-      if (!localProfile) {
-        throw new Error('Unknown username.');
-      }
-      return localProfile;
+      throw new Error('Unknown username.');
     }
     throw error;
   }

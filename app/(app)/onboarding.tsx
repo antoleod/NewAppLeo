@@ -3,7 +3,6 @@ import { Alert, Pressable, ScrollView, Text, useWindowDimensions, View } from 'r
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInRight, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Input, Page, Segment } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { buildBabyFromProfile } from '@/lib/storage';
@@ -121,10 +120,7 @@ export default function OnboardingScreen() {
           Alert.alert('PIN invalide', 'Le PIN doit faire 4 chiffres et correspondre a la confirmation.');
           return;
         }
-        await AsyncStorage.setItem('appleo.localPin', pin);
       }
-
-      await AsyncStorage.setItem('appleo.onboardingPath', path);
       const parsedFeedings = Number(goalFeedingsPerDay);
       const parsedSleep = Number(goalSleepHoursPerDay);
       const parsedDiapers = Number(goalDiapersPerDay);
@@ -133,7 +129,7 @@ export default function OnboardingScreen() {
         sleepHoursPerDay: Number.isFinite(parsedSleep) && parsedSleep > 0 ? clamp(Math.round(parsedSleep), 8, 18) : autoGoals.sleep,
         diapersPerDay: Number.isFinite(parsedDiapers) && parsedDiapers > 0 ? clamp(Math.round(parsedDiapers), 2, 12) : autoGoals.diapers,
       };
-      await completeUserOnboarding({
+      const updatedProfile = await completeUserOnboarding({
         caregiverName: caregiverName.trim() || 'Parent',
         babyName: babyName.trim() || 'Leo',
         babyBirthDate: babyBirthDate.toISOString(),
@@ -149,11 +145,11 @@ export default function OnboardingScreen() {
         goalDiapersPerDay: finalGoals.diapersPerDay,
       });
 
-      if (profile) {
+      if (updatedProfile) {
         await buildBabyFromProfile(
           {
-            ...profile,
-            caregiverName: caregiverName.trim() || profile.caregiverName,
+            ...updatedProfile,
+            caregiverName: caregiverName.trim() || updatedProfile.caregiverName,
             babyName: babyName.trim() || 'Leo',
             babyBirthDate: babyBirthDate.toISOString(),
             babySex,

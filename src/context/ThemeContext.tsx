@@ -62,24 +62,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       backgroundPhotoUri,
       setThemeVariant: async (variant) => {
         setThemeVariantState(variant);
-        const settings = await getAppSettings();
-        await setAppSettings({ ...settings, themeVariant: variant });
+        await setAppSettings({ ...(await getAppSettings()), themeVariant: variant });
       },
       setThemeStyle: async (style) => {
         setThemeStyleState(style);
-        const settings = await getAppSettings();
-        await setAppSettings({ ...settings, themeStyle: style });
+        await setAppSettings({ ...(await getAppSettings()), themeStyle: style });
       },
       setBackgroundPhotoUri: async (uri) => {
         setBackgroundPhotoUriState(uri);
-        const settings = await getAppSettings();
-        await setAppSettings({ ...settings, backgroundPhotoUri: uri });
+        await setAppSettings({ ...(await getAppSettings()), backgroundPhotoUri: uri });
       },
       setCustomTheme: async (nextCustomTheme) => {
         const next = { ...customTheme, ...nextCustomTheme };
         setCustomThemeState(next);
-        const settings = await getAppSettings();
-        await setAppSettings({ ...settings, customTheme: next });
+        await setAppSettings({ ...(await getAppSettings()), customTheme: next });
       },
       toggleTheme: async () => {
         const nextMode: ThemeMode = resolvedMode === 'dark' ? 'light' : 'dark';
