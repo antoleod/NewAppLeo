@@ -13,30 +13,40 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
   const { pulseStyle, glowStyle } = usePulseAnimation({ active: isPossible, intensity: 'soft' });
 
   const statusColor = isPossible ? theme.green : isSoon ? theme.accent : theme.muted;
-  const statusLabel = isPossible ? 'Possible maintenant' : isSoon ? 'Bientot' : 'Pas encore';
+  const statusLabel = isPossible ? 'Possible now' : isSoon ? 'Soon' : 'Not yet';
 
   return (
-    <Pressable onPress={onPress} accessibilityRole="button">
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Open next feeding planner"
+      style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}
+    >
       <View
         style={{
-          borderRadius: 12,
+          borderRadius: 18,
           borderWidth: 1,
-          padding: 14,
-          marginBottom: 10,
+          padding: 16,
+          marginBottom: 12,
           overflow: 'hidden',
           backgroundColor: theme.bgCard,
           borderColor: theme.border,
+          shadowColor: '#000',
+          shadowOpacity: 0.12,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: 2,
         }}
       >
         <Animated.View
           style={[
             {
               position: 'absolute',
-              top: -20,
-              right: -20,
-              width: 120,
-              height: 120,
-              borderRadius: 60,
+              top: -30,
+              right: -30,
+              width: 140,
+              height: 140,
+              borderRadius: 70,
               backgroundColor: statusColor,
             },
             glowStyle,
@@ -45,7 +55,7 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ flex: 1 }}>
-            <Text style={[typography.sectionLabel, { color: theme.accent }]}>PRISE</Text>
+            <Text style={[typography.sectionLabel, { color: theme.accent }]}>FEED</Text>
             <Text style={[typography.sectionTitle, { color: theme.textPrimary }]}>Next feeding</Text>
 
             <Animated.View style={[{ alignSelf: 'flex-start', marginTop: 8 }, pulseStyle]}>
@@ -68,9 +78,11 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
             </Animated.View>
 
             {lastTime ? (
-              <Text style={[typography.detail, { color: theme.textMuted, marginTop: 6 }]}>Derniere prise a {lastTime} Â· il y a {hoursAgo} h</Text>
+              <Text style={[typography.detail, { color: theme.textMuted, marginTop: 8 }]}>
+                Last feed at {lastTime} · {hoursAgo} h ago
+              </Text>
             ) : (
-              <Text style={[typography.detail, { color: theme.textMuted, marginTop: 6 }]}>Aucune prise enregistree</Text>
+              <Text style={[typography.detail, { color: theme.textMuted, marginTop: 8 }]}>No feeding logged yet</Text>
             )}
           </View>
 
@@ -86,7 +98,7 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
               backgroundColor: `${statusColor}18`,
             }}
           >
-            <Text style={{ color: statusColor, fontSize: 18, fontWeight: '900' }}>›</Text>
+            <Text style={{ color: statusColor, fontSize: 18, fontWeight: '900' }}>{'>'}</Text>
           </View>
         </View>
       </View>

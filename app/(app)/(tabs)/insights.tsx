@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Share, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Button, EmptyState, Heading, Page } from '@/components/ui';
@@ -63,6 +63,22 @@ export default function InsightsScreen() {
     [entries],
   );
 
+  async function shareSummary() {
+    const digest = [
+      language === 'fr' ? 'Resume du jour' : 'Daily summary',
+      `${language === 'fr' ? 'Prises' : 'Feeds'}: ${summary.today.feedCount}`,
+      `${language === 'fr' ? 'Lait' : 'Bottle'}: ${summary.today.bottleMl} ml`,
+      `${language === 'fr' ? 'Sommeil' : 'Sleep'}: ${formatDuration(summary.today.sleepMinutes)}`,
+      `${language === 'fr' ? 'Couches' : 'Diapers'}: ${summary.today.diaperCount}`,
+      `${language === 'fr' ? 'Repas' : 'Food'}: ${summary.today.foodCount}`,
+    ].join('\n');
+
+    await Share.share({
+      message: digest,
+      title: language === 'fr' ? 'Resume du jour' : 'Daily summary',
+    });
+  }
+
   const summaryCards = [
     { label: language === 'fr' ? 'Prises' : 'Feeds', value: String(summary.today.feedCount), color: GOLD },
     { label: language === 'fr' ? 'Lait' : 'Bottle', value: `${summary.today.bottleMl} ml`, color: BLUE },
@@ -92,6 +108,7 @@ export default function InsightsScreen() {
             eyebrow={t('insights.eyebrow')}
             title={t('insights.title')}
             subtitle={meanInterval ? `${Math.round(meanInterval / 36e5)}h` : t('insights.subtitle.none')}
+            action={<Button label={language === 'fr' ? 'Partager' : 'Share'} onPress={() => void shareSummary()} variant="ghost" size="sm" fullWidth={false} />}
           />
         </Animated.View>
 
