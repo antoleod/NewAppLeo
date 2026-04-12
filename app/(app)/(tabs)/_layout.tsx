@@ -50,6 +50,7 @@ export default function TabsLayout() {
         tabBarItemStyle: {
           borderRadius: isCompactPhone ? 12 : 16,
           marginHorizontal: isCompactPhone ? 1 : 2,
+          minHeight: 48,
         },
         tabBarLabelStyle: {
           fontSize: isCompactPhone ? 10 : 11,
@@ -70,7 +71,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="home" options={{ title: t('tabs.home') }} />
       <Tabs.Screen name="history" options={{ title: t('tabs.history') }} />
       <Tabs.Screen name="insights" options={{ title: t('tabs.insights') }} />
-      <Tabs.Screen name="profile" options={{ title: t('tabs.profile') }} />
+      <Tabs.Screen name="profile" options={{ title: 'Config' }} />
     </Tabs>
   );
 }

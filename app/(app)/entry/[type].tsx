@@ -349,7 +349,7 @@ const typeMeta: Record<
   pump: {
     icon: '🍼',
     eyebrow: 'Pump session',
-    tone: '#3FB950',
+    tone: '#B88A2A',
     toneSoft: 'rgba(63,185,80,0.16)',
     details: ['Timer + output', 'Milk amount', 'Focused save flow'],
     badges: ['🍼 Pump', '⏱ Timer', '📦 ml output'],
@@ -1075,7 +1075,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(63,185,80,0.12)',
   },
   savePresetText: {
-    color: '#3FB950',
+    color: '#B88A2A',
     fontSize: 10,
     fontWeight: '800',
   },

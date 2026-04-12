@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInRight, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { Button, Card, Input, Page, Segment } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
-import { buildBabyFromProfile } from '@/lib/storage';
 import { DateTimeField } from '@/components/DateTimeField';
 import { useOnboarding, type OnboardingPath } from '@/hooks/useOnboarding';
 import { useTheme } from '@/context/ThemeContext';
@@ -144,27 +143,6 @@ export default function OnboardingScreen() {
         goalSleepHoursPerDay: finalGoals.sleepHoursPerDay,
         goalDiapersPerDay: finalGoals.diapersPerDay,
       });
-
-      if (updatedProfile) {
-        await buildBabyFromProfile(
-          {
-            ...updatedProfile,
-            caregiverName: caregiverName.trim() || updatedProfile.caregiverName,
-            babyName: babyName.trim() || 'Leo',
-            babyBirthDate: babyBirthDate.toISOString(),
-            babySex,
-            birthWeightKg: Number(birthWeightKg) || undefined,
-            currentWeightKg: Number(currentWeightKg) || undefined,
-            heightCm: Number(heightCm) || undefined,
-            headCircCm: Number(headCircCm) || undefined,
-            babyNotes: babyNotes.trim() || undefined,
-            language,
-          },
-          babyName.trim() || 'Leo',
-          babyBirthDate.toISOString(),
-          babySex,
-        );
-      }
 
       router.replace('/home');
     } catch (error: any) {

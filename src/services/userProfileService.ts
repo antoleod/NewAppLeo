@@ -135,10 +135,10 @@ export async function createProfileRecord(params: {
     return profile;
   } catch (error) {
     if (isPermissionDenied(error)) {
-    return profile;
+      return profile;
+    }
+    throw error;
   }
-  throw error;
-}
 }
 
 export async function updateProfile(uid: string, partial: Partial<UserProfile>) {
@@ -157,14 +157,6 @@ export async function updateProfile(uid: string, partial: Partial<UserProfile>) 
       throw error;
     }
   }
-
-  const current = (await loadProfile(uid)) ?? defaultProfile(uid, 'local@example.com');
-  const next = {
-    ...current,
-    ...cleanPartial,
-    updatedAt: new Date().toISOString(),
-  } as UserProfile;
-  return;
 }
 
 export async function completeOnboarding(uid: string, payload: OnboardingPayload) {

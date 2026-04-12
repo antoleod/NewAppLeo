@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
+import { useEffect } from 'react';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
 import { useNextFeeding } from '@/hooks/useNextFeeding';
@@ -11,6 +12,21 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
   const isPossible = status === 'possible';
   const isSoon = status === 'soon';
   const { pulseStyle, glowStyle } = usePulseAnimation({ active: isPossible, intensity: 'soft' });
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById('next-feeding-pulse')) return;
+    const style = document.createElement('style');
+    style.id = 'next-feeding-pulse';
+    style.textContent = `
+      @keyframes next-feeding-pulse {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.0); }
+        50% { transform: scale(1.03); box-shadow: 0 0 0 6px rgba(63, 185, 80, 0.08); }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, []);
 
   const statusColor = isPossible ? theme.green : isSoon ? theme.accent : theme.muted;
   const statusLabel = isPossible ? 'Possible now' : isSoon ? 'Soon' : 'Not yet';
@@ -26,7 +42,8 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
         style={{
           borderRadius: 18,
           borderWidth: 1,
-          padding: 16,
+          paddingHorizontal: 16,
+          paddingVertical: 22,
           marginBottom: 12,
           overflow: 'hidden',
           backgroundColor: theme.bgCard,
@@ -58,7 +75,15 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
             <Text style={[typography.sectionLabel, { color: theme.accent }]}>FEED</Text>
             <Text style={[typography.sectionTitle, { color: theme.textPrimary }]}>Next feeding</Text>
 
-            <Animated.View style={[{ alignSelf: 'flex-start', marginTop: 8 }, pulseStyle]}>
+            <Animated.View
+              style={[
+                { alignSelf: 'flex-start', marginTop: 10 },
+                pulseStyle,
+                isPossible && typeof document !== 'undefined'
+                  ? ({ animationName: 'next-feeding-pulse', animationDuration: '2.2s', animationIterationCount: 'infinite', animationTimingFunction: 'ease-in-out' } as any)
+                  : null,
+              ]}
+            >
               <View
                 style={{
                   flexDirection: 'row',
@@ -88,17 +113,22 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
 
           <View
             style={{
-              width: 42,
-              height: 42,
+              width: 50,
+              height: 50,
               borderRadius: 999,
               borderWidth: 1,
               borderColor: `${statusColor}55`,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: `${statusColor}18`,
+              shadowColor: theme.green,
+              shadowOpacity: 0.24,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 4,
             }}
           >
-            <Text style={{ color: statusColor, fontSize: 18, fontWeight: '900' }}>{'>'}</Text>
+            <Text style={{ color: statusColor, fontSize: 22, fontWeight: '900' }}>{'>'}</Text>
           </View>
         </View>
       </View>

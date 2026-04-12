@@ -39,7 +39,7 @@ const BG = 'rgba(13, 17, 23, 0.28)';
 const CARD = 'rgba(22, 27, 34, 0.78)';
 const BORDER = 'rgba(255, 255, 255, 0.08)';
 const GOLD = '#C9A227';
-const GREEN = '#3FB950';
+const GREEN = '#B88A2A';
 const BLUE = '#58A6FF';
 const RED = '#E74C3C';
 const MUTED = '#8B949E';
@@ -199,11 +199,15 @@ function HeaderAction({ label, onPress }: { label: string; onPress: () => void }
 function StatCell({
   label,
   value,
+  icon,
   index,
+  highlight,
 }: {
   label: string;
   value: string;
+  icon: keyof typeof Ionicons.glyphMap;
   index: number;
+  highlight?: boolean;
 }) {
   return (
     <Animated.View
@@ -211,18 +215,39 @@ function StatCell({
       style={{
         flexBasis: '48%',
         minWidth: 140,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: CARD,
-        borderWidth: 1,
-        borderColor: BORDER,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 14,
+        backgroundColor: highlight ? '#18221B' : CARD,
         gap: 6,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.05)',
+        borderLeftWidth: 1,
+        borderLeftColor: 'rgba(255,255,255,0.04)',
       }}
     >
-      <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 }}>{label}</Text>
-      <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700' }}>{value}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ width: 22, height: 22, borderRadius: 7, backgroundColor: `${GREEN}18`, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name={icon} size={12} color={GREEN} />
+        </View>
+        <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', letterSpacing: 1.3, textTransform: 'uppercase' }}>{label}</Text>
+      </View>
+      <Text style={{ color: TEXT, fontSize: 28, fontWeight: '700' }}>{value}</Text>
     </Animated.View>
+  );
+}
+
+function SmartSignalChip({ alert, onPress, compact }: { alert: any; onPress: () => void; compact: boolean }) {
+  const color = alert.status === 'OVERDUE' ? RED : alert.status === 'ACTIVE' ? GREEN : '#F2C86F';
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1, flexBasis: compact ? '100%' : '48%' })}>
+      <View style={{ minHeight: 44, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: color, backgroundColor: `${color}12`, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={{ color, fontSize: 10, fontWeight: '900', letterSpacing: 1 }}>{alert.status}</Text>
+        <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', flex: 1 }} numberOfLines={1}>
+          {alert.value}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -625,12 +650,12 @@ export default function HomeScreen() {
         </Animated.View>
 
         {showSmartSignals && smartAlerts.length ? (
-          <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={sectionEyebrowStyle()}>{t('home.reminders', 'Reminders')}</Text>
-                  <Text style={sectionTitleStyle()}>{t('home.smart_signals', 'Smart signals')}</Text>
+        <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: 10 }}>
+          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={sectionEyebrowStyle()}>{t('home.reminders', 'Reminders')}</Text>
+                <Text style={sectionTitleStyle()}>{t('home.smart_signals', 'Smart signals')}</Text>
                 </View>
                 <Pressable
                   onPress={() => setShowSmartSignalsMenu(true)}
@@ -650,38 +675,16 @@ export default function HomeScreen() {
               </View>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {smartAlerts.map((alert) => (
-                  <Pressable
+                  <SmartSignalChip
                     key={alert.id}
+                    alert={alert}
+                    compact={isCompactPhone}
                     onPress={() => {
                       if (alert.targetType) {
                         router.push({ pathname: '/entry/[type]', params: { type: alert.targetType } });
                       }
                     }}
-                    style={({ pressed }) => ({
-                      flexBasis: twoColBasis,
-                      minWidth: isCompactPhone ? 120 : 150,
-                      paddingHorizontal: 10,
-                      paddingVertical: 8,
-                      borderRadius: 14,
-                      borderWidth: 1,
-                      borderColor: BORDER,
-                      backgroundColor: pressed ? '#1B2430' : BG,
-                      gap: 4,
-                    })}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                        <Text style={{ fontSize: 15 }}>{alert.icon}</Text>
-                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '800' }}>{alert.value}</Text>
-                      </View>
-                      <View style={{ paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, backgroundColor: `${alertToneColor(alert.tone)}22` }}>
-                        <Text style={{ color: alertToneColor(alert.tone), fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>{alert.statusLabel}</Text>
-                      </View>
-                    </View>
-                    <Text style={{ color: MUTED, fontSize: 11 }} numberOfLines={1}>
-                      {alert.body}
-                    </Text>
-                  </Pressable>
+                  />
                 ))}
               </View>
             </View>
@@ -689,29 +692,37 @@ export default function HomeScreen() {
         ) : null}
 
         <Animated.View entering={FadeIn.duration(300).delay(180)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: '#172018', borderWidth: 1, borderColor: BORDER, gap: 12 }}>
             <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
               <View style={{ flex: 1, gap: 6 }}>
                 <Text style={sectionEyebrowStyle()}>{t('home.milk', 'Milk')}</Text>
-                <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{totalMilkToday} ml</Text>
+                <Text style={{ color: TEXT, fontSize: 28, fontWeight: '700' }}>{totalMilkToday} ml</Text>
+                <Text style={{ color: MUTED, fontSize: 11 }}>{milkStatus}</Text>
               </View>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={sectionEyebrowStyle()}>{t('home.next_feed_label', 'Next feed')}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="time-outline" size={14} color={BLUE} />
-                  <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
-                  <Animated.View style={[nextBadgeStyle, { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${BLUE}22` : `${GOLD}22` }]}>
-                    <Text style={{ color: nextFeedDueIn && nextFeedDueIn > 0 ? BLUE : GOLD, fontSize: 11, fontWeight: '700' }}>
-                      {lastFeed ? formatRelative(lastFeed.occurredAt, locale) : '--'}
-                    </Text>
-                  </Animated.View>
-                </View>
+              <View style={{ flex: 1, gap: 6, alignItems: 'flex-end' }}>
+                <Text style={{ color: GREEN, fontSize: 11, fontWeight: '900', letterSpacing: 1.3, textTransform: 'uppercase' }}>{t('home.next_feed_label', 'Next feed')}</Text>
+                <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', textAlign: 'right' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
+                <Animated.View style={[nextBadgeStyle, { marginTop: 2, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${GREEN}18` : `${GOLD}18` }]}>
+                  <Text style={{ color: nextFeedDueIn && nextFeedDueIn > 0 ? GREEN : GOLD, fontSize: 11, fontWeight: '700' }}>
+                    {lastFeed ? formatRelative(lastFeed.occurredAt, locale) : '--'}
+                  </Text>
+                </Animated.View>
               </View>
             </View>
             <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
-              <Animated.View style={[{ height: '100%', backgroundColor: GOLD, borderRadius: 999 }, milkBarStyle]} />
+              <Animated.View style={[{ height: '100%', backgroundColor: GREEN, borderRadius: 999 }, milkBarStyle]} />
             </View>
-            <Text style={{ color: MUTED, fontSize: 11 }}>{milkStatus}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 }}>
+              {[
+                { label: t('home.feeds', 'Feeds'), value: String(summary.today.feedCount), icon: 'water-outline' as const },
+                { label: t('home.bottle', 'Bottle'), value: `${summary.today.bottleMl} ml`, icon: 'water-outline' as const },
+                { label: t('insights.sleep', 'Sleep'), value: `${summary.today.sleepMinutes}m`, icon: 'moon-outline' as const },
+                { label: t('home.diapers', 'Diapers'), value: String(summary.today.diaperCount), icon: 'cube-outline' as const },
+                { label: t('home.food', 'Food'), value: String(summary.today.foodCount), icon: 'restaurant-outline' as const },
+              ].map((item, index) => (
+                <StatCell key={item.label} label={item.label} value={item.value} icon={item.icon} index={index} highlight={index === 1} />
+              ))}
+            </View>
           </View>
         </Animated.View>
 
@@ -729,18 +740,6 @@ export default function HomeScreen() {
             ))}
           </View>
         </Animated.View>
-
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-          {[
-            { label: t('home.feeds', 'Feeds'), value: String(summary.today.feedCount) },
-            { label: t('home.bottle', 'Bottle'), value: `${summary.today.bottleMl} ml` },
-            { label: t('insights.sleep', 'Sleep'), value: `${summary.today.sleepMinutes}m` },
-            { label: t('home.diapers', 'Diapers'), value: String(summary.today.diaperCount) },
-            { label: t('home.food', 'Food'), value: String(summary.today.foodCount) },
-          ].map((item, index) => (
-            <StatCell key={item.label} label={item.label} value={item.value} index={index} />
-          ))}
-        </View>
 
         <Animated.View entering={FadeIn.duration(300).delay(320)} style={{ marginBottom: 10 }}>
           <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>

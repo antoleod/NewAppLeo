@@ -11,7 +11,7 @@ import { getLocalPairingSession, joinPairingSession } from '@/services/pairingSe
 export default function LoginScreen() {
   const { theme } = useTheme();
   const { language } = useLocale();
-  const { signInEmail, signInGuest } = useAuth();
+  const { signInEmail, signInGuest, signInGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [pairingCode, setPairingCode] = useState('');
@@ -107,6 +107,27 @@ export default function LoginScreen() {
               <Input label="Password" value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry textContentType="password" />
               {error ? <Text style={[styles.error, { color: theme.red }]}>{error}</Text> : null}
               <Button label={loading ? '...' : 'Sign in'} onPress={() => void handleSignIn()} loading={loading} disabled={!canSubmit} fullWidth />
+              {Platform.OS === 'web' ? (
+                <Button
+                  label="Sign in with Google"
+                  onPress={async () => {
+                    setLoading(true);
+                    setError('');
+                    try {
+                      await signInGoogle();
+                      router.replace('/home');
+                    } catch (err: any) {
+                      const message = err?.message ?? 'Unable to sign in with Google.';
+                      setError(message);
+                      Alert.alert('Google sign-in failed', message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  variant="secondary"
+                  fullWidth
+                />
+              ) : null}
               <Text style={[styles.hint, { color: theme.textMuted }]}>Tip: press `Ctrl + Enter` to sign in.</Text>
             </Card>
 
