@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInRight, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
@@ -53,6 +53,7 @@ function computeAutoGoals(birthDate: Date, currentWeightKg?: number) {
 
 export default function OnboardingScreen() {
   const { theme } = useTheme();
+  const { width } = useWindowDimensions();
   const { user, profile, guestMode, signInGuest, completeUserOnboarding } = useAuth();
   const { path, setPath, step, setStep, next, back, progress } = useOnboarding(1);
   const [caregiverName, setCaregiverName] = useState(profile?.caregiverName ?? '');
@@ -76,6 +77,18 @@ export default function OnboardingScreen() {
   const autoGoals = useMemo(
     () => computeAutoGoals(babyBirthDate, Number(currentWeightKg) || undefined),
     [babyBirthDate, currentWeightKg],
+  );
+  const isCompactPhone = width < 390;
+  const isLargePhone = width >= 430;
+  const containerCardStyle = useMemo(
+    () => ({
+      width: '100%' as const,
+      alignSelf: 'center' as const,
+      maxWidth: isLargePhone ? 620 : 560,
+      padding: isCompactPhone ? 14 : 18,
+      gap: isCompactPhone ? 10 : 12,
+    }),
+    [isCompactPhone, isLargePhone],
   );
 
   const progressStyle = useAnimatedStyle(() => ({
@@ -167,10 +180,22 @@ export default function OnboardingScreen() {
 
   return (
     <Page>
-      <Card>
+      <Card style={containerCardStyle}>
         <View style={{ gap: 12 }}>
           <View style={{ gap: 8 }}>
-            <Text style={[typography.heroName, { color: theme.textPrimary, textAlign: 'center' }]}>Bienvenue</Text>
+            <Text
+              style={[
+                typography.heroName,
+                {
+                  color: theme.textPrimary,
+                  textAlign: 'center',
+                  fontSize: isCompactPhone ? 28 : isLargePhone ? 36 : 32,
+                  lineHeight: isCompactPhone ? 34 : isLargePhone ? 42 : 38,
+                },
+              ]}
+            >
+              Bienvenue
+            </Text>
             <Text style={[typography.body, { color: theme.textMuted, textAlign: 'center' }]}>Suivez chaque moment de Leo.</Text>
           </View>
           <View style={{ height: 8, borderRadius: 999, backgroundColor: theme.progressBg, overflow: 'hidden' }}>
@@ -181,7 +206,7 @@ export default function OnboardingScreen() {
       </Card>
 
       {step === 0 ? (
-        <Card>
+        <Card style={containerCardStyle}>
           <Animated.View entering={FadeIn.duration(220)} style={{ gap: 12 }}>
             {pathCards.map((item) => {
               const active = path === item.key;
@@ -214,7 +239,7 @@ export default function OnboardingScreen() {
       ) : null}
 
       {step === 1 ? (
-        <Card>
+        <Card style={containerCardStyle}>
           <Animated.View entering={FadeInRight.duration(220)} style={{ gap: 12 }}>
             <Text style={[typography.sectionTitle, { color: theme.textPrimary, textAlign: 'center' }]}>Langue</Text>
             <Segment value={language} onChange={(value) => setLanguage(value as AppLanguage)} options={languageOptions} />
@@ -224,13 +249,13 @@ export default function OnboardingScreen() {
       ) : null}
 
       {step === 2 ? (
-        <Card>
+        <Card style={containerCardStyle}>
           <Animated.View entering={FadeInRight.duration(220)} style={{ gap: 12 }}>
             <Text style={[typography.body, { color: theme.textMuted, textAlign: 'center' }]}>Les champs avec * sont importants.</Text>
             <Input label="Parent *" value={caregiverName} onChangeText={setCaregiverName} placeholder="Andrea" autoCapitalize="words" />
             <Input label="Prenom de bebe *" value={babyName} onChangeText={setBabyName} placeholder="Leo" autoCapitalize="words" />
             <DateTimeField label="Date de naissance *" value={babyBirthDate} onChange={setBabyBirthDate} />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
               {[
                 { value: 'unspecified' as const, label: 'Non precise', icon: 'help-circle-outline' as const },
                 { value: 'female' as const, label: 'Fille', icon: 'female-outline' as const },
@@ -242,8 +267,9 @@ export default function OnboardingScreen() {
                     key={item.value}
                     onPress={() => setBabySex(item.value)}
                     style={({ pressed }) => ({
-                      flex: 1,
-                      minHeight: 44,
+                      flexBasis: isCompactPhone ? '100%' : '31%',
+                      flexGrow: 1,
+                      minHeight: isCompactPhone ? 48 : 44,
                       borderRadius: 999,
                       borderWidth: 1,
                       borderColor: active ? theme.borderActive : theme.border,
@@ -272,7 +298,7 @@ export default function OnboardingScreen() {
       ) : null}
 
       {step === 3 && path === 'pin' ? (
-        <Card>
+        <Card style={containerCardStyle}>
           <Animated.View entering={FadeInRight.duration(220)} style={{ gap: 12 }}>
             <Animated.View style={{ transform: [{ translateX: shake }] }}>
               <Input label="PIN 4 chiffres" value={pin} onChangeText={setPin} keyboardType="number-pad" inputMode="numeric" />
@@ -284,7 +310,7 @@ export default function OnboardingScreen() {
       ) : null}
 
       {((step === 3 && path !== 'pin') || (step === 4 && path === 'pin')) ? (
-        <Card>
+        <Card style={containerCardStyle}>
           <Animated.View entering={FadeInRight.duration(220)} style={{ gap: 12 }}>
             <Input
               label="Objectif prises / jour"

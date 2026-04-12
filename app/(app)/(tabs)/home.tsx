@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -288,6 +288,7 @@ function ActivityRow({
 }
 
 export default function HomeScreen() {
+  const { width, height } = useWindowDimensions();
   const { language } = useLocale();
   const locale = localeTag(language);
   const { profile } = useAuth();
@@ -308,6 +309,12 @@ export default function HomeScreen() {
   const [quickAmount, setQuickAmount] = useState(150);
   const [quickFeedSide, setQuickFeedSide] = useState<BreastSide>('left');
   const [now, setNow] = useState(Date.now());
+  const isCompactPhone = width < 390;
+  const isLargePhone = width >= 430;
+  const sectionPadH = isCompactPhone ? 12 : 14;
+  const sectionPadV = isCompactPhone ? 10 : 12;
+  const twoColBasis = isCompactPhone ? ('100%' as const) : ('48%' as const);
+  const quickActionBasis = isCompactPhone ? ('48%' as const) : ('31%' as const);
 
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
   const lastFeed = useMemo(() => feedEntries[0], [feedEntries]);
@@ -551,10 +558,26 @@ export default function HomeScreen() {
   }
 
   return (
-    <Page contentStyle={styles.pageContent}>
-      <View style={{ backgroundColor: 'transparent', borderRadius: 16, paddingTop: 6, paddingHorizontal: 4, paddingBottom: 80 }}>
+    <Page contentStyle={[styles.pageContent, { maxWidth: isLargePhone ? 760 : 680 }]}>
+      <View
+        style={{
+          backgroundColor: 'transparent',
+          borderRadius: 16,
+          paddingTop: isCompactPhone ? 4 : 6,
+          paddingHorizontal: isCompactPhone ? 2 : isLargePhone ? 8 : 4,
+          paddingBottom: Math.max(80, Math.round(height * 0.1)),
+        }}
+      >
         <Animated.View entering={FadeIn.duration(300)} style={{ marginBottom: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: isCompactPhone ? 'wrap' : 'nowrap',
+            }}
+          >
             <View style={{ flex: 1 }}>
               <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'ACCUEIL' : 'HOME'}</Text>
               <Pressable
@@ -576,7 +599,7 @@ export default function HomeScreen() {
                 <Text style={{ color: MUTED, fontSize: 12, fontWeight: '700' }}>v</Text>
               </Pressable>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: isCompactPhone ? 'auto' : 0 }}>
               <HeaderAction label="Nouveau" onPress={() => router.push('/entry/feed')} />
               <Pressable
                 onPress={() => setShowHomeCustomizer(true)}
@@ -603,7 +626,7 @@ export default function HomeScreen() {
 
         {showSmartSignals && smartAlerts.length ? (
           <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+            <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'RAPPELS' : 'REMINDERS'}</Text>
@@ -635,8 +658,8 @@ export default function HomeScreen() {
                       }
                     }}
                     style={({ pressed }) => ({
-                      flexBasis: '48%',
-                      minWidth: 150,
+                      flexBasis: twoColBasis,
+                      minWidth: isCompactPhone ? 120 : 150,
                       paddingHorizontal: 10,
                       paddingVertical: 8,
                       borderRadius: 14,
@@ -666,8 +689,8 @@ export default function HomeScreen() {
         ) : null}
 
         <Animated.View entering={FadeIn.duration(300).delay(180)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
               <View style={{ flex: 1, gap: 6 }}>
                 <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'LAIT' : 'MILK'}</Text>
                 <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{totalMilkToday} ml</Text>
@@ -693,12 +716,12 @@ export default function HomeScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeIn.duration(300).delay(220)} style={{ marginBottom: 10 }}>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
             {[
               { label: 'Dernier sein', value: formatClock(lastBreastFeed?.occurredAt, locale), detail: formatRelative(lastBreastFeed?.occurredAt, locale) },
               { label: 'Dernier biberon', value: formatClock(lastBottleFeed?.occurredAt, locale), detail: formatRelative(lastBottleFeed?.occurredAt, locale) },
             ].map((item) => (
-              <View key={item.label} style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
+              <View key={item.label} style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
                 <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 }}>{item.label.toUpperCase()}</Text>
                 <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{item.value}</Text>
                 <Text style={{ color: MUTED, fontSize: 11 }}>{item.detail}</Text>
@@ -720,7 +743,7 @@ export default function HomeScreen() {
         </View>
 
         <Animated.View entering={FadeIn.duration(300).delay(320)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
             <Text style={sectionEyebrowStyle()}>TIMELINE</Text>
             <Text style={sectionTitleStyle()}>24h strip</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 8 }}>
@@ -747,7 +770,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeIn.duration(300).delay(400)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 6 }}>
+          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 6 }}>
             <Text style={sectionEyebrowStyle()}>ACTIONS RAPIDES</Text>
             <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Actions directes' : 'Quick actions'}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
@@ -767,7 +790,7 @@ export default function HomeScreen() {
                   }}
                   pressedScale={0.92}
                   flashColor={GOLD}
-                  style={{ flexBasis: '31%', minWidth: 96, flexGrow: 1 }}
+                  style={{ flexBasis: quickActionBasis, minWidth: isCompactPhone ? 120 : 96, flexGrow: 1 }}
                 >
                   <View style={{ height: 38, paddingHorizontal: 12, borderRadius: 18, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
@@ -784,7 +807,7 @@ export default function HomeScreen() {
                 { label: '+ sleep', href: '/entry/sleep' },
                 { label: '+ food', href: '/entry/food' },
               ].map((item) => (
-                <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.95} style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}>
+                <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.95} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 120 : 130, flexGrow: 1 }}>
                   <View style={{ height: 38, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
                   </View>
@@ -793,7 +816,7 @@ export default function HomeScreen() {
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
               {presetActions.map((preset) => (
-                <PressScale key={preset.label} onPress={() => router.push(preset.href as any)} pressedScale={0.94} style={{ flexBasis: '48%', minWidth: 132, flexGrow: 1 }}>
+                <PressScale key={preset.label} onPress={() => router.push(preset.href as any)} pressedScale={0.94} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 120 : 132, flexGrow: 1 }}>
                   <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{preset.label}</Text>
                   </View>
@@ -804,7 +827,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeIn.duration(300).delay(480)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
             <Text style={sectionEyebrowStyle()}>HYDRATION</Text>
             <Text style={sectionTitleStyle()}>Hydration</Text>
             <Text style={{ color: MUTED, fontSize: 11 }}>{hydration} ml / {appSettings.hydrationGoalMl} ml</Text>
@@ -836,7 +859,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeIn.duration(300).delay(560)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER }}>
+          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER }}>
             <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'HISTORIQUE' : 'RECENT'}</Text>
             <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Dernieres activites' : 'Recent activity'}</Text>
             <View style={{ marginTop: 8 }}>
@@ -878,7 +901,7 @@ export default function HomeScreen() {
       <Modal visible={showSmartSignalsMenu} transparent animationType="fade" onRequestClose={() => setShowSmartSignalsMenu(false)}>
         <View style={styles.menuOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowSmartSignalsMenu(false)} />
-          <View style={styles.menuSheet}>
+          <View style={[styles.menuSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
             <Text style={styles.menuTitle}>{language === 'fr' ? 'Signaux intelligents' : 'Smart signals'}</Text>
             <Text style={styles.menuSubtitle}>
               {showSmartSignals
@@ -916,7 +939,7 @@ export default function HomeScreen() {
       <Modal visible={showNextFeedPicker} transparent animationType="fade" onRequestClose={() => setShowNextFeedPicker(false)}>
         <View style={styles.menuOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowNextFeedPicker(false)} />
-          <View style={styles.menuSheet}>
+          <View style={[styles.menuSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
             <Text style={styles.menuTitle}>{language === 'fr' ? 'Next feeding' : 'Next feeding'}</Text>
             <Text style={styles.menuSubtitle}>
               {language === 'fr'
@@ -985,7 +1008,7 @@ export default function HomeScreen() {
       <Modal visible={showHomeCustomizer} transparent animationType="fade" onRequestClose={() => setShowHomeCustomizer(false)}>
         <View style={styles.menuOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowHomeCustomizer(false)} />
-          <View style={styles.menuSheet}>
+          <View style={[styles.menuSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
             <Text style={styles.menuTitle}>{language === 'fr' ? 'Personnaliser l\'accueil' : 'Customize home'}</Text>
             <Text style={styles.menuSubtitle}>
               {language === 'fr'
@@ -1028,7 +1051,7 @@ export default function HomeScreen() {
       <Modal visible={showBabySwitcher} transparent animationType="fade" onRequestClose={() => setShowBabySwitcher(false)}>
         <View style={styles.switcherOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowBabySwitcher(false)} />
-          <View style={styles.switcherSheet}>
+          <View style={[styles.switcherSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
             <View style={styles.switcherHeader}>
               <View>
                 <Text style={styles.switcherTitle}>{language === 'fr' ? "Changer d'enfant" : 'Switch child profile'}</Text>
@@ -1112,7 +1135,7 @@ export default function HomeScreen() {
       <Modal visible={showSaveSheet} transparent animationType="slide" onRequestClose={() => setShowSaveSheet(false)}>
         <View style={styles.sheetOverlay}>
           <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
-            <View style={styles.sheetCard}>
+            <View style={[styles.sheetCard, { maxWidth: isLargePhone ? 480 : 420, paddingHorizontal: isCompactPhone ? 16 : 22, paddingVertical: isCompactPhone ? 16 : 22 }]}>
               <Text style={styles.sheetTitle}>
                 {quickTimerMode === 'bottle' ? 'Biberon termine' : `${activeFeedTitle} termine`}
               </Text>

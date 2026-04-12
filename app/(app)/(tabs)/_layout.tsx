@@ -2,12 +2,20 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocale } from '@/context/LocaleContext';
+import { useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabsLayout() {
   const { theme, paletteMode, themeStyle } = useTheme();
   const { t } = useLocale();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isDark = paletteMode === 'nuit';
   const isPhoto = themeStyle === 'photo';
+  const isCompactPhone = width < 390;
+  const isLargePhone = width >= 430;
+  const bottomInset = Math.max(insets.bottom, isCompactPhone ? 6 : 10);
+  const tabHeight = (isCompactPhone ? 56 : isLargePhone ? 64 : 60) + bottomInset;
 
   const tabBarBackground = isPhoto
     ? (isDark ? 'rgba(10, 14, 20, 0.72)' : 'rgba(255, 255, 255, 0.76)')
@@ -28,23 +36,23 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: tabBarBackground,
           borderTopColor: tabBarBorder,
-          height: 66,
-          paddingTop: 6,
-          paddingBottom: 8,
-          marginHorizontal: 10,
-          marginBottom: 10,
-          borderRadius: 22,
+          height: tabHeight,
+          paddingTop: isCompactPhone ? 4 : 6,
+          paddingBottom: bottomInset,
+          marginHorizontal: isCompactPhone ? 8 : 10,
+          marginBottom: Math.max(8, insets.bottom ? insets.bottom - 2 : 8),
+          borderRadius: isCompactPhone ? 18 : 22,
           borderTopWidth: 1,
           borderWidth: 1,
           overflow: 'hidden',
           elevation: 6,
         },
         tabBarItemStyle: {
-          borderRadius: 16,
-          marginHorizontal: 2,
+          borderRadius: isCompactPhone ? 12 : 16,
+          marginHorizontal: isCompactPhone ? 1 : 2,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: isCompactPhone ? 10 : 11,
           fontWeight: '700',
         },
         tabBarHideOnKeyboard: true,
