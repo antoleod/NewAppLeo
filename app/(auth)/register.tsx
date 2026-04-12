@@ -98,6 +98,9 @@ export default function RegisterScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
       <Heading eyebrow={t('auth.create_account')} title={language === 'fr' ? 'Creer un compte' : 'Create an account'} subtitle={language === 'fr' ? 'Un seul compte suffit pour le foyer.' : 'One account supports both login modes.'} />
       <Card>
+        <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: 'center', marginBottom: 4 }}>
+          {t('auth.password_or_pin', 'You can sign in with either a password or a PIN.')}
+        </Text>
         <Input label={t('auth.display_name', 'Display name')} value={displayName} onChangeText={setDisplayName} placeholder="Andrea" textContentType="name" />
         <Input
           label={t('auth.username', 'Username')}
@@ -119,7 +122,7 @@ export default function RegisterScreen() {
           error={pinError || undefined}
         />
         <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: 'center' }}>
-          PIN sign-in remains available, but email and password are the default path.
+          {t('auth.pin_available', 'PIN remains available for quick sign-in.')}
         </Text>
         {error ? <Text style={{ color: colors.danger, fontSize: 13, textAlign: 'center' }}>{error}</Text> : null}
         <Button label={t('auth.create_account', 'Create account')} onPress={handleSubmit} loading={loading} disabled={!canSubmit} fullWidth />

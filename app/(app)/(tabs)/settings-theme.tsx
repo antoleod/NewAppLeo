@@ -9,6 +9,7 @@ import { DataImporter } from '@/components/DataImporter';
 import { spacing } from '@/theme';
 import { getAppSettings, updateAppSettings } from '@/lib/storage';
 import { useLocale } from '@/context/LocaleContext';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 export default function ThemeSettings() {
   const { t } = useLocale();
@@ -34,7 +35,8 @@ export default function ThemeSettings() {
   const [settings, setSettings] = useState<any>({});
   const [isCustomThemeEnabled, setIsCustomThemeEnabled] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [presetColor, setPresetColor] = useState('#4d7c6b');
+const [presetColor, setPresetColor] = useState('#4d7c6b');
+  const quickPalette = ['#4d7c6b', '#c18f54', '#2f7d57', '#8eb5ea', '#d08ba0', '#1d4e89', '#e6b566', '#4a6fa5'];
 
   useEffect(() => {
     void (async () => {
@@ -87,7 +89,9 @@ export default function ThemeSettings() {
   return (
     <Page>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24, gap: 12 }}>
-        <Heading eyebrow="Personalization" title="Theme & Design" subtitle="Customize colors, palette, visual style, and background" />
+        <Animated.View entering={FadeIn.duration(220)}>
+          <Heading eyebrow="Personalization" title="Theme & Design" subtitle="Customize colors, palette, visual style, and background" />
+        </Animated.View>
 
         <Card>
           <SectionHeader title="Light/Dark Mode" />
@@ -104,10 +108,28 @@ export default function ThemeSettings() {
         </Card>
 
         <Card>
-          <SectionHeader title="Color Palette" />
+          <SectionHeader title="Quick palette" />
           <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginBottom: spacing.md }}>
-            Choose from our curated color palettes, each designed for a specific mood
+            Choose from several ready-made palettes, then fine-tune with HEX.
           </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: spacing.md }}>
+            {quickPalette.map((color) => (
+              <Pressable
+                key={color}
+                onPress={() => setPresetColor(color)}
+                style={({ pressed }) => ({
+                  width: 38,
+                  height: 38,
+                  borderRadius: 999,
+                  backgroundColor: color,
+                  borderWidth: presetColor === color ? 3 : 1,
+                  borderColor: presetColor === color ? colors.text : colors.border,
+                  opacity: pressed ? 0.85 : 1,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                })}
+              />
+            ))}
+          </View>
           <ThemeVariantGrid value={themeVariant} onChange={async (variant) => setThemeVariant(variant)} />
         </Card>
 
@@ -127,15 +149,17 @@ export default function ThemeSettings() {
         </Card>
 
         <Card>
-          <SectionHeader title="Advanced Colors" />
-          <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginBottom: spacing.md }}>
-            Pick a base color or fine-tune with HEX values.
-          </Text>
+          <Animated.View entering={FadeInDown.duration(220)}>
+            <SectionHeader title="Advanced Colors" />
+            <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginBottom: spacing.md }}>
+              Pick a base color or fine-tune with HEX values.
+            </Text>
+          </Animated.View>
           <View style={{ gap: spacing.md }}>
             <View style={{ gap: 8 }}>
-              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>Quick palette</Text>
+              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>Advanced Colors</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                {['#4d7c6b', '#c18f54', '#2f7d57', '#8eb5ea', '#d08ba0', '#1d4e89'].map((color) => (
+                {quickPalette.map((color) => (
                   <Pressable
                     key={color}
                     onPress={() => setPresetColor(color)}
