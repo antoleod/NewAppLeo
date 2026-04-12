@@ -4,7 +4,6 @@ import {
   Text,
   Pressable,
   StyleSheet,
-  useWindowDimensions,
 } from 'react-native';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
@@ -19,9 +18,6 @@ export function ThemeVariantGrid({
   onChange: (variant: ThemeVariant) => void;
 }) {
   const { theme } = useTheme();
-  const { width } = useWindowDimensions();
-  const columnCount = width >= 900 ? 4 : width >= 600 ? 2 : 1;
-
   const variants: ThemeVariant[] = ['sage', 'rose', 'navy', 'sand'];
 
   return (
@@ -37,23 +33,23 @@ export function ThemeVariantGrid({
               style={[
                 styles.variantCard,
                 {
-                  flex: columnCount === 1 ? undefined : 1,
+                  flexBasis: '48%',
                   borderColor: isSelected ? theme.accent : theme.border,
                   borderWidth: isSelected ? 2 : 1,
                   backgroundColor: theme.bgCard,
                   opacity: isSelected ? 1 : 0.7,
                   shadowColor: isSelected ? theme.accent : 'transparent',
-                  shadowOpacity: isSelected ? 0.3 : 0,
-                  shadowRadius: 8,
+                  shadowOpacity: isSelected ? 0.22 : 0.08,
+                  shadowRadius: isSelected ? 10 : 6,
                   shadowOffset: { width: 0, height: 4 },
-                  elevation: isSelected ? 4 : 0,
+                  elevation: isSelected ? 3 : 1,
                 },
               ]}
             >
               <View style={styles.variantPreview}>
                 <VariantColorPill variant={variant} />
               </View>
-              <Text style={[styles.variantEmoji, { fontSize: 24 }]}>
+              <Text style={[styles.variantEmoji, { fontSize: 18 }]}>
                 {desc.emoji}
               </Text>
               <Text style={[styles.variantLabel, { color: theme.textPrimary }]}>
@@ -281,12 +277,12 @@ const styles = StyleSheet.create({
   },
   variantCard: {
     borderRadius: radii.lg,
-    padding: spacing.md,
-    gap: spacing.md,
+    padding: spacing.sm,
+    gap: spacing.sm,
   },
   variantPreview: {
     width: '100%',
-    height: 80,
+    height: 58,
     borderRadius: radii.md,
     overflow: 'hidden',
   },
@@ -306,7 +302,7 @@ const styles = StyleSheet.create({
   },
   variantDescription: {
     ...typography.body,
-    fontSize: 12,
+    fontSize: 11,
   },
   preview: {
     borderRadius: radii.lg,

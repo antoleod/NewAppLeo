@@ -88,12 +88,12 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
 
   return (
     <Page>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120, gap: 12, paddingHorizontal: 2 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140, gap: 10, paddingHorizontal: 2 }}>
         <Animated.View entering={FadeIn.duration(220)}>
           <Heading eyebrow="Personalization" title="Theme & Design" subtitle="Customize colors, palette, visual style, and background" />
         </Animated.View>
 
-        <Card style={{ shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 5 }}>
+        <Card style={{ shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 }}>
           <SectionHeader title="Light/Dark Mode" />
           <Segment
             value={themeMode}
@@ -107,23 +107,28 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
           <Button label={paletteMode === 'nuit' ? 'Switch to Light' : 'Switch to Dark'} onPress={() => void toggleTheme()} variant="ghost" fullWidth />
         </Card>
 
-        <Card style={{ shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 5 }}>
+        <Card style={{ shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 }}>
           <SectionHeader title="Quick palette" />
           <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginBottom: spacing.md }}>
             Choose from several ready-made palettes, then fine-tune with HEX.
           </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: spacing.md }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.sm }}>
             {quickPalette.map((color) => (
               <Pressable
                 key={color}
                 onPress={() => setPresetColor(color)}
                 style={({ pressed }) => ({
-                  width: 38,
-                  height: 38,
+                  width: 32,
+                  height: 32,
                   borderRadius: 999,
                   backgroundColor: color,
                   borderWidth: presetColor === color ? 3 : 1,
                   borderColor: presetColor === color ? colors.text : colors.border,
+                  shadowColor: '#000',
+                  shadowOpacity: presetColor === color ? 0.18 : 0.08,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 4 },
+                  elevation: presetColor === color ? 3 : 1,
                   opacity: pressed ? 0.85 : 1,
                   transform: [{ scale: pressed ? 0.96 : 1 }],
                 })}
@@ -133,7 +138,7 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
           <ThemeVariantGrid value={themeVariant} onChange={async (variant) => setThemeVariant(variant)} />
         </Card>
 
-        <Card style={{ shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 5 }}>
+        <Card style={{ shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 }}>
           <SectionHeader title="Visual Style" />
           <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginBottom: spacing.md }}>
             Select how backgrounds and cards appear
@@ -143,12 +148,12 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
 
         <BackgroundPhotoSelector currentPhotoUri={backgroundPhotoUri} onPhotoSelected={handlePhotoSelected} onPhotoRemoved={handlePhotoRemoved} isLoading={uploadingPhoto} />
 
-        <Card style={{ shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 5 }}>
+        <Card style={{ shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 }}>
           <SectionHeader title="Live Preview" />
           <ThemePreview />
         </Card>
 
-        <Card style={{ shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 12 }, elevation: 6 }}>
+        <Card style={{ shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 5 }}>
           <Animated.View entering={FadeInDown.duration(220)}>
             <SectionHeader title="Advanced Colors" />
             <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginBottom: spacing.md }}>
@@ -158,23 +163,23 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
           <View style={{ gap: spacing.md }}>
             <View style={{ gap: 8 }}>
               <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>Quick palette</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {quickPalette.map((color) => (
                   <Pressable
                     key={color}
                     onPress={() => setPresetColor(color)}
                     style={{
-                      width: 38,
-                      height: 38,
+                      width: 32,
+                      height: 32,
                       borderRadius: 999,
                       backgroundColor: color,
                       borderWidth: presetColor === color ? 3 : 1,
                       borderColor: presetColor === color ? colors.text : colors.border,
                       shadowColor: '#000',
                       shadowOpacity: presetColor === color ? 0.18 : 0.08,
-                      shadowRadius: 10,
-                      shadowOffset: { width: 0, height: 6 },
-                      elevation: presetColor === color ? 4 : 2,
+                      shadowRadius: 8,
+                      shadowOffset: { width: 0, height: 4 },
+                      elevation: presetColor === color ? 3 : 1,
                     }}
                   />
                 ))}
