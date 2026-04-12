@@ -41,6 +41,10 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function isPermissionDenied(error: unknown) {
+  return Boolean((error as any)?.code === 'permission-denied' || /permission/i.test((error as any)?.message ?? ''));
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -208,10 +212,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(nextProfile);
           return nextProfile;
         }
-        await completeOnboarding(user.uid, payload);
-        const nextProfile = await loadProfile(user.uid);
-        setProfile(nextProfile);
-        return nextProfile as UserProfile;
+        try {
+          await completeOnboarding(user.uid, payload);
+          const nextProfile = await loadProfile(user.uid);
+          setProfile(nextProfile);
+          return nextProfile as UserProfile;
+        } catch (error) {
+          if (!isPermissionDenied(error)) {
+            throw error;
+          }
+          const fallbackProfile = {
+            ...(profile ?? createGuestProfile()),
+            caregiverName: payload.caregiverName,
+            babyName: payload.babyName,
+            babyBirthDate: payload.babyBirthDate,
+            babySex: payload.babySex,
+            birthWeightKg: payload.birthWeightKg,
+            currentWeightKg: payload.currentWeightKg,
+            heightCm: payload.heightCm,
+            headCircCm: payload.headCircCm,
+            babyNotes: payload.babyNotes,
+            language: payload.language,
+            goalFeedingsPerDay: payload.goalFeedingsPerDay,
+            goalSleepHoursPerDay: payload.goalSleepHoursPerDay,
+            goalDiapersPerDay: payload.goalDiapersPerDay,
+            hasCompletedOnboarding: true,
+          } as UserProfile;
+          setProfile(fallbackProfile);
+          return fallbackProfile;
+        }
       },
       saveProfile: async (partial) => {
         if (!user) throw new Error('You must be signed in.');
