@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
 import { useTheme } from '@/context/ThemeContext';
 import { AppLanguage } from '@/types';
-import { getLocalPairingSession, joinPairingSession } from '@/services/pairingService';
+import { getLocalPairingSession } from '@/services/pairingService';
 
 type AuthView = 'landing' | 'login' | 'signup' | 'walkthrough';
 
@@ -103,33 +103,18 @@ export default function IndexRoute() {
     }
   }
 
-  async function handleTokenLogin() {
-    setBusy(true);
-    setErrorMessage('');
-    try {
-      const session = await getLocalPairingSession();
-      if (session?.code === token.trim()) {
-        await joinPairingSession(token.trim(), profile?.uid ?? 'guest');
-        await signInGuest();
-        router.replace('/home');
-        return;
-      }
-      setErrorMessage('Invalid token');
-    } catch (error: any) {
-      setErrorMessage(error?.message ?? 'Invalid token');
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <Page contentStyle={styles.pageContent}>
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: gradients.hero[0], opacity: 0.08 }]} />
+      <View pointerEvents="none" style={styles.haloTop} />
+      <View pointerEvents="none" style={styles.haloBottom} />
       <ScrollView contentContainerStyle={styles.shell} showsVerticalScrollIndicator={false}>
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.brand, { color: colors.primary }]}>{t('app.name', 'App Leo')}</Text>
-          <Text style={[styles.title, { color: colors.text }]}>{view === 'walkthrough' ? t('language.select.title') : t('app.tagline')}</Text>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>{view === 'walkthrough' ? t('language.select.subtitle') : t('auth.privacy')}</Text>
+          <View style={styles.heroCopy}>
+            <Text style={[styles.brand, { color: colors.primary }]}>{t('app.name', 'App Leo')}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{view === 'walkthrough' ? t('language.select.title') : t('app.tagline')}</Text>
+            <Text style={[styles.subtitle, { color: colors.muted }]}>{view === 'walkthrough' ? t('language.select.subtitle') : t('auth.privacy')}</Text>
+          </View>
           <View style={styles.languageGrid}>
             {LANGS.map((item) => {
               const active = item.code === selectedLanguage;
@@ -148,17 +133,19 @@ export default function IndexRoute() {
             <Button label={busy ? '...' : t('auth.guest')} onPress={() => void handleGuest()} />
             <Button label={t('auth.sign_in')} variant="secondary" onPress={() => setView('login')} />
             <Button label={t('auth.create_account')} variant="ghost" onPress={() => setView('signup')} />
+            <Button
+              label={t('auth.pair', 'Pair device')}
+              variant="ghost"
+              onPress={() => router.push('/pair')}
+              style={{ borderStyle: 'dashed' }}
+            />
           </View>
-          <View style={styles.tokenPanel}>
-            <Text style={[styles.tokenTitle, { color: colors.text }]}>Login with Token</Text>
-            <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, textAlign: 'center' }}>
-              Use the pairing token from the other device to sync sessions.
-            </Text>
-            <Input label="Token" value={token} onChangeText={setToken} placeholder="123456" keyboardType="numeric" inputMode="numeric" />
-            <Button label="Use token" onPress={() => void handleTokenLogin()} variant="secondary" />
+          <View style={styles.pairHint}>
+            <Ionicons name="people-outline" size={16} color={colors.primary} />
+            <Text style={[styles.pairHintText, { color: colors.muted }]}>{t('pair.subtitle', 'Use a code to sync baby data and session between devices.')}</Text>
           </View>
           {view !== 'landing' ? (
-            <View style={{ gap: 10 }}>
+            <View style={styles.formBlock}>
               {view === 'signup' ? (
                 <>
                   <Input label={t('auth.display_name')} value={displayName} onChangeText={setDisplayName} placeholder="Andrea" autoCapitalize="words" />
@@ -174,7 +161,7 @@ export default function IndexRoute() {
             </View>
           ) : null}
           <Pressable onPress={() => setView('walkthrough')} style={styles.walkthroughLink}>
-            <Text style={{ color: colors.primary, fontWeight: '800' }}>{t('language.select.primary')}</Text>
+            <Text style={[styles.walkthroughText, { color: colors.primary }]}>{t('language.select.primary')}</Text>
           </Pressable>
         </Card>
       </ScrollView>
@@ -187,15 +174,39 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
   loadingText: { fontSize: 15, fontWeight: '700' },
   shell: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 14 },
-  card: { width: '100%', maxWidth: 520, borderRadius: 24, paddingVertical: 18, gap: 12 },
-  brand: { fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase', textAlign: 'center', fontWeight: '900' },
-  title: { fontSize: 24, textAlign: 'center', fontWeight: '900' },
-  subtitle: { fontSize: 13, lineHeight: 18, textAlign: 'center' },
-  languageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
-  languageCard: { minWidth: 96, paddingVertical: 12, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, alignItems: 'center' },
-  actions: { gap: 10 },
-  walkthroughLink: { alignSelf: 'center', paddingVertical: 6 },
+  card: { width: '100%', maxWidth: 540, borderRadius: 28, paddingVertical: 22, paddingHorizontal: 16, gap: 14, borderWidth: 1 },
+  heroCopy: { gap: 8, alignItems: 'center', paddingHorizontal: 10 },
+  brand: { fontSize: 11, letterSpacing: 1.8, textTransform: 'uppercase', textAlign: 'center', fontWeight: '900' },
+  title: { fontSize: 28, textAlign: 'center', fontWeight: '900', lineHeight: 32 },
+  subtitle: { fontSize: 14, lineHeight: 20, textAlign: 'center', maxWidth: 420 },
+  languageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', paddingTop: 4 },
+  languageCard: { minWidth: 100, paddingVertical: 13, paddingHorizontal: 14, borderRadius: 18, borderWidth: 1, alignItems: 'center' },
+  actions: { gap: 10, paddingTop: 4 },
+  pairHint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 2 },
+  pairHintText: { fontSize: 12, lineHeight: 17, textAlign: 'center', maxWidth: 360 },
+  formBlock: { gap: 10, paddingTop: 4 },
+  walkthroughLink: { alignSelf: 'center', paddingVertical: 8 },
+  walkthroughText: { fontWeight: '800', letterSpacing: 0.2 },
   error: { color: '#E74C3C', textAlign: 'center', fontWeight: '700' },
-  tokenPanel: { gap: 8, padding: 12, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' },
-  tokenTitle: { fontSize: 14, fontWeight: '900', textAlign: 'center' },
+  tokenPanel: { gap: 8, padding: 14, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' },
+  haloTop: {
+    position: 'absolute',
+    top: -80,
+    left: -60,
+    width: 180,
+    height: 180,
+    borderRadius: 999,
+    backgroundColor: 'rgba(201,162,39,0.14)',
+    filter: 'blur(12px)' as any,
+  },
+  haloBottom: {
+    position: 'absolute',
+    bottom: -120,
+    right: -80,
+    width: 240,
+    height: 240,
+    borderRadius: 999,
+    backgroundColor: 'rgba(63,185,80,0.12)',
+    filter: 'blur(16px)' as any,
+  },
 });
