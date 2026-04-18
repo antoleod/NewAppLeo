@@ -1145,7 +1145,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   pageContent: {
     width: '100%',
-    maxWidth: 1100,
+    maxWidth: 1040,
     alignSelf: 'center',
   },
   sheetOverlay: {

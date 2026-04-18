@@ -26,14 +26,17 @@ export function Page({
   scroll?: boolean;
   contentStyle?: any;
 }) {
+  const { width } = useWindowDimensions();
   const { colors, gradients, themeStyle, backgroundPhotoUri } = useTheme();
+  const isDesktopWeb = Platform.OS === 'web' && width >= 1280;
+  const pageMaxWidth = isDesktopWeb ? 980 : width >= 1100 ? 1040 : 1100;
   const usePhotoBackdrop = themeStyle !== 'classic';
   const backdropSource = backgroundPhotoUri
     ? ({ uri: backgroundPhotoUri } as const)
     : require('../../assets/img/baby1.f57cad83ec056a25eac37625af9c68fb.jpg');
   const backdropBlur = themeStyle === 'photo' ? 0 : Platform.OS === 'web' ? 0 : 4;
   const content = (
-    <View style={[styles.pageInner, contentStyle]}>
+    <View style={[styles.pageInner, { maxWidth: pageMaxWidth }, contentStyle]}>
       {children}
     </View>
   );
@@ -72,11 +75,11 @@ export function Page({
       )}
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         {scroll ? (
-          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={[styles.scroll, isDesktopWeb && styles.scrollDesktop]} showsVerticalScrollIndicator={false}>
             {content}
           </ScrollView>
         ) : (
-          <View style={styles.scroll}>{content}</View>
+          <View style={[styles.scroll, isDesktopWeb && styles.scrollDesktop]}>{content}</View>
         )}
       </SafeAreaView>
     </View>
@@ -84,11 +87,14 @@ export function Page({
 }
 
 export function Card({ children, style }: { children: React.ReactNode; style?: any }) {
+  const { width } = useWindowDimensions();
   const { theme } = useTheme();
+  const isDesktopWeb = Platform.OS === 'web' && width >= 1280;
   return (
     <View
       style={[
         styles.card,
+        isDesktopWeb && styles.cardDesktop,
         {
           backgroundColor: theme.bgCard,
           borderColor: theme.border,
@@ -117,9 +123,11 @@ export function Heading({
 }) {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
-  const scale = width >= 900 ? 1.08 : width >= 700 ? 1.04 : 1;
+  const isDesktopWeb = Platform.OS === 'web' && width >= 1280;
+  const shouldStack = width < 680;
+  const scale = isDesktopWeb ? 0.9 : width >= 900 ? 0.98 : width >= 700 ? 1 : 1;
   return (
-    <View style={[styles.headingRow, align === 'center' && styles.headingCentered]}>
+    <View style={[styles.headingRow, shouldStack && styles.headingStacked, align === 'center' && styles.headingCentered]}>
       <View style={{ flex: 1, gap: spacing.xs, alignItems: align === 'center' ? 'center' : 'flex-start' }}>
         {eyebrow ? <Text style={[styles.eyebrow, { color: theme.accent, fontSize: 11 * scale }, align === 'center' && { textAlign: 'center' }]}>{eyebrow}</Text> : null}
         <Text style={[styles.title, { color: theme.textPrimary, fontSize: 22 * scale }, align === 'center' && { textAlign: 'center' }]}>{title}</Text>
@@ -147,7 +155,9 @@ export function Button({
   disabled?: boolean;
   fullWidth?: boolean;
 }) {
+  const { width } = useWindowDimensions();
   const { theme } = useTheme();
+  const isDesktopWeb = Platform.OS === 'web' && width >= 1280;
   const background =
     variant === 'primary'
       ? theme.accent
@@ -169,7 +179,7 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         {
-          minHeight: isSmall ? 40 : 48,
+          minHeight: isDesktopWeb ? (isSmall ? 36 : 44) : isSmall ? 40 : 48,
           width: fullWidth ? '100%' : undefined,
           backgroundColor: background,
           borderColor,
@@ -185,7 +195,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={variant === 'ghost' ? theme.accent : '#ffffff'} />
       ) : (
-        <Text style={[styles.buttonLabel, { color, fontSize: isSmall ? 13 : 15 }]}>{label}</Text>
+        <Text style={[styles.buttonLabel, { color, fontSize: isDesktopWeb ? (isSmall ? 12 : 14) : isSmall ? 13 : 15 }]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -218,7 +228,9 @@ export function Input({
   textContentType?: any;
   inputMode?: any;
 }) {
+  const { width } = useWindowDimensions();
   const { theme } = useTheme();
+  const isDesktopWeb = Platform.OS === 'web' && width >= 1280;
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: theme.textPrimary }]}>{label}</Text>
@@ -235,6 +247,7 @@ export function Input({
         inputMode={inputMode}
         style={[
           styles.input,
+          isDesktopWeb && styles.inputDesktop,
           { color: theme.textPrimary, borderColor: error ? theme.red : theme.border, backgroundColor: theme.bgCardAlt },
           multiline && styles.textArea,
         ]}
@@ -253,9 +266,11 @@ export function Segment({
   options: Array<{ label: string; value: string }>;
   onChange: (value: string) => void;
 }) {
+  const { width } = useWindowDimensions();
   const { theme } = useTheme();
+  const shouldStack = width < 520;
   return (
-    <View style={[styles.segment, { borderColor: theme.border, backgroundColor: theme.pillBg }]}>
+    <View style={[styles.segment, shouldStack && styles.segmentStack, { borderColor: theme.border, backgroundColor: theme.pillBg }]}>
       {options.map((option) => {
         const selected = option.value === value;
         return (
@@ -264,6 +279,7 @@ export function Segment({
             onPress={() => onChange(option.value)}
             style={[
               styles.segmentItem,
+              shouldStack && styles.segmentItemStack,
               selected && { backgroundColor: theme.bgCard, borderColor: theme.borderActive },
             ]}
           >
@@ -505,6 +521,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     flexGrow: 1,
   },
+  scrollDesktop: {
+    paddingHorizontal: spacing.lg,
+  },
   pageInner: {
     width: '100%',
     maxWidth: 1100,
@@ -521,11 +540,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 1,
   },
+  cardDesktop: {
+    borderRadius: 20,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
   headingRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
     justifyContent: 'space-between',
+  },
+  headingStacked: {
+    flexDirection: 'column',
   },
   headingCentered: {
     justifyContent: 'center',
@@ -570,6 +597,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     ...typography.body,
   },
+  inputDesktop: {
+    minHeight: 44,
+    paddingVertical: 10,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   textArea: {
     minHeight: 110,
     textAlignVertical: 'top',
@@ -580,10 +613,15 @@ const styles = StyleSheet.create({
   },
   segment: {
     flexDirection: 'row',
+    flexWrap: 'nowrap',
     borderWidth: 1,
     borderRadius: radii.pill,
     padding: 4,
     gap: 4,
+  },
+  segmentStack: {
+    flexDirection: 'column',
+    borderRadius: radii.lg,
   },
   segmentItem: {
     flex: 1,
@@ -592,6 +630,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+  },
+  segmentItemStack: {
+    flex: 0,
+    width: '100%',
   },
   segmentLabel: {
     ...typography.pill,

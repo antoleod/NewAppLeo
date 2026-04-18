@@ -178,6 +178,8 @@ export default function IndexRoute() {
   const { colors, gradients } = useTheme();
   const { language, setLanguage, t } = useLocale();
   const { loading, user, profile, guestMode, signInGuest, signInEmail, signInGoogle, register } = useAuth();
+  const isDesktop = width >= 1280;
+  const isTablet = width >= 768;
 
   const [view, setView] = useState<AuthView>('landing');
   const [walkthroughStep, setWalkthroughStep] = useState(0);
@@ -190,11 +192,19 @@ export default function IndexRoute() {
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
 
-  const cardWidth = width >= 880 ? 560 : width >= 640 ? 520 : '100%';
+  const cardWidth = isDesktop ? 500 : width >= 880 ? 540 : width >= 640 ? 500 : '100%';
   const headline = t('login.welcome', 'Welcome');
   const tagline = t('login.tagline', 'A calm place to track your baby.');
   const ui = UI_TEXT[language];
   const googleLabel = ui.continueGoogle;
+  const titleStyle = {
+    fontSize: isDesktop ? 26 : isTablet ? 28 : 30,
+    lineHeight: isDesktop ? 30 : isTablet ? 32 : 34,
+  };
+  const subtitleStyle = {
+    fontSize: isDesktop ? 13 : 14,
+    lineHeight: isDesktop ? 18 : 20,
+  };
 
   const canSubmitLogin = useMemo(() => email.trim().length > 4 && password.length >= 6, [email, password]);
   const canSubmitSignup = useMemo(() => {
@@ -335,8 +345,8 @@ export default function IndexRoute() {
         {view === 'walkthrough' ? (
           <Card style={[styles.card, { width: cardWidth, backgroundColor: colors.surface }]}>
             <Text style={[styles.kicker, { color: colors.primary }]}>APP LEO</Text>
-            <Text style={[styles.title, { color: colors.text }]}>{walkthroughStep === 0 ? ui.selectLanguage : t('login.walkthrough_title', 'Welcome')}</Text>
-            <Text style={[styles.subtitle, { color: colors.muted }]}>
+            <Text style={[styles.title, titleStyle, { color: colors.text }]}>{walkthroughStep === 0 ? ui.selectLanguage : t('login.walkthrough_title', 'Welcome')}</Text>
+            <Text style={[styles.subtitle, subtitleStyle, { color: colors.muted }]}>
               {walkthroughStep === 0
                 ? `${ui.current}: ${languageName(language)}`
                 : t('login.walkthrough_desc', 'A calm, professional space to follow your baby journey.')}
@@ -387,8 +397,8 @@ export default function IndexRoute() {
           <View style={styles.stack}>
             <Card style={[styles.card, { width: cardWidth, backgroundColor: colors.surface }]}>
               <Text style={[styles.kicker, { color: colors.primary }]}>APP LEO</Text>
-              <Text style={[styles.title, { color: colors.text }]}>{headline}</Text>
-              <Text style={[styles.subtitle, { color: colors.muted }]}>{tagline}</Text>
+              <Text style={[styles.title, titleStyle, { color: colors.text }]}>{headline}</Text>
+              <Text style={[styles.subtitle, subtitleStyle, { color: colors.muted }]}>{tagline}</Text>
 
               <View style={styles.actions}>
                 <Pressable onPress={() => void handleGoogle()} style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
@@ -415,7 +425,7 @@ export default function IndexRoute() {
         ) : (
           <Card style={[styles.card, { width: cardWidth, backgroundColor: colors.surface }]}>
             <Text style={[styles.kicker, { color: colors.primary }]}>{view === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT'}</Text>
-            <Text style={[styles.title, { color: colors.text }]}>{view === 'login' ? ui.welcomeBack : ui.createFamilySpace}</Text>
+            <Text style={[styles.title, titleStyle, { color: colors.text }]}>{view === 'login' ? ui.welcomeBack : ui.createFamilySpace}</Text>
 
             {view === 'signup' ? (
               <>
@@ -453,7 +463,7 @@ const styles = StyleSheet.create({
   pageContent: {
     flex: 1,
     width: '100%',
-    maxWidth: 1100,
+    maxWidth: 980,
     alignSelf: 'center',
   },
   centered: {
@@ -480,8 +490,8 @@ const styles = StyleSheet.create({
   },
   card: {
     gap: 14,
-    borderRadius: 26,
-    paddingVertical: 20,
+    borderRadius: 24,
+    paddingVertical: 18,
   },
   kicker: {
     fontSize: 11,
