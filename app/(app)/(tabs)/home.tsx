@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -52,12 +52,12 @@ const touchTargetProps = {
   pressRetentionOffset: 8,
 } as const;
 
-function sectionEyebrowStyle() {
-  return { color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600' as const, textTransform: 'uppercase' as const };
+function sectionEyebrowStyle(compact = false) {
+  return { color: GOLD, fontSize: compact ? 9 : 10, letterSpacing: compact ? 1.2 : 1.5, fontWeight: '600' as const, textTransform: 'uppercase' as const };
 }
 
-function sectionTitleStyle() {
-  return { color: TEXT, fontSize: 18, fontWeight: '700' as const, marginTop: 2 };
+function sectionTitleStyle(compact = false) {
+  return { color: TEXT, fontSize: compact ? 16 : 18, fontWeight: '700' as const, marginTop: compact ? 1 : 2 };
 }
 
 function alertToneColor(tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger') {
@@ -145,7 +145,7 @@ function PressScale({
   );
 }
 
-function HeaderAction({ label, onPress }: { label: string; onPress: () => void }) {
+function HeaderAction({ label, onPress, compact = false }: { label: string; onPress: () => void; compact?: boolean }) {
   const rotate = useSharedValue(0);
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({
@@ -167,20 +167,20 @@ function HeaderAction({ label, onPress }: { label: string; onPress: () => void }
         scale.value = 1;
         rotate.value = 0;
       }}
-      style={{ minHeight: 36 }}
+      style={{ minHeight: compact ? 32 : 36 }}
     >
       <Animated.View
         style={[
           animatedStyle,
           {
-            height: 36,
-            paddingHorizontal: 14,
-            borderRadius: 20,
+            height: compact ? 32 : 36,
+            paddingHorizontal: compact ? 12 : 14,
+            borderRadius: compact ? 18 : 20,
             backgroundColor: GOLD,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
+            gap: compact ? 6 : 8,
             shadowColor: '#000',
             shadowOpacity: 0.18,
             shadowRadius: 8,
@@ -189,8 +189,8 @@ function HeaderAction({ label, onPress }: { label: string; onPress: () => void }
           },
         ]}
       >
-        <Text style={{ color: BG, fontSize: 14, fontWeight: '700' }}>+</Text>
-        <Text style={{ color: BG, fontSize: 13, fontWeight: '700' }}>{label}</Text>
+        <Text style={{ color: BG, fontSize: compact ? 13 : 14, fontWeight: '700' }}>+</Text>
+        <Text style={{ color: BG, fontSize: compact ? 12 : 13, fontWeight: '700' }}>{label}</Text>
       </Animated.View>
     </Pressable>
   );
@@ -200,10 +200,12 @@ function StatCell({
   label,
   value,
   index,
+  compact = false,
 }: {
   label: string;
   value: string;
   index: number;
+  compact?: boolean;
 }) {
   return (
     <Animated.View
@@ -211,17 +213,17 @@ function StatCell({
       style={{
         flexBasis: '48%',
         minWidth: 140,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 12,
+        paddingHorizontal: compact ? 10 : 12,
+        paddingVertical: compact ? 8 : 10,
+        borderRadius: compact ? 10 : 12,
         backgroundColor: CARD,
         borderWidth: 1,
         borderColor: BORDER,
-        gap: 6,
+        gap: compact ? 4 : 6,
       }}
     >
-      <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 }}>{label}</Text>
-      <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700' }}>{value}</Text>
+      <Text style={{ color: MUTED, fontSize: compact ? 9 : 10, fontWeight: '600', letterSpacing: compact ? 1 : 1.2 }}>{label}</Text>
+      <Text style={{ color: TEXT, fontSize: compact ? 18 : 22, fontWeight: '700' }}>{value}</Text>
     </Animated.View>
   );
 }
@@ -232,12 +234,14 @@ function ActivityRow({
   detail,
   time,
   onPress,
+  compact = false,
 }: {
   color: string;
   title: string;
   detail: string;
   time: string;
   onPress: () => void;
+  compact?: boolean;
 }) {
   const scale = useSharedValue(1);
   const highlight = useSharedValue(0);
@@ -261,34 +265,36 @@ function ActivityRow({
           highlight.value = 0;
         }}
         style={{
-          minHeight: 52,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          borderRadius: 8,
+          minHeight: compact ? 46 : 52,
+          paddingHorizontal: compact ? 10 : 12,
+          paddingVertical: compact ? 8 : 10,
+          borderRadius: compact ? 10 : 8,
           borderWidth: 1,
           borderColor: BORDER,
           backgroundColor: CARD,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 10,
-          marginBottom: 6,
+          gap: compact ? 8 : 10,
+          marginBottom: compact ? 4 : 6,
         }}
       >
-        <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: `${color}22`, alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: color }} />
+        <View style={{ width: compact ? 28 : 32, height: compact ? 28 : 32, borderRadius: compact ? 9 : 10, backgroundColor: `${color}22`, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: compact ? 8 : 10, height: compact ? 8 : 10, borderRadius: 999, backgroundColor: color }} />
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{title}</Text>
-          <Text style={{ color: MUTED, fontSize: 11 }}>{detail}</Text>
+          <Text style={{ color: TEXT, fontSize: compact ? 12 : 13, fontWeight: '700' }}>{title}</Text>
+          <Text style={{ color: MUTED, fontSize: compact ? 10 : 11 }}>{detail}</Text>
         </View>
-        <Text style={{ color: MUTED, fontSize: 11 }}>{time}</Text>
+        <Text style={{ color: MUTED, fontSize: compact ? 10 : 11 }}>{time}</Text>
       </Pressable>
     </Animated.View>
   );
 }
 
 export default function HomeScreen() {
+  const { width } = useWindowDimensions();
   const { language } = useLocale();
+  const isCompact = width >= 768;
   const locale = localeTag(language);
   const { profile } = useAuth();
   const { entries, summary, addEntry } = useAppData();
@@ -552,38 +558,38 @@ export default function HomeScreen() {
 
   return (
     <Page contentStyle={styles.pageContent}>
-      <View style={{ backgroundColor: 'transparent', borderRadius: 16, paddingTop: 6, paddingHorizontal: 4, paddingBottom: 80 }}>
-        <Animated.View entering={FadeIn.duration(300)} style={{ marginBottom: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <View style={{ backgroundColor: 'transparent', borderRadius: 16, paddingTop: isCompact ? 2 : 6, paddingHorizontal: 4, paddingBottom: isCompact ? 64 : 80 }}>
+        <Animated.View entering={FadeIn.duration(300)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: isCompact ? 10 : 12 }}>
             <View style={{ flex: 1 }}>
-              <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'ACCUEIL' : 'HOME'}</Text>
+              <Text style={sectionEyebrowStyle(isCompact)}>{language === 'fr' ? 'ACCUEIL' : 'HOME'}</Text>
               <Pressable
                 onPress={() => setShowBabySwitcher(true)}
                 style={({ pressed }) => ({
                   alignSelf: 'flex-start',
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
+                  gap: isCompact ? 6 : 8,
+                  paddingHorizontal: isCompact ? 10 : 12,
+                  paddingVertical: isCompact ? 6 : 8,
                   borderRadius: 999,
                   borderWidth: 1,
                   borderColor: BORDER,
                   backgroundColor: pressed ? '#1B2430' : CARD,
                 })}
               >
-                <Text style={sectionTitleStyle()}>{activeBabyName}</Text>
-                <Text style={{ color: MUTED, fontSize: 12, fontWeight: '700' }}>v</Text>
+                <Text style={sectionTitleStyle(isCompact)}>{activeBabyName}</Text>
+                <Text style={{ color: MUTED, fontSize: isCompact ? 11 : 12, fontWeight: '700' }}>v</Text>
               </Pressable>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <HeaderAction label="Nouveau" onPress={() => router.push('/entry/feed')} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: isCompact ? 6 : 8 }}>
+              <HeaderAction label="Nouveau" onPress={() => router.push('/entry/feed')} compact={isCompact} />
               <Pressable
                 onPress={() => setShowHomeCustomizer(true)}
                 style={({ pressed }) => ({
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
+                  width: isCompact ? 32 : 36,
+                  height: isCompact ? 32 : 36,
+                  borderRadius: isCompact ? 16 : 18,
                   borderWidth: 1,
                   borderColor: BORDER,
                   backgroundColor: pressed ? '#1B2430' : CARD,
@@ -591,29 +597,29 @@ export default function HomeScreen() {
                   justifyContent: 'center',
                 })}
               >
-                <Text style={{ color: TEXT, fontSize: 18, fontWeight: '900', lineHeight: 18 }}>...</Text>
+                <Text style={{ color: TEXT, fontSize: isCompact ? 16 : 18, fontWeight: '900', lineHeight: isCompact ? 16 : 18 }}>...</Text>
               </Pressable>
             </View>
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ marginBottom: 10 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ marginBottom: isCompact ? 8 : 10 }}>
           <NextFeedingCard onPress={openNextFeedPicker} />
         </Animated.View>
 
         {showSmartSignals && smartAlerts.length ? (
-          <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+            <View style={{ paddingHorizontal: isCompact ? 10 : 12, paddingVertical: isCompact ? 8 : 10, borderRadius: isCompact ? 12 : 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: isCompact ? 6 : 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: isCompact ? 8 : 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'RAPPELS' : 'REMINDERS'}</Text>
-                  <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Signaux intelligents' : 'Smart signals'}</Text>
+                  <Text style={sectionEyebrowStyle(isCompact)}>{language === 'fr' ? 'RAPPELS' : 'REMINDERS'}</Text>
+                  <Text style={sectionTitleStyle(isCompact)}>{language === 'fr' ? 'Signaux intelligents' : 'Smart signals'}</Text>
                 </View>
                 <Pressable
                   onPress={() => setShowSmartSignalsMenu(true)}
                   style={{
-                    width: 34,
-                    height: 34,
+                    width: isCompact ? 30 : 34,
+                    height: isCompact ? 30 : 34,
                     borderRadius: 999,
                     borderWidth: 1,
                     borderColor: BORDER,
@@ -622,10 +628,10 @@ export default function HomeScreen() {
                     backgroundColor: BG,
                   }}
                 >
-                  <Text style={{ color: TEXT, fontSize: 18, fontWeight: '800', lineHeight: 18 }}>...</Text>
+                  <Text style={{ color: TEXT, fontSize: isCompact ? 16 : 18, fontWeight: '800', lineHeight: isCompact ? 16 : 18 }}>...</Text>
                 </Pressable>
               </View>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: isCompact ? 6 : 8 }}>
                 {smartAlerts.map((alert) => (
                   <Pressable
                     key={alert.id}
@@ -637,25 +643,25 @@ export default function HomeScreen() {
                     style={({ pressed }) => ({
                       flexBasis: '48%',
                       minWidth: 150,
-                      paddingHorizontal: 10,
-                      paddingVertical: 8,
-                      borderRadius: 14,
+                      paddingHorizontal: isCompact ? 9 : 10,
+                      paddingVertical: isCompact ? 6 : 8,
+                      borderRadius: isCompact ? 12 : 14,
                       borderWidth: 1,
                       borderColor: BORDER,
                       backgroundColor: pressed ? '#1B2430' : BG,
-                      gap: 4,
+                      gap: isCompact ? 3 : 4,
                     })}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                        <Text style={{ fontSize: 15 }}>{alert.icon}</Text>
-                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '800' }}>{alert.value}</Text>
+                        <Text style={{ fontSize: isCompact ? 13 : 15 }}>{alert.icon}</Text>
+                        <Text style={{ color: TEXT, fontSize: isCompact ? 12 : 13, fontWeight: '800' }}>{alert.value}</Text>
                       </View>
-                      <View style={{ paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, backgroundColor: `${alertToneColor(alert.tone)}22` }}>
-                        <Text style={{ color: alertToneColor(alert.tone), fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>{alert.statusLabel}</Text>
+                      <View style={{ paddingHorizontal: isCompact ? 6 : 7, paddingVertical: 3, borderRadius: 999, backgroundColor: `${alertToneColor(alert.tone)}22` }}>
+                        <Text style={{ color: alertToneColor(alert.tone), fontSize: isCompact ? 8 : 9, fontWeight: '800', textTransform: 'uppercase' }}>{alert.statusLabel}</Text>
                       </View>
                     </View>
-                    <Text style={{ color: MUTED, fontSize: 11 }} numberOfLines={1}>
+                    <Text style={{ color: MUTED, fontSize: isCompact ? 10 : 11 }} numberOfLines={1}>
                       {alert.body}
                     </Text>
                   </Pressable>
@@ -665,20 +671,20 @@ export default function HomeScreen() {
           </Animated.View>
         ) : null}
 
-        <Animated.View entering={FadeIn.duration(300).delay(180)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'LAIT' : 'MILK'}</Text>
-                <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{totalMilkToday} ml</Text>
+        <Animated.View entering={FadeIn.duration(300).delay(180)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+          <View style={{ paddingHorizontal: isCompact ? 12 : 14, paddingVertical: isCompact ? 10 : 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: isCompact ? 8 : 10 }}>
+            <View style={{ flexDirection: 'row', gap: isCompact ? 6 : 8 }}>
+              <View style={{ flex: 1, gap: isCompact ? 4 : 6 }}>
+                <Text style={sectionEyebrowStyle(isCompact)}>{language === 'fr' ? 'LAIT' : 'MILK'}</Text>
+                <Text style={{ color: TEXT, fontSize: isCompact ? 18 : 20, fontWeight: '700' }}>{totalMilkToday} ml</Text>
               </View>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'PROCHAINE PRISE' : 'NEXT FEED'}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="time-outline" size={14} color={BLUE} />
-                  <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
-                  <Animated.View style={[nextBadgeStyle, { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${BLUE}22` : `${GOLD}22` }]}>
-                    <Text style={{ color: nextFeedDueIn && nextFeedDueIn > 0 ? BLUE : GOLD, fontSize: 11, fontWeight: '700' }}>
+              <View style={{ flex: 1, gap: isCompact ? 4 : 6 }}>
+                <Text style={sectionEyebrowStyle(isCompact)}>{language === 'fr' ? 'PROCHAINE PRISE' : 'NEXT FEED'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: isCompact ? 5 : 6 }}>
+                  <Ionicons name="time-outline" size={isCompact ? 12 : 14} color={BLUE} />
+                  <Text style={{ color: TEXT, fontSize: isCompact ? 14 : 16, fontWeight: '700' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
+                  <Animated.View style={[nextBadgeStyle, { paddingHorizontal: isCompact ? 7 : 8, paddingVertical: isCompact ? 3 : 4, borderRadius: 999, backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${BLUE}22` : `${GOLD}22` }]}>
+                    <Text style={{ color: nextFeedDueIn && nextFeedDueIn > 0 ? BLUE : GOLD, fontSize: isCompact ? 10 : 11, fontWeight: '700' }}>
                       {lastFeed ? formatRelative(lastFeed.occurredAt, locale) : '--'}
                     </Text>
                   </Animated.View>
@@ -688,26 +694,26 @@ export default function HomeScreen() {
             <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
               <Animated.View style={[{ height: '100%', backgroundColor: GOLD, borderRadius: 999 }, milkBarStyle]} />
             </View>
-            <Text style={{ color: MUTED, fontSize: 11 }}>{milkStatus}</Text>
+            <Text style={{ color: MUTED, fontSize: isCompact ? 10 : 11 }}>{milkStatus}</Text>
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(300).delay(220)} style={{ marginBottom: 10 }}>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(220)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+          <View style={{ flexDirection: 'row', gap: isCompact ? 6 : 8 }}>
             {[
               { label: 'Dernier sein', value: formatClock(lastBreastFeed?.occurredAt, locale), detail: formatRelative(lastBreastFeed?.occurredAt, locale) },
               { label: 'Dernier biberon', value: formatClock(lastBottleFeed?.occurredAt, locale), detail: formatRelative(lastBottleFeed?.occurredAt, locale) },
             ].map((item) => (
-              <View key={item.label} style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
-                <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 }}>{item.label.toUpperCase()}</Text>
-                <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{item.value}</Text>
-                <Text style={{ color: MUTED, fontSize: 11 }}>{item.detail}</Text>
+              <View key={item.label} style={{ flex: 1, paddingHorizontal: isCompact ? 10 : 12, paddingVertical: isCompact ? 8 : 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
+                <Text style={{ color: MUTED, fontSize: isCompact ? 9 : 10, fontWeight: '600', letterSpacing: isCompact ? 1 : 1.2 }}>{item.label.toUpperCase()}</Text>
+                <Text style={{ color: TEXT, fontSize: isCompact ? 18 : 20, fontWeight: '700' }}>{item.value}</Text>
+                <Text style={{ color: MUTED, fontSize: isCompact ? 10 : 11 }}>{item.detail}</Text>
               </View>
             ))}
           </View>
         </Animated.View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: isCompact ? 6 : 8, marginBottom: isCompact ? 8 : 10 }}>
           {[
             { label: 'FEEDS', value: String(summary.today.feedCount) },
             { label: 'BOTTLE', value: `${summary.today.bottleMl} ml` },
@@ -715,15 +721,15 @@ export default function HomeScreen() {
             { label: 'DIAPERS', value: String(summary.today.diaperCount) },
             { label: 'FOOD', value: String(summary.today.foodCount) },
           ].map((item, index) => (
-            <StatCell key={item.label} label={item.label} value={item.value} index={index} />
+            <StatCell key={item.label} label={item.label} value={item.value} index={index} compact={isCompact} />
           ))}
         </View>
 
         <Animated.View entering={FadeIn.duration(300).delay(320)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-            <Text style={sectionEyebrowStyle()}>TIMELINE</Text>
-            <Text style={sectionTitleStyle()}>24h strip</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 8 }}>
+          <View style={{ paddingHorizontal: isCompact ? 12 : 14, paddingVertical: isCompact ? 10 : 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: isCompact ? 6 : 8 }}>
+            <Text style={sectionEyebrowStyle(isCompact)}>TIMELINE</Text>
+            <Text style={sectionTitleStyle(isCompact)}>24h strip</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: isCompact ? 6 : 8, marginTop: isCompact ? 6 : 8, marginBottom: isCompact ? 6 : 8 }}>
               {timelineChips.map((chip) => (
                 <PressScale
                   key={chip.key}
@@ -734,8 +740,8 @@ export default function HomeScreen() {
                   }}
                   pressedScale={0.96}
                 >
-                  <View style={{ height: 36, minWidth: 48, paddingHorizontal: 12, borderRadius: 20, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 11, fontWeight: '600' }}>
+                  <View style={{ height: isCompact ? 32 : 36, minWidth: isCompact ? 44 : 48, paddingHorizontal: isCompact ? 10 : 12, borderRadius: 20, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: TEXT, fontSize: isCompact ? 10 : 11, fontWeight: '600' }}>
                       {chip.label}
                       {chip.count > 1 ? ` ${chip.count}` : ''}
                     </Text>
@@ -747,10 +753,10 @@ export default function HomeScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeIn.duration(300).delay(400)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 6 }}>
-            <Text style={sectionEyebrowStyle()}>ACTIONS RAPIDES</Text>
-            <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Actions directes' : 'Quick actions'}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+          <View style={{ paddingHorizontal: isCompact ? 12 : 14, paddingVertical: isCompact ? 10 : 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: isCompact ? 5 : 6 }}>
+            <Text style={sectionEyebrowStyle(isCompact)}>ACTIONS RAPIDES</Text>
+            <Text style={sectionTitleStyle(isCompact)}>{language === 'fr' ? 'Actions directes' : 'Quick actions'}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: isCompact ? 6 : 8, marginTop: isCompact ? 6 : 8 }}>
               {visibleActions.map(([label, href]) => (
                 <PressScale
                   key={label}
@@ -767,35 +773,35 @@ export default function HomeScreen() {
                   }}
                   pressedScale={0.92}
                   flashColor={GOLD}
-                  style={{ flexBasis: '31%', minWidth: 96, flexGrow: 1 }}
+                  style={{ flexBasis: '31%', minWidth: isCompact ? 88 : 96, flexGrow: 1 }}
                 >
-                  <View style={{ height: 38, paddingHorizontal: 12, borderRadius: 18, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
+                  <View style={{ height: isCompact ? 34 : 38, paddingHorizontal: isCompact ? 10 : 12, borderRadius: 18, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: TEXT, fontSize: isCompact ? 11 : 12, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
                       {label}
                     </Text>
                   </View>
                 </PressScale>
               ))}
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: isCompact ? 6 : 8, marginTop: isCompact ? 8 : 10 }}>
               {[
                 { label: '+150 ml', href: '/entry/feed?presetMode=bottle&presetAmount=150' },
                 { label: '+ diaper', href: '/entry/diaper' },
                 { label: '+ sleep', href: '/entry/sleep' },
                 { label: '+ food', href: '/entry/food' },
               ].map((item) => (
-                <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.95} style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}>
-                  <View style={{ height: 38, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
+                <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.95} style={{ flexBasis: '48%', minWidth: isCompact ? 120 : 130, flexGrow: 1 }}>
+                  <View style={{ height: isCompact ? 34 : 38, paddingHorizontal: isCompact ? 12 : 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: TEXT, fontSize: isCompact ? 11 : 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
                   </View>
                 </PressScale>
               ))}
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: isCompact ? 6 : 8, marginTop: 6 }}>
               {presetActions.map((preset) => (
-                <PressScale key={preset.label} onPress={() => router.push(preset.href as any)} pressedScale={0.94} style={{ flexBasis: '48%', minWidth: 132, flexGrow: 1 }}>
-                  <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{preset.label}</Text>
+                <PressScale key={preset.label} onPress={() => router.push(preset.href as any)} pressedScale={0.94} style={{ flexBasis: '48%', minWidth: isCompact ? 122 : 132, flexGrow: 1 }}>
+                  <View style={{ height: isCompact ? 32 : 36, paddingHorizontal: isCompact ? 12 : 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: TEXT, fontSize: isCompact ? 11 : 12, fontWeight: '700', textAlign: 'center' }}>{preset.label}</Text>
                   </View>
                 </PressScale>
               ))}
@@ -803,15 +809,15 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(300).delay(480)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-            <Text style={sectionEyebrowStyle()}>HYDRATION</Text>
-            <Text style={sectionTitleStyle()}>Hydration</Text>
-            <Text style={{ color: MUTED, fontSize: 11 }}>{hydration} ml / {appSettings.hydrationGoalMl} ml</Text>
+        <Animated.View entering={FadeIn.duration(300).delay(480)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+          <View style={{ paddingHorizontal: isCompact ? 12 : 14, paddingVertical: isCompact ? 10 : 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: isCompact ? 6 : 8 }}>
+            <Text style={sectionEyebrowStyle(isCompact)}>HYDRATION</Text>
+            <Text style={sectionTitleStyle(isCompact)}>Hydration</Text>
+            <Text style={{ color: MUTED, fontSize: isCompact ? 10 : 11 }}>{hydration} ml / {appSettings.hydrationGoalMl} ml</Text>
             <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
               <View style={{ width: `${Math.max(0, Math.min(100, (hydration / appSettings.hydrationGoalMl) * 100))}%`, height: '100%', backgroundColor: BLUE }} />
             </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flexDirection: 'row', gap: isCompact ? 6 : 8 }}>
               {[
                 { label: '+250ml', amount: 250 },
                 { label: '+500ml', amount: 500 },
@@ -826,8 +832,8 @@ export default function HomeScreen() {
                   }}
                   pressedScale={0.94}
                 >
-                  <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 20, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{item.label}</Text>
+                  <View style={{ height: isCompact ? 32 : 36, paddingHorizontal: isCompact ? 12 : 14, borderRadius: 20, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: TEXT, fontSize: isCompact ? 12 : 13, fontWeight: '700' }}>{item.label}</Text>
                   </View>
                 </PressScale>
               ))}
@@ -835,11 +841,11 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(300).delay(560)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER }}>
-            <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'HISTORIQUE' : 'RECENT'}</Text>
-            <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Dernieres activites' : 'Recent activity'}</Text>
-            <View style={{ marginTop: 8 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(560)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+          <View style={{ paddingHorizontal: isCompact ? 12 : 14, paddingVertical: isCompact ? 10 : 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER }}>
+            <Text style={sectionEyebrowStyle(isCompact)}>{language === 'fr' ? 'HISTORIQUE' : 'RECENT'}</Text>
+            <Text style={sectionTitleStyle(isCompact)}>{language === 'fr' ? 'Dernieres activites' : 'Recent activity'}</Text>
+            <View style={{ marginTop: isCompact ? 6 : 8 }}>
               {recentEntries.length ? (
                 recentEntries.map((entry) => (
                   <ActivityRow
@@ -863,11 +869,12 @@ export default function HomeScreen() {
                     }
                     time={formatClock(entry.occurredAt, locale)}
                     onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
+                    compact={isCompact}
                   />
                 ))
               ) : (
-                <View style={{ paddingVertical: 10 }}>
-                  <Text style={{ color: MUTED, fontSize: 11 }}>{language === 'fr' ? 'Aucune activite recente.' : 'No recent activity.'}</Text>
+                <View style={{ paddingVertical: isCompact ? 8 : 10 }}>
+                  <Text style={{ color: MUTED, fontSize: isCompact ? 10 : 11 }}>{language === 'fr' ? 'Aucune activite recente.' : 'No recent activity.'}</Text>
                 </View>
               )}
             </View>

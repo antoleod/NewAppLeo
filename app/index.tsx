@@ -180,6 +180,7 @@ export default function IndexRoute() {
   const { loading, user, profile, guestMode, signInGuest, signInEmail, signInGoogle, register } = useAuth();
   const isDesktop = width >= 1280;
   const isTablet = width >= 768;
+  const isCompact = isTablet;
 
   const [view, setView] = useState<AuthView>('landing');
   const [walkthroughStep, setWalkthroughStep] = useState(0);
@@ -192,7 +193,7 @@ export default function IndexRoute() {
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
 
-  const cardWidth = isDesktop ? 500 : width >= 880 ? 540 : width >= 640 ? 500 : '100%';
+  const cardWidth = isDesktop ? 480 : width >= 880 ? 520 : width >= 640 ? 500 : '100%';
   const headline = t('login.welcome', 'Welcome');
   const tagline = t('login.tagline', 'A calm place to track your baby.');
   const ui = UI_TEXT[language];
@@ -204,6 +205,10 @@ export default function IndexRoute() {
   const subtitleStyle = {
     fontSize: isDesktop ? 13 : 14,
     lineHeight: isDesktop ? 18 : 20,
+  };
+  const cardStyle = {
+    width: cardWidth,
+    backgroundColor: colors.surface,
   };
 
   const canSubmitLogin = useMemo(() => email.trim().length > 4 && password.length >= 6, [email, password]);
@@ -343,7 +348,7 @@ export default function IndexRoute() {
       />
       <View style={styles.shell}>
         {view === 'walkthrough' ? (
-          <Card style={[styles.card, { width: cardWidth, backgroundColor: colors.surface }]}>
+          <Card style={[styles.card, isCompact && styles.cardCompact, cardStyle]}>
             <Text style={[styles.kicker, { color: colors.primary }]}>APP LEO</Text>
             <Text style={[styles.title, titleStyle, { color: colors.text }]}>{walkthroughStep === 0 ? ui.selectLanguage : t('login.walkthrough_title', 'Welcome')}</Text>
             <Text style={[styles.subtitle, subtitleStyle, { color: colors.muted }]}>
@@ -353,7 +358,7 @@ export default function IndexRoute() {
             </Text>
 
             {walkthroughStep === 0 ? (
-              <View style={styles.langGrid}>
+              <View style={[styles.langGrid, isCompact && styles.langGridCompact]}>
                 {SUPPORTED_LANGUAGES.map((item) => {
                   const active = item.code === language;
                   return (
@@ -362,6 +367,7 @@ export default function IndexRoute() {
                       onPress={() => void setLanguage(item.code)}
                       style={[
                         styles.langChip,
+                        isCompact && styles.langChipCompact,
                         {
                           borderColor: active ? colors.primary : colors.border,
                           backgroundColor: active ? colors.primarySoft : colors.backgroundAlt,
@@ -381,11 +387,11 @@ export default function IndexRoute() {
               </View>
             )}
 
-            <View style={styles.actions}>
-              <Pressable onPress={() => void handleGoogle()} style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
-                <Ionicons name="logo-google" size={18} color={colors.text} />
-                <Text style={[styles.googleButtonText, { color: colors.text }]}>{googleLabel}</Text>
-              </Pressable>
+              <View style={[styles.actions, isCompact && styles.actionsCompact]}>
+              <Pressable onPress={() => void handleGoogle()} style={[styles.googleButton, isCompact && styles.googleButtonCompact, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
+                  <Ionicons name="logo-google" size={18} color={colors.text} />
+                  <Text style={[styles.googleButtonText, { color: colors.text }]}>{googleLabel}</Text>
+                </Pressable>
               {walkthroughStep === 0 ? (
                 <Button label={ui.continueLabel} onPress={() => setWalkthroughStep(1)} />
               ) : (
@@ -395,13 +401,13 @@ export default function IndexRoute() {
           </Card>
         ) : view === 'landing' ? (
           <View style={styles.stack}>
-            <Card style={[styles.card, { width: cardWidth, backgroundColor: colors.surface }]}>
+            <Card style={[styles.card, isCompact && styles.cardCompact, cardStyle]}>
               <Text style={[styles.kicker, { color: colors.primary }]}>APP LEO</Text>
               <Text style={[styles.title, titleStyle, { color: colors.text }]}>{headline}</Text>
               <Text style={[styles.subtitle, subtitleStyle, { color: colors.muted }]}>{tagline}</Text>
 
-              <View style={styles.actions}>
-                <Pressable onPress={() => void handleGoogle()} style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
+              <View style={[styles.actions, isCompact && styles.actionsCompact]}>
+                <Pressable onPress={() => void handleGoogle()} style={[styles.googleButton, isCompact && styles.googleButtonCompact, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
                   <Ionicons name="logo-google" size={18} color={colors.text} />
                   <Text style={[styles.googleButtonText, { color: colors.text }]}>{googleLabel}</Text>
                 </Pressable>
@@ -410,11 +416,11 @@ export default function IndexRoute() {
                 <Button label={t('auth.sign_up', ui.createAccount)} variant="ghost" onPress={() => setView('signup')} />
               </View>
 
-              <View style={styles.langRow}>
+              <View style={[styles.langRow, isCompact && styles.langRowCompact]}>
                 {SUPPORTED_LANGUAGES.map((item) => {
                   const active = item.code === language;
                   return (
-                    <Pressable key={item.code} onPress={() => void setLanguage(item.code)} style={[styles.inlineLang, { borderColor: active ? colors.primary : colors.border }]}>
+                    <Pressable key={item.code} onPress={() => void setLanguage(item.code)} style={[styles.inlineLang, isCompact && styles.inlineLangCompact, { borderColor: active ? colors.primary : colors.border }]}>
                       <Text style={{ color: active ? colors.primary : colors.muted, fontWeight: '700', fontSize: 12 }}>{item.label}</Text>
                     </Pressable>
                   );
@@ -423,7 +429,7 @@ export default function IndexRoute() {
             </Card>
           </View>
         ) : (
-          <Card style={[styles.card, { width: cardWidth, backgroundColor: colors.surface }]}>
+          <Card style={[styles.card, isCompact && styles.cardCompact, cardStyle]}>
             <Text style={[styles.kicker, { color: colors.primary }]}>{view === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT'}</Text>
             <Text style={[styles.title, titleStyle, { color: colors.text }]}>{view === 'login' ? ui.welcomeBack : ui.createFamilySpace}</Text>
 
@@ -440,8 +446,8 @@ export default function IndexRoute() {
 
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-            <View style={styles.actions}>
-              <Pressable onPress={() => void handleGoogle()} style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
+            <View style={[styles.actions, isCompact && styles.actionsCompact]}>
+              <Pressable onPress={() => void handleGoogle()} style={[styles.googleButton, isCompact && styles.googleButtonCompact, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
                 <Ionicons name="logo-google" size={18} color={colors.text} />
                 <Text style={[styles.googleButtonText, { color: colors.text }]}>{googleLabel}</Text>
               </Pressable>
@@ -493,6 +499,11 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingVertical: 18,
   },
+  cardCompact: {
+    gap: 10,
+    borderRadius: 22,
+    paddingVertical: 14,
+  },
   kicker: {
     fontSize: 11,
     letterSpacing: 1.4,
@@ -514,6 +525,9 @@ const styles = StyleSheet.create({
   actions: {
     gap: 10,
   },
+  actionsCompact: {
+    gap: 8,
+  },
   googleButton: {
     minHeight: 48,
     borderRadius: 16,
@@ -523,6 +537,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     paddingHorizontal: 14,
+  },
+  googleButtonCompact: {
+    minHeight: 42,
+    borderRadius: 14,
+    gap: 8,
+    paddingHorizontal: 12,
   },
   googleButtonText: {
     fontSize: 14,
@@ -535,6 +555,10 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 8,
   },
+  langGridCompact: {
+    gap: 8,
+    marginTop: 4,
+  },
   langChip: {
     minWidth: 76,
     height: 44,
@@ -544,12 +568,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 14,
   },
+  langChipCompact: {
+    minWidth: 68,
+    height: 38,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+  },
   langRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 2,
+  },
+  langRowCompact: {
+    gap: 6,
+    marginTop: 0,
   },
   inlineLang: {
     borderWidth: 1,
@@ -559,6 +593,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
+  },
+  inlineLangCompact: {
+    minWidth: 44,
+    height: 28,
+    paddingHorizontal: 8,
   },
   benefits: {
     gap: 8,

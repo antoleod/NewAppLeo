@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Card, Heading, Input, Page } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
@@ -12,10 +12,12 @@ function makeCode() {
 }
 
 export default function PairScreen() {
+  const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const { user } = useAuth();
   const [code, setCode] = useState(makeCode);
   const [session, setSession] = useState<PairingSession | null>(null);
+  const isCompact = width >= 768;
 
   useEffect(() => {
     (async () => {
@@ -26,10 +28,10 @@ export default function PairScreen() {
   return (
     <Page>
       <Heading eyebrow="Pairing" title="Connect a partner device" subtitle="Use a short code to share the same baby session." />
-      <Card>
-        <View style={{ gap: 12 }}>
+      <Card style={isCompact ? { gap: 10, paddingVertical: 14 } : undefined}>
+        <View style={{ gap: isCompact ? 10 : 12 }}>
           <Text style={{ color: colors.muted }}>Share this code with the other device:</Text>
-          <Text style={{ color: colors.text, fontSize: 34, fontWeight: '900', letterSpacing: 6 }}>{session?.code ?? code}</Text>
+          <Text style={{ color: colors.text, fontSize: isCompact ? 28 : 34, fontWeight: '900', letterSpacing: isCompact ? 5 : 6 }}>{session?.code ?? code}</Text>
           <Text style={{ color: colors.muted }}>Status: {session?.status ?? 'local only'}</Text>
           <Button
             label="Create new code"
@@ -47,8 +49,8 @@ export default function PairScreen() {
           />
         </View>
       </Card>
-      <Card>
-        <View style={{ gap: 12 }}>
+      <Card style={isCompact ? { gap: 10, paddingVertical: 14 } : undefined}>
+        <View style={{ gap: isCompact ? 10 : 12 }}>
           <Input label="Join code" value={code} onChangeText={setCode} placeholder="123456" keyboardType="numeric" inputMode="numeric" />
           <Button
             label="Join session"
