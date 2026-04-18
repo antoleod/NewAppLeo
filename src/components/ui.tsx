@@ -28,7 +28,7 @@ export function Page({
 }) {
   const { width } = useWindowDimensions();
   const { colors, gradients, themeStyle, backgroundPhotoUri } = useTheme();
-  const isDesktopWeb = Platform.OS === 'web' && width >= 1280;
+  const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
   const pageMaxWidth = isDesktopWeb ? 980 : width >= 1100 ? 1040 : 1100;
   const usePhotoBackdrop = themeStyle !== 'classic';
   const backdropSource = backgroundPhotoUri
@@ -89,7 +89,7 @@ export function Page({
 export function Card({ children, style }: { children: React.ReactNode; style?: any }) {
   const { width } = useWindowDimensions();
   const { theme } = useTheme();
-  const isDesktopWeb = Platform.OS === 'web' && width >= 1280;
+  const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
   return (
     <View
       style={[
@@ -123,7 +123,7 @@ export function Heading({
 }) {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
-  const isDesktopWeb = Platform.OS === 'web' && width >= 1280;
+  const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
   const shouldStack = width < 680;
   const scale = isDesktopWeb ? 0.9 : width >= 900 ? 0.98 : width >= 700 ? 1 : 1;
   return (
@@ -157,7 +157,7 @@ export function Button({
 }) {
   const { width } = useWindowDimensions();
   const { theme } = useTheme();
-  const isDesktopWeb = Platform.OS === 'web' && width >= 1280;
+  const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
   const background =
     variant === 'primary'
       ? theme.accent
