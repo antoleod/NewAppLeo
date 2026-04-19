@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
-import Reanimated, { FadeIn, FadeInRight, useAnimatedStyle, useSharedValue, withSequence, withTiming, interpolateColor, withSpring } from 'react-native-reanimated';
+import Reanimated, { FadeIn, FadeInRight, useAnimatedStyle, useSharedValue, withSequence, withTiming, interpolateColor, withSpring, interpolate } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
@@ -84,11 +84,17 @@ function computeAutoGoals(birthDate: Date, currentWeightKg?: number) {
   const ageDays = Math.max(0, Math.floor((Date.now() - birthDate.getTime()) / 86400000));
   const ageMonths = ageDays / 30.4375;
 
-  let feedings = ageMonths < 1 ? 8 : ageMonths < 3 ? 7 : ageMonths < 6 ? 6 : ageMonths < 9 ? 5 : 4;
-  const sleep = ageMonths < 1 ? 15 : ageMonths < 3 ? 14 : ageMonths < 6 ? 14 : ageMonths < 12 ? 13 : 12;
-  const diapers = ageMonths < 1 ? 8 : ageMonths < 3 ? 7 : ageMonths < 6 ? 6 : ageMonths < 12 ? 5 : 4;
+  // Ajuste según estándares ONEM y pediatría general
+  // Alimentación: Los recién nacidos necesitan tomas más frecuentes
+  let feedings = ageMonths < 1 ? 10 : ageMonths < 3 ? 7 : ageMonths < 6 ? 6 : ageMonths < 12 ? 5 : 4;
+  
+  // Sueño: Disminuye gradualmente de 17h a 13h el primer año
+  const sleep = ageMonths < 1 ? 17 : ageMonths < 4 ? 15 : ageMonths < 12 ? 14 : 13;
+  
+  // Pañales: Frecuente al inicio, se estabiliza con la alimentación sólida
+  const diapers = ageMonths < 2 ? 8 : ageMonths < 6 ? 6 : ageMonths < 12 ? 5 : 4;
 
-  if (typeof currentWeightKg === 'number' && currentWeightKg > 0 && ageMonths < 6 && currentWeightKg < 4) {
+  if (typeof currentWeightKg === 'number' && currentWeightKg > 0 && ageMonths < 4 && currentWeightKg < 3.5) {
     feedings += 1;
   }
 
@@ -133,6 +139,23 @@ export default function OnboardingScreen() {
   const shake = useSharedValue(0);
   const goldValue = useSharedValue(0);
   const zodiacRotation = useSharedValue(0);
+  const zodiacSlide = useSharedValue(0);
+  const avatarScale = useSharedValue(1);
+  const [isDateConfirmed, setIsDateConfirmed] = useState(true);
+  const prevPhotoRef = useRef<string | null>(babyPhotoUri);
+
+  // Animación de latido suave para el avatar al seleccionar foto por primera vez
+  useEffect(() => {
+    if (babyPhotoUri && prevPhotoRef.current === null) {
+      avatarScale.value = withSequence(
+        withTiming(1.15, { duration: 150 }),
+        withTiming(1, { duration: 150 }),
+        withTiming(1.1, { duration: 150 }),
+        withTiming(1, { duration: 150 })
+      );
+    }
+    prevPhotoRef.current = babyPhotoUri;
+  }, [babyPhotoUri]);
 
   // Sistema de tinte por género
   const genderValue = useSharedValue(0); // 0: neutral, 1: female, 2: male
@@ -149,6 +172,8 @@ export default function OnboardingScreen() {
 
   const zodiac = useMemo(() => getZodiacSign(babyBirthDate, language), [babyBirthDate, language]);
   const zodiacTint = useSharedValue('transparent');
+
+  const autoHint = language === 'nl' ? 'Sugg.:' : language === 'es' ? 'Sugerido:' : language === 'fr' ? 'Suggéré:' : 'Hint:';
 
   useEffect(() => {
     goldValue.value = withTiming(isObjectivesStep && goalsFilled ? 1 : 0, { duration: 1000 });
@@ -197,8 +222,36 @@ export default function OnboardingScreen() {
   });
 
   const animatedZodiacStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${zodiacRotation.value}deg` }]
+    transform: [
+      { rotate: `${zodiacRotation.value}deg` },
+      { translateX: zodiacSlide.value }
+    ]
   }));
+
+  const animatedAvatarStyle = useAnimatedStyle(() => {
+    const scale = avatarScale.value;
+    // Calculamos una intensidad de sombra del 0 al 1 basada en el pulso de escala
+    const shadowIntensity = interpolate(scale, [1, 1.15], [0, 1]);
+
+    return {
+      transform: [{ scale }],
+      ...Platform.select({
+        ios: {
+          shadowColor: zodiac.color,
+          shadowOffset: { width: 0, height: 4 * uiScale },
+          shadowOpacity: 0.4 * shadowIntensity,
+          shadowRadius: 12 * uiScale * shadowIntensity,
+        },
+        web: {
+          // Efecto de aura/glow dinámico usando el color del signo zodiacal con opacidad variable
+          boxShadow: `0px ${4 * uiScale}px ${15 * uiScale * shadowIntensity}px ${zodiac.color}${Math.floor(0.4 * shadowIntensity * 255).toString(16).padStart(2, '0')}`,
+        },
+        android: {
+          elevation: 6 * shadowIntensity,
+        }
+      })
+    };
+  });
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -367,6 +420,13 @@ export default function OnboardingScreen() {
                 (language === 'nl' ? "Doelen" : language === 'es' ? "Objetivos" : "Objectifs")
               } 
             />
+          {isObjectivesStep && (
+            <Pressable onPress={finishOnboarding} style={{ position: 'absolute', right: -10 * uiScale, padding: 8 }}>
+              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 * uiScale }}>
+                {language === 'nl' ? 'Overslaan' : language === 'es' ? 'Saltar' : language === 'fr' ? 'Passer' : 'Skip'}
+              </Text>
+            </Pressable>
+          )}
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 * uiScale }}>
               <Text style={{ fontSize: 9 * uiScale, fontWeight: '900', color: colors.muted, textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -441,7 +501,7 @@ export default function OnboardingScreen() {
             )}
 
             {step === 2 && (
-              <Reanimated.View entering={FadeInRight.duration(220)} style={{ gap: 10 * uiScale }}>
+              <Reanimated.View entering={FadeInRight.duration(220)} style={{ gap: 8 * uiScale }}>
                 {/* Preview Card Premium & Adorable */}
                 <View style={{ 
                   backgroundColor: scheme === 'dark' ? `${zodiac.color}15` : `${zodiac.color}08`, 
@@ -502,34 +562,34 @@ export default function OnboardingScreen() {
                   </View>
                 </View>
 
-            <Input 
-              label={language === 'nl' ? 'Uw naam *' : language === 'es' ? 'Tu nombre *' : 'Votre nom *'} 
-              value={caregiverName} 
-              onChangeText={setCaregiverName} 
-              placeholder="Andrea" 
-              autoCapitalize="words" 
-              iconName="person-outline"
-              error={showValidation && !caregiverName.trim() ? '•' : undefined}
-            />
-            <Input 
-              label={language === 'nl' ? "Baby's naam *" : language === 'es' ? 'Nombre del bebé *' : 'Nom du bébé *'} 
-              value={babyName} 
-              onChangeText={setBabyName} 
-              placeholder="Leo" 
-              autoCapitalize="words" 
-              iconName="heart-outline"
-              iconColor="#FF85A2"
-              error={showValidation && !babyName.trim() ? '•' : undefined}
-            />
-            <View style={{ marginTop: 4 * uiScale, gap: 8 * uiScale }}>
+            <View style={{ gap: 4 * uiScale }}>
+              <Input 
+                label={language === 'nl' ? 'Uw naam *' : language === 'es' ? 'Tu nombre *' : 'Votre nom *'} 
+                value={caregiverName} 
+                onChangeText={setCaregiverName} 
+                placeholder="Andrea" 
+                autoCapitalize="words" 
+                iconName="person-outline"
+                error={showValidation && !caregiverName.trim() ? '•' : undefined}
+              />
+              <Input 
+                label={language === 'nl' ? "Baby's naam *" : language === 'es' ? 'Nombre del bebé *' : 'Nom du bébé *'} 
+                value={babyName} 
+                onChangeText={setBabyName} 
+                placeholder="Leo" 
+                autoCapitalize="words" 
+                iconName="heart-outline"
+                iconColor="#FF85A2"
+                error={showValidation && !babyName.trim() ? '•' : undefined}
+              />
+            </View>
+
+            <View style={{ gap: 4 * uiScale }}>
               <Reanimated.View style={{ transform: [{ translateX: shake }] }}>
                 <DateTimeField 
                   label={language === 'nl' ? 'Geboortedatum *' : language === 'es' ? 'Fecha de nacimiento *' : 'Date de naissance *'} 
                   value={babyBirthDate} 
-                  onChange={(d) => {
-                    setBabyBirthDate(d);
-                    setIsDateConfirmed(false);
-                  }} 
+                  onChange={setBabyBirthDate} 
                   scale={uiScale}
                   error={babyBirthDate.getTime() > Date.now()}
                 />
@@ -539,21 +599,8 @@ export default function OnboardingScreen() {
                   {language === 'nl' ? 'Datum kan niet in de toekomst zijn' : language === 'es' ? 'La fecha no puede ser futura' : language === 'fr' ? 'La date ne peut pas être future' : 'Date cannot be in the future'}
                 </Text>
               )}
-              {!isDateConfirmed && (
-                <Reanimated.View entering={FadeIn.duration(300)}>
-                  <Button 
-                    label={language === 'nl' ? 'Bevestig datum' : language === 'es' ? 'Confirmar fecha' : language === 'en' ? 'Confirm Date' : 'Confirmer la date'}
-                    variant="secondary"
-                    iconName="checkmark-done-outline"
-                    onPress={() => {
-                      setIsDateConfirmed(true);
-                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    }}
-                  />
-                </Reanimated.View>
-              )}
             </View>
-            <View style={{ flexDirection: 'row', gap: 10 * uiScale, marginTop: 4 * uiScale }}>
+            <View style={{ flexDirection: 'row', gap: 10 * uiScale }}>
               {([
                 { value: 'unspecified' as const, label: language === 'nl' ? 'Neutraal' : language === 'es' ? 'Neutro' : 'Neutre', icon: 'remove-circle-outline' as const },
                 { value: 'female' as const, label: language === 'nl' ? 'Meisje' : language === 'es' ? 'Niña' : 'Fille', icon: 'female-outline' as const },
@@ -660,7 +707,7 @@ export default function OnboardingScreen() {
               inputMode="numeric"
               iconName="water"
               iconColor="#4D96FF"
-              hint={`Suggestion auto: ${autoGoals.feedings}`}
+              hint={`${autoHint} ${autoGoals.feedings}`}
             />
             <Input
               label={language === 'nl' ? 'Doel slaap / dag' : language === 'es' ? 'Objetivo sueño / día' : language === 'en' ? 'Daily sleep goal' : 'Objectif sommeil / jour'}
@@ -670,7 +717,7 @@ export default function OnboardingScreen() {
               inputMode="numeric"
               iconName="moon"
               iconColor="#9B59B6"
-              hint={`Suggestion auto: ${autoGoals.sleep}`}
+              hint={`${autoHint} ${autoGoals.sleep}`}
             />
             <Input
               label={language === 'nl' ? 'Doel luiers / dag' : language === 'es' ? 'Objetivo pañales / día' : language === 'en' ? 'Daily diapers goal' : 'Objectif couches / jour'}
@@ -680,7 +727,7 @@ export default function OnboardingScreen() {
               inputMode="numeric"
               iconName="layers"
               iconColor="#6BCB77"
-              hint={`Suggestion auto: ${autoGoals.diapers}`}
+              hint={`${autoHint} ${autoGoals.diapers}`}
             />
             {submitError ? <Text style={{ color: colors.danger, textAlign: 'center', fontSize: 13 * uiScale }}>{submitError}</Text> : null}
             <Button label={language === 'nl' ? 'Klaar!' : 'Tout est pret'} onPress={finishOnboarding} loading={saving} disabled={saving} />

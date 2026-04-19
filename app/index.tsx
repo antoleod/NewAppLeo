@@ -222,18 +222,18 @@ export default function IndexRoute() {
       <View style={[styles.shell, { maxWidth: isDesktop ? 400 : isTablet ? 480 : '100%' }]}>
         <Card>
           <Text style={[styles.title, { color: colors.text, fontSize: 28 * uiScale }]}>
-            {view === 'landing' ? t('login.welcome', 'Welcome') : view === 'login' ? (language === 'nl' ? 'Welkom terug' : language === 'es' ? 'Bienvenido' : 'Welcome Back') : (language === 'nl' ? 'Account aanmaken' : language === 'es' ? 'Crear cuenta' : 'Create Account')}
+            {view === 'landing' ? t('login.welcome', 'Welcome') : view === 'login' ? 'Welcome Back' : 'Create Account'}
           </Text>
           
           <View style={styles.formContainer}>
             {view === 'signup' && (
-              <Input label={language === 'nl' ? 'Naam' : language === 'es' ? 'Nombre' : 'Name'} value={displayName} onChangeText={setDisplayName} placeholder="Andrea" autoCorrect={false} />
+              <Input label="Name" value={displayName} onChangeText={setDisplayName} placeholder="Your full name" autoCorrect={false} />
             )}
 
             {(view === 'login' || view === 'signup') && (
               <>
                 <Input 
-                  label={language === 'es' ? "Email o Teléfono" : language === 'nl' ? "E-mail of Telefoon" : language === 'fr' ? "Email ou Téléphone" : "Email or Phone"} 
+                  label={language === 'es' ? "Email o Teléfono" : "Email or Phone"} 
                   value={email} 
                   onChangeText={setEmail} 
                   placeholder={phonePlaceholder} 
@@ -244,7 +244,7 @@ export default function IndexRoute() {
                   autoCorrect={false} 
                 />
                 <Input 
-                  label={language === 'es' ? "Contraseña o PIN" : language === 'nl' ? "Wachtwoord of PIN" : language === 'fr' ? "Mot de passe ou PIN" : "Password or PIN"} 
+                  label={language === 'es' ? "Contraseña o PIN" : "Password or PIN"} 
                   value={password} 
                   onChangeText={setPassword} 
                   placeholder="******" 
@@ -262,7 +262,7 @@ export default function IndexRoute() {
 
             {password.length > 0 && password.length < 6 && (
               <Text style={{ color: colors.danger, fontSize: 11 * uiScale, marginLeft: 4 * uiScale, marginTop: -4 * uiScale }}>
-                {language === 'es' ? 'Mínimo 6 caracteres o números' : language === 'nl' ? 'Minimaal 6 tekens of cijfers' : 'Minimum 6 characters or numbers'}
+                {language === 'es' ? 'Mínimo 6 caracteres o números' : 'Minimum 6 characters or numbers'}
               </Text>
             )}
 
@@ -283,20 +283,20 @@ export default function IndexRoute() {
             <View style={styles.actions}>
               {view === 'landing' ? (
                 <>
-                  <Button label={language === 'nl' ? 'Doorgaan met Google' : 'Continue with Google'} iconName="logo-google" variant="secondary" fullWidth onPress={() => void signInGoogle()} />
-                  <Button label={language === 'nl' ? 'Inloggen' : 'Sign In'} variant="primary" fullWidth onPress={() => changeView('login')} />
-                  <Button label={language === 'nl' ? 'Account aanmaken' : 'Create Account'} variant="ghost" fullWidth onPress={() => changeView('signup')} />
+                  <Button label="Continue with Google" iconName="logo-google" variant="secondary" fullWidth onPress={() => void signInGoogle()} />
+                  <Button label="Sign In" variant="primary" fullWidth onPress={() => changeView('login')} />
+                  <Button label="Create Account" variant="ghost" fullWidth onPress={() => changeView('signup')} />
                 </>
               ) : (
                 <>
                   <Button 
-                    label={language === 'nl' ? 'Bevestigen' : 'Submit'} 
+                    label="Submit" 
                     loading={busy} 
                     fullWidth 
                     onPress={view === 'login' ? handleLogin : handleSignup}
                     disabled={view === 'login' ? !canSubmitLogin : !canSubmitSignup}
                   />
-                  <Button label={language === 'nl' ? 'Terug' : 'Back'} variant="ghost" fullWidth onPress={() => changeView('landing')} />
+                  <Button label="Back" variant="ghost" fullWidth onPress={() => changeView('landing')} />
                 </>
               )}
             </View>
@@ -400,7 +400,7 @@ export const Card = ({ children, style, gap }: { children: React.ReactNode; styl
 /**
  * Input: Campo de texto auto-escalable
  */
-export const Input = ({ label, error, iconName, iconColor, onIconPress, onClear, rightActionIcon, onRightAction, isPulsing, ...props }: any) => {
+export const Input = ({ label, error, iconName, iconColor, onIconPress, onClear, rightActionIcon, onRightAction, isPulsing, unit, ...props }: any) => {
   const { colors } = useTheme();
   const uiScale = useUiScale();
   const scheme = useColorScheme();
@@ -471,7 +471,7 @@ export const Input = ({ label, error, iconName, iconColor, onIconPress, onClear,
               backgroundColor: colors.backgroundAlt,
               borderRadius: 14 * uiScale,
               paddingLeft: iconName ? 48 * uiScale : 16 * uiScale,
-              paddingRight: ((onClear || onRightAction ? 32 : 0) + (props.secureTextEntry ? 32 : 0) + 16) * uiScale,
+              paddingRight: ((onClear || onRightAction ? 32 : 0) + (props.secureTextEntry ? 32 : 0) + (unit ? 32 : 0) + 16) * uiScale,
               fontSize: 15 * uiScale,
               color: colors.text,
               borderWidth: 1,
@@ -496,15 +496,29 @@ export const Input = ({ label, error, iconName, iconColor, onIconPress, onClear,
               onRightAction();
               if (rightActionIcon === 'sparkles') setIsSecure(false);
             }} 
-            style={{ position: 'absolute', right: 12 * uiScale, zIndex: 1 }}
+            style={{ position: 'absolute', right: (unit ? 44 : 12) * uiScale, zIndex: 1 }}
           >
             <Ionicons name={rightActionIcon} size={18 * uiScale} color={colors.primary} />
+          </Pressable>
+        )}
+        {unit && (
+          <Pressable 
+            onPress={onUnitPress}
+            disabled={!onUnitPress}
+            style={{ position: 'absolute', right: 12 * uiScale, zIndex: 1, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', paddingHorizontal: 6 * uiScale, paddingVertical: 2 * uiScale, borderRadius: 6 * uiScale }}
+          >
+            <Text style={{ fontSize: 11 * uiScale, fontWeight: '900', color: colors.primary, textTransform: 'uppercase' }}>{unit}</Text>
           </Pressable>
         )}
         {props.secureTextEntry && (
           <Pressable 
             onPress={() => setIsSecure(!isSecure)} 
-            style={{ position: 'absolute', right: (rightActionIcon || onClear) ? 44 * uiScale : 12 * uiScale, zIndex: 1, padding: 4 }}
+            style={{ 
+              position: 'absolute', 
+              right: ((rightActionIcon || onClear ? 32 : 0) + (unit ? 32 : 0) + 12) * uiScale, 
+              zIndex: 1, 
+              padding: 4 
+            }}
           >
             <Ionicons name={isSecure ? "eye-off" : "eye"} size={20 * uiScale} color={isSecure ? colors.muted : "#FF3B30"} />
           </Pressable>
