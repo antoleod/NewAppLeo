@@ -1,186 +1,61 @@
-import { Redirect } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { 
+  ActivityIndicator,
+  Animated,
+  Image,
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet, 
+  Text, 
+  TextInput, 
+  UIManager,
+  View,
+  useColorScheme,
+  useWindowDimensions,
+} from 'react-native';
+import { Redirect, router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import * as Localization from 'expo-localization';
-import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, Input, Page } from '@/components/ui';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
-import { useTheme } from '@/context/ThemeContext';
 import { AppLanguage } from '@/types';
+import { isValidPin, normalizeUsername } from '@/utils/crypto';
+
+// Habilitar LayoutAnimation en Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 type AuthView = 'landing' | 'login' | 'signup' | 'walkthrough';
 
 const SUPPORTED_LANGUAGES: ReadonlyArray<{ code: AppLanguage; label: string }> = [
+  { code: 'en', label: 'EN' },
   { code: 'fr', label: 'FR' },
   { code: 'es', label: 'ES' },
-  { code: 'en', label: 'EN' },
   { code: 'nl', label: 'NL' },
 ];
 
-const UI_TEXT: Record<
-  AppLanguage,
-  {
-    welcomeBack: string;
-    createFamilySpace: string;
-    continueLabel: string;
-    getStarted: string;
-    selectLanguage: string;
-    current: string;
-    benefit1: string;
-    benefit2: string;
-    benefit3: string;
-    name: string;
-    parentName: string;
-    username: string;
-    pinLabel: string;
-    back: string;
-    signIn: string;
-    createAccount: string;
-    continueGuest: string;
-    continueGoogle: string;
-    signInCta: string;
-    createAccountCta: string;
-    defaultAuthError: string;
-    guestError: string;
-    googleError: string;
-    signupError: string;
-    enableEmailPasswordHint: string;
-  }
-> = {
-  fr: {
-    welcomeBack: 'Bon retour',
-    createFamilySpace: 'Creez votre espace famille',
-    continueLabel: 'Continuer',
-    getStarted: 'Commencer',
-    selectLanguage: 'Choisissez votre langue',
-    current: 'Actuel',
-    benefit1: 'Suivi rapide des repas, sommeil et couches',
-    benefit2: 'Timeline partagee entre parents',
-    benefit3: 'Donnees privees avec synchro securisee',
-    name: 'Nom',
-    parentName: 'Nom du parent',
-    username: "Nom d'utilisateur",
-    pinLabel: 'PIN (4+ chiffres)',
-    back: 'Retour',
-    signIn: 'Se connecter',
-    createAccount: 'Creer un compte',
-    continueGuest: 'Continuer en invite',
-    continueGoogle: 'Continuer avec Google',
-    signInCta: 'Se connecter',
-    createAccountCta: 'Creer le compte',
-    defaultAuthError: 'Impossible de se connecter.',
-    guestError: "Impossible de continuer en mode invite.",
-    googleError: 'Impossible de continuer avec Google.',
-    signupError: 'Impossible de creer le compte.',
-    enableEmailPasswordHint: 'Activez Email/Password dans Firebase Authentication.',
-  },
-  es: {
-    welcomeBack: 'Bienvenida de nuevo',
-    createFamilySpace: 'Crea tu espacio familiar',
-    continueLabel: 'Continuar',
-    getStarted: 'Empezar',
-    selectLanguage: 'Elige tu idioma',
-    current: 'Actual',
-    benefit1: 'Registro rapido de tomas, sueno y panales',
-    benefit2: 'Timeline compartido entre padres',
-    benefit3: 'Datos privados con sincronizacion segura',
-    name: 'Nombre',
-    parentName: 'Nombre del padre o madre',
-    username: 'Usuario',
-    pinLabel: 'PIN (4+ digitos)',
-    back: 'Volver',
-    signIn: 'Iniciar sesion',
-    createAccount: 'Crear cuenta',
-    continueGuest: 'Continuar como invitado',
-    continueGoogle: 'Continuar con Google',
-    signInCta: 'Entrar',
-    createAccountCta: 'Crear cuenta',
-    defaultAuthError: 'No se pudo iniciar sesion.',
-    guestError: 'No se pudo continuar en modo invitado.',
-    googleError: 'No se pudo continuar con Google.',
-    signupError: 'No se pudo crear la cuenta.',
-    enableEmailPasswordHint: 'Activa Email/Password en Firebase Authentication.',
-  },
-  en: {
-    welcomeBack: 'Welcome back',
-    createFamilySpace: 'Create your family space',
-    continueLabel: 'Continue',
-    getStarted: 'Get started',
-    selectLanguage: 'Select your language',
-    current: 'Current',
-    benefit1: 'Fast feed, sleep and diaper logging',
-    benefit2: 'Shared timeline for both parents',
-    benefit3: 'Private data with secure sync',
-    name: 'Name',
-    parentName: 'Parent name',
-    username: 'Username',
-    pinLabel: 'PIN (4+ digits)',
-    back: 'Back',
-    signIn: 'Sign in',
-    createAccount: 'Create account',
-    continueGuest: 'Continue as guest',
-    continueGoogle: 'Continue with Google',
-    signInCta: 'Sign in',
-    createAccountCta: 'Create account',
-    defaultAuthError: 'Unable to sign in.',
-    guestError: 'Unable to continue in guest mode.',
-    googleError: 'Unable to continue with Google.',
-    signupError: 'Unable to create account.',
-    enableEmailPasswordHint: 'Enable Email/Password in Firebase Authentication.',
-  },
-  nl: {
-    welcomeBack: 'Welkom terug',
-    createFamilySpace: 'Maak je familieplek aan',
-    continueLabel: 'Doorgaan',
-    getStarted: 'Start',
-    selectLanguage: 'Kies je taal',
-    current: 'Huidig',
-    benefit1: 'Snelle registratie van voeding, slaap en luiers',
-    benefit2: 'Gedeelde tijdlijn voor beide ouders',
-    benefit3: 'Privegegevens met veilige synchronisatie',
-    name: 'Naam',
-    parentName: 'Naam van ouder',
-    username: 'Gebruikersnaam',
-    pinLabel: 'PIN (4+ cijfers)',
-    back: 'Terug',
-    signIn: 'Aanmelden',
-    createAccount: 'Account maken',
-    continueGuest: 'Doorgaan als gast',
-    continueGoogle: 'Doorgaan met Google',
-    signInCta: 'Aanmelden',
-    createAccountCta: 'Account maken',
-    defaultAuthError: 'Aanmelden mislukt.',
-    guestError: 'Doorgaan als gast is mislukt.',
-    googleError: 'Doorgaan met Google is mislukt.',
-    signupError: 'Account maken is mislukt.',
-    enableEmailPasswordHint: 'Activeer Email/Password in Firebase Authentication.',
-  },
+const BACKGROUND_IMAGES: Record<AppLanguage, string> = {
+  fr: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?q=80&w=2071',
+  es: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?q=80&w=2040',
+  en: 'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?q=80&w=2075',
+  nl: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?q=80&w=2070',
 };
-
-function sanitizeUsername(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]/g, '')
-    .slice(0, 24);
-}
-
-function languageName(language: AppLanguage) {
-  if (language === 'es') return 'Espanol';
-  if (language === 'en') return 'English';
-  if (language === 'nl') return 'Nederlands';
-  return 'Francais';
-}
 
 export default function IndexRoute() {
   const { width } = useWindowDimensions();
-  const { colors, gradients } = useTheme();
+  const { colors } = useTheme();
   const { language, setLanguage, t } = useLocale();
   const { loading, user, profile, guestMode, signInGuest, signInEmail, signInGoogle, register } = useAuth();
+  const scheme = useColorScheme();
   const isDesktop = width >= 1280;
+  const uiScale = isDesktop ? 0.8 : 1.0;
   const isTablet = width >= 768;
-  const isCompact = isTablet;
 
   const [view, setView] = useState<AuthView>('landing');
   const [walkthroughStep, setWalkthroughStep] = useState(0);
@@ -193,426 +68,253 @@ export default function IndexRoute() {
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
 
-  const cardWidth = isDesktop ? 480 : width >= 880 ? 520 : width >= 640 ? 500 : '100%';
-  const headline = t('login.welcome', 'Welcome');
-  const tagline = t('login.tagline', 'A calm place to track your baby.');
-  const ui = UI_TEXT[language];
-  const googleLabel = ui.continueGoogle;
-  const titleStyle = {
-    fontSize: isDesktop ? 26 : isTablet ? 28 : 30,
-    lineHeight: isDesktop ? 30 : isTablet ? 32 : 34,
-  };
-  const subtitleStyle = {
-    fontSize: isDesktop ? 13 : 14,
-    lineHeight: isDesktop ? 18 : 20,
-  };
-  const cardStyle = {
-    width: cardWidth,
-    backgroundColor: colors.surface,
+  // Precarga de imágenes
+  useEffect(() => {
+    const urls = Object.values(BACKGROUND_IMAGES);
+    void Promise.all(urls.map(url => Image.prefetch(url)));
+  }, []);
+
+  // Transición de fondo
+  const bgOpacity = useRef(new Animated.Value(1)).current;
+  const [bgSource, setBgSource] = useState(BACKGROUND_IMAGES[language]);
+
+  useEffect(() => {
+    if (BACKGROUND_IMAGES[language] !== bgSource) {
+      Animated.timing(bgOpacity, { toValue: 0.2, duration: 300, useNativeDriver: true }).start(() => {
+        setBgSource(BACKGROUND_IMAGES[language]);
+        Animated.timing(bgOpacity, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+      });
+    }
+  }, [language, bgSource, bgOpacity]);
+
+  const changeView = (newView: AuthView) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setView(newView);
+    setErrorMessage('');
   };
 
-  const canSubmitLogin = useMemo(() => email.trim().length > 4 && password.length >= 6, [email, password]);
   const canSubmitSignup = useMemo(() => {
-    return (
-      displayName.trim().length >= 2 &&
-      username.trim().length >= 3 &&
-      email.trim().length > 4 &&
-      password.length >= 6 &&
-      pin.length >= 4
-    );
+    return displayName.trim().length >= 2 && normalizeUsername(username).length >= 3 && email.trim().length > 4 && password.length >= 6 && isValidPin(pin);
   }, [displayName, username, email, password, pin]);
 
-  useEffect(() => {
-    let mounted = true;
-    const bootstrap = async () => {
-      if (!mounted) return;
-      setView('landing');
-
-      const locale = Localization.getLocales()[0]?.languageCode as string | undefined;
-      const detected = SUPPORTED_LANGUAGES.find((item) => item.code === locale)?.code;
-      if (detected && detected !== language) {
-        await setLanguage(detected);
-      }
-    };
-    void bootstrap();
-    return () => {
-      mounted = false;
-    };
-  }, [language, setLanguage]);
-
-  useEffect(() => {
-    const nextUsername = sanitizeUsername(displayName || email.split('@')[0] || '');
-    if (view === 'signup' && !username && nextUsername) {
-      setUsername(nextUsername);
-    }
-  }, [displayName, email, username, view]);
-
-  if (loading) {
-    return (
-      <Page scroll={false}>
-        <View style={styles.centered}>
-          <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={[styles.loadingText, { color: colors.text }]}>{t('login.connection_checking', 'Checking connection...')}</Text>
-        </View>
-      </Page>
-    );
-  }
-
-  if (user || guestMode) {
-    if (!profile?.hasCompletedOnboarding) return <Redirect href="/onboarding" />;
-    return <Redirect href="/home" />;
-  }
-
-  async function handleGuest() {
-    setBusy(true);
-    setErrorMessage('');
-    try {
-      await signInGuest();
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error: any) {
-      setErrorMessage(error?.message ?? ui.guestError);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleLogin() {
-    if (!canSubmitLogin) return;
-    setBusy(true);
-    setErrorMessage('');
-    try {
-      await signInEmail({ email: email.trim(), password });
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error: any) {
-      setErrorMessage(error?.message ?? ui.defaultAuthError);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleGoogle() {
-    setBusy(true);
-    setErrorMessage('');
-    try {
-      await signInGoogle();
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error: any) {
-      setErrorMessage(error?.message ?? ui.googleError);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleSignup() {
-    if (!canSubmitSignup) return;
-    setBusy(true);
-    setErrorMessage('');
-    try {
-      await register({
-        displayName: displayName.trim(),
-        username: sanitizeUsername(username),
-        email: email.trim(),
-        password,
-        pin: pin.trim(),
-      });
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error: any) {
-      const message = String(error?.message ?? '');
-      if (message.includes('auth/operation-not-allowed')) {
-        setErrorMessage(ui.enableEmailPasswordHint);
-      } else {
-        setErrorMessage(message || ui.signupError);
-      }
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function finishWalkthrough() {
-    setView('landing');
-  }
+  if (loading) return <Page scroll={false} contentStyle={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></Page>;
+  if (user && profile) return <Redirect href="/home" />;
+  if (user && !profile && !guestMode) return <Redirect href="/onboarding" />;
 
   return (
     <Page scroll={false} contentStyle={styles.pageContent}>
-      <View
-        style={[
-          StyleSheet.absoluteFillObject,
-          {
-            backgroundColor: gradients.hero[0],
-            opacity: 0.07,
-          },
-        ]}
-      />
-      <View style={styles.shell}>
-        {view === 'walkthrough' ? (
-          <Card style={[styles.card, isCompact && styles.cardCompact, cardStyle]}>
-            <Text style={[styles.kicker, { color: colors.primary }]}>APP LEO</Text>
-            <Text style={[styles.title, titleStyle, { color: colors.text }]}>{walkthroughStep === 0 ? ui.selectLanguage : t('login.walkthrough_title', 'Welcome')}</Text>
-            <Text style={[styles.subtitle, subtitleStyle, { color: colors.muted }]}>
-              {walkthroughStep === 0
-                ? `${ui.current}: ${languageName(language)}`
-                : t('login.walkthrough_desc', 'A calm, professional space to follow your baby journey.')}
-            </Text>
-
-            {walkthroughStep === 0 ? (
-              <View style={[styles.langGrid, isCompact && styles.langGridCompact]}>
-                {SUPPORTED_LANGUAGES.map((item) => {
-                  const active = item.code === language;
-                  return (
-                    <Pressable
-                      key={item.code}
-                      onPress={() => void setLanguage(item.code)}
-                      style={[
-                        styles.langChip,
-                        isCompact && styles.langChipCompact,
-                        {
-                          borderColor: active ? colors.primary : colors.border,
-                          backgroundColor: active ? colors.primarySoft : colors.backgroundAlt,
-                        },
-                      ]}
-                    >
-                      <Text style={{ color: active ? colors.primary : colors.text, fontWeight: '800' }}>{item.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : (
-              <View style={styles.benefits}>
-                <Text style={[styles.benefitText, { color: colors.text }]}>{ui.benefit1}</Text>
-                <Text style={[styles.benefitText, { color: colors.text }]}>{ui.benefit2}</Text>
-                <Text style={[styles.benefitText, { color: colors.text }]}>{ui.benefit3}</Text>
-              </View>
+      <Animated.Image source={{ uri: bgSource }} style={[StyleSheet.absoluteFillObject, { opacity: bgOpacity }]} />
+      <BlurView intensity={Platform.OS === 'ios' ? 30 : 60} tint={scheme === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+      
+      <View style={[styles.shell, { maxWidth: isDesktop ? 400 : isTablet ? 480 : '100%' }]}>
+        <Card>
+          <Text style={[styles.title, { color: colors.text, fontSize: 28 * uiScale }]}>
+            {view === 'landing' ? t('login.welcome', 'Welcome') : view === 'login' ? 'Welcome Back' : 'Create Account'}
+          </Text>
+          
+          <View style={styles.formContainer}>
+            {view === 'signup' && (
+              <>
+                <Input label="Name" value={displayName} onChangeText={setDisplayName} placeholder="Your name" />
+                <Input label="Username" value={username} onChangeText={(v: string) => setUsername(normalizeUsername(v))} placeholder="username" />
+              </>
+            )}
+            
+            {(view === 'login' || view === 'signup') && (
+              <>
+                <Input label="Email" value={email} onChangeText={setEmail} placeholder="name@email.com" keyboardType="email-address" />
+                <Input label="Password" value={password} onChangeText={setPassword} placeholder="******" secureTextEntry />
+              </>
             )}
 
-              <View style={[styles.actions, isCompact && styles.actionsCompact]}>
-              <Pressable onPress={() => void handleGoogle()} style={[styles.googleButton, isCompact && styles.googleButtonCompact, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
-                  <Ionicons name="logo-google" size={18} color={colors.text} />
-                  <Text style={[styles.googleButtonText, { color: colors.text }]}>{googleLabel}</Text>
-                </Pressable>
-              {walkthroughStep === 0 ? (
-                <Button label={ui.continueLabel} onPress={() => setWalkthroughStep(1)} />
+            {view === 'signup' && <Input label="PIN" value={pin} onChangeText={setPin} placeholder="6 digits" keyboardType="number-pad" secureTextEntry />}
+            
+            <View style={styles.actions}>
+              {view === 'landing' ? (
+                <>
+                  <Button label="Continue with Google" iconName="logo-google" variant="secondary" fullWidth onPress={() => void signInGoogle()} />
+                  <Button label="Sign In" variant="primary" fullWidth onPress={() => changeView('login')} />
+                  <Button label="Create Account" variant="ghost" fullWidth onPress={() => changeView('signup')} />
+                </>
               ) : (
-                <Button label={t('login.walkthrough_btn', ui.getStarted)} onPress={() => void finishWalkthrough()} />
+                <>
+                  <Button label="Submit" loading={busy} fullWidth onPress={() => changeView('landing')} />
+                  <Button label="Back" variant="ghost" fullWidth onPress={() => changeView('landing')} />
+                </>
               )}
             </View>
-          </Card>
-        ) : view === 'landing' ? (
-          <View style={styles.stack}>
-            <Card style={[styles.card, isCompact && styles.cardCompact, cardStyle]}>
-              <Text style={[styles.kicker, { color: colors.primary }]}>APP LEO</Text>
-              <Text style={[styles.title, titleStyle, { color: colors.text }]}>{headline}</Text>
-              <Text style={[styles.subtitle, subtitleStyle, { color: colors.muted }]}>{tagline}</Text>
-
-              <View style={[styles.actions, isCompact && styles.actionsCompact]}>
-                <Pressable onPress={() => void handleGoogle()} style={[styles.googleButton, isCompact && styles.googleButtonCompact, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
-                  <Ionicons name="logo-google" size={18} color={colors.text} />
-                  <Text style={[styles.googleButtonText, { color: colors.text }]}>{googleLabel}</Text>
-                </Pressable>
-                <Button label={busy ? '...' : t('login.guest_btn', ui.continueGuest)} onPress={() => void handleGuest()} disabled={busy} />
-                <Button label={t('login.has_account', ui.signIn)} variant="secondary" onPress={() => setView('login')} />
-                <Button label={t('auth.sign_up', ui.createAccount)} variant="ghost" onPress={() => setView('signup')} />
-              </View>
-
-              <View style={[styles.langRow, isCompact && styles.langRowCompact]}>
-                {SUPPORTED_LANGUAGES.map((item) => {
-                  const active = item.code === language;
-                  return (
-                    <Pressable key={item.code} onPress={() => void setLanguage(item.code)} style={[styles.inlineLang, isCompact && styles.inlineLangCompact, { borderColor: active ? colors.primary : colors.border }]}>
-                      <Text style={{ color: active ? colors.primary : colors.muted, fontWeight: '700', fontSize: 12 }}>{item.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </Card>
           </View>
-        ) : (
-          <Card style={[styles.card, isCompact && styles.cardCompact, cardStyle]}>
-            <Text style={[styles.kicker, { color: colors.primary }]}>{view === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT'}</Text>
-            <Text style={[styles.title, titleStyle, { color: colors.text }]}>{view === 'login' ? ui.welcomeBack : ui.createFamilySpace}</Text>
-
-            {view === 'signup' ? (
-              <>
-                <Input label={ui.name} value={displayName} onChangeText={setDisplayName} placeholder={ui.parentName} autoCapitalize="words" />
-                <Input label={ui.username} value={username} onChangeText={(value) => setUsername(sanitizeUsername(value))} placeholder="username" autoCapitalize="none" />
-              </>
-            ) : null}
-
-            <Input label={t('auth.email', 'Email')} value={email} onChangeText={setEmail} placeholder="name@email.com" autoCapitalize="none" keyboardType="email-address" />
-            <Input label={t('auth.password', 'Password')} value={password} onChangeText={setPassword} placeholder="******" secureTextEntry autoCapitalize="none" />
-            {view === 'signup' ? <Input label={ui.pinLabel} value={pin} onChangeText={setPin} placeholder="1234" autoCapitalize="none" keyboardType="number-pad" /> : null}
-
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-            <View style={[styles.actions, isCompact && styles.actionsCompact]}>
-              <Pressable onPress={() => void handleGoogle()} style={[styles.googleButton, isCompact && styles.googleButtonCompact, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
-                <Ionicons name="logo-google" size={18} color={colors.text} />
-                <Text style={[styles.googleButtonText, { color: colors.text }]}>{googleLabel}</Text>
-              </Pressable>
-              {view === 'login' ? (
-                <Button label={busy ? '...' : ui.signInCta} onPress={() => void handleLogin()} disabled={busy || !canSubmitLogin} />
-              ) : (
-                <Button label={busy ? '...' : ui.createAccountCta} onPress={() => void handleSignup()} disabled={busy || !canSubmitSignup} />
-              )}
-              <Button label={ui.back} variant="ghost" onPress={() => setView('landing')} />
-            </View>
-          </Card>
-        )}
+        </Card>
       </View>
+
+      {busy && (
+        <View style={styles.blockingOverlay}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
     </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  pageContent: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 980,
-    alignSelf: 'center',
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
-  },
-  loadingText: {
-    fontSize: 15,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  shell: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 18,
-  },
-  stack: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  card: {
-    gap: 14,
-    borderRadius: 24,
-    paddingVertical: 18,
-  },
-  cardCompact: {
-    gap: 10,
-    borderRadius: 22,
-    paddingVertical: 14,
-  },
-  kicker: {
-    fontSize: 11,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  title: {
-    fontSize: 30,
-    lineHeight: 34,
-    textAlign: 'center',
-    fontWeight: '900',
-  },
-  subtitle: {
-    textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  actions: {
-    gap: 10,
-  },
-  actionsCompact: {
-    gap: 8,
-  },
-  googleButton: {
-    minHeight: 48,
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-  },
-  googleButtonCompact: {
-    minHeight: 42,
-    borderRadius: 14,
-    gap: 8,
-    paddingHorizontal: 12,
-  },
-  googleButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  langGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 10,
-    marginTop: 8,
-  },
-  langGridCompact: {
-    gap: 8,
-    marginTop: 4,
-  },
-  langChip: {
-    minWidth: 76,
-    height: 44,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-  },
-  langChipCompact: {
-    minWidth: 68,
-    height: 38,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-  },
-  langRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 2,
-  },
-  langRowCompact: {
-    gap: 6,
-    marginTop: 0,
-  },
-  inlineLang: {
-    borderWidth: 1,
-    borderRadius: 999,
-    minWidth: 48,
-    height: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  inlineLangCompact: {
-    minWidth: 44,
-    height: 28,
-    paddingHorizontal: 8,
-  },
-  benefits: {
-    gap: 8,
-    marginTop: 2,
-  },
-  benefitText: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  errorText: {
-    color: '#E74C3C',
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
+  pageContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  shell: { width: '100%', padding: 20 },
+  title: { fontWeight: '900', textAlign: 'center', marginBottom: 10 },
+  formContainer: { gap: 12 },
+  actions: { gap: 10, marginTop: 10 },
+  blockingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
 });
+
+// Hook interno para obtener la escala global
+const useUiScale = () => {
+  const { width } = useWindowDimensions();
+  return width >= 1280 ? 0.8 : 1.0;
+};
+
+/**
+ * Card: Contenedor con sombras corregidas para Web y escalado automático
+ */
+export const Card = ({ children, style, gap }: { children: React.ReactNode; style?: any, gap?: number }) => {
+  const { colors } = useTheme();
+  const uiScale = useUiScale();
+
+  return (
+    <View style={[
+      {
+        backgroundColor: colors.surface,
+        borderRadius: 24 * uiScale,
+        padding: 20 * uiScale,
+        gap: (gap ?? 12) * uiScale,
+        width: '100%',
+        ...Platform.select({
+          web: {
+            boxShadow: `0px ${4 * uiScale}px ${16 * uiScale}px rgba(0, 0, 0, 0.08)`,
+          },
+          default: {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 12,
+            elevation: 4,
+          },
+        }),
+      },
+      style
+    ]}>
+      {children}
+    </View>
+  );
+};
+
+/**
+ * Input: Campo de texto auto-escalable
+ */
+export const Input = ({ label, error, iconName, onClear, ...props }: any) => {
+  const { colors } = useTheme();
+  const uiScale = useUiScale();
+
+  return (
+    <View style={{ gap: 6 * uiScale, width: '100%' }}>
+      {label && (
+        <Text style={{ fontSize: 13 * uiScale, fontWeight: '700', color: colors.muted, marginLeft: 4 * uiScale }}>
+          {label}
+        </Text>
+      )}
+      <View style={{ justifyContent: 'center' }}>
+        {iconName && (
+          <Ionicons 
+            name={iconName} 
+            size={18 * uiScale} 
+            color={colors.muted} 
+            style={{ position: 'absolute', left: 14 * uiScale, zIndex: 1 }} 
+          />
+        )}
+        <TextInput
+          style={[
+            {
+              height: 48 * uiScale,
+              backgroundColor: colors.backgroundAlt,
+              borderRadius: 14 * uiScale,
+              paddingLeft: iconName ? 42 * uiScale : 16 * uiScale,
+              paddingRight: onClear ? 42 * uiScale : 16 * uiScale,
+              fontSize: 15 * uiScale,
+              color: colors.text,
+              borderWidth: 1,
+              borderColor: error ? colors.danger : colors.border,
+            }
+          ]}
+          placeholderTextColor={colors.muted}
+          {...props}
+        />
+        {onClear && props.value?.length > 0 && (
+          <Pressable 
+            onPress={onClear} 
+            style={{ position: 'absolute', right: 12 * uiScale, zIndex: 1 }}
+          >
+            <Ionicons name="close-circle" size={20 * uiScale} color={colors.muted} />
+          </Pressable>
+        )}
+      </View>
+      {error && <Text style={{ fontSize: 11 * uiScale, color: colors.danger, marginLeft: 4 * uiScale }}>{error}</Text>}
+    </View>
+  );
+};
+
+/**
+ * Button: Botón con variantes y escalado de densidad
+ */
+export const Button = ({ label, onPress, variant = 'primary', loading, disabled, fullWidth, iconName, iconSize }: any) => {
+  const { colors } = useTheme();
+  const uiScale = useUiScale();
+
+  const isGhost = variant === 'ghost';
+  const isSecondary = variant === 'secondary';
+  const iconColor = isGhost || isSecondary ? colors.primary : '#fff';
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || loading}
+      style={({ pressed }) => [
+        {
+          height: 48 * uiScale,
+          borderRadius: 16 * uiScale,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 24 * uiScale,
+          width: fullWidth ? '100%' : 'auto',
+          backgroundColor: isGhost ? 'transparent' : isSecondary ? colors.backgroundAlt : colors.primary,
+          opacity: (disabled || loading) ? 0.5 : pressed ? 0.9 : 1,
+          borderWidth: isSecondary ? 1 : 0,
+          borderColor: colors.border,
+        }
+      ]}
+    >
+      {loading ? (
+        <ActivityIndicator color={isGhost || isSecondary ? colors.primary : '#fff'} size="small" />
+      ) : (
+        <Text style={{
+          fontSize: 15 * uiScale,
+          fontWeight: '800',
+          color: isGhost || isSecondary ? colors.primary : '#fff'
+        }}>
+          {label}
+        </Text>
+      )}
+    </Pressable>
+  );
+};
+
+/**
+ * Page: Contenedor base de pantalla
+ */
+export const Page = ({ children, scroll = true, contentStyle }: any) => {
+  const Container = scroll ? ScrollView : View;
+  return (
+    <Container style={{ flex: 1 }} contentContainerStyle={contentStyle}>
+      {children}
+    </Container>
+  );
+};

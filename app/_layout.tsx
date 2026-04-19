@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme, View, AppState, StyleSheet, Text } from 'react-native';
+import { useColorScheme, View, AppState, StyleSheet, Text, useWindowDimensions } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
@@ -20,6 +20,10 @@ import { Button } from '@/components/ui';
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1280;
+  const uiScale = isDesktop ? 0.8 : 1.0;
+
   const scheme = useColorScheme();
   const statusBarStyle = scheme === 'dark' ? 'light' : 'dark';
   const [fontsLoaded] = useFonts({
@@ -97,16 +101,16 @@ export default function RootLayout() {
 
                   {isIncognito && (
                     <View style={[StyleSheet.absoluteFill, styles.incognitoOverlay, { backgroundColor: '#1A1C1E' }]}>
-                      <Text style={{ fontSize: 40 }}>\u2728</Text>
-                      <Text style={{ color: '#fff', marginTop: 10, fontWeight: '600' }}>App Leo</Text>
+                      <Text style={{ fontSize: 40 * uiScale }}>\u2728</Text>
+                      <Text style={{ color: '#fff', marginTop: 10 * uiScale, fontWeight: '600', fontSize: 16 * uiScale }}>App Leo</Text>
                     </View>
                   )}
 
                   {isLocked && (
                     <View style={[StyleSheet.absoluteFill, styles.lockOverlay]}>
-                      <Text style={styles.lockEmoji}>{'\u{1F512}'}</Text>
-                      <Text style={styles.lockTitle}>App Bloqueada</Text>
-                      <View style={{ width: 200 }}>
+                      <Text style={[styles.lockEmoji, { fontSize: 64 * uiScale }]}>{'\u{1F512}'}</Text>
+                      <Text style={[styles.lockTitle, { fontSize: 24 * uiScale }]}>App Bloqueada</Text>
+                      <View style={{ width: 200 * uiScale }}>
                         <Button label="Desbloquear" onPress={handleUnlock} fullWidth />
                       </View>
                     </View>

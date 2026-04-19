@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, Text, View, useWindowDimensions, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Card, Heading, Input, Page } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
@@ -17,7 +17,10 @@ export default function PairScreen() {
   const { user } = useAuth();
   const [code, setCode] = useState(makeCode);
   const [session, setSession] = useState<PairingSession | null>(null);
-  const isCompact = width >= 768;
+  const isTablet = width >= 768;
+  const isDesktop = width >= 1280;
+  const uiScale = isDesktop ? 0.8 : 1.0;
+  const cardMaxWidth = isDesktop ? 400 : isTablet ? 480 : '100%';
 
   useEffect(() => {
     (async () => {
@@ -26,13 +29,13 @@ export default function PairScreen() {
   }, []);
 
   return (
-    <Page>
+    <Page contentStyle={[styles.container, { maxWidth: cardMaxWidth }]}>
       <Heading eyebrow="Pairing" title="Connect a partner device" subtitle="Use a short code to share the same baby session." />
-      <Card style={isCompact ? { gap: 10, paddingVertical: 14 } : undefined}>
-        <View style={{ gap: isCompact ? 10 : 12 }}>
-          <Text style={{ color: colors.muted }}>Share this code with the other device:</Text>
-          <Text style={{ color: colors.text, fontSize: isCompact ? 28 : 34, fontWeight: '900', letterSpacing: isCompact ? 5 : 6 }}>{session?.code ?? code}</Text>
-          <Text style={{ color: colors.muted }}>Status: {session?.status ?? 'local only'}</Text>
+      <Card gap={10}>
+        <View style={{ gap: 8 * uiScale }}>
+          <Text style={{ color: colors.muted, fontSize: 14 * uiScale }}>Share this code with the other device:</Text>
+          <Text style={[styles.code, { color: colors.text, fontSize: 32 * uiScale }]}>{session?.code ?? code}</Text>
+          <Text style={{ color: colors.muted, fontSize: 13 * uiScale }}>Status: {session?.status ?? 'local only'}</Text>
           <Button
             label="Create new code"
             onPress={async () => {
@@ -41,16 +44,18 @@ export default function PairScreen() {
               setCode(next.code);
               Alert.alert('Pairing code created', next.code);
             }}
+            fullWidth
           />
           <Button
             label="Copy code"
             onPress={() => Alert.alert('Pairing code', session?.code ?? code)}
             variant="ghost"
+            fullWidth
           />
         </View>
       </Card>
-      <Card style={isCompact ? { gap: 10, paddingVertical: 14 } : undefined}>
-        <View style={{ gap: isCompact ? 10 : 12 }}>
+      <Card gap={10}>
+        <View style={{ gap: 8 * uiScale }}>
           <Input label="Join code" value={code} onChangeText={setCode} placeholder="123456" keyboardType="numeric" inputMode="numeric" />
           <Button
             label="Join session"
@@ -63,10 +68,25 @@ export default function PairScreen() {
                 Alert.alert('Pairing failed', error?.message ?? 'Could not join the session.');
               }
             }}
+            fullWidth
           />
         </View>
       </Card>
-      <Button label="Back to app" onPress={() => router.back()} variant="ghost" />
+      <Button label="Back to app" onPress={() => router.back()} variant="ghost" fullWidth />
     </Page>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    alignSelf: 'center',
+    width: '100%',
+    padding: 20,
+    gap: 16,
+  },
+  code: {
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: 4,
+  },
+});
