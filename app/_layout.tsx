@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useSegments, router } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -8,7 +8,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
 import { Fraunces_400Regular_Italic, Fraunces_700Bold } from '@expo-google-fonts/fraunces';
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AppDataProvider } from '@/context/AppDataContext';
 import { NightOverlay } from '@/components/NightOverlay';
@@ -18,6 +18,28 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from '@/components/ui';
 
 void SplashScreen.preventAutoHideAsync();
+
+/**
+ * AuthGuard: Maneja la redirección automática basada en el estado de autenticación.
+ */
+function AuthGuard() {
+  const { user, loading } = useAuth();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (loading) return;
+
+    // Verificamos si estamos dentro del grupo de rutas protegidas (app)
+    const inAppGroup = segments[0] === '(app)';
+
+    if (!user && inAppGroup) {
+      // Si el usuario se desconecta y está en una ruta privada, va a la raíz
+      router.replace('/');
+    }
+  }, [user, loading, segments]);
+
+  return null;
+}
 
 export default function RootLayout() {
   const { width } = useWindowDimensions();
@@ -92,6 +114,7 @@ export default function RootLayout() {
             <ThemeProvider>
               <AppDataProvider>
                 <View style={{ flex: 1 }}>
+                  <AuthGuard />
                   <StatusBar style={statusBarStyle} />
                   <NightOverlay />
                   <Stack screenOptions={{ headerShown: false }}>
