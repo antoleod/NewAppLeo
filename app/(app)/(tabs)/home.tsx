@@ -34,6 +34,7 @@ import {
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
 import { NextFeedingCard } from '@/components/NextFeedingCard';
+import { useWideWeb } from '@/hooks/useWideWeb';
 
 const BG = 'rgba(13, 17, 23, 0.28)';
 const CARD = 'rgba(22, 27, 34, 0.78)';
@@ -293,6 +294,7 @@ function ActivityRow({
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
+  const { isWideWeb } = useWideWeb();
   const { language } = useLocale();
   const isCompact = width >= 768;
   const locale = localeTag(language);
@@ -556,10 +558,12 @@ export default function HomeScreen() {
     startQuickTimer(mode, side);
   }
 
-  return (
-    <Page contentStyle={styles.pageContent}>
-      <View style={{ backgroundColor: 'transparent', borderRadius: 16, paddingTop: isCompact ? 2 : 6, paddingHorizontal: 4, paddingBottom: isCompact ? 64 : 80 }}>
-        <Animated.View entering={FadeIn.duration(300)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+  const padBottom = isWideWeb ? 24 : isCompact ? 64 : 80;
+  const sectionGap = isWideWeb ? 6 : isCompact ? 8 : 10;
+
+  const homeLeft = (
+    <>
+        <Animated.View entering={FadeIn.duration(300)} style={{ marginBottom: sectionGap }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: isCompact ? 10 : 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={sectionEyebrowStyle(isCompact)}>{language === 'fr' ? 'ACCUEIL' : 'HOME'}</Text>
@@ -603,12 +607,12 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ marginBottom: sectionGap }}>
           <NextFeedingCard onPress={openNextFeedPicker} />
         </Animated.View>
 
         {showSmartSignals && smartAlerts.length ? (
-          <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+          <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: sectionGap }}>
             <View style={{ paddingHorizontal: isCompact ? 10 : 12, paddingVertical: isCompact ? 8 : 10, borderRadius: isCompact ? 12 : 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: isCompact ? 6 : 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: isCompact ? 8 : 10 }}>
                 <View style={{ flex: 1 }}>
@@ -671,7 +675,7 @@ export default function HomeScreen() {
           </Animated.View>
         ) : null}
 
-        <Animated.View entering={FadeIn.duration(300).delay(180)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(180)} style={{ marginBottom: sectionGap }}>
           <View style={{ paddingHorizontal: isCompact ? 12 : 14, paddingVertical: isCompact ? 10 : 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: isCompact ? 8 : 10 }}>
             <View style={{ flexDirection: 'row', gap: isCompact ? 6 : 8 }}>
               <View style={{ flex: 1, gap: isCompact ? 4 : 6 }}>
@@ -698,7 +702,7 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(300).delay(220)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(220)} style={{ marginBottom: sectionGap }}>
           <View style={{ flexDirection: 'row', gap: isCompact ? 6 : 8 }}>
             {[
               { label: 'Dernier sein', value: formatClock(lastBreastFeed?.occurredAt, locale), detail: formatRelative(lastBreastFeed?.occurredAt, locale) },
@@ -713,7 +717,7 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: isCompact ? 6 : 8, marginBottom: isCompact ? 8 : 10 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: isCompact ? 6 : 8, marginBottom: sectionGap }}>
           {[
             { label: 'FEEDS', value: String(summary.today.feedCount) },
             { label: 'BOTTLE', value: `${summary.today.bottleMl} ml` },
@@ -724,8 +728,12 @@ export default function HomeScreen() {
             <StatCell key={item.label} label={item.label} value={item.value} index={index} compact={isCompact} />
           ))}
         </View>
+    </>
+  );
 
-        <Animated.View entering={FadeIn.duration(300).delay(320)} style={{ marginBottom: 10 }}>
+  const homeRight = (
+    <>
+        <Animated.View entering={FadeIn.duration(300).delay(320)} style={{ marginBottom: sectionGap }}>
           <View style={{ paddingHorizontal: isCompact ? 12 : 14, paddingVertical: isCompact ? 10 : 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: isCompact ? 6 : 8 }}>
             <Text style={sectionEyebrowStyle(isCompact)}>TIMELINE</Text>
             <Text style={sectionTitleStyle(isCompact)}>24h strip</Text>
@@ -752,7 +760,7 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(300).delay(400)} style={{ marginBottom: 10 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(400)} style={{ marginBottom: sectionGap }}>
           <View style={{ paddingHorizontal: isCompact ? 12 : 14, paddingVertical: isCompact ? 10 : 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: isCompact ? 5 : 6 }}>
             <Text style={sectionEyebrowStyle(isCompact)}>ACTIONS RAPIDES</Text>
             <Text style={sectionTitleStyle(isCompact)}>{language === 'fr' ? 'Actions directes' : 'Quick actions'}</Text>
@@ -809,7 +817,7 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(300).delay(480)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(480)} style={{ marginBottom: sectionGap }}>
           <View style={{ paddingHorizontal: isCompact ? 12 : 14, paddingVertical: isCompact ? 10 : 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: isCompact ? 6 : 8 }}>
             <Text style={sectionEyebrowStyle(isCompact)}>HYDRATION</Text>
             <Text style={sectionTitleStyle(isCompact)}>Hydration</Text>
@@ -841,7 +849,7 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(300).delay(560)} style={{ marginBottom: isCompact ? 8 : 10 }}>
+        <Animated.View entering={FadeIn.duration(300).delay(560)} style={{ marginBottom: sectionGap }}>
           <View style={{ paddingHorizontal: isCompact ? 12 : 14, paddingVertical: isCompact ? 10 : 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER }}>
             <Text style={sectionEyebrowStyle(isCompact)}>{language === 'fr' ? 'HISTORIQUE' : 'RECENT'}</Text>
             <Text style={sectionTitleStyle(isCompact)}>{language === 'fr' ? 'Dernieres activites' : 'Recent activity'}</Text>
@@ -880,6 +888,23 @@ export default function HomeScreen() {
             </View>
           </View>
         </Animated.View>
+    </>
+  );
+
+  return (
+    <Page contentStyle={isWideWeb ? [styles.pageContent, styles.pageContentWide] : styles.pageContent}>
+      <View style={{ backgroundColor: 'transparent', borderRadius: 16, paddingTop: isCompact ? 2 : 6, paddingHorizontal: 4, paddingBottom: padBottom }}>
+        {isWideWeb ? (
+          <View style={{ flexDirection: 'row', gap: 20, alignItems: 'flex-start' }}>
+            <View style={{ flex: 1, minWidth: 0 }}>{homeLeft}</View>
+            <View style={{ flex: 1, minWidth: 0 }}>{homeRight}</View>
+          </View>
+        ) : (
+          <>
+            {homeLeft}
+            {homeRight}
+          </>
+        )}
       </View>
 
       <Modal visible={showSmartSignalsMenu} transparent animationType="fade" onRequestClose={() => setShowSmartSignalsMenu(false)}>
@@ -1154,6 +1179,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 1040,
     alignSelf: 'center',
+  },
+  pageContentWide: {
+    maxWidth: 1280,
   },
   sheetOverlay: {
     flex: 1,

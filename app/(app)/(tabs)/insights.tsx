@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
+import { useWideWeb } from '@/hooks/useWideWeb';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Button, EmptyState, Heading, Page } from '@/components/ui';
@@ -30,6 +31,7 @@ function titleStyle() {
 }
 
 export default function InsightsScreen() {
+  const { isWideWeb } = useWideWeb();
   const { t, language } = useLocale();
   const { entries, summary } = useAppData();
   const [range, setRange] = useState<RangeKey>('7d');
@@ -84,10 +86,96 @@ export default function InsightsScreen() {
     );
   }
 
+  const padBottom = isWideWeb ? 24 : 80;
+  const blockGap = isWideWeb ? 8 : 10;
+
+  const weeklyTrendBlock = (
+    <Animated.View entering={FadeIn.duration(280).delay(160)} style={{ marginBottom: isWideWeb ? 0 : blockGap }}>
+      <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+        <Text style={eyebrowStyle()}>{t('insights.weeklyOverview')}</Text>
+        <Text style={titleStyle()}>{language === 'fr' ? 'Tendance hebdomadaire' : 'Weekly trend'}</Text>
+        <View style={{ gap: 10 }}>
+          {trend.map((day) => (
+            <View key={day.key} style={{ gap: 6 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{day.label}</Text>
+                <Text style={{ color: MUTED, fontSize: 11 }}>
+                  {day.feedCount} · {day.bottleMl} ml · {day.sleepMinutes} min
+                </Text>
+              </View>
+              <View style={{ height: 8, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
+                <View style={{ width: `${Math.min(100, day.bottleMl / 10)}%`, height: '100%', backgroundColor: GOLD, borderRadius: 999 }} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    </Animated.View>
+  );
+
+  const growthCard = (
+    <Animated.View
+      entering={FadeIn.duration(280).delay(240)}
+      style={isWideWeb ? { marginBottom: 0, alignSelf: 'stretch' } : { flex: 1, minWidth: 260, marginBottom: blockGap }}
+    >
+      <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+        <Text style={eyebrowStyle()}>{t('insights.growth')}</Text>
+        <Text style={titleStyle()}>{language === 'fr' ? 'Croissance' : 'Growth'}</Text>
+        <View style={{ gap: 8 }}>
+          <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{latestWeight ? `${latestWeight} kg` : '--'}</Text>
+          <Text style={{ color: MUTED, fontSize: 11 }}>
+            {latestHeight ? `${latestHeight} cm` : '--'} {latestHeadCirc ? `· ${latestHeadCirc} cm HC` : ''}
+          </Text>
+          <Text style={{ color: latestWeight && latestWeight <= whoWeightTable[1].p50 ? GOLD : GREEN, fontSize: 13, fontWeight: '700' }}>
+            {latestWeight && latestWeight <= whoWeightTable[1].p50 ? t('insights.lowerMedian') : t('insights.aboveMedian')}
+          </Text>
+          <Text style={{ color: MUTED, fontSize: 11 }}>
+            {t('insights.whoLoaded')}: {whoWeightTable.length} / {whoHeightTable.length}
+          </Text>
+        </View>
+      </View>
+    </Animated.View>
+  );
+
+  const sleepCard = (
+    <Animated.View
+      entering={FadeIn.duration(280).delay(320)}
+      style={isWideWeb ? { marginBottom: 0, alignSelf: 'stretch' } : { flex: 1, minWidth: 260, marginBottom: blockGap }}
+    >
+      <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+        <Text style={eyebrowStyle()}>{t('insights.sleepAnalysis')}</Text>
+        <Text style={titleStyle()}>{language === 'fr' ? 'Sommeil' : 'Sleep'}</Text>
+        <Text style={{ color: MUTED, fontSize: 11 }}>
+          {t('insights.todaySleep')}: {sleepMinutes ? `${sleepMinutes} min` : '0 min'}
+        </Text>
+        <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>
+          {t('insights.longestStretch')}: {formatDuration(longestSleep)}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-end', height: 96 }}>
+          {sleepByDay.map((day) => (
+            <View key={day.key} style={{ flex: 1, gap: 6, alignItems: 'center' }}>
+              <View style={{ height: 80, width: '100%', justifyContent: 'flex-end' }}>
+                <View
+                  style={{
+                    height: `${Math.min(100, day.minutes)}%`,
+                    minHeight: day.minutes ? 8 : 4,
+                    borderRadius: 999,
+                    backgroundColor: BLUE,
+                  }}
+                />
+              </View>
+              <Text style={{ color: MUTED, fontSize: 11 }}>{day.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </Animated.View>
+  );
+
   return (
     <Page contentStyle={{ width: '100%' }}>
-      <View style={{ backgroundColor: BG, borderRadius: 16, paddingTop: 12, paddingHorizontal: 12, paddingBottom: 80 }}>
-        <Animated.View entering={FadeIn.duration(280)} style={{ marginBottom: 10 }}>
+      <View style={{ backgroundColor: BG, borderRadius: 16, paddingTop: 12, paddingHorizontal: 12, paddingBottom: padBottom }}>
+        <Animated.View entering={FadeIn.duration(280)} style={{ marginBottom: blockGap }}>
           <Heading
             eyebrow={t('insights.eyebrow')}
             title={t('insights.title')}
@@ -95,7 +183,7 @@ export default function InsightsScreen() {
           />
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(280).delay(80)} style={{ marginBottom: 10 }}>
+        <Animated.View entering={FadeIn.duration(280).delay(80)} style={{ marginBottom: blockGap }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {[
               { label: '7J', value: '7d' },
@@ -112,7 +200,7 @@ export default function InsightsScreen() {
           </View>
         </Animated.View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: blockGap }}>
           {summaryCards.map((card, index) => (
             <Animated.View
               key={card.label}
@@ -135,78 +223,23 @@ export default function InsightsScreen() {
           ))}
         </View>
 
-        <Animated.View entering={FadeIn.duration(280).delay(160)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
-            <Text style={eyebrowStyle()}>{t('insights.weeklyOverview')}</Text>
-            <Text style={titleStyle()}>{language === 'fr' ? 'Tendance hebdomadaire' : 'Weekly trend'}</Text>
-            <View style={{ gap: 10 }}>
-              {trend.map((day) => (
-                <View key={day.key} style={{ gap: 6 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{day.label}</Text>
-                    <Text style={{ color: MUTED, fontSize: 11 }}>
-                      {day.feedCount} · {day.bottleMl} ml · {day.sleepMinutes} min
-                    </Text>
-                  </View>
-                  <View style={{ height: 8, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
-                    <View style={{ width: `${Math.min(100, day.bottleMl / 10)}%`, height: '100%', backgroundColor: GOLD, borderRadius: 999 }} />
-                  </View>
-                </View>
-              ))}
+        {isWideWeb ? (
+          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+            <View style={{ flex: 1, minWidth: 0 }}>{weeklyTrendBlock}</View>
+            <View style={{ flex: 1, minWidth: 0, gap: 10 }}>
+              {growthCard}
+              {sleepCard}
             </View>
           </View>
-        </Animated.View>
-
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          <Animated.View entering={FadeIn.duration(280).delay(240)} style={{ flex: 1, minWidth: 260, marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
-              <Text style={eyebrowStyle()}>{t('insights.growth')}</Text>
-              <Text style={titleStyle()}>{language === 'fr' ? 'Croissance' : 'Growth'}</Text>
-              <View style={{ gap: 8 }}>
-                <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{latestWeight ? `${latestWeight} kg` : '--'}</Text>
-                <Text style={{ color: MUTED, fontSize: 11 }}>
-                  {latestHeight ? `${latestHeight} cm` : '--'} {latestHeadCirc ? `· ${latestHeadCirc} cm HC` : ''}
-                </Text>
-                <Text style={{ color: latestWeight && latestWeight <= whoWeightTable[1].p50 ? GOLD : GREEN, fontSize: 13, fontWeight: '700' }}>
-                  {latestWeight && latestWeight <= whoWeightTable[1].p50 ? t('insights.lowerMedian') : t('insights.aboveMedian')}
-                </Text>
-                <Text style={{ color: MUTED, fontSize: 11 }}>
-                  {t('insights.whoLoaded')}: {whoWeightTable.length} / {whoHeightTable.length}
-                </Text>
-              </View>
+        ) : (
+          <>
+            {weeklyTrendBlock}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {growthCard}
+              {sleepCard}
             </View>
-          </Animated.View>
-
-          <Animated.View entering={FadeIn.duration(280).delay(320)} style={{ flex: 1, minWidth: 260, marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
-              <Text style={eyebrowStyle()}>{t('insights.sleepAnalysis')}</Text>
-              <Text style={titleStyle()}>{language === 'fr' ? 'Sommeil' : 'Sleep'}</Text>
-              <Text style={{ color: MUTED, fontSize: 11 }}>
-                {t('insights.todaySleep')}: {sleepMinutes ? `${sleepMinutes} min` : '0 min'}
-              </Text>
-              <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>
-                {t('insights.longestStretch')}: {formatDuration(longestSleep)}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-end', height: 96 }}>
-                {sleepByDay.map((day) => (
-                  <View key={day.key} style={{ flex: 1, gap: 6, alignItems: 'center' }}>
-                    <View style={{ height: 80, width: '100%', justifyContent: 'flex-end' }}>
-                      <View
-                        style={{
-                          height: `${Math.min(100, day.minutes)}%`,
-                          minHeight: day.minutes ? 8 : 4,
-                          borderRadius: 999,
-                          backgroundColor: BLUE,
-                        }}
-                      />
-                    </View>
-                    <Text style={{ color: MUTED, fontSize: 11 }}>{day.label}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </Animated.View>
-        </View>
+          </>
+        )}
       </View>
     </Page>
   );

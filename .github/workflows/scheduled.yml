@@ -5,6 +5,13 @@ on:
     - cron: "0 0 * * 0" # Weekly on Sunday at midnight UTC
   workflow_dispatch:
 
+# Grants GITHUB_TOKEN permission to open issues (fixes 403 "Resource not accessible by integration"
+# when the repo default is read-only). If issues still fail, set the repository to allow
+# read/write workflows: Settings → Actions → General → Workflow permissions.
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   dependency-check:
     runs-on: ubuntu-latest
@@ -36,7 +43,6 @@ jobs:
               repo: context.repo.repo,
               title: '📦 Dependency Update Check',
               body: `## Weekly Dependency Check\n\n\`\`\`\n${{ steps.outdated.outputs.outdated }}\n\`\`\`\n\nPlease review and update as needed.`,
-              labels: ['dependencies', 'maintenance']
             });
 
   cleanup:

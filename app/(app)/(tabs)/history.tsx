@@ -8,6 +8,7 @@ import { EntryRecord, EntryType } from '@/types';
 import { generateWeeklyPdf } from '@/lib/pdf';
 import { dateKey, formatLongDate, formatTime, isSameDay, startOfDay, subtractDays, toDate } from '@/utils/date';
 import { getOmsRow, interpolatePercentileBand, omsBySex, type OmsSex } from '@/lib/omsData';
+import { useWideWeb } from '@/hooks/useWideWeb';
 
 const BG = '#0D1117';
 const CARD = '#161B22';
@@ -282,6 +283,7 @@ function OmsMetricCard({
 }
 
 export default function HistoryScreen() {
+  const { isWideWeb } = useWideWeb();
   const { entries, deleteEntry, addEntry } = useAppData();
   const { profile } = useAuth();
   const [filter, setFilter] = useState<EntryType | 'all'>('all');
@@ -434,9 +436,8 @@ export default function HistoryScreen() {
     setUndoEntry(null);
   }
 
-  return (
-    <Page contentStyle={{ width: '100%' }}>
-      <View style={{ gap: 18 }}>
+  const historySidebar = (
+    <>
         <Heading eyebrow="REPORT" title="Historique & OMS" subtitle="Resume quotidien, courbes de croissance, timeline unifiee et export docteur." />
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
@@ -540,7 +541,11 @@ export default function HistoryScreen() {
             ))}
           </View>
         </Card>
+    </>
+  );
 
+  const historyMain = (
+    <>
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
           <Heading eyebrow="POIDS" title="Weight Trend Chart" subtitle="Courbe reelle bebe + bande OMS mediane." />
           <WeightChart points={weightPoints} bandRows={weightBandRows.length ? weightBandRows : weightPoints.map((point) => ({ label: point.label, p25: point.value - 0.3, p75: point.value + 0.3 }))} />
@@ -658,31 +663,57 @@ export default function HistoryScreen() {
         ) : (
           <EmptyState title="Aucune entree" body="Aucune entree ne correspond au filtre pour cette date." action={<Button label="Ajouter une entree" onPress={() => router.push('/entry/feed')} />} />
         )}
+    </>
+  );
 
-        {undoEntry ? (
-          <View
-            style={{
-              position: 'absolute',
-              left: 16,
-              right: 16,
-              bottom: 16,
-              paddingHorizontal: 14,
-              paddingVertical: 12,
-              borderRadius: 12,
-              backgroundColor: CARD,
-              borderWidth: 1,
-              borderColor: BORDER,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-            }}
-          >
-            <Text style={{ color: TEXT, flex: 1, fontSize: 13, fontWeight: '600' }}>Element supprime.</Text>
-            <Button label="Annuler" onPress={handleUndoDelete} variant="secondary" fullWidth={false} />
-          </View>
-        ) : null}
+  const undoBar =
+    undoEntry ? (
+      <View
+        style={{
+          position: 'absolute',
+          left: 16,
+          right: 16,
+          bottom: 16,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          borderRadius: 12,
+          backgroundColor: CARD,
+          borderWidth: 1,
+          borderColor: BORDER,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
+      >
+        <Text style={{ color: TEXT, flex: 1, fontSize: 13, fontWeight: '600' }}>Element supprime.</Text>
+        <Button label="Annuler" onPress={handleUndoDelete} variant="secondary" fullWidth={false} />
       </View>
+    ) : null;
+
+  return (
+    <Page scroll={!isWideWeb} contentStyle={[{ width: '100%' }, isWideWeb && { flex: 1 }]}>
+      {isWideWeb ? (
+        <View style={{ flex: 1, flexDirection: 'row', gap: 16, minHeight: 0, position: 'relative' }}>
+          <ScrollView
+            style={{ width: 400, flexShrink: 0 }}
+            contentContainerStyle={{ gap: 18, paddingBottom: 24 }}
+            showsVerticalScrollIndicator
+          >
+            {historySidebar}
+          </ScrollView>
+          <ScrollView style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ gap: 18, paddingBottom: 24 }} showsVerticalScrollIndicator>
+            {historyMain}
+          </ScrollView>
+          {undoBar}
+        </View>
+      ) : (
+        <View style={{ gap: 18, position: 'relative' }}>
+          {historySidebar}
+          {historyMain}
+          {undoBar}
+        </View>
+      )}
     </Page>
   );
 }
