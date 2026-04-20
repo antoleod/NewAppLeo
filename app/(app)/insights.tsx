@@ -14,8 +14,13 @@ export default function InsightsScreen() {
 
   // Cálculos de ejemplo para los Insights
   const feedingEntries = entries.filter(e => e.type === 'feeding');
+  const solidEntries = entries.filter(e => e.type === 'solids');
+  
   const totalVolume = feedingEntries.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
   const avgVolume = feedingEntries.length > 0 ? (totalVolume / feedingEntries.length).toFixed(0) : 0;
+  
+  const mealCount = solidEntries.filter(e => e.foodType === 'meal').length;
+  const dessertCount = solidEntries.filter(e => e.foodType === 'dessert').length;
 
   return (
     <Page contentStyle={[styles.container, { maxWidth: isDesktop ? 900 : '100%' }]}>
@@ -30,6 +35,12 @@ export default function InsightsScreen() {
           <Ionicons name="water" size={24 * uiScale} color={colors.primary} />
           <Text style={[styles.metricValue, { color: colors.text, fontSize: 24 * uiScale }]}>{avgVolume}ml</Text>
           <Text style={[styles.metricLabel, { color: colors.muted, fontSize: 13 * uiScale }]}>Avg. Feeding Volume</Text>
+        </Card>
+
+        <Card style={styles.metricCard}>
+          <Ionicons name="restaurant" size={24 * uiScale} color="#FF9500" />
+          <Text style={[styles.metricValue, { color: colors.text, fontSize: 24 * uiScale }]}>{mealCount + dessertCount}</Text>
+          <Text style={[styles.metricLabel, { color: colors.muted, fontSize: 13 * uiScale }]}>Solid Meals Today</Text>
         </Card>
 
         <Card style={styles.metricCard}>
