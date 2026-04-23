@@ -7,8 +7,8 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useLocale } from '@/context/LocaleContext';
 import { useAuth } from '@/context/AuthContext';
-import { clamp } from '@/utils/date';
-import { BreastSide, EntryPayload, EntryType } from '@/types';
+import { clamp, isSameDay } from '@/utils/date';
+import { BreastSide, EntryPayload, EntryRecord, EntryType } from '@/types';
 import { TimerWidget } from '@/components/TimerWidget';
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { DateTimeField } from '@/components/DateTimeField';
@@ -470,6 +470,10 @@ function medicationTimingState(nextAllowedAt?: string | null) {
   return { label: 'OK', tone: '#58A6FF', bg: 'rgba(88,166,255,0.16)' };
 }
 
+function payloadOf(entry?: EntryRecord | null) {
+  return entry?.payload ?? {};
+}
+
 export default function EntryComposerScreen() {
   const { colors } = useTheme();
   const { language } = useLocale();
@@ -520,17 +524,65 @@ export default function EntryComposerScreen() {
   const [alternatingMedicineBInterval, setAlternatingMedicineBInterval] = useState('');
   const [alternatingNotes, setAlternatingNotes] = useState('');
   const [medicationConfirmKey, setMedicationConfirmKey] = useState('');
+  const [customActions, setCustomActions] = useState([
+    { id: 'para', name: 'Paracetamol', dose: '5ml', color: '#58A6FF' },
+    { id: 'nuro', name: 'Nurofen', dose: '2.5ml', color: '#E74C3C' },
+    { id: 'ors', name: 'ORS', dose: '10ml', color: '#3FB950' },
+  ]);
+
+  const handleCustomActionPress = useCallback(async (action: any) => {
+    if (action.id === 'custom') {
+      // For "Custom", we use the existing form fields but focus them or show them
+      setNotesOpen(true);
+      setName('');
+      setDosage('');
+      // In a real app, we might use a dedicated prompt here
+      const customName = prompt('Medication Name:', '');
+      const customDose = prompt('Dosage (e.g. 5ml):', '');
+      if (customName && customDose) {
+        void quickLogMedication({ name: customName, dosage: customDose, intervalHours: 6 });
+      }
+      return;
+    }
+
+    // Long press logic or edit mode could go here for Para/Nuro/ORS
+    void quickLogMedication({ name: action.name, dosage: action.dose, intervalHours: 6 });
+  }, [quickLogMedication]);
+
+  const handleCustomActionLongPress = useCallback((action: any) => {
+    if (action.id === 'custom') return;
+    const newName = prompt(`Edit name for ${action.name}:`, action.name);
+    const newDose = prompt(`Edit dose for ${action.name}:`, action.dose);
+    if (newName || newDose) {
+      setCustomActions(prev => prev.map(a => a.id === action.id ? { ...a, name: newName || a.name, dose: newDose || a.dose } : a));
+    }
+  }, []);
+
   const meta = typeMeta[type];
+  const babyAgeMonths = useMemo(() => {
+    if (!profile?.babyBirthDate) return 0;
+    const ageMs = Date.now() - new Date(profile.babyBirthDate).getTime();
+    return Math.max(0, ageMs / (30.4375 * 24 * 3600000));
+  }, [profile?.babyBirthDate]);
+
   const careStage = useMemo(() => getCareStagePolicy(profile), [profile]);
   const sickChild = useMemo(() => getSickChildStatus(entries), [entries]);
   const medicationTimeline = useMemo(() => getMedicationTimelineStatus(entries, { medicationAlternatingPlan: {
-    enabled: alternatingEnabled && Boolean(alternatingMedicineA.trim() && alternatingMedicineB.trim()),
+    enabled: alternatingEnabled,
     medicines: [
       alternatingMedicineA.trim() && alternatingMedicineAInterval ? { name: alternatingMedicineA.trim(), intervalHours: Number(alternatingMedicineAInterval) || 0 } : null,
       alternatingMedicineB.trim() && alternatingMedicineBInterval ? { name: alternatingMedicineB.trim(), intervalHours: Number(alternatingMedicineBInterval) || 0 } : null,
     ].filter((item): item is { name: string; intervalHours: number } => Boolean(item && item.intervalHours > 0)),
     notes: alternatingNotes.trim(),
   } } as AppSettings), [entries, alternatingEnabled, alternatingMedicineA, alternatingMedicineAInterval, alternatingMedicineB, alternatingMedicineBInterval, alternatingNotes]);
+
+  const dosageReferences = useMemo(() => {
+    if (babyAgeMonths < 3) return { paracetamol: '60mg (2.5ml)', ibuprofen: 'Not recommended < 3m' };
+    if (babyAgeMonths < 6) return { paracetamol: '60-120mg (2.5-5ml)', ibuprofen: '50mg (2.5ml)' };
+    if (babyAgeMonths < 12) return { paracetamol: '120mg (5ml)', ibuprofen: '50-100mg (2.5-5ml)' };
+    return { paracetamol: '120-250mg (5-10ml)', ibuprofen: '100mg (5ml)' };
+  }, [babyAgeMonths]);
+
   const recentMedicationEntries = useMemo(
     () => entries.filter((entry) => entry.type === 'medication' && entry.payload?.name).slice(0, 8),
     [entries],
@@ -629,8 +681,14 @@ export default function EntryComposerScreen() {
   );
 
   const recommendedPresets = useMemo(
-    () => getMedicationPresetsBySymptom(selectedMedicationSymptoms).filter((item) => item.symptomTags.some((tag) => selectedMedicationSymptoms.includes(tag))).slice(0, 6),
-    [selectedMedicationSymptoms],
+    () => getMedicationPresetsBySymptom(selectedMedicationSymptoms)
+      .filter((item) => {
+        const ageMatch = !item.minAgeMonths || babyAgeMonths >= item.minAgeMonths;
+        const symptomMatch = !selectedMedicationSymptoms.length || item.symptomTags.some((tag) => selectedMedicationSymptoms.includes(tag));
+        return ageMatch && symptomMatch;
+      })
+      .slice(0, 8),
+    [selectedMedicationSymptoms, babyAgeMonths],
   );
 
   const medicationQuery = medicationSearch.trim().toLowerCase();
@@ -1093,165 +1151,165 @@ export default function EntryComposerScreen() {
         ) : null}
 
         {type === 'medication' ? (
-          <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>CARE TIMELINE</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {language === 'fr' ? 'Médication en un geste' : 'Medication at a glance'}
-            </Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>
-              {language === 'fr'
-                ? 'Suivi uniquement. Respectez les consignes médicales et la dose selon le poids.'
-                : 'Follow medical guidance and dosage by weight.'}
-            </Text>
-
-            <View style={[styles.sectionCard, { backgroundColor: '#0D1117', borderColor: '#21262D' }]}>
-              <View style={styles.statusRow}>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={[styles.timelineLabel, { color: colors.muted }]}>Last medication</Text>
-                  <Text style={[styles.timelineValue, { color: colors.text }]}>
-                    {medicationTimeline.lastMedicine?.payload?.name ?? 'Nothing logged yet'}
-                  </Text>
-                  <Text style={[styles.timelineSubvalue, { color: colors.muted }]}>
-                    {medicationTimeline.lastMedicine ? `${formatClockTime(medicationTimeline.lastMedicine.occurredAt)} • ${formatRelativeDose(medicationTimeline.lastMedicine.occurredAt)}` : 'Tap a quick action to log instantly'}
-                  </Text>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: medicationState.bg }]}>
-                  <Text style={[styles.statusBadgeText, { color: medicationState.tone }]}>{medicationState.label}</Text>
-                </View>
+          <View style={styles.babyFlowContainer}>
+            {/* Header: BabyFlow Brand & Profile */}
+            <View style={styles.babyFlowHeader}>
+              <View>
+                <Text style={styles.brandTitle}>BabyFlow</Text>
+                <Text style={styles.brandSubtitle}>Care Assistant</Text>
               </View>
-              <View style={styles.statusDivider} />
-              <View style={{ gap: 4 }}>
-                <Text style={[styles.timelineLabel, { color: colors.muted }]}>Next allowed time</Text>
-                <Text style={[styles.timelineValue, { color: colors.text }]}>
-                  {medicationTimeline.nextAllowedAt ? formatClockTime(medicationTimeline.nextAllowedAt) : 'No saved timing rule'}
-                </Text>
-                <Text style={[styles.timelineSubvalue, { color: colors.muted }]}>
-                  {medicationTimeline.nextAllowedLabel ?? 'Track timing only. No dosing advice is provided.'}
-                </Text>
+              <View style={styles.profileCircle}>
+                <Text style={styles.profileEmoji}>👶</Text>
               </View>
             </View>
 
-            {sickChild.enabled ? (
-              <View style={[styles.sectionCard, { backgroundColor: '#0D1117', borderColor: '#21262D' }]}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Sick mode</Text>
-                <View style={styles.mobileChecklistGrid}>
-                  {sickChild.checklist
-                    .filter((item) => ['temperature', 'hydration', 'pee', 'stool', 'last_medication', 'next_allowed'].includes(item.key))
-                    .map((item) => (
-                      <Pressable
-                        key={item.key}
-                        onPress={() => router.push(item.href as any)}
-                        style={[styles.checklistCard, item.done && styles.checklistCardDone]}
-                      >
-                        <Text style={styles.checklistIcon}>{item.done ? '✓' : '○'}</Text>
-                        <Text style={[styles.checklistTitle, { color: colors.text }]}>{item.label}</Text>
-                        <Text style={[styles.checklistDetail, { color: colors.muted }]}>{item.detail}</Text>
-                      </Pressable>
-                    ))}
-                </View>
+            {/* Main Status Card (Glassmorphism) */}
+            <View style={[styles.glassCard, { backgroundColor: medicationState.bg }]}>
+              <View style={styles.glassHeader}>
+                <View style={[styles.statusIndicator, { backgroundColor: medicationState.tone }]} />
+                <Text style={[styles.statusTextLarge, { color: colors.text }]}>
+                  {medicationState.label === 'Due' ? 'Dose Required' : medicationState.label === 'Soon' ? 'Upcoming Dose' : 'Everything OK'}
+                </Text>
               </View>
-            ) : null}
 
-            <View style={styles.quickMedicationStack}>
-              {[
-                { name: 'Paracetamol', dosage: '', isCustom: false },
-                { name: 'Ibuprofen', dosage: '', isCustom: false },
-                { name: name.trim() || 'Custom medication', dosage, isCustom: true },
-              ].map((action) => (
-                <Pressable
-                  key={action.name}
-                  disabled={saving || (action.isCustom && !name.trim())}
-                  onPress={() => {
-                    if (action.isCustom && !name.trim()) return;
-                    void quickLogMedication({
-                      name: action.name,
-                      dosage: action.dosage,
-                      intervalHours: action.isCustom ? (intervalHours ? Number(intervalHours) : undefined) : inferMedicationIntervalHours(action.name, selectedMedicationMeta),
-                      symptomTags: selectedMedicationSymptoms,
-                      notes,
-                      isCustom: action.isCustom,
-                    });
-                  }}
-                  style={({ pressed }) => [
-                    styles.quickMedicationButton,
-                    action.isCustom && !name.trim() ? { opacity: 0.45 } : null,
-                    pressed ? { transform: [{ scale: 0.98 }] } : null,
-                    medicationConfirmKey.startsWith(action.name) ? styles.quickMedicationButtonSuccess : null,
-                  ]}
-                >
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={styles.quickMedicationTitle}>{action.name}</Text>
-                    <Text style={styles.quickMedicationSubtitle}>
-                      {action.isCustom
-                        ? 'Log the current custom medication'
-                        : `1 tap to log ${action.name}`}
+              <View style={styles.medicationHighlight}>
+                {medicationTimeline.lastMedicine ? (
+                  <View style={styles.lastMedFocus}>
+                    <Text style={styles.focusLabel}>LAST ADMINISTERED</Text>
+                    <Text style={styles.focusValue}>{payloadOf(medicationTimeline.lastMedicine).name}</Text>
+                    <Text style={styles.focusMeta}>
+                      {payloadOf(medicationTimeline.lastMedicine).dosage} • {formatClockTime(medicationTimeline.lastMedicine.occurredAt)}
                     </Text>
                   </View>
-                  <Text style={styles.quickMedicationPlus}>+</Text>
-                </Pressable>
-              ))}
-            </View>
+                ) : (
+                  <Text style={styles.noMedText}>No medication logged today</Text>
+                )}
 
-            <View style={[styles.sectionCard, { backgroundColor: '#0D1117', borderColor: '#21262D' }]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Custom medication</Text>
-              <Input label={language === 'fr' ? 'Nom du médicament' : 'Medication name'} value={name} onChangeText={setName} placeholder="Paracetamol / Ibuprofen / Oral rehydration" />
-              <Input label={language === 'fr' ? 'Dose notée' : 'Logged dosage'} value={dosage} onChangeText={setDosage} placeholder="2.5 ml / 125 mg" />
-              <Input
-                label={language === 'fr' ? 'Règle d’intervalle (heures)' : 'Timing rule (hours)'}
-                value={intervalHours}
-                onChangeText={setIntervalHours}
-                placeholder="6"
-                keyboardType="decimal-pad"
-                inputMode="decimal"
-              />
-              <View style={styles.savedRow}>
-                {symptomOptions.slice(0, 6).map((option) => {
-                  const selected = selectedMedicationSymptoms.includes(option.value);
-                  return (
-                    <Pressable key={option.value} onPress={() => setSelectedMedicationSymptoms((current) => toggleListItem(current, option.value))} style={[styles.smallChip, selected && styles.smallChipSelected]}>
-                      <Text style={styles.smallChipText}>{option.label}</Text>
-                    </Pressable>
-                  );
-                })}
+                {medicationTimeline.nextAllowedAt && (
+                  <View style={styles.countdownContainer}>
+                    <Text style={styles.focusLabel}>NEXT ALLOWED</Text>
+                    <Text style={styles.countdownValue}>{formatClockTime(medicationTimeline.nextAllowedAt)}</Text>
+                  </View>
+                )}
               </View>
-              <Pressable
-                onPress={async () =>
-                  setSavedMedicines(
-                    await upsertSavedMedicine({
-                      name,
-                      dosage,
-                      intervalHours: intervalHours ? Number(intervalHours) : null,
-                      intervalLabel: intervalHours ? `Every ${intervalHours}h` : undefined,
-                      symptomTags: selectedMedicationSymptoms,
-                      commonFor: (selectedMedicationMeta.commonFor as string[] | undefined) ?? [],
-                      minAgeMonths: selectedMedicationMeta.minAgeMonths ?? null,
-                      notes: selectedMedicationMeta.notes ?? notes,
-                      isCustom: true,
-                    }),
-                  )
-                }
-                style={styles.savePresetButton}
+
+              <Pressable 
+                onPress={() => setNotesOpen(true)}
+                style={({ pressed }) => [
+                  styles.primaryGiveButton,
+                  { backgroundColor: medicationState.tone, opacity: pressed ? 0.8 : 1 }
+                ]}
               >
-                <Text style={styles.savePresetText}>{language === 'fr' ? 'Enregistrer comme raccourci' : 'Save as shortcut'}</Text>
+                <Text style={styles.primaryGiveButtonText}>Give Medication</Text>
               </Pressable>
             </View>
 
-            {recentMedicationEntries.length ? (
-              <View style={[styles.sectionCard, { backgroundColor: '#0D1117', borderColor: '#21262D' }]}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent doses</Text>
-                <View style={styles.stack}>
-                  {recentMedicationEntries.slice(0, 6).map((entry) => (
-                    <View key={entry.id} style={styles.timelineDoseRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.timelineDoseName}>{entry.payload?.name}</Text>
-                        <Text style={styles.timelineDoseMeta}>{entry.payload?.dosage || 'Dose logged'}</Text>
-                      </View>
-                      <Text style={styles.timelineDoseTime}>{formatClockTime(entry.occurredAt)}</Text>
-                    </View>
-                  ))}
-                </View>
+            {/* Health Snapshot (Sick Mode) */}
+            <View style={styles.healthSnapshot}>
+              <Pressable onPress={() => router.push('/entry/measurement')} style={styles.snapshotItem}>
+                <View style={styles.snapshotIconWrap}><Text style={styles.snapshotEmoji}>🌡️</Text></View>
+                <Text style={styles.snapshotVal}>{entries.find(e => e.type === 'measurement' && e.payload?.tempC)?.payload?.tempC ?? '--'}°</Text>
+                <Text style={styles.snapshotLabel}>Temp</Text>
+              </Pressable>
+              <Pressable onPress={() => router.push('/entry/feed')} style={styles.snapshotItem}>
+                <View style={styles.snapshotIconWrap}><Text style={styles.snapshotEmoji}>💧</Text></View>
+                <Text style={styles.snapshotVal}>{entries.filter(e => isSameDay(e.occurredAt, new Date()) && (e.type === 'feed' || e.type === 'food')).length}</Text>
+                <Text style={styles.snapshotLabel}>Hydration</Text>
+              </Pressable>
+              <Pressable onPress={() => router.push('/entry/feed')} style={styles.snapshotItem}>
+                <View style={styles.snapshotIconWrap}><Text style={styles.snapshotEmoji}>🍼</Text></View>
+                <Text style={styles.snapshotVal}>{entries.filter(e => isSameDay(e.occurredAt, new Date()) && e.type === 'feed').length}</Text>
+                <Text style={styles.snapshotLabel}>Feeding</Text>
+              </Pressable>
+            </View>
+
+            {/* Quick Actions */}
+            <View style={styles.quickActionsSection}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionHeading}>QUICK LOG</Text>
+                <Text style={styles.editHint}>Hold to edit</Text>
               </View>
-            ) : null}
+              <View style={styles.quickActionsGrid}>
+                {customActions.map((action) => (
+                  <Pressable
+                    key={action.id}
+                    onPress={() => handleCustomActionPress(action)}
+                    onLongPress={() => handleCustomActionLongPress(action)}
+                    style={({ pressed }) => [
+                      styles.premiumActionButton,
+                      { borderColor: action.color, opacity: pressed ? 0.7 : 1 }
+                    ]}
+                  >
+                    <Text style={[styles.actionBtnTitle, { color: colors.text }]}>{action.name}</Text>
+                    <Text style={styles.actionBtnDose}>{action.dose}</Text>
+                  </Pressable>
+                ))}
+                <Pressable
+                  onPress={() => handleCustomActionPress({ id: 'custom' })}
+                  style={({ pressed }) => [
+                    styles.premiumActionButton,
+                    { borderColor: '#A371F7', opacity: pressed ? 0.7 : 1 }
+                  ]}
+                >
+                  <Text style={[styles.actionBtnTitle, { color: colors.text }]}>Custom</Text>
+                  <Text style={styles.actionBtnDose}>Log new</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Vertical Timeline */}
+            <View style={styles.babyFlowTimeline}>
+              <Text style={styles.sectionHeading}>TIMELINE</Text>
+              <View style={styles.timelineList}>
+                {recentMedicationEntries.length > 0 ? recentMedicationEntries.slice(0, 5).map((entry, index) => (
+                  <View key={entry.id} style={styles.timelineItem}>
+                    <View style={styles.timelineLeft}>
+                      <Text style={styles.timelineTime}>{formatClockTime(entry.occurredAt)}</Text>
+                      {index !== recentMedicationEntries.slice(0, 5).length - 1 && <View style={styles.timelineLine} />}
+                    </View>
+                    <View style={styles.timelineRight}>
+                      <View style={styles.timelineCard}>
+                        <View style={styles.timelineCardHeader}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.timelineMedName}>{payloadOf(entry).name}</Text>
+                            <Text style={styles.timelineMedDose}>{payloadOf(entry).dosage}</Text>
+                          </View>
+                          <Pressable onPress={() => router.push(`/entry/medication?id=${entry.id}`)}>
+                            <Text style={[styles.timelineActionText, { color: colors.primary }]}>EDIT</Text>
+                          </Pressable>
+                        </View>
+                        
+                        <View style={styles.timelineCardActions}>
+                          <Pressable 
+                            onPress={() => {
+                              setOccurredAt(new Date(entry.occurredAt));
+                              setNotesOpen(true);
+                              router.push(`/entry/medication?id=${entry.id}`);
+                            }}
+                            style={styles.timelineMiniAction}
+                          >
+                            <Text style={styles.timelineMiniActionText}>🕒 Time</Text>
+                          </Pressable>
+                          <Pressable 
+                            onPress={async () => {
+                              if (confirm('Delete this entry?')) {
+                                await deleteEntry(entry.id);
+                                void triggerHaptic('impactLight');
+                              }
+                            }}
+                            style={[styles.timelineMiniAction, { backgroundColor: 'rgba(231,76,60,0.1)' }]}
+                          >
+                            <Text style={[styles.timelineMiniActionText, { color: '#E74C3C' }]}>🗑️ Delete</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )) : (
+                  <Text style={styles.emptyTimelineText}>No recent activity</Text>
+                )}
+              </View>
+            </View>
           </View>
         ) : null}
 
@@ -1346,6 +1404,643 @@ export default function EntryComposerScreen() {
 }
 
 const styles = StyleSheet.create({
+  babyFlowContainer: {
+    gap: 20,
+    paddingBottom: 40,
+  },
+  babyFlowHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  brandTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#F0F6FC',
+    letterSpacing: -0.5,
+  },
+  brandSubtitle: {
+    fontSize: 14,
+    color: '#8B949E',
+    fontWeight: '600',
+  },
+  profileCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#161B22',
+    borderWidth: 1,
+    borderColor: '#30363D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileEmoji: {
+    fontSize: 24,
+  },
+  glassCard: {
+    borderRadius: 32,
+    padding: 24,
+    gap: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  glassHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statusIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  statusTextLarge: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  medicationHighlight: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  lastMedFocus: {
+    flex: 1,
+    gap: 4,
+  },
+  countdownContainer: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  focusLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+  },
+  focusValue: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#fff',
+  },
+  focusMeta: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+  },
+  countdownValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#fff',
+  },
+  noMedText: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
+  primaryGiveButton: {
+    height: 64,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  primaryGiveButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  healthSnapshot: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  snapshotItem: {
+    flex: 1,
+    backgroundColor: '#161B22',
+    borderRadius: 24,
+    padding: 16,
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#21262D',
+  },
+  snapshotIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  snapshotEmoji: {
+    fontSize: 16,
+  },
+  snapshotVal: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#fff',
+  },
+  snapshotLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8B949E',
+    textTransform: 'uppercase',
+  },
+  quickActionsSection: {
+    gap: 16,
+  },
+  sectionHeading: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#8B949E',
+    letterSpacing: 1.5,
+    marginLeft: 4,
+  },
+  editHint: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.3)',
+    textTransform: 'uppercase',
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  premiumActionButton: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: '#161B22',
+    borderWidth: 1.5,
+    padding: 16,
+    justifyContent: 'center',
+    gap: 2,
+  },
+  actionBtnTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  actionBtnDose: {
+    fontSize: 12,
+    color: '#8B949E',
+    fontWeight: '700',
+  },
+  babyFlowTimeline: {
+    gap: 16,
+  },
+  timelineList: {
+    paddingLeft: 8,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    gap: 16,
+    minHeight: 80,
+  },
+  timelineLeft: {
+    width: 50,
+    alignItems: 'center',
+  },
+  timelineTime: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#8B949E',
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: '#21262D',
+    marginVertical: 8,
+    borderRadius: 1,
+  },
+  timelineRight: {
+    flex: 1,
+    paddingBottom: 16,
+  },
+  timelineCard: {
+    backgroundColor: '#161B22',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    gap: 12,
+  },
+  timelineCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  timelineActionText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  timelineCardActions: {
+    flexDirection: 'row',
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    paddingTop: 10,
+  },
+  timelineMiniAction: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  timelineMiniActionText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8B949E',
+  },
+  timelineMedName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#F0F6FC',
+  },
+  timelineMedDose: {
+    fontSize: 13,
+    color: '#8B949E',
+    fontWeight: '600',
+  },
+  emptyTimelineText: {
+    fontSize: 14,
+    color: '#8B949E',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  compactStatusCard: {
+    borderRadius: 22,
+    padding: 14,
+    gap: 8,
+  },
+  statusRowMain: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusInfoGroup: {
+    gap: 2,
+  },
+  statusTag: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  statusMainValue: {
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  statusTimeGroup: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  statusLabelSmall: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  statusTimeValue: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  lastMedSimple: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  suggestionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    padding: 10,
+    borderRadius: 14,
+    marginTop: 4,
+  },
+  suggestionTextSmall: {
+    fontSize: 13,
+    flex: 1,
+  },
+  miniLogButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  miniLogButtonText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  sickModeMinimal: {
+    marginTop: -4,
+  },
+  sickGridCompact: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sickItemMini: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    padding: 8,
+    borderRadius: 14,
+    backgroundColor: '#161B22',
+    borderWidth: 1,
+    borderColor: '#21262D',
+  },
+  sickEmoji: {
+    fontSize: 14,
+  },
+  sickVal: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  actionsGridCompact: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  actionButtonCompact: {
+    flex: 1,
+    minWidth: '45%',
+    height: 48,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+  },
+  actionNameMini: {
+    fontSize: 14,
+    fontWeight: '800',
+    flex: 1,
+  },
+  actionMetaMini: {
+    fontSize: 11,
+    fontWeight: '700',
+    opacity: 0.8,
+  },
+  dynamicEditor: {
+    padding: 12,
+    borderRadius: 20,
+    gap: 10,
+  },
+  editorRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  editorActions: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  saveButtonMini: {
+    flex: 1,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonTextMini: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  deleteButtonMini: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(231,76,60,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButtonTextMini: {
+    color: '#E74C3C',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  shortcutButtonMini: {
+    paddingHorizontal: 12,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shortcutTextMini: {
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  historyMini: {
+    gap: 8,
+  },
+  historyListMini: {
+    gap: 6,
+  },
+  historyItemMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+    borderRadius: 14,
+    backgroundColor: '#161B22',
+  },
+  historyNameMini: {
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+  },
+  historyTimeMini: {
+    fontSize: 12,
+    opacity: 0.6,
+  },
+  editLinkMini: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  timelineContainer: {
+    gap: 16,
+    marginVertical: 10,
+  },
+  timelineStatusCard: {
+    borderRadius: 24,
+    padding: 16,
+    gap: 12,
+  },
+  timelineStatusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  timelineStatusLabel: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  lastMedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    gap: 12,
+  },
+  lastMedInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  lastMedTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  lastMedTime: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  nextAllowedInfo: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  nextAllowedLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  nextAllowedTime: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  emptyTimelineText: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
+  sickModeContainer: {
+    gap: 10,
+  },
+  sickModeTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#E74C3C',
+    letterSpacing: 1.2,
+  },
+  sickModeGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sickModeCard: {
+    flex: 1,
+    borderRadius: 18,
+    padding: 12,
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#21262D',
+  },
+  sickModeIcon: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  sickModeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  sickModeValue: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  quickActionsSection: {
+    gap: 12,
+  },
+  quickActionsTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#8B949E',
+    letterSpacing: 1.2,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  quickActionButton: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    minHeight: 64,
+    borderRadius: 18,
+    padding: 12,
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  quickActionName: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  quickActionDose: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  planSuggestionBox: {
+    marginTop: 8,
+    padding: 10,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  planSuggestionText: {
+    fontSize: 13,
+  },
+  planStatusText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  setupPlanButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  setupPlanText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  ageReference: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  addLink: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   heroCard: {
     gap: 10,
     padding: 14,

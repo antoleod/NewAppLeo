@@ -28,6 +28,8 @@ export interface MedicationTimelineStatus {
   nextAllowedLabel: string | null;
   otherMedicineAvailable: boolean | null;
   otherMedicineLabel: string | null;
+  planActive: boolean;
+  suggestedNextName: string | null;
 }
 
 function payloadOf(entry: EntryRecord) {
@@ -239,6 +241,9 @@ export function getMedicationTimelineStatus(entries: EntryRecord[], settings?: A
     .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
 
   const lastMedicine = medicationEntries[0] ?? null;
+  const plan = settings?.medicationAlternatingPlan;
+  const isPlanEnabled = Boolean(plan?.enabled && plan?.medicines && plan.medicines.length >= 2);
+
   if (!lastMedicine) {
     return {
       lastMedicine: null,
@@ -246,36 +251,59 @@ export function getMedicationTimelineStatus(entries: EntryRecord[], settings?: A
       nextAllowedLabel: null,
       otherMedicineAvailable: null,
       otherMedicineLabel: null,
+      planActive: isPlanEnabled,
+      suggestedNextName: isPlanEnabled ? plan!.medicines[0].name : null,
     };
   }
 
-  const intervalHours = payloadOf(lastMedicine).intervalHours;
-  const nextAllowedAt =
-    typeof intervalHours === 'number' && Number.isFinite(intervalHours)
-      ? new Date(new Date(lastMedicine.occurredAt).getTime() + intervalHours * 3600000).toISOString()
-      : null;
+  const lastMedName = normalizeMedicineName(payloadOf(lastMedicine).name);
+  const lastMedInterval = payloadOf(lastMedicine).intervalHours || 6;
+  const nextAllowedForLast = new Date(new Date(lastMedicine.occurredAt).getTime() + lastMedInterval * 3600000);
 
-  const plan = settings?.medicationAlternatingPlan;
-  const currentName = normalizeMedicineName(payloadOf(lastMedicine).name);
-  const otherMedicine = plan?.enabled
-    ? plan.medicines.find((item) => normalizeMedicineName(item.name) !== currentName)
-    : undefined;
-  const otherMedicineLastEntry = otherMedicine
-    ? medicationEntries.find((entry) => normalizeMedicineName(payloadOf(entry).name) === normalizeMedicineName(otherMedicine.name))
-    : undefined;
-  const otherMedicineAvailable =
-    otherMedicine && typeof otherMedicine.intervalHours === 'number'
-      ? !otherMedicineLastEntry || new Date(otherMedicineLastEntry.occurredAt).getTime() + otherMedicine.intervalHours * 3600000 <= Date.now()
-      : null;
+  if (!isPlanEnabled) {
+    return {
+      lastMedicine,
+      nextAllowedAt: nextAllowedForLast.toISOString(),
+      nextAllowedLabel: `Next ${payloadOf(lastMedicine).name} allowed`,
+      otherMedicineAvailable: null,
+      otherMedicineLabel: null,
+      planActive: false,
+      suggestedNextName: payloadOf(lastMedicine).name,
+    };
+  }
+
+  // Alternating Logic
+  const medicineA = plan!.medicines[0];
+  const medicineB = plan!.medicines[1];
+  
+  const lastEntryA = medicationEntries.find(e => normalizeMedicineName(payloadOf(e).name) === normalizeMedicineName(medicineA.name));
+  const lastEntryB = medicationEntries.find(e => normalizeMedicineName(payloadOf(e).name) === normalizeMedicineName(medicineB.name));
+
+  const nextAllowedA = lastEntryA 
+    ? new Date(new Date(lastEntryA.occurredAt).getTime() + medicineA.intervalHours * 3600000)
+    : new Date(0);
+  const nextAllowedB = lastEntryB 
+    ? new Date(new Date(lastEntryB.occurredAt).getTime() + medicineB.intervalHours * 3600000)
+    : new Date(0);
+
+  const now = Date.now();
+  const aAvailable = nextAllowedA.getTime() <= now;
+  const bAvailable = nextAllowedB.getTime() <= now;
+
+  // If we just gave A, suggest B next, and vice versa
+  let suggestedNext = lastMedName === normalizeMedicineName(medicineA.name) ? medicineB.name : medicineA.name;
+  let nextAllowedAt = lastMedName === normalizeMedicineName(medicineA.name) ? nextAllowedB : nextAllowedA;
+
+  // But if the "other" one is not due yet, the absolute next allowed is the minimum of both
+  const absoluteNextAllowed = new Date(Math.min(nextAllowedA.getTime(), nextAllowedB.getTime()));
 
   return {
     lastMedicine,
-    nextAllowedAt,
-    nextAllowedLabel:
-      nextAllowedAt && typeof intervalHours === 'number'
-        ? `${payloadOf(lastMedicine).name} · informational every ${intervalHours}h`
-        : null,
-    otherMedicineAvailable,
-    otherMedicineLabel: otherMedicine ? otherMedicine.name : null,
+    nextAllowedAt: absoluteNextAllowed.toISOString(),
+    nextAllowedLabel: aAvailable || bAvailable ? 'Medicine due now' : 'Waiting for next interval',
+    otherMedicineAvailable: lastMedName === normalizeMedicineName(medicineA.name) ? bAvailable : aAvailable,
+    otherMedicineLabel: lastMedName === normalizeMedicineName(medicineA.name) ? medicineB.name : medicineA.name,
+    planActive: true,
+    suggestedNextName: suggestedNext,
   };
 }

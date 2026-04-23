@@ -89,7 +89,7 @@ export function DateTimeField({
         type="datetime-local"
         value={inputValue}
         onChange={(event) => handleChange(event.target.value)}
-        style={styles.hiddenInput as any}
+        style={{ ...styles.hiddenInput, pointerEvents: 'none' } as any}
       />
     </View>
   );
@@ -150,7 +150,6 @@ const styles = StyleSheet.create({
   hiddenInput: {
     position: 'absolute',
     opacity: 0,
-    pointerEvents: 'none',
     width: 1,
     height: 1,
   },

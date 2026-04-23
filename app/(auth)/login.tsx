@@ -12,6 +12,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useResponsiveLayout } from '@/lib/responsiveLayout';
 import { AppLanguage } from '@/types';
 import { typography } from '@/typography';
+import { BabyFlowGoogleGlyph, BabyFlowIcon } from '@/components/BabyFlowIcon';
 
 const LANGS: Array<{ code: AppLanguage; label: string }> = [
   { code: 'en', label: 'English' },
@@ -258,7 +259,7 @@ export default function LoginScreen() {
                   <View style={styles.brandBadge}>
                     <View style={styles.brandMark}>
                       <LinearGradient colors={['#96D4BF', '#5AA89A']} style={StyleSheet.absoluteFill} />
-                      <Ionicons name="water-outline" size={18} color="#F4F0E8" />
+                      <BabyFlowIcon name="hydration" size={18} active bare />
                     </View>
                     <View style={{ gap: 2 }}>
                       <Text style={styles.brand}>BabyFlow</Text>
@@ -321,7 +322,11 @@ export default function LoginScreen() {
                     <View key={item.title} style={styles.featureCard}>
                       <View style={styles.featureIcon}>
                         <LinearGradient colors={['rgba(136, 214, 198, 0.32)', 'rgba(87, 138, 159, 0.18)']} style={StyleSheet.absoluteFill} />
-                        <Ionicons name={item.icon as any} size={18} color="#A6E2D0" />
+                        <BabyFlowIcon
+                          name={item.title === 'Track daily routines' ? 'routines' : item.title === 'Understand patterns' ? 'patterns' : 'privacy'}
+                          size={18}
+                          bare
+                        />
                       </View>
                       <View style={{ gap: 5, flex: 1 }}>
                         <Text style={styles.featureTitle}>{item.title}</Text>
@@ -361,7 +366,7 @@ export default function LoginScreen() {
                     keyboardType="email-address"
                     error={emailError}
                     textContentType="emailAddress"
-                    rightAccessory={<Ionicons name="mail-outline" size={18} color={theme.textMuted} />}
+                    rightAccessory={<BabyFlowIcon name="mail" size={18} bare />}
                   />
 
                   <Input
@@ -377,7 +382,7 @@ export default function LoginScreen() {
                     textContentType={isPinMode ? 'none' : 'password'}
                     rightAccessory={
                       <Pressable onPress={handleTogglePasswordVisibility} hitSlop={8}>
-                        <Ionicons name={showSecret ? 'eye-off-outline' : 'eye-outline'} size={18} color={theme.textMuted} />
+                        <BabyFlowIcon name={showSecret ? 'eye-off' : 'eye'} size={18} bare />
                       </Pressable>
                     }
                   />
@@ -411,9 +416,7 @@ export default function LoginScreen() {
                 </View>
 
                 <Pressable onPress={() => void handleGoogle()} disabled={busy} style={({ pressed }) => [styles.googleButton, pressed && !busy ? { opacity: 0.88 } : null]}>
-                  <View style={styles.googleIconWrap}>
-                    <Text style={styles.googleGlyph}>G</Text>
-                  </View>
+                  <BabyFlowGoogleGlyph />
                   <Text style={styles.googleText}>Continue with Google</Text>
                 </Pressable>
 
@@ -842,19 +845,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
     backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  googleIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleGlyph: {
-    color: '#1A73E8',
-    fontSize: 18,
-    fontWeight: '800',
   },
   googleText: {
     color: '#F6FAFC',

@@ -42,6 +42,7 @@ export interface EntryPayload {
 
 export interface EntryRecord {
   id: string;
+  slug: string;
   type: EntryType;
   title: string;
   notes?: string;
@@ -53,6 +54,7 @@ export interface EntryRecord {
 
 export interface UserProfile {
   uid: string;
+  slug: string;
   displayName: string;
   username: string;
   usernameLower: string;

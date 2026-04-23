@@ -1,11 +1,11 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { Pressable } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocale } from '@/context/LocaleContext';
 import { useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { triggerHaptic } from '@/lib/mobile';
+import { BabyFlowIcon } from '@/components/BabyFlowIcon';
 
 export default function TabsLayout() {
   const { theme, paletteMode, themeStyle } = useTheme();
@@ -73,13 +73,13 @@ export default function TabsLayout() {
         },
         tabBarHideOnKeyboard: true,
         tabBarIcon: ({ color, size, focused }) => {
-          const map: Record<string, keyof typeof Ionicons.glyphMap> = {
-            home: focused ? 'home' : 'home-outline',
-            history: focused ? 'time' : 'time-outline',
-            insights: focused ? 'analytics' : 'analytics-outline',
-            profile: focused ? 'person' : 'person-outline',
+          const map: Record<string, 'home' | 'history' | 'insights' | 'profile'> = {
+            home: 'home',
+            history: 'history',
+            insights: 'insights',
+            profile: 'profile',
           };
-          return <Ionicons name={map[route.name] ?? 'ellipse'} color={color} size={size ?? 20} />;
+          return <BabyFlowIcon name={map[route.name] ?? 'home'} size={(size ?? 20) - 2} active={focused} />;
         },
       })}
     >

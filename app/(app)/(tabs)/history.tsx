@@ -48,6 +48,21 @@ const COPY = {
     noneBody: 'Add an entry or change the filter for this day.',
     removed: 'Item removed.',
     undo: 'Undo',
+    feedings: 'Feedings',
+    totalMilk: 'Total Milk',
+    sleep: 'Sleep',
+    diapers: 'Diapers',
+    medications: 'Medications',
+    measurements: 'Measurements',
+    frequency: 'Frequency',
+    avgPerFeeding: 'Avg ml/feeding',
+    firstFeeding: 'First feeding',
+    vsYesterday: 'vs yesterday',
+    targetFeedings: 'target feedings',
+    omsRecommendation: 'OMS recommendation',
+    currentDay: 'Current day',
+    noData: 'No data',
+    baby: 'Baby',
   },
   fr: {
     report: 'RAPPORT',
@@ -74,6 +89,21 @@ const COPY = {
     noneBody: "Aucune entrée ne correspond au filtre pour cette date.",
     removed: 'Élément supprimé.',
     undo: 'Annuler',
+    feedings: 'Prises',
+    totalMilk: 'Lait total',
+    sleep: 'Sommeil',
+    diapers: 'Couches',
+    medications: 'Médicaments',
+    measurements: 'Mesures',
+    frequency: 'Fréquence',
+    avgPerFeeding: 'Moy. ml/prise',
+    firstFeeding: 'Première prise',
+    vsYesterday: 'vs hier',
+    targetFeedings: 'prises cible',
+    omsRecommendation: 'OMS 720-1020 min',
+    currentDay: 'Jour courant',
+    noData: 'Aucune donnée',
+    baby: 'Bébé',
   },
   es: {
     report: 'INFORME',
@@ -100,6 +130,21 @@ const COPY = {
     noneBody: 'Agrega una entrada o cambia el filtro de este día.',
     removed: 'Elemento eliminado.',
     undo: 'Deshacer',
+    feedings: 'Tomas',
+    totalMilk: 'Leche total',
+    sleep: 'Sueño',
+    diapers: 'Pañales',
+    medications: 'Medicamentos',
+    measurements: 'Mediciones',
+    frequency: 'Frecuencia',
+    avgPerFeeding: 'Promedio ml/toma',
+    firstFeeding: 'Primera toma',
+    vsYesterday: 'vs ayer',
+    targetFeedings: 'tomas objetivo',
+    omsRecommendation: 'OMS 720-1020 min',
+    currentDay: 'Día actual',
+    noData: 'Sin datos',
+    baby: 'Bebé',
   },
   nl: {
     report: 'RAPPORT',
@@ -126,20 +171,35 @@ const COPY = {
     noneBody: 'Voeg een item toe of wijzig het filter voor deze dag.',
     removed: 'Item verwijderd.',
     undo: 'Ongedaan maken',
+    feedings: 'Voedingen',
+    totalMilk: 'Totale melk',
+    sleep: 'Slaap',
+    diapers: 'Luieren',
+    medications: 'Medicatie',
+    measurements: 'Metingen',
+    frequency: 'Frequentie',
+    avgPerFeeding: 'Gem. ml/voeding',
+    firstFeeding: 'Eerste voeding',
+    vsYesterday: 'vs gisteren',
+    targetFeedings: 'doel voedingen',
+    omsRecommendation: 'OMS 720-1020 min',
+    currentDay: 'Huidige dag',
+    noData: 'Geen gegevens',
+    baby: 'Baby',
   },
 } as const;
 
 const FILTERS: Array<{ label: string; value: EntryType | 'all' }> = [
-  { label: 'Tout', value: 'all' },
+  { label: 'All', value: 'all' },
   { label: 'Feed', value: 'feed' },
   { label: 'Food', value: 'food' },
   { label: 'Sleep', value: 'sleep' },
   { label: 'Diaper', value: 'diaper' },
   { label: 'Pump', value: 'pump' },
   { label: 'Meds', value: 'medication' },
-  { label: 'Mesure', value: 'measurement' },
+  { label: 'Measure', value: 'measurement' },
   { label: 'Milestone', value: 'milestone' },
-  { label: 'Symptome', value: 'symptom' },
+  { label: 'Symptom', value: 'symptom' },
 ];
 
 function iconColor(type: EntryType) {
@@ -395,6 +455,8 @@ export default function HistoryScreen() {
   const responsive = useResponsiveMetrics();
   const { entries, deleteEntry, addEntry } = useAppData();
   const { profile } = useAuth();
+  const { language } = useLocale();
+  const t = (key: string, fallback: string) => COPY[language as keyof typeof COPY]?.[key as keyof typeof COPY.en] ?? fallback;
   const [filter, setFilter] = useState<EntryType | 'all'>('all');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -547,54 +609,142 @@ export default function HistoryScreen() {
 
   return (
     <Page contentStyle={{ width: '100%' }}>
-      <View style={{ gap: responsive.verticalGap + 2 }}>
-        <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <Heading eyebrow="REPORT" title="Historique & OMS" subtitle="Resume quotidien, courbes de croissance, timeline unifiee et export docteur." />
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <Button
-              label="<"
-              onPress={() => setSelectedDate((current) => subtractDays(current, 1))}
-              variant="ghost"
-              fullWidth={false}
-              size="sm"
-            />
-            <Text style={{ color: TEXT, fontSize: 15, fontWeight: '700', textAlign: 'center', flex: 1 }}>
-              {new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
-            </Text>
-            <Button
-              label=">"
-              onPress={() => setSelectedDate((current) => subtractDays(current, -1))}
-              variant="ghost"
-              fullWidth={false}
-              size="sm"
-            />
+      <View style={{ gap: responsive.verticalGap + 1 }}>
+        {/* Header Card - More Compact */}
+        <Card style={{ backgroundColor: CARD, borderColor: BORDER, padding: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View>
+              <Text style={{ color: GOLD, fontSize: 12, fontWeight: '700', letterSpacing: 1 }}>{t('report', 'REPORT')}</Text>
+              <Text style={{ color: TEXT, fontSize: 20, fontWeight: '800', marginTop: 2 }}>{t('history', 'History')}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button
+                label="<"
+                onPress={() => setSelectedDate((current) => subtractDays(current, 1))}
+                variant="ghost"
+                fullWidth={false}
+                size="sm"
+              />
+              <Button
+                label=">"
+                onPress={() => setSelectedDate((current) => subtractDays(current, -1))}
+                variant="ghost"
+                fullWidth={false}
+                size="sm"
+              />
+            </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+
+          <Text style={{ color: TEXT, fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 12 }}>
+            {new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).format(selectedDate)}
+          </Text>
+
+          {/* Action Buttons - More Compact */}
+          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
             {[
               { label: 'CSV', action: exportCsv, active: false },
               { label: 'PDF', action: exportPdf, active: false },
-              { label: 'Partager', action: shareDay, active: false },
-              { label: "Aujourd'hui", action: () => setSelectedDate(startOfDay(new Date())), active: true },
+              { label: 'Share', action: shareDay, active: false },
+              { label: t('today', 'Today'), action: () => setSelectedDate(startOfDay(new Date())), active: true },
             ].map((item) => (
               <Pressable
                 key={item.label}
                 onPress={item.action}
-                  style={{
-                    minHeight: 36,
-                    paddingHorizontal: 12,
-                    borderRadius: 16,
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 12,
                   borderWidth: 1,
                   borderColor: item.active ? GOLD : BORDER,
                   backgroundColor: item.active ? `${GOLD}22` : BG,
                   alignItems: 'center',
                   justifyContent: 'center',
+                  minWidth: 50,
                 }}
               >
-                <Text style={{ color: item.active ? GOLD : TEXT, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
+                <Text style={{ color: item.active ? GOLD : TEXT, fontWeight: '600', fontSize: 12, textAlign: 'center' }}>{item.label}</Text>
               </Pressable>
             ))}
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 6 }}>
+        </Card>
+
+        {/* Key Metrics Grid - 2 Column Layout */}
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+          {/* Feedings Card */}
+          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 12, padding: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: GOLD }} />
+              <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('feedings', 'Feedings')}</Text>
+            </View>
+            <Text style={{ color: TEXT, fontSize: 32, fontWeight: '900', lineHeight: 36 }}>{dayFeedCount}</Text>
+            <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500' }}>
+              {dayFeedCount - yesterdayFeedCount >= 0 ? '+' : ''}{dayFeedCount - yesterdayFeedCount} {t('vsYesterday', 'vs yesterday')}
+            </Text>
+          </View>
+
+          {/* Total Milk Card */}
+          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 12, padding: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: '#F0B85A' }} />
+              <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('totalMilk', 'Total Milk')}</Text>
+            </View>
+            <Text style={{ color: TEXT, fontSize: 32, fontWeight: '900', lineHeight: 36 }}>{dayBottleMl}</Text>
+            <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500' }}>ml</Text>
+          </View>
+
+          {/* Sleep Card */}
+          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 12, padding: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: BLUE }} />
+              <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('sleep', 'Sleep')}</Text>
+            </View>
+            <Text style={{ color: TEXT, fontSize: 32, fontWeight: '900', lineHeight: 36 }}>{Math.floor(sleepMinutes / 60)}h{sleepMinutes % 60}m</Text>
+            <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500' }}>{t('omsRecommendation', 'OMS 720-1020 min')}</Text>
+          </View>
+
+          {/* Diapers Card */}
+          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 12, padding: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: RED }} />
+              <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('diapers', 'Diapers')}</Text>
+            </View>
+            <Text style={{ color: TEXT, fontSize: 32, fontWeight: '900', lineHeight: 36 }}>{diaperCount}</Text>
+            <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500' }}>{t('currentDay', 'Current day')}</Text>
+          </View>
+        </View>
+
+        {/* Secondary Metrics - Compact Badges */}
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+          <View style={{ backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600' }}>{t('frequency', 'Frequency')}</Text>
+            <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{frequencyBadge}</Text>
+          </View>
+          <View style={{ backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600' }}>{t('avgPerFeeding', 'Avg ml/feeding')}</Text>
+            <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{avgMlPerFeed} ml</Text>
+          </View>
+          <View style={{ backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600' }}>{t('firstFeeding', 'First feeding')}</Text>
+            <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{firstFeed ? formatTime(firstFeed.occurredAt) : '--'}</Text>
+          </View>
+        </View>
+
+        {/* Weight Chart - Enhanced */}
+        <Card style={{ backgroundColor: CARD, borderColor: BORDER, padding: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View>
+              <Text style={{ color: GOLD, fontSize: 12, fontWeight: '700', letterSpacing: 1 }}>{t('weight', 'WEIGHT')}</Text>
+              <Text style={{ color: TEXT, fontSize: 16, fontWeight: '800', marginTop: 2 }}>{t('weightTrend', 'Weight Trend Chart')}</Text>
+            </View>
+            <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: GOLD }} />
+          </View>
+          <WeightChart points={weightPoints} bandRows={weightBandRows.length ? weightBandRows : weightPoints.map((point) => ({ label: point.label, p25: point.value - 0.3, p75: point.value + 0.3 }))} />
+        </Card>
+
+        {/* Filter Pills - Enhanced with better accent usage */}
+        <View style={{ backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 12, padding: 12 }}>
+          <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700', marginBottom: 8 }}>Filter</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
             {FILTERS.map((item) => {
               const active = filter === item.value;
               return (
@@ -602,85 +752,72 @@ export default function HistoryScreen() {
                   key={item.value}
                   onPress={() => setFilter(item.value)}
                   style={{
-                    minHeight: 34,
                     paddingHorizontal: 12,
+                    paddingVertical: 6,
                     borderRadius: 16,
-                    borderWidth: 1,
+                    borderWidth: 1.5,
                     borderColor: active ? GOLD : BORDER,
                     backgroundColor: active ? GOLD : BG,
                     alignItems: 'center',
                     justifyContent: 'center',
+                    minWidth: 60,
+                    shadowColor: active ? GOLD : 'transparent',
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: active ? 0.3 : 0,
+                    shadowRadius: active ? 4 : 0,
+                    elevation: active ? 3 : 0,
                   }}
                 >
-                  <Text style={{ color: active ? BG : TEXT, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
+                  <Text style={{ color: active ? BG : TEXT, fontWeight: '700', fontSize: 12, textAlign: 'center' }}>{item.label}</Text>
                 </Pressable>
               );
             })}
           </ScrollView>
-        </Card>
-
-        <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <Heading eyebrow="JOUR" title="Day Summary" subtitle="Resume intelligent du jour avec deltas et reperes." />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-            {[
-              { label: 'Prises', value: String(dayFeedCount), detail: `${dayFeedCount - yesterdayFeedCount >= 0 ? '+' : ''}${dayFeedCount - yesterdayFeedCount} vs hier` },
-              { label: 'Lait total', value: `${dayBottleMl} ml`, detail: `${profile?.goalFeedingsPerDay ?? 8} prises cible` },
-              { label: 'Sommeil total', value: `${sleepMinutes} min`, detail: 'OMS 720-1020 min' },
-              { label: 'Couches', value: String(diaperCount), detail: 'Jour courant' },
-              { label: 'Medicaments', value: String(medEntries.length), detail: medEntries.map((entry) => entry.payload.name).filter(Boolean).join(', ') || 'Aucun' },
-              { label: 'Mesures', value: String(measureEntries.length), detail: latestMeasure ? getDetail(latestMeasure) : 'Aucune' },
-            ].map((stat) => (
-              <View key={stat.label} style={{ flexBasis: width < 680 ? '100%' : '48%', minWidth: width < 680 ? 0 : 220, gap: 8, padding: 14, borderRadius: 12, backgroundColor: BG, borderWidth: 1, borderColor: BORDER }}>
-                <Text style={{ color: MUTED, fontSize: 12, fontWeight: '600' }}>{stat.label}</Text>
-                <Text style={{ color: TEXT, fontSize: 24, fontWeight: '700' }}>{stat.value}</Text>
-                <Text style={{ color: MUTED, fontSize: 13 }}>{stat.detail}</Text>
-              </View>
-            ))}
+        </View>
+        {/* OMS Reference - Enhanced */}
+        <Card style={{ backgroundColor: CARD, borderColor: BORDER, padding: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View>
+              <Text style={{ color: GOLD, fontSize: 12, fontWeight: '700', letterSpacing: 1 }}>{t('oms', 'OMS')}</Text>
+              <Text style={{ color: TEXT, fontSize: 16, fontWeight: '800', marginTop: 2 }}>{t('referenceCard', 'Reference Card')}</Text>
+              <Text style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>{`${profile?.babyName ?? t('baby', 'Baby')} · ${age.months}m ${age.days}d`}</Text>
+            </View>
+            <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: BLUE }} />
           </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' }}>
-            {[
-              { label: 'Frequence', value: frequencyBadge },
-              { label: 'Moy. ml/prise', value: `${avgMlPerFeed} ml` },
-              { label: 'Premiere prise', value: firstFeed ? formatTime(firstFeed.occurredAt) : '--' },
-            ].map((badge) => (
-              <View key={badge.label} style={{ width: width < 680 ? '100%' : undefined, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: BG, borderWidth: 1, borderColor: BORDER }}>
-                <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600' }}>{badge.label}</Text>
-                <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{badge.value}</Text>
-              </View>
-            ))}
-          </View>
-        </Card>
 
-        <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <Heading eyebrow="POIDS" title="Weight Trend Chart" subtitle="Courbe reelle bebe + bande OMS mediane." />
-          <WeightChart points={weightPoints} bandRows={weightBandRows.length ? weightBandRows : weightPoints.map((point) => ({ label: point.label, p25: point.value - 0.3, p75: point.value + 0.3 }))} />
-        </Card>
-
-        <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <Heading eyebrow="OMS" title="Reference Card" subtitle={`${profile?.babyName ?? 'Bebe'} · ${age.months} mois ${age.days} jours`} />
-          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
             {(['female', 'male'] as const).map((value) => (
               <Pressable
                 key={value}
                 onPress={() => setOmsSex(value)}
                 style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 20,
-                  borderWidth: 1,
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  borderWidth: 1.5,
                   borderColor: omsSex === value ? GOLD : BORDER,
                   backgroundColor: omsSex === value ? `${GOLD}22` : BG,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: omsSex === value ? GOLD : 'transparent',
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: omsSex === value ? 0.2 : 0,
+                  shadowRadius: omsSex === value ? 3 : 0,
+                  elevation: omsSex === value ? 2 : 0,
                 }}
               >
-                <Text style={{ color: omsSex === value ? GOLD : TEXT, fontWeight: '700' }}>{value === 'female' ? 'Fille' : 'Garcon'}</Text>
+                <Text style={{ color: omsSex === value ? GOLD : TEXT, fontWeight: '700', fontSize: 12 }}>
+                  {value === 'female' ? 'Girl' : 'Boy'}
+                </Text>
               </Pressable>
             ))}
           </View>
-          <View style={{ gap: 12 }}>
-            <OmsMetricCard label="Poids" value={latestWeight} unit="kg" band={weightBand} />
-            <OmsMetricCard label="Taille" value={latestHeight} unit="cm" band={heightBand} />
-            <OmsMetricCard label="Perimetre cranien" value={latestHeadCirc} unit="cm" band={headBand} />
-            <OmsMetricCard label="IMC" value={bmi} unit="" band={bmiBand} />
+
+          <View style={{ gap: 10 }}>
+            <OmsMetricCard label="Weight" value={latestWeight} unit="kg" band={weightBand} />
+            <OmsMetricCard label="Height" value={latestHeight} unit="cm" band={heightBand} />
+            <OmsMetricCard label="Head Circ" value={latestHeadCirc} unit="cm" band={headBand} />
+            <OmsMetricCard label="BMI" value={bmi} unit="" band={bmiBand} />
           </View>
         </Card>
 
@@ -722,11 +859,15 @@ export default function HistoryScreen() {
           ) : null}
         </Card>
 
+        {/* Timeline - Enhanced */}
         {unifiedTimeline.length ? (
           unifiedTimeline.map(([day, items]) => (
-            <Card key={day} style={{ backgroundColor: CARD, borderColor: BORDER }}>
-              <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700' }}>{formatLongDate(day)}</Text>
-              <View style={{ gap: 10 }}>
+            <Card key={day} style={{ backgroundColor: CARD, borderColor: BORDER, padding: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={{ color: TEXT, fontSize: 16, fontWeight: '800' }}>{formatLongDate(day)}</Text>
+                <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600' }}>{items.length} items</Text>
+              </View>
+              <View style={{ gap: 8 }}>
                 {items.map((entry) => {
                   const expanded = expandedId === entry.id;
                   return (
@@ -734,28 +875,28 @@ export default function HistoryScreen() {
                       key={entry.id}
                       onPress={() => setExpandedId((current) => (current === entry.id ? null : entry.id))}
                       style={{
-                        padding: 14,
-                        borderRadius: 12,
+                        padding: 12,
+                        borderRadius: 10,
                         borderWidth: 1,
-                        borderColor: BORDER,
+                        borderColor: expanded ? GOLD : BORDER,
                         backgroundColor: BG,
-                        gap: 10,
+                        gap: 8,
                       }}
                     >
-                      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                        <View style={{ width: 14, height: 14, borderRadius: 999, backgroundColor: iconColor(entry.type) }} />
-                        <View style={{ flex: 1, gap: 4 }}>
-                          <Text style={{ color: TEXT, fontSize: 15, fontWeight: '700' }}>{entry.type.toUpperCase()}</Text>
-                          <Text style={{ color: MUTED, fontSize: 13 }}>{getDetail(entry)}</Text>
+                      <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                        <View style={{ width: 12, height: 12, borderRadius: 999, backgroundColor: iconColor(entry.type) }} />
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{entry.type.toUpperCase()}</Text>
+                          <Text style={{ color: MUTED, fontSize: 12 }}>{getDetail(entry)}</Text>
                         </View>
-                        <Text style={{ color: TEXT, fontSize: 14, fontWeight: '600' }}>{formatTime(entry.occurredAt)}</Text>
+                        <Text style={{ color: MUTED, fontSize: 12, fontWeight: '600' }}>{formatTime(entry.occurredAt)}</Text>
                       </View>
                       {expanded ? (
-                        <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 10 }}>
-                          <Text style={{ color: MUTED, fontSize: 13 }}>{entry.notes || 'Sans note'}</Text>
-                          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
-                            <Button label="Editer" onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })} variant="secondary" fullWidth={false} />
-                            <Button label="Supprimer" onPress={() => handleDeleteEntry(entry)} variant="danger" fullWidth={false} />
+                        <View style={{ gap: 6, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 8 }}>
+                          <Text style={{ color: MUTED, fontSize: 12 }}>{entry.notes || 'No notes'}</Text>
+                          <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
+                            <Button label={t('edit', 'Edit')} onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })} variant="secondary" fullWidth={false} size="sm" />
+                            <Button label={t('delete', 'Delete')} onPress={() => handleDeleteEntry(entry)} variant="danger" fullWidth={false} size="sm" />
                           </View>
                         </View>
                       ) : null}
@@ -766,7 +907,11 @@ export default function HistoryScreen() {
             </Card>
           ))
         ) : (
-          <EmptyState title="Aucune entree" body="Aucune entree ne correspond au filtre pour cette date." action={<Button label="Ajouter une entree" onPress={() => router.push('/entry/feed')} />} />
+          <Card style={{ backgroundColor: CARD, borderColor: BORDER, padding: 20, alignItems: 'center' }}>
+            <Text style={{ color: MUTED, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>{t('none', 'No entries yet')}</Text>
+            <Text style={{ color: MUTED, fontSize: 12, textAlign: 'center', marginBottom: 16 }}>{t('noneBody', 'Add an entry or change the filter for this day.')}</Text>
+            <Button label={t('addEntry', 'Add entry')} onPress={() => router.push('/entry/feed')} />
+          </Card>
         )}
 
         {undoEntry ? (
@@ -776,20 +921,28 @@ export default function HistoryScreen() {
               left: responsive.horizontalPadding,
               right: responsive.horizontalPadding,
               bottom: 16,
-              paddingHorizontal: 14,
+              paddingHorizontal: 16,
               paddingVertical: 12,
               borderRadius: 12,
               backgroundColor: CARD,
-              borderWidth: 1,
-              borderColor: BORDER,
+              borderWidth: 1.5,
+              borderColor: GOLD,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 12,
+              shadowColor: GOLD,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+              elevation: 3,
             }}
           >
-            <Text style={{ color: TEXT, flex: 1, fontSize: 13, fontWeight: '600' }}>Element supprime.</Text>
-            <Button label="Annuler" onPress={handleUndoDelete} variant="secondary" fullWidth={false} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: GOLD }} />
+              <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{t('removed', 'Item removed.')}</Text>
+            </View>
+            <Button label={t('undo', 'Undo')} onPress={handleUndoDelete} variant="secondary" fullWidth={false} size="sm" />
           </View>
         ) : null}
       </View>

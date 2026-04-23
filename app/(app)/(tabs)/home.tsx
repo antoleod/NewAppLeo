@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AppState, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { AppState, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
+import Animated2, {
   FadeIn,
   FadeInDown,
+  FadeInUp,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
   withSpring,
   withTiming,
+  withDelay,
+  interpolate,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Page } from '@/components/ui';
@@ -21,6 +24,7 @@ import { BreastSide } from '@/types';
 import { buildSmartAlerts, getMeanFeedingInterval } from '@/lib/patterns';
 import { getMedicationTimelineStatus } from '@/utils/entries';
 import { getCareStagePolicy, getSickChildStatus } from '@/lib/careGuidance';
+import cacheManager from '@/utils/cacheManager';
 import {
   defaultHomeSectionOrder,
   defaultAppSettings,
@@ -38,354 +42,267 @@ import {
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
 import { NextFeedingCard } from '@/components/NextFeedingCard';
+import { BabyFlowIcon } from '@/components/BabyFlowIcon';
 
-const BG = 'rgba(13, 17, 23, 0.28)';
-const CARD = 'rgba(22, 27, 34, 0.78)';
-const BORDER = 'rgba(255, 255, 255, 0.08)';
-const GOLD = '#C9A227';
-const GREEN = '#B88A2A';
-const BLUE = '#58A6FF';
-const RED = '#E74C3C';
-const MUTED = '#8B949E';
-const TEXT = '#F0F6FC';
+// Enhanced semantic color system
+const COLORS = {
+  bg: 'rgba(13, 17, 23, 0.95)',
+  card: 'rgba(22, 27, 34, 0.92)',
+  border: 'rgba(255, 255, 255, 0.08)',
+  text: '#FFFFFF',
+  textMuted: 'rgba(255, 255, 255, 0.6)',
+  success: '#10B981',
+  warning: '#F59E0B',
+  alert: '#EF4444',
+  primary: '#3B82F6',
+  info: '#06B6D4',
+  empty: '#6B7280',
+  gold: '#F59E0B',
+  green: '#10B981',
+  red: '#EF4444',
+  blue: '#3B82F6',
+};
 
-type QuickTimerMode = 'breast' | 'bottle' | null;
+const BG = COLORS.bg;
+const CARD = COLORS.card;
+const BORDER = COLORS.border;
+const TEXT = COLORS.text;
+const MUTED = COLORS.textMuted;
+const GREEN = COLORS.green;
+const GOLD = COLORS.gold;
+const RED = COLORS.red;
+const BLUE = COLORS.blue;
 
-const touchTargetProps = {
-  hitSlop: 8,
-  pressRetentionOffset: 8,
-} as const;
+// Type definitions for module system
+type ModuleState = 'empty' | 'active' | 'alert' | 'completed' | 'pending';
+type ModulePriority = 'critical' | 'high' | 'normal' | 'low';
+type ModuleSize = 'compact' | 'expanded' | 'full';
 
-function sectionEyebrowStyle() {
-  return { color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600' as const, textTransform: 'uppercase' as const };
+interface ModuleConfig {
+  id: string;
+  type: string;
+  state: ModuleState;
+  priority: ModulePriority;
+  size: ModuleSize;
+  lastUpdated: number;
+  urgency: number;
+  contextRelevant: boolean;
 }
 
-function sectionTitleStyle() {
-  return { color: TEXT, fontSize: 18, fontWeight: '700' as const, marginTop: 2 };
-}
-
-function alertToneColor(tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger') {
-  if (tone === 'danger') return RED;
-  if (tone === 'warning') return '#F2C86F';
-  if (tone === 'success') return GREEN;
-  if (tone === 'secondary') return BLUE;
-  return GOLD;
-}
-
-function localeTag(language: string) {
-  if (language === 'es') return 'es-ES';
-  if (language === 'en') return 'en-US';
-  if (language === 'nl') return 'nl-BE';
-  return 'fr-FR';
-}
-
-function hoursSince(timestamp?: string) {
-  if (!timestamp) return null;
-  return Math.max(0, (Date.now() - new Date(timestamp).getTime()) / 36e5);
-}
-
-function formatRelative(timestamp: string | undefined, locale: string) {
-  const hours = hoursSince(timestamp);
-  if (hours === null) return '--';
-  if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} min`;
-  if (hours < 24) return `${Math.round(hours * 10) / 10} h`;
-  return `${Math.round(hours / 24)} j`;
-}
-
-function formatClock(timestamp: string | undefined, locale: string) {
-  if (!timestamp) return '--:--';
-  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(timestamp));
-}
-
-function formatCountdown(ms: number | null | undefined, language: string) {
-  if (!ms || ms <= 0) return language === 'fr' ? 'Possible maintenant' : 'Possible now';
-  const totalMinutes = Math.round(ms / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (!hours) return `${minutes} min`;
-  if (!minutes) return `${hours} h`;
-  return `${hours} h ${minutes} min`;
-}
-
-function PressScale({
-  children,
-  onPress,
-  pressedScale = 0.94,
-  flashColor,
-  style,
-}: {
-  children: React.ReactNode;
-  onPress?: () => void;
-  pressedScale?: number;
-  flashColor?: string;
-  style?: any;
-}) {
-  const scale = useSharedValue(1);
-  const flash = useSharedValue(0);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: withSpring(scale.value, { damping: 10, stiffness: 200 }) }],
-    opacity: withTiming(flash.value ? 0.92 : 1, { duration: 120 }),
-  }));
-
-  return (
-    <Animated.View style={[animatedStyle, style]}>
-      <Pressable
-        {...touchTargetProps}
-        onPress={onPress}
-        onPressIn={() => {
-          scale.value = pressedScale;
-          if (flashColor) {
-            flash.value = 1;
-          }
-        }}
-        onPressOut={() => {
-          scale.value = 1;
-          flash.value = 0;
-        }}
-      >
-        {children}
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-function HeaderAction({ label, onPress }: { label: string; onPress: () => void }) {
-  const rotate = useSharedValue(0);
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: withSpring(scale.value, { damping: 12, stiffness: 220 }) },
-      { rotate: `${withSpring(rotate.value, { damping: 12, stiffness: 180 })}deg` },
-    ],
-  }));
-
-  return (
-    <Pressable
-      {...touchTargetProps}
-      onPress={onPress}
-      onPressIn={() => {
-        scale.value = 0.95;
-        rotate.value = 90;
-      }}
-      onPressOut={() => {
-        scale.value = 1;
-        rotate.value = 0;
-      }}
-      style={{ minHeight: 36 }}
-    >
-      <Animated.View
-        style={[
-          animatedStyle,
-          {
-            height: 36,
-            paddingHorizontal: 14,
-            borderRadius: 20,
-            backgroundColor: GOLD,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            shadowColor: '#000',
-            shadowOpacity: 0.18,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 3,
-          },
-        ]}
-      >
-        <Text style={{ color: BG, fontSize: 14, fontWeight: '700' }}>+</Text>
-        <Text style={{ color: BG, fontSize: 13, fontWeight: '700' }}>{label}</Text>
-      </Animated.View>
-    </Pressable>
-  );
-}
-
-function StatCell({
-  label,
-  value,
-  icon,
-  index,
-  highlight,
-}: {
+interface QuickAction {
+  id: string;
   label: string;
-  value: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  index: number;
-  highlight?: boolean;
-}) {
-  return (
-    <Animated.View
-      entering={FadeInDown.duration(260).delay(index * 60)}
-      style={{
-        flexBasis: '48%',
-        minWidth: 140,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderRadius: 14,
-        backgroundColor: highlight ? '#18221B' : CARD,
-        gap: 6,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.05)',
-        borderLeftWidth: 1,
-        borderLeftColor: 'rgba(255,255,255,0.04)',
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <View style={{ width: 22, height: 22, borderRadius: 7, backgroundColor: `${GREEN}18`, alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name={icon} size={12} color={GREEN} />
-        </View>
-        <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', letterSpacing: 1.3, textTransform: 'uppercase' }}>{label}</Text>
-      </View>
-      <Text style={{ color: TEXT, fontSize: 28, fontWeight: '700' }}>{value}</Text>
-    </Animated.View>
-  );
+  icon: string;
+  href: string;
+  priority: number;
+  context: string[];
+  color: string;
 }
 
-function formatAvailability(timestamp: string | null, locale: string, language: string) {
-  if (!timestamp) return language === 'fr' ? 'Aucune regle' : 'No interval rule';
-  const due = new Date(timestamp).getTime();
-  if (due <= Date.now()) return language === 'fr' ? 'Possible maintenant' : 'Available now';
-  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(timestamp));
-}
+// Helper functions
+const localeTag = (lang: string) => (lang === 'fr' ? 'fr-FR' : lang === 'nl' ? 'nl-BE' : 'en-US');
 
-function SmartSignalChip({
-  alert,
-  onPress,
-  compact,
-}: {
-  alert: {
-    id: string;
-    title: string;
-    value: string;
-    statusLabel: string;
-    tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
-    icon: keyof typeof Ionicons.glyphMap;
-  };
-  onPress: () => void;
-  compact: boolean;
-}) {
-  const color = alertToneColor(alert.tone);
+const formatClock = (date: string | Date, locale: string) => {
+  if (!date) return '--:--';
+  const d = new Date(date);
+  return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatRelative = (date: string | Date, locale: string) => {
+  if (!date) return '--';
+  const d = new Date(date);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) return 'now';
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h`;
+  return `${Math.floor(diffMins / 1440)}d`;
+};
+
+const formatCountdown = (ms: number | null, language: string) => {
+  if (!ms) return '--';
+  const absMs = Math.abs(ms);
+  const mins = Math.floor(absMs / 60000);
+  const hours = Math.floor(mins / 60);
+
+  if (hours > 0) {
+    const remainingMins = mins % 60;
+    return `${hours}h${remainingMins > 0 ? remainingMins : ''}`;
+  }
+  return `${mins}m`;
+};
+
+const formatAvailability = (date: string | null, locale: string, language: string) => {
+  if (!date) return '--';
+  const d = new Date(date);
+  const now = new Date();
+  const diffMs = d.getTime() - now.getTime();
+
+  if (diffMs <= 0) return 'Now';
+
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h`;
+  return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+};
+
+const getStateBorderColor = (state: ModuleState) => {
+  switch (state) {
+    case 'alert': return COLORS.alert;
+    case 'active': return COLORS.warning;
+    case 'completed': return COLORS.success;
+    case 'empty': return COLORS.empty;
+    default: return COLORS.border;
+  }
+};
+
+// Component styles
+const styles = StyleSheet.create({
+  pageContent: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  menuContent: {
+    backgroundColor: CARD,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  menuTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: TEXT,
+    marginBottom: 16,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 8,
+  },
+  menuItemText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: TEXT,
+    marginLeft: 12,
+  },
+});
+
+// Helper components
+function PressScale({ children, onPress, pressedScale = 0.95, style }: any) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1, flexBasis: compact ? '100%' : '48%' })}>
-      <View
-        style={{
-          minHeight: compact ? 60 : 64,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          borderRadius: 16,
-          borderWidth: 1,
-          borderColor: `${color}55`,
-          backgroundColor: `${color}12`,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
-        }}
-      >
-        <View style={{ width: 34, height: 34, borderRadius: 12, backgroundColor: `${color}20`, alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name={alert.icon} size={17} color={color} />
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', letterSpacing: 1.1, textTransform: 'uppercase' }} numberOfLines={1}>
-            {alert.statusLabel}
-          </Text>
-          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }} numberOfLines={1}>
-            {alert.title}
-          </Text>
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: 2 }}>
-          <Text style={{ color, fontSize: 15, fontWeight: '800' }} numberOfLines={1}>
-            {alert.value}
-          </Text>
-          <Ionicons name="chevron-forward" size={14} color={MUTED} />
-        </View>
-      </View>
+    <Pressable onPress={onPress} style={({ pressed }) => [{ transform: [{ scale: pressed ? pressedScale : 1 }] }, style]}>
+      {children}
     </Pressable>
   );
 }
 
-function HomeSectionCard({
-  sectionKey,
-  children,
-  isMobile,
-  canMoveUp,
-  canMoveDown,
-  onMoveUp,
-  onMoveDown,
-  onHide,
-}: {
-  sectionKey: HomeSectionKey;
-  children: React.ReactNode;
-  isMobile: boolean;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onHide: () => void;
-}) {
-  const panResponder = PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => isMobile && Math.abs(gesture.dx) > 18 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
-    onPanResponderRelease: (_, gesture) => {
-      if (gesture.dx >= 88) onHide();
-    },
-  });
+function StatCell({ label, value, icon, index, highlight }: any) {
+  const colors = [COLORS.info, COLORS.warning, COLORS.success, COLORS.primary, COLORS.gold];
+  const color = colors[index % colors.length];
 
   return (
-    <View {...(isMobile ? panResponder.panHandlers : {})} style={{ marginBottom: 10 }}>
-      <View style={{ position: 'relative' }}>
-        {children}
-        <View style={{ position: 'absolute', top: 10, right: 10, flexDirection: 'row', gap: 6 }}>
-          <Pressable
-            onPress={onMoveUp}
-            disabled={!canMoveUp}
-            style={({ pressed }) => ({
-              width: 28,
-              height: 28,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: BORDER,
-              backgroundColor: pressed ? '#1B2430' : BG,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: canMoveUp ? 1 : 0.35,
-            })}
-          >
-            <Ionicons name="chevron-up" size={14} color={TEXT} />
-          </Pressable>
-          <Pressable
-            onPress={onMoveDown}
-            disabled={!canMoveDown}
-            style={({ pressed }) => ({
-              width: 28,
-              height: 28,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: BORDER,
-              backgroundColor: pressed ? '#1B2430' : BG,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: canMoveDown ? 1 : 0.35,
-            })}
-          >
-            <Ionicons name="chevron-down" size={14} color={TEXT} />
-          </Pressable>
-          <Pressable
-            onPress={onHide}
-            accessibilityLabel={`Hide section ${sectionKey}`}
-            style={({ pressed }) => ({
-              width: 28,
-              height: 28,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: BORDER,
-              backgroundColor: pressed ? '#341B1B' : BG,
-              alignItems: 'center',
-              justifyContent: 'center',
-            })}
-          >
-            <Ionicons name="eye-off-outline" size={14} color={TEXT} />
-          </Pressable>
-        </View>
+    <PressScale
+      onPress={() => {
+        // Navigate to relevant section based on stat type
+        if (label.toLowerCase().includes('feed')) {
+          router.push('/insights/feeding');
+        } else if (label.toLowerCase().includes('sleep')) {
+          router.push('/insights/sleep');
+        } else if (label.toLowerCase().includes('diaper')) {
+          router.push('/insights/diapers');
+        }
+      }}
+      pressedScale={0.96}
+      style={{ flexBasis: '31%', flexGrow: 1, minWidth: 80 }}
+    >
+      <View style={{
+        paddingHorizontal: 6,
+        paddingVertical: 6,
+        borderRadius: 8,
+        backgroundColor: highlight ? `${color}20` : 'rgba(255, 255, 255, 0.03)',
+        borderWidth: 1,
+        borderColor: highlight ? `${color}40` : 'rgba(255, 255, 255, 0.08)',
+        alignItems: 'center'
+      }}>
+        <Text style={{ color: color, fontSize: 15, fontWeight: '700' }}>{value}</Text>
+        <Text style={{ color: MUTED, fontSize: 9, marginTop: 1, fontWeight: '500' }}>{label}</Text>
       </View>
+    </PressScale>
+  );
+}
+
+function HomeSectionCard({ children, sectionKey, isMobile, canMoveUp, canMoveDown, onMoveUp, onMoveDown, onHide }: any) {
+  return (
+    <View style={{ marginBottom: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 }}>
+        <View style={{ flex: 1 }} />
+        {isMobile && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Pressable
+              onPress={onMoveUp}
+              disabled={!canMoveUp}
+              style={({ pressed }) => ({
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: BORDER,
+                backgroundColor: pressed ? '#1B2430' : BG,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: canMoveUp ? 1 : 0.35,
+              })}
+            >
+              <Ionicons name="chevron-up" size={14} color={TEXT} />
+            </Pressable>
+            <Pressable
+              onPress={onMoveDown}
+              disabled={!canMoveDown}
+              style={({ pressed }) => ({
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: BORDER,
+                backgroundColor: pressed ? '#1B2430' : BG,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: canMoveDown ? 1 : 0.35,
+              })}
+            >
+              <Ionicons name="chevron-down" size={14} color={TEXT} />
+            </Pressable>
+            <Pressable
+              onPress={onHide}
+              style={({ pressed }) => ({
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: BORDER,
+                backgroundColor: pressed ? '#341B1B' : BG,
+                alignItems: 'center',
+                justifyContent: 'center',
+              })}
+            >
+              <Ionicons name="eye-off-outline" size={14} color={TEXT} />
+            </Pressable>
+          </View>
+        )}
+      </View>
+      {children}
     </View>
   );
 }
@@ -405,49 +322,30 @@ function ActivityRow({
 }) {
   const scale = useSharedValue(1);
   const highlight = useSharedValue(0);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: withSpring(scale.value, { damping: 10, stiffness: 200 }) }],
-    borderLeftWidth: withTiming(highlight.value ? 3 : 0, { duration: 140 }),
-    borderLeftColor: GOLD,
-  }));
 
   return (
-    <Animated.View style={animatedStyle}>
+    <Animated2.View>
       <Pressable
-        {...touchTargetProps}
         onPress={onPress}
-        onPressIn={() => {
-          scale.value = 0.97;
-          highlight.value = 1;
-        }}
-        onPressOut={() => {
-          scale.value = 1;
-          highlight.value = 0;
-        }}
-        style={{
-          minHeight: 52,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          borderRadius: 8,
-          borderWidth: 1,
-          borderColor: BORDER,
-          backgroundColor: CARD,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
-          marginBottom: 6,
-        }}
+        style={({ pressed }) => [
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 8,
+            backgroundColor: pressed ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+          },
+        ]}
       >
-        <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: `${color}22`, alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: color }} />
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{title}</Text>
+        <View style={{ width: 3, height: 3, borderRadius: 999, backgroundColor: color, marginRight: 12 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{title}</Text>
           <Text style={{ color: MUTED, fontSize: 11 }}>{detail}</Text>
         </View>
         <Text style={{ color: MUTED, fontSize: 11 }}>{time}</Text>
       </Pressable>
-    </Animated.View>
+    </Animated2.View>
   );
 }
 
@@ -462,7 +360,7 @@ export default function HomeScreen() {
   const [babies, setBabies] = useState<Array<{ id: string; name: string; birthDate: string }>>([]);
   const [visibility, setVisibility] = useState(defaultModuleVisibility);
   const [appSettings, setAppSettingsState] = useState(defaultAppSettings);
-  const [quickTimerMode, setQuickTimerMode] = useState<QuickTimerMode>(null);
+  const [quickTimerMode, setQuickTimerMode] = useState<'bottle' | 'breast' | null>(null);
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [timerElapsedSeconds, setTimerElapsedSeconds] = useState(0);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
@@ -475,26 +373,199 @@ export default function HomeScreen() {
   const [now, setNow] = useState(Date.now());
   const isCompactPhone = width < 390;
   const isLargePhone = width >= 430;
-  const sectionPadH = isCompactPhone ? 12 : 14;
-  const sectionPadV = isCompactPhone ? 10 : 12;
+  const sectionPadH = isCompactPhone ? 6 : 8;
+  const sectionPadV = isCompactPhone ? 4 : 6;
   const twoColBasis = isCompactPhone ? ('100%' as const) : ('48%' as const);
   const quickActionBasis = isCompactPhone ? ('48%' as const) : ('31%' as const);
 
+  // Optimized dependencies with better memoization
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
-  const lastFeed = useMemo(() => feedEntries[0], [feedEntries]);
-  const lastBreastFeed = useMemo(() => feedEntries.find((entry) => entry.payload?.mode === 'breast'), [feedEntries]);
-  const lastBottleFeed = useMemo(() => feedEntries.find((entry) => entry.payload?.mode === 'bottle'), [feedEntries]);
-  const lastDiaper = useMemo(() => entries.find((entry) => entry.type === 'diaper'), [entries]);
-  const lastMeasurement = useMemo(() => entries.find((entry) => entry.type === 'measurement'), [entries]);
-  const meanInterval = getMeanFeedingInterval(entries);
+  const lastFeed = useMemo(() => feedEntries[0] ?? null, [feedEntries]);
+  const lastBreastFeed = useMemo(() => feedEntries.find((entry) => entry.payload?.mode === 'breast') ?? null, [feedEntries]);
+  const lastBottleFeed = useMemo(() => feedEntries.find((entry) => entry.payload?.mode === 'bottle') ?? null, [feedEntries]);
+  const lastDiaper = useMemo(() => entries.find((entry) => entry.type === 'diaper') ?? null, [entries]);
+  const lastMeasurement = useMemo(() => entries.find((entry) => entry.type === 'measurement') ?? null, [entries]);
+
+  // Cached expensive computations
+  const meanInterval = useMemo(() => getMeanFeedingInterval(entries), [entries]);
   const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
   const medicationTimeline = useMemo(() => getMedicationTimelineStatus(entries, appSettings), [entries, appSettings]);
   const careStage = useMemo(() => getCareStagePolicy(profile), [profile]);
-  const sickChild = useMemo(() => getSickChildStatus(entries, medicationTimeline.lastMedicine?.payload?.name), [entries, medicationTimeline.lastMedicine?.payload?.name]);
+
+  // Optimized next feed calculation
   const nextFeedDueIn = useMemo(() => {
     if (!meanInterval || !lastFeed) return null;
     return new Date(lastFeed.occurredAt).getTime() + meanInterval - now;
   }, [lastFeed, meanInterval, now]);
+
+  // Optimized sick child status
+  const sickChild = useMemo(() => {
+    const medicineName = medicationTimeline.lastMedicine?.payload?.name;
+    return getSickChildStatus(entries, medicineName);
+  }, [entries, medicationTimeline.lastMedicine?.payload?.name]);
+
+  // State-driven module system
+  const moduleConfigs = useMemo((): ModuleConfig[] => {
+    const configs: ModuleConfig[] = [];
+    const currentTime = Date.now();
+
+    // Next Feed Module - Critical priority when due or overdue
+    if (nextFeedDueIn !== null) {
+      const state: ModuleState = nextFeedDueIn <= 0 ? 'alert' : nextFeedDueIn < 30 * 60 * 1000 ? 'active' : 'pending';
+      const urgency = nextFeedDueIn <= 0 ? 100 : Math.max(0, 100 - (nextFeedDueIn / (2 * 60 * 60 * 1000)) * 100);
+
+      configs.push({
+        id: 'nextFeed',
+        type: 'feeding',
+        state,
+        priority: nextFeedDueIn <= 0 ? 'critical' : nextFeedDueIn < 30 * 60 * 1000 ? 'high' : 'normal',
+        size: nextFeedDueIn <= 0 ? 'full' : 'expanded',
+        lastUpdated: lastFeed ? new Date(lastFeed.occurredAt).getTime() : 0,
+        urgency,
+        contextRelevant: true,
+      });
+    }
+
+    // Smart Signals Module - High priority for alerts
+    if (smartAlerts.length > 0) {
+      const hasCriticalAlert = smartAlerts.some(alert => alert.tone === 'danger');
+      configs.push({
+        id: 'smartSignals',
+        type: 'alerts',
+        state: hasCriticalAlert ? 'alert' : 'active',
+        priority: hasCriticalAlert ? 'critical' : 'high',
+        size: hasCriticalAlert ? 'full' : 'expanded',
+        lastUpdated: Math.max(...smartAlerts.map(alert => currentTime)),
+        urgency: hasCriticalAlert ? 90 : 70,
+        contextRelevant: true,
+      });
+    }
+
+    // Daily Status Module - Normal priority, compact size
+    const totalMilkToday = summary.today.bottleMl;
+    configs.push({
+      id: 'dailyStatus',
+      type: 'status',
+      state: totalMilkToday > 0 ? 'active' : 'empty',
+      priority: 'normal',
+      size: 'compact',
+      lastUpdated: currentTime,
+      urgency: 40,
+      contextRelevant: true,
+    });
+
+    // Medication Module - Always visible with logging capability
+    const hasActiveMeds = medicationTimeline.lastMedicine &&
+      (currentTime - new Date(medicationTimeline.lastMedicine.occurredAt).getTime()) < 6 * 60 * 60 * 1000;
+
+    configs.push({
+      id: 'medication',
+      type: 'medication',
+      state: hasActiveMeds ? 'active' : medicationTimeline.lastMedicine ? 'completed' : 'empty',
+      priority: hasActiveMeds ? 'high' : 'normal',
+      size: hasActiveMeds ? 'expanded' : 'compact',
+      lastUpdated: medicationTimeline.lastMedicine ? new Date(medicationTimeline.lastMedicine.occurredAt).getTime() : 0,
+      urgency: hasActiveMeds ? 80 : 30,
+      contextRelevant: true,
+    });
+
+    // Guidance Module - Low priority, compact
+    configs.push({
+      id: 'guidance',
+      type: 'guidance',
+      state: 'completed',
+      priority: 'low',
+      size: 'compact',
+      lastUpdated: currentTime,
+      urgency: 20,
+      contextRelevant: !careStage.hiddenActionTypes.includes('feed'),
+    });
+
+    return configs.sort((a, b) => {
+      // Sort by priority first, then urgency, then lastUpdated
+      const priorityOrder = { critical: 4, high: 3, normal: 2, low: 1 };
+      const aPriority = priorityOrder[a.priority];
+      const bPriority = priorityOrder[b.priority];
+
+      if (aPriority !== bPriority) return bPriority - aPriority;
+      if (a.urgency !== b.urgency) return b.urgency - a.urgency;
+      return b.lastUpdated - a.lastUpdated;
+    });
+  }, [nextFeedDueIn, lastFeed, smartAlerts, medicationTimeline, careStage]);
+
+  // Intelligent quick actions based on context
+  const intelligentQuickActions = useMemo((): QuickAction[] => {
+    const actions: QuickAction[] = [];
+    const currentTime = Date.now();
+
+    // Feed actions - highest priority when feed is due
+    if (nextFeedDueIn !== null && nextFeedDueIn <= 0) {
+      actions.push({
+        id: 'feed-now',
+        label: 'Feed Now',
+        icon: 'restaurant',
+        href: '/entry/feed',
+        priority: 100,
+        context: ['feeding', 'urgent'],
+        color: COLORS.alert,
+      });
+    }
+
+    // Breast feed if recent bottle feed
+    if (lastBottleFeed && (currentTime - new Date(lastBottleFeed.occurredAt).getTime()) < 2 * 60 * 60 * 1000) {
+      actions.push({
+        id: 'breast-feed',
+        label: 'Breast',
+        icon: 'water',
+        href: '/entry/feed?presetMode=breast',
+        priority: 80,
+        context: ['feeding'],
+        color: COLORS.primary,
+      });
+    }
+
+    // Medication action - Always available for logging
+    const hasRecentMeds = medicationTimeline.lastMedicine &&
+      (currentTime - new Date(medicationTimeline.lastMedicine.occurredAt).getTime()) < 6 * 60 * 60 * 1000;
+
+    actions.push({
+      id: 'medication-log',
+      label: hasRecentMeds ? 'Medicine' : 'Log Medicine',
+      icon: 'medical',
+      href: '/entry/medication',
+      priority: hasRecentMeds ? 90 : 70,
+      context: ['medication', 'health'],
+      color: hasRecentMeds ? COLORS.warning : COLORS.info,
+    });
+
+    // Diaper if recent feed
+    if (lastFeed && (currentTime - new Date(lastFeed.occurredAt).getTime()) > 45 * 60 * 1000) {
+      actions.push({
+        id: 'diaper',
+        label: 'Diaper',
+        icon: 'cube',
+        href: '/entry/diaper',
+        priority: 60,
+        context: ['care'],
+        color: COLORS.info,
+      });
+    }
+
+    // Sleep if been awake long enough
+    if (lastFeed && (currentTime - new Date(lastFeed.occurredAt).getTime()) > 2 * 60 * 60 * 1000) {
+      actions.push({
+        id: 'sleep',
+        label: 'Sleep',
+        icon: 'moon',
+        href: '/entry/sleep',
+        priority: 50,
+        context: ['care'],
+        color: COLORS.success,
+      });
+    }
+
+    return actions.sort((a, b) => b.priority - a.priority).slice(0, 4); // Top 4 actions
+  }, [nextFeedDueIn, lastBottleFeed, lastFeed, medicationTimeline]);
 
   const totalMilkToday = summary.today.bottleMl;
   const milkGoalMin = 750;
@@ -536,8 +607,28 @@ export default function HomeScreen() {
     transform: [{ scale: nextFeedPulse.value }],
   }));
 
-  useEffect(() => {
-    const refresh = async () => {
+  // Optimized data refresh with caching
+  const refreshData = useCallback(async () => {
+    const startTime = Date.now();
+
+    try {
+      // Check cache first
+      const cacheKey = `home_data_${babyId}`;
+      const cachedData = cacheManager.get(cacheKey) as any;
+
+      if (cachedData && cachedData.timestamp && (Date.now() - cachedData.timestamp) < 30000) { // 30 seconds cache
+        setBabies(cachedData.babies);
+        setVisibility(cachedData.visibility);
+        setAppSettingsState(cachedData.settings);
+
+        if (cachedData.activeBaby) {
+          setBabyId(cachedData.activeBaby.id);
+          setHydration(cachedData.hydration);
+        }
+        return;
+      }
+
+      // Fetch fresh data
       const [nextBabies, activeBaby, nextVisibility, nextSettings] = await Promise.all([
         getBabies(),
         getActiveBaby(),
@@ -552,21 +643,55 @@ export default function HomeScreen() {
       if (!activeBaby) {
         setBabyId(null);
         setHydration(0);
+
+        // Cache empty state
+        cacheManager.set(cacheKey, {
+          babies: nextBabies,
+          visibility: nextVisibility,
+          settings: nextSettings,
+          activeBaby: null,
+          hydration: 0,
+          timestamp: Date.now(),
+        });
         return;
       }
 
       setBabyId(activeBaby.id);
-      setHydration(await getMomHydration(activeBaby.id));
-    };
+      const hydration = await getMomHydration(activeBaby.id);
+      setHydration(hydration);
 
-    void refresh();
+      // Cache fresh data
+      cacheManager.set(cacheKey, {
+        babies: nextBabies,
+        visibility: nextVisibility,
+        settings: nextSettings,
+        activeBaby,
+        hydration,
+        timestamp: Date.now(),
+      });
+
+      console.log(`Data refresh took: ${Date.now() - startTime}ms`);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
+  }, [babyId]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    void refreshData();
+
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        void refresh();
+      if (state === 'active' && mounted) {
+        void refreshData();
       }
     });
-    return () => subscription.remove();
-  }, []);
+
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, [refreshData]);
 
   useEffect(() => {
     if (!quickTimerMode || !timerStartedAt) return;
@@ -661,16 +786,16 @@ export default function HomeScreen() {
       payload:
         quickTimerMode === 'breast'
           ? {
-              mode: 'breast',
-              side: quickFeedSide,
-              durationMin: Math.max(1, Math.round(timerElapsedSeconds / 60)),
-              amountMl: quickAmount,
-            }
+            mode: 'breast',
+            side: quickFeedSide,
+            durationMin: Math.max(1, Math.round(timerElapsedSeconds / 60)),
+            amountMl: quickAmount,
+          }
           : {
-              mode: 'bottle',
-              amountMl: quickAmount,
-              durationMin: Math.max(1, Math.round(timerElapsedSeconds / 60)),
-            },
+            mode: 'bottle',
+            amountMl: quickAmount,
+            durationMin: Math.max(1, Math.round(timerElapsedSeconds / 60)),
+          },
     });
     setQuickTimerMode(null);
     setShowSaveSheet(false);
@@ -727,12 +852,12 @@ export default function HomeScreen() {
   const activeBabyName = babies.find((baby) => baby.id === babyId)?.name ?? profile?.babyName ?? 'Leo';
   const contextualSuggestions = sickChild.enabled
     ? [
-        { label: 'Hydration', href: '/entry/feed' },
-        { label: 'Diapers', href: '/entry/diaper' },
-        { label: 'Temperature', href: '/entry/measurement' },
-        { label: 'Stools', href: '/entry/diaper' },
-        { label: 'Behavior', href: '/entry/symptom' },
-      ]
+      { label: 'Hydration', href: '/entry/feed' },
+      { label: 'Diapers', href: '/entry/diaper' },
+      { label: 'Temperature', href: '/entry/measurement' },
+      { label: 'Stools', href: '/entry/diaper' },
+      { label: 'Behavior', href: '/entry/symptom' },
+    ]
     : careStage.homeSuggestions;
   const activeFeedTitle =
     quickTimerMode === 'bottle'
@@ -762,15 +887,28 @@ export default function HomeScreen() {
     setShowNextFeedPicker(true);
   }
 
-  function beginNextFeed(mode: 'bottle' | 'breast', side: BreastSide = 'left') {
+  function closeNextFeedPicker() {
     setShowNextFeedPicker(false);
-    startQuickTimer(mode, side);
   }
 
-  const isMobilePlatform = Platform.OS !== 'web';
   const orderedSections = appSettings.homeSectionOrder.filter((key): key is HomeSectionKey =>
     (defaultHomeSectionOrder as readonly string[]).includes(key),
   );
+
+  const sectionEyebrowStyle = () => ({
+    color: MUTED,
+    fontSize: 9,
+    fontWeight: '700' as const,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+  });
+
+  const sectionTitleStyle = () => ({
+    color: TEXT,
+    fontSize: 18,
+    fontWeight: '800' as const,
+    marginTop: 2,
+  });
 
   return (
     <Page contentStyle={[styles.pageContent, { maxWidth: isLargePhone ? 760 : 680 }]}>
@@ -778,12 +916,12 @@ export default function HomeScreen() {
         style={{
           backgroundColor: 'transparent',
           borderRadius: 16,
-          paddingTop: isCompactPhone ? 4 : 6,
-          paddingHorizontal: isCompactPhone ? 2 : isLargePhone ? 8 : 4,
-          paddingBottom: Math.max(80, Math.round(height * 0.1)),
+          paddingTop: isCompactPhone ? 1 : 2,
+          paddingHorizontal: isCompactPhone ? 1 : isLargePhone ? 4 : 2,
+          paddingBottom: Math.max(40, Math.round(height * 0.05)),
         }}
       >
-        <Animated.View entering={FadeIn.duration(300)} style={{ marginBottom: 10 }}>
+        <Animated2.View entering={FadeIn.duration(300)} style={{ marginBottom: 4 }}>
           <View
             style={{
               flexDirection: 'row',
@@ -801,17 +939,18 @@ export default function HomeScreen() {
                   alignSelf: 'flex-start',
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 999,
+                  gap: 6,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 12,
                   borderWidth: 1,
                   borderColor: BORDER,
-                  backgroundColor: pressed ? '#1B2430' : CARD,
+                  backgroundColor: pressed ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.04)',
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
                 })}
               >
-                <Text style={sectionTitleStyle()}>{activeBabyName}</Text>
-                <Text style={{ color: MUTED, fontSize: 12, fontWeight: '700' }}>v</Text>
+                <Text style={[sectionTitleStyle(), { fontSize: 16 }]}>{activeBabyName}</Text>
+                <Text style={{ color: MUTED, fontSize: 11, fontWeight: '700' }}>▼</Text>
               </Pressable>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: isCompactPhone ? 'auto' : 0 }}>
@@ -819,21 +958,22 @@ export default function HomeScreen() {
               <Pressable
                 onPress={() => setShowHomeCustomizer(true)}
                 style={({ pressed }) => ({
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 10,
+                  backgroundColor: pressed ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.06)',
                   borderWidth: 1,
-                  borderColor: BORDER,
-                  backgroundColor: pressed ? '#1B2430' : CARD,
+                  borderColor: pressed ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  transform: [{ scale: pressed ? 0.95 : 1 }],
                 })}
               >
-                <Text style={{ color: TEXT, fontSize: 18, fontWeight: '900', lineHeight: 18 }}>...</Text>
+                <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700', lineHeight: 16 }}>⋮</Text>
               </Pressable>
             </View>
           </View>
-        </Animated.View>
+        </Animated2.View>
 
         {orderedSections.map((sectionKey, index) => {
           const canMoveUp = index > 0;
@@ -848,16 +988,16 @@ export default function HomeScreen() {
               <HomeSectionCard
                 key={sectionKey}
                 sectionKey={sectionKey}
-                isMobile={isMobilePlatform}
+                isMobile={Platform.OS !== 'web'}
                 canMoveUp={canMoveUp}
                 canMoveDown={canMoveDown}
                 onMoveUp={() => void moveHomeSection(sectionKey, 'up')}
                 onMoveDown={() => void moveHomeSection(sectionKey, 'down')}
                 onHide={() => void hideHomeSection(sectionKey)}
               >
-                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
                   <NextFeedingCard onPress={openNextFeedPicker} />
-                </Animated.View>
+                </Animated2.View>
               </HomeSectionCard>
             );
           }
@@ -868,14 +1008,14 @@ export default function HomeScreen() {
               <HomeSectionCard
                 key={sectionKey}
                 sectionKey={sectionKey}
-                isMobile={isMobilePlatform}
+                isMobile={Platform.OS !== 'web'}
                 canMoveUp={canMoveUp}
                 canMoveDown={canMoveDown}
                 onMoveUp={() => void moveHomeSection(sectionKey, 'up')}
                 onMoveDown={() => void moveHomeSection(sectionKey, 'down')}
                 onHide={() => void hideHomeSection(sectionKey)}
               >
-                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
                   <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                       <View style={{ flex: 1 }}>
@@ -900,49 +1040,42 @@ export default function HomeScreen() {
                     </View>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       {smartAlerts.map((alert) => (
-                        <SmartSignalChip
-                          key={alert.id}
-                          alert={alert}
-                          compact={isCompactPhone}
-                          onPress={() => {
-                            if (alert.targetType) {
-                              router.push({ pathname: '/entry/[type]', params: { type: alert.targetType } });
-                            }
-                          }}
-                        />
+                        <View key={alert.id} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: `${alert.tone === 'danger' ? COLORS.alert : alert.tone === 'warning' ? COLORS.warning : COLORS.info}22`, borderWidth: 1, borderColor: alert.tone === 'danger' ? COLORS.alert : alert.tone === 'warning' ? COLORS.warning : COLORS.info, alignItems: 'center' }}>
+                          <Text style={{ color: alert.tone === 'danger' ? COLORS.alert : alert.tone === 'warning' ? COLORS.warning : COLORS.info, fontSize: 12, fontWeight: '700' }}>{alert.title}</Text>
+                        </View>
                       ))}
                     </View>
                   </View>
-                </Animated.View>
+                </Animated2.View>
               </HomeSectionCard>
             );
           }
 
           if (sectionKey === 'dailyStatus') {
             return (
-              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
-                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
-                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: '#172018', borderWidth: 1, borderColor: BORDER, gap: 12 }}>
-                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
-                      <View style={{ flex: 1, gap: 6 }}>
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: '#172018', borderWidth: 1, borderColor: BORDER, gap: 4 }}>
+                    <View style={{ flexDirection: 'row', gap: 4, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
+                      <View style={{ flex: 1, gap: 2 }}>
                         <Text style={sectionEyebrowStyle()}>{t('home.milk', 'Milk')}</Text>
-                        <Text style={{ color: TEXT, fontSize: 28, fontWeight: '700' }}>{totalMilkToday} ml</Text>
-                        <Text style={{ color: MUTED, fontSize: 11 }}>{milkStatus}</Text>
+                        <Text style={{ color: TEXT, fontSize: 24, fontWeight: '700' }}>{totalMilkToday} ml</Text>
+                        <Text style={{ color: MUTED, fontSize: 10 }}>{milkStatus}</Text>
                       </View>
-                      <View style={{ flex: 1, gap: 6, alignItems: 'flex-end', paddingRight: 96 }}>
-                        <Text style={{ color: GREEN, fontSize: 11, fontWeight: '900', letterSpacing: 1.3, textTransform: 'uppercase' }}>{t('home.next_feed_label', 'Next feed')}</Text>
-                        <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', textAlign: 'right' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
-                        <Animated.View style={[nextBadgeStyle, { marginTop: 2, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${GREEN}18` : `${GOLD}18` }]}>
-                          <Text style={{ color: nextFeedDueIn && nextFeedDueIn > 0 ? GREEN : GOLD, fontSize: 11, fontWeight: '700' }}>
+                      <View style={{ flex: 1, gap: 2, alignItems: 'flex-end', paddingRight: 80 }}>
+                        <Text style={{ color: GREEN, fontSize: 10, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('home.next_feed_label', 'Next feed')}</Text>
+                        <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700', textAlign: 'right' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
+                        <Animated2.View style={[nextBadgeStyle, { marginTop: 1, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${GREEN}18` : `${GOLD}18` }]}>
+                          <Text style={{ color: nextFeedDueIn && nextFeedDueIn > 0 ? GREEN : GOLD, fontSize: 10, fontWeight: '700' }}>
                             {lastFeed ? formatRelative(lastFeed.occurredAt, locale) : '--'}
                           </Text>
-                        </Animated.View>
+                        </Animated2.View>
                       </View>
                     </View>
-                    <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
-                      <Animated.View style={[{ height: '100%', backgroundColor: GREEN, borderRadius: 999 }, milkBarStyle]} />
+                    <View style={{ height: 5, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
+                      <Animated2.View style={[{ height: '100%', backgroundColor: GREEN, borderRadius: 999 }, milkBarStyle]} />
                     </View>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 }}>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
                       {[
                         { label: t('home.feeds', 'Feeds'), value: String(summary.today.feedCount), icon: 'water-outline' as const },
                         { label: t('home.bottle', 'Bottle'), value: `${summary.today.bottleMl} ml`, icon: 'water-outline' as const },
@@ -954,35 +1087,35 @@ export default function HomeScreen() {
                       ))}
                     </View>
                   </View>
-                </Animated.View>
+                </Animated2.View>
               </HomeSectionCard>
             );
           }
 
           if (sectionKey === 'guidance') {
             return (
-              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
-                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
-                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 2 }}>
                     <Text style={sectionEyebrowStyle()}>Belgian guidance</Text>
-                    <Text style={[sectionTitleStyle(), { paddingRight: 96 }]}>{careStage.ageLabel}</Text>
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{careStage.feedingFocus}</Text>
-                    <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>{careStage.waterGuidance}</Text>
-                    <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>{careStage.foodGuidance}</Text>
+                    <Text style={[sectionTitleStyle(), { fontSize: 16, paddingRight: 96 }]}>{careStage.ageLabel}</Text>
+                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{careStage.feedingFocus}</Text>
+                    <Text style={{ color: MUTED, fontSize: 10, lineHeight: 14 }}>{careStage.waterGuidance}</Text>
+                    <Text style={{ color: MUTED, fontSize: 10, lineHeight: 14 }}>{careStage.foodGuidance}</Text>
                   </View>
-                </Animated.View>
+                </Animated2.View>
               </HomeSectionCard>
             );
           }
 
           if (sectionKey === 'lastFeeds') {
             return (
-              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
-                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
                   <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
                     {[
-                      { label: t('home.last_breast', 'Last breast'), value: formatClock(lastBreastFeed?.occurredAt, locale), detail: formatRelative(lastBreastFeed?.occurredAt, locale) },
-                      { label: t('home.last_bottle', 'Last bottle'), value: formatClock(lastBottleFeed?.occurredAt, locale), detail: formatRelative(lastBottleFeed?.occurredAt, locale) },
+                      { label: t('home.last_breast', 'Last breast'), value: formatClock(lastBreastFeed?.occurredAt || '', locale), detail: formatRelative(lastBreastFeed?.occurredAt || '', locale) },
+                      { label: t('home.last_bottle', 'Last bottle'), value: formatClock(lastBottleFeed?.occurredAt || '', locale), detail: formatRelative(lastBottleFeed?.occurredAt || '', locale) },
                     ].map((item) => (
                       <View key={item.label} style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
                         <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 }}>{item.label.toUpperCase()}</Text>
@@ -991,66 +1124,87 @@ export default function HomeScreen() {
                       </View>
                     ))}
                   </View>
-                </Animated.View>
+                </Animated2.View>
               </HomeSectionCard>
             );
           }
 
           if (sectionKey === 'medication') {
-            if (!visibility.medication) return null;
             return (
-              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
-                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
-                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
-              <Text style={sectionEyebrowStyle()}>Medication</Text>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700' }}>
-                    {medicationTimeline.lastMedicine?.payload?.name ?? 'No medicine logged'}
-                  </Text>
-                  <Text style={{ color: MUTED, fontSize: 12 }}>
-                    {medicationTimeline.lastMedicine
-                      ? `Last given ${formatClock(medicationTimeline.lastMedicine.occurredAt, locale)}`
-                      : 'Informational support only'}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() => router.push('/entry/medication')}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 999,
-                    borderWidth: 1,
-                    borderColor: BORDER,
-                    backgroundColor: pressed ? '#1B2430' : BG,
-                  })}
-                >
-                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>Log</Text>
-                </Pressable>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                <View style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: '#172018', borderWidth: 1, borderColor: BORDER, gap: 4 }}>
-                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>Next same medicine</Text>
-                  <Text style={{ color: GREEN, fontSize: 18, fontWeight: '800' }}>{formatAvailability(medicationTimeline.nextAllowedAt, locale, language)}</Text>
-                  <Text style={{ color: MUTED, fontSize: 11 }}>{medicationTimeline.nextAllowedLabel ?? 'Check Belgian guidance, label, or pharmacist instructions'}</Text>
-                </View>
-                {appSettings.medicationAlternatingPlan.enabled ? (
-                  <View style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: '#172018', borderWidth: 1, borderColor: BORDER, gap: 4 }}>
-                    <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>Other medicine</Text>
-                    <Text style={{ color: medicationTimeline.otherMedicineAvailable ? GOLD : TEXT, fontSize: 18, fontWeight: '800' }}>
-                      {medicationTimeline.otherMedicineAvailable ? 'Available' : 'Not yet'}
-                    </Text>
-                    <Text style={{ color: MUTED, fontSize: 11 }}>
-                      {medicationTimeline.otherMedicineLabel ?? 'Manual alternating plan only'}
-                    </Text>
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: getStateBorderColor(medicationTimeline.lastMedicine ? 'completed' : 'empty') === COLORS.success ? `${COLORS.success}15` : CARD, borderWidth: 1.5, borderColor: getStateBorderColor(medicationTimeline.lastMedicine ? 'completed' : 'empty'), gap: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: COLORS.warning, fontSize: 9, fontWeight: '700', letterSpacing: 1.3, textTransform: 'uppercase' }}>Medication</Text>
+                        <Text style={{ color: TEXT, fontSize: 15, fontWeight: '800', marginTop: 1 }}>
+                          {medicationTimeline.lastMedicine?.payload?.name ?? 'No medicine logged'}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: medicationTimeline.lastMedicine ? COLORS.success : COLORS.empty }} />
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={{ color: MUTED, fontSize: 11 }}>
+                          {medicationTimeline.lastMedicine
+                            ? `Last given ${formatClock(medicationTimeline.lastMedicine.occurredAt, locale)}`
+                            : 'Informational support only'}
+                        </Text>
+                        {!medicationTimeline.lastMedicine && (
+                          <Text style={{ color: MUTED, fontSize: 10, fontStyle: 'italic' }}>Tap Log to add medication</Text>
+                        )}
+                      </View>
+                      <Pressable
+                        onPress={() => router.push('/entry/medication')}
+                        style={({ pressed }) => ({
+                          paddingHorizontal: 14,
+                          paddingVertical: 8,
+                          borderRadius: 999,
+                          borderWidth: 1.5,
+                          borderColor: COLORS.warning,
+                          backgroundColor: pressed ? `${COLORS.warning}22` : `${COLORS.warning}15`,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: pressed ? '0px 0px 4px rgba(255, 165, 0, 0.3)' : '0px 0px 4px rgba(255, 165, 0, 0.2)',
+                          elevation: 2,
+                        })}
+                      >
+                        <Text style={{ color: COLORS.warning, fontSize: 12, fontWeight: '700' }}>Log Medicine</Text>
+                      </Pressable>
+                    </View>
+
+                    {medicationTimeline.lastMedicine && (
+                      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                        <View style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: `${COLORS.success}15`, borderWidth: 1, borderColor: COLORS.success, gap: 4 }}>
+                          <Text style={{ color: COLORS.success, fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>Next same medicine</Text>
+                          <Text style={{ color: COLORS.success, fontSize: 18, fontWeight: '800' }}>{formatAvailability(medicationTimeline.nextAllowedAt, locale, language)}</Text>
+                          <Text style={{ color: MUTED, fontSize: 11 }}>{medicationTimeline.nextAllowedLabel ?? 'Check Belgian guidance, label, or pharmacist instructions'}</Text>
+                        </View>
+                        {appSettings.medicationAlternatingPlan.enabled ? (
+                          <View style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: `${COLORS.info}15`, borderWidth: 1, borderColor: COLORS.info, gap: 4 }}>
+                            <Text style={{ color: COLORS.info, fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>Other medicine</Text>
+                            <Text style={{ color: medicationTimeline.otherMedicineAvailable ? COLORS.info : TEXT, fontSize: 18, fontWeight: '800' }}>
+                              {medicationTimeline.otherMedicineAvailable ? 'Available' : 'Not yet'}
+                            </Text>
+                            <Text style={{ color: MUTED, fontSize: 11 }}>
+                              {medicationTimeline.otherMedicineLabel ?? 'Manual alternating plan only'}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    )}
+
+                    {!medicationTimeline.lastMedicine && (
+                      <View style={{ marginTop: 8, padding: 12, borderRadius: 10, backgroundColor: `${COLORS.info}10`, borderWidth: 1, borderColor: `${COLORS.info}30`, alignItems: 'center' }}>
+                        <Text style={{ color: COLORS.info, fontSize: 11, fontWeight: '600', textAlign: 'center', marginBottom: 4 }}>Informational only</Text>
+                        <Text style={{ color: MUTED, fontSize: 10, textAlign: 'center', lineHeight: 14 }}>Follow Belgian guidance and the product label. Dose must follow weight-based or label instructions.</Text>
+                      </View>
+                    )}
                   </View>
-                ) : null}
-              </View>
-              <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>
-                Informational only. Follow Belgian guidance and the product label. Dose must follow weight-based or label instructions.
-              </Text>
-                  </View>
-                </Animated.View>
+                </Animated2.View>
               </HomeSectionCard>
             );
           }
@@ -1058,222 +1212,242 @@ export default function HomeScreen() {
           if (sectionKey === 'sickChild') {
             if (!sickChild.enabled) return null;
             return (
-              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
-                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
                   <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: '#211818', borderWidth: 1, borderColor: BORDER, gap: 10 }}>
-              <Text style={sectionEyebrowStyle()}>Sick child mode</Text>
-              <Text style={sectionTitleStyle()}>Compact care checklist</Text>
-              <Text style={{ color: MUTED, fontSize: 11 }}>
-                {sickChild.reasons.join(' · ')}
-              </Text>
-              <View style={{ gap: 8 }}>
-                {sickChild.checklist.map((item) => (
-                  <PressScale key={item.key} onPress={() => router.push(item.href as any)} pressedScale={0.97}>
-                    <View style={{ paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: item.done ? `${GREEN}22` : `${GOLD}22`, alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ color: item.done ? GREEN : GOLD, fontSize: 11, fontWeight: '900' }}>{item.done ? 'OK' : '!'}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{item.label}</Text>
-                        <Text style={{ color: MUTED, fontSize: 11 }}>{item.detail}</Text>
-                      </View>
+                    <Text style={sectionEyebrowStyle()}>Sick child mode</Text>
+                    <Text style={sectionTitleStyle()}>Compact care checklist</Text>
+                    <Text style={{ color: MUTED, fontSize: 11 }}>
+                      {sickChild.reasons.join(' · ')}
+                    </Text>
+                    <View style={{ gap: 8 }}>
+                      {sickChild.checklist.map((item) => (
+                        <PressScale key={item.key} onPress={() => router.push(item.href as any)} pressedScale={0.97}>
+                          <View style={{ paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: item.done ? `${GREEN}22` : `${GOLD}22`, alignItems: 'center', justifyContent: 'center' }}>
+                              <Text style={{ color: item.done ? GREEN : GOLD, fontSize: 11, fontWeight: '900' }}>{item.done ? 'OK' : '!'}</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{item.label}</Text>
+                              <Text style={{ color: MUTED, fontSize: 11 }}>{item.detail}</Text>
+                            </View>
+                          </View>
+                        </PressScale>
+                      ))}
                     </View>
-                  </PressScale>
-                ))}
-              </View>
-              <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>
-                Tracking and safety support only. This app does not prescribe treatment.
-              </Text>
+                    <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>
+                      Tracking and safety support only. This app does not prescribe treatment.
+                    </Text>
                   </View>
-                </Animated.View>
+                </Animated2.View>
               </HomeSectionCard>
             );
           }
 
           if (sectionKey === 'timeline') {
             return (
-              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
-                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
-                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-            <Text style={sectionEyebrowStyle()}>{t('home.timeline', 'Timeline')}</Text>
-            <Text style={sectionTitleStyle()}>24h</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 8 }}>
-              {timelineChips.map((chip) => (
-                <PressScale
-                  key={chip.key}
-                  onPress={() => {
-                    const entry = [...entries].find((candidate) => candidate.type === chip.type);
-                    if (!entry) return;
-                    router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } });
-                  }}
-                  pressedScale={0.96}
-                >
-                  <View style={{ height: 36, minWidth: 48, paddingHorizontal: 12, borderRadius: 20, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 11, fontWeight: '600' }}>
-                      {chip.label}
-                      {chip.count > 1 ? ` ${chip.count}` : ''}
-                    </Text>
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 2 }}>
+                    <Text style={sectionEyebrowStyle()}>{t('home.timeline', 'Timeline')}</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2, marginBottom: 2 }}>
+                      {timelineChips.map((chip) => (
+                        <PressScale
+                          key={chip.key}
+                          onPress={() => {
+                            const entry = [...entries].find((candidate) => candidate.type === chip.type);
+                            if (!entry) return;
+                            router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } });
+                          }}
+                          pressedScale={0.96}
+                        >
+                          <View style={{ height: 32, minWidth: 44, paddingHorizontal: 10, borderRadius: 18, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: TEXT, fontSize: 10, fontWeight: '600' }}>
+                              {chip.label}
+                              {chip.count > 1 ? ` ${chip.count}` : ''}
+                            </Text>
+                          </View>
+                        </PressScale>
+                      ))}
+                    </View>
                   </View>
-                </PressScale>
-                ))}
-            </View>
-                  </View>
-                </Animated.View>
+                </Animated2.View>
               </HomeSectionCard>
             );
           }
 
           if (sectionKey === 'quickActions') {
             return (
-              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
-                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
-                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 6 }}>
-            <Text style={sectionEyebrowStyle()}>{t('home.rapid_actions', 'Quick actions')}</Text>
-            <Text style={sectionTitleStyle()}>{t('home.direct_actions', 'Direct actions')}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {contextualSuggestions.map((item) => (
-                <PressScale key={`${item.label}-${item.href}`} onPress={() => router.push(item.href as any)} pressedScale={0.95} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 120 : 130, flexGrow: 1 }}>
-                  <View style={{ minHeight: 38, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: GOLD, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
+                    <Text style={sectionEyebrowStyle()}>{t('home.rapid_actions', 'Quick actions')}</Text>
+                    <Text style={sectionTitleStyle()}>{t('home.direct_actions', 'Direct actions')}</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                      {contextualSuggestions.map((item) => (
+                        <PressScale key={`${item.label}-${item.href}`} onPress={() => router.push(item.href as any)} pressedScale={0.96} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 115 : 125, flexGrow: 1 }}>
+                          <View style={{
+                            minHeight: 36,
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 16,
+                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                            borderWidth: 1,
+                            borderColor: 'rgba(255, 255, 255, 0.12)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 4,
+                            flexDirection: 'row'
+                          }}>
+                            <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
+                          </View>
+                        </PressScale>
+                      ))}
+                    </View>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                      {visibleActions.map(([label, href]) => (
+                        <PressScale
+                          key={label}
+                          onPress={() => {
+                            if (href === 'quick-breast') {
+                              openNextFeedPicker();
+                              return;
+                            }
+                            if (href === 'quick-bottle') {
+                              startQuickTimer('bottle');
+                              return;
+                            }
+                            router.push(href as any);
+                          }}
+                          pressedScale={0.92}
+                          style={{ flexBasis: quickActionBasis, minWidth: isCompactPhone ? 120 : 96, flexGrow: 1 }}
+                        >
+                          <View style={{ height: 38, paddingHorizontal: 12, borderRadius: 18, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
+                              {label}
+                            </Text>
+                          </View>
+                        </PressScale>
+                      ))}
+                    </View>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                      {[
+                        { label: '+150 ml', href: '/entry/feed?presetMode=bottle&presetAmount=150' },
+                        { label: '+ diaper', href: '/entry/diaper' },
+                        { label: '+ sleep', href: '/entry/sleep' },
+                        { label: '+ food', href: '/entry/food' },
+                      ].map((item) => (
+                        <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.95} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 120 : 130, flexGrow: 1 }}>
+                          <View style={{ height: 38, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
+                          </View>
+                        </PressScale>
+                      ))}
+                    </View>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                      {presetActions.map((preset) => (
+                        <PressScale key={preset.label} onPress={() => router.push(preset.href as any)} pressedScale={0.94} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 120 : 132, flexGrow: 1 }}>
+                          <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{preset.label}</Text>
+                          </View>
+                        </PressScale>
+                      ))}
+                    </View>
                   </View>
-                </PressScale>
-              ))}
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-              {visibleActions.map(([label, href]) => (
-                <PressScale
-                  key={label}
-                  onPress={() => {
-                    if (href === 'quick-breast') {
-                      openNextFeedPicker();
-                      return;
-                    }
-                    if (href === 'quick-bottle') {
-                      startQuickTimer('bottle');
-                      return;
-                    }
-                    router.push(href as any);
-                  }}
-                  pressedScale={0.92}
-                  flashColor={GOLD}
-                  style={{ flexBasis: quickActionBasis, minWidth: isCompactPhone ? 120 : 96, flexGrow: 1 }}
-                >
-                  <View style={{ height: 38, paddingHorizontal: 12, borderRadius: 18, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
-                      {label}
-                    </Text>
-                  </View>
-                </PressScale>
-              ))}
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-              {[
-                { label: '+150 ml', href: '/entry/feed?presetMode=bottle&presetAmount=150' },
-                { label: '+ diaper', href: '/entry/diaper' },
-                { label: '+ sleep', href: '/entry/sleep' },
-                { label: '+ food', href: '/entry/food' },
-              ].map((item) => (
-                <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.95} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 120 : 130, flexGrow: 1 }}>
-                  <View style={{ height: 38, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
-                  </View>
-                </PressScale>
-              ))}
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-              {presetActions.map((preset) => (
-                <PressScale key={preset.label} onPress={() => router.push(preset.href as any)} pressedScale={0.94} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 120 : 132, flexGrow: 1 }}>
-                  <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{preset.label}</Text>
-                  </View>
-                </PressScale>
-                ))}
-            </View>
-                  </View>
-                </Animated.View>
+                </Animated2.View>
               </HomeSectionCard>
             );
           }
 
           if (sectionKey === 'hydration') {
             return (
-              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
-                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
                   <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-            <Text style={sectionEyebrowStyle()}>{t('home.hydration', 'Hydration')}</Text>
-            <Text style={sectionTitleStyle()}>{t('home.hydration', 'Hydration')}</Text>
-            <Text style={{ color: MUTED, fontSize: 11 }}>{hydration} ml / {appSettings.hydrationGoalMl} ml</Text>
-            <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
-              <View style={{ width: `${Math.max(0, Math.min(100, (hydration / appSettings.hydrationGoalMl) * 100))}%`, height: '100%', backgroundColor: BLUE }} />
-            </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {[
-                { label: '+250ml', amount: 250 },
-                { label: '+500ml', amount: 500 },
-              ].map((item) => (
-                <PressScale
-                  key={item.label}
-                  onPress={async () => {
-                    if (!babyId) return;
-                    const next = hydration + item.amount;
-                    setHydration(next);
-                    await setMomHydration(babyId, next);
-                  }}
-                  pressedScale={0.94}
-                >
-                  <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 20, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{item.label}</Text>
+                    <Text style={sectionEyebrowStyle()}>{t('home.hydration', 'Hydration')}</Text>
+                    <Text style={sectionTitleStyle()}>{t('home.hydration', 'Hydration')}</Text>
+                    <Text style={{ color: MUTED, fontSize: 11 }}>{hydration} ml / {appSettings.hydrationGoalMl} ml</Text>
+                    <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
+                      <View style={{ width: `${Math.max(0, Math.min(100, (hydration / appSettings.hydrationGoalMl) * 100))}%`, height: '100%', backgroundColor: BLUE }} />
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      {[
+                        { label: '+250ml', amount: 250 },
+                        { label: '+500ml', amount: 500 },
+                      ].map((item) => (
+                        <PressScale
+                          key={item.label}
+                          onPress={async () => {
+                            if (!babyId) return;
+                            const next = hydration + item.amount;
+                            setHydration(next);
+                            await setMomHydration(babyId, next);
+                          }}
+                          pressedScale={0.94}
+                        >
+                          <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 20, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{item.label}</Text>
+                          </View>
+                        </PressScale>
+                      ))}
+                    </View>
                   </View>
-                </PressScale>
-                ))}
-            </View>
-                  </View>
-                </Animated.View>
+                </Animated2.View>
               </HomeSectionCard>
             );
           }
 
           if (sectionKey === 'recentActivity') {
             return (
-              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
-                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
                   <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER }}>
-            <Text style={sectionEyebrowStyle()}>{t('home.recent', 'Recent')}</Text>
-            <Text style={sectionTitleStyle()}>{t('home.recent_activity', 'Recent activity')}</Text>
-            <View style={{ marginTop: 8 }}>
-              {recentEntries.length ? (
-                recentEntries.map((entry) => (
-                  <ActivityRow
-                    key={entry.id}
-                    color={
-                      entry.type === 'feed'
-                        ? GOLD
-                        : entry.type === 'sleep'
-                          ? BLUE
-                          : entry.type === 'diaper'
-                            ? RED
-                            : entry.type === 'medication'
-                              ? GREEN
-                              : '#A371F7'
-                    }
-                    title={entry.title}
-                    detail={
-                      entry.type === 'feed'
-                        ? `${entry.payload?.amountMl ?? entry.payload?.durationMin ?? 0} ${entry.payload?.mode === 'bottle' ? 'ml' : 'min'}`
-                        : entry.notes ?? entry.type
-                    }
-                    time={formatClock(entry.occurredAt, locale)}
-                    onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
-                  />
-                ))
-              ) : (
-                <View style={{ paddingVertical: 10 }}>
-                  <Text style={{ color: MUTED, fontSize: 11 }}>{language === 'fr' ? 'Aucune activite recente.' : 'No recent activity.'}</Text>
-                </View>
-              )}
-            </View>
+                    <Text style={sectionEyebrowStyle()}>{t('home.recent', 'Recent')}</Text>
+                    <Text style={sectionTitleStyle()}>{t('home.recent_activity', 'Recent activity')}</Text>
+                    <View style={{ marginTop: 8 }}>
+                      {recentEntries.length ? (
+                        recentEntries.map((entry) => (
+                          <ActivityRow
+                            key={entry.id}
+                            color={
+                              entry.type === 'feed'
+                                ? GOLD
+                                : entry.type === 'sleep'
+                                  ? BLUE
+                                  : entry.type === 'diaper'
+                                    ? RED
+                                    : entry.type === 'medication'
+                                      ? GREEN
+                                      : '#A371F7'
+                            }
+                            title={entry.title}
+                            detail={
+                              entry.type === 'feed'
+                                ? entry.payload?.mode === 'breast'
+                                  ? entry.payload?.side === 'both'
+                                    ? 'Both breasts'
+                                    : entry.payload?.side === 'right'
+                                      ? 'Right breast'
+                                      : 'Left breast'
+                                  : `${entry.payload?.amountMl || 0}ml`
+                                : entry.type === 'sleep'
+                                  ? `${entry.payload?.durationMin || 0}m`
+                                  : entry.type === 'diaper'
+                                    ? entry.payload?.type || 'wet'
+                                    : ''
+                            }
+                            time={formatClock(entry.occurredAt, locale)}
+                            onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
+                          />
+                        ))
+                      ) : (
+                        <View style={{ paddingVertical: 10 }}>
+                          <Text style={{ color: MUTED, fontSize: 11 }}>{language === 'fr' ? 'Aucune activite recente.' : 'No recent activity.'}</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                </Animated.View>
+                </Animated2.View>
               </HomeSectionCard>
             );
           }
@@ -1284,501 +1458,195 @@ export default function HomeScreen() {
 
       <Modal visible={showSmartSignalsMenu} transparent animationType="fade" onRequestClose={() => setShowSmartSignalsMenu(false)}>
         <View style={styles.menuOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowSmartSignalsMenu(false)} />
-          <View style={[styles.menuSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
-            <Text style={styles.menuTitle}>{t('home.smart_signals', 'Priority alerts')}</Text>
-            <Text style={styles.menuSubtitle}>
-              {showSmartSignals
-                ? language === 'fr'
-                  ? 'Tu peux cacher cette section si elle ne t aide pas.'
-                  : 'Hide this section if it does not help.'
-                : language === 'fr'
-                  ? 'Tu peux la remettre quand tu veux.'
-                  : 'You can bring it back anytime.'}
-            </Text>
-            <View style={{ gap: 8 }}>
-              <Button
-                label={showSmartSignals ? t('home.hide_section', 'Hide section') : t('home.show_section', 'Show section')}
-                onPress={async () => {
-                  await updateDashboardMetric('smartSignals', !showSmartSignals);
-                  setShowSmartSignalsMenu(false);
-                }}
-                variant="secondary"
-              />
-              <Button
-                label={t('home.customize_home', 'Customize home')}
-                onPress={() => {
-                  setShowSmartSignalsMenu(false);
-                  setShowHomeCustomizer(true);
-                }}
-                variant="ghost"
-                size="sm"
-              />
-              <Button label={t('common.close', 'Close')} onPress={() => setShowSmartSignalsMenu(false)} variant="ghost" />
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>{t('home.smart_signals_settings', 'Smart Signals Settings')}</Text>
+            <View style={{ gap: 12 }}>
+              {[
+                { key: 'smartSignals', label: 'Priority alerts', description: 'Show critical baby needs and reminders' },
+              ].map((item) => (
+                <PressScale key={item.key} onPress={() => updateDashboardMetric(item.key as keyof typeof appSettings.dashboardMetrics, !appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics])} pressedScale={0.98}>
+                  <View style={styles.menuItem}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.menuItemText}>{item.label}</Text>
+                      <Text style={{ color: MUTED, fontSize: 12, marginTop: 2 }}>{item.description}</Text>
+                    </View>
+                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics] ? COLORS.success : BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                      {appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics] && <Ionicons name="checkmark" size={12} color={COLORS.success} />}
+                    </View>
+                  </View>
+                </PressScale>
+              ))}
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={showNextFeedPicker} transparent animationType="fade" onRequestClose={() => setShowNextFeedPicker(false)}>
-        <View style={styles.menuOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowNextFeedPicker(false)} />
-          <View style={[styles.menuSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
-            <Text style={styles.menuTitle}>{t('home.next_feeding_title', 'Next feeding')}</Text>
-            <Text style={styles.menuSubtitle}>
-              {language === 'fr'
-                ? 'Choisis biberon ou sein. Pour le sein, choisis le cote avant de lancer le timer.'
-                : 'Choose bottle or breast. For breast, pick the side before starting the timer.'}
-            </Text>
-            <View style={styles.choiceGrid}>
-              <PressScale
-                onPress={() => beginNextFeed('bottle')}
-                pressedScale={0.96}
-                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
-              >
-                <View style={[styles.choiceChip, { borderColor: BLUE, backgroundColor: `${BLUE}18` }]}>
-                  <View style={styles.choiceTitleRow}>
-                    <Ionicons name="water-outline" size={16} color={BLUE} />
-                    <Text style={[styles.choiceTitle, { color: BLUE }]}>{t('home.bottle', 'Bottle')}</Text>
-                  </View>
-                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Lance le minuteur' : 'Start timer'}</Text>
-                </View>
-              </PressScale>
-              <PressScale
-                onPress={() => beginNextFeed('breast', 'left')}
-                pressedScale={0.96}
-                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
-              >
-                <View style={[styles.choiceChip, { borderColor: GOLD, backgroundColor: `${GOLD}18` }]}>
-                  <View style={styles.choiceTitleRow}>
-                    <Ionicons name="body-outline" size={16} color={GOLD} />
-                    <Text style={[styles.choiceTitle, { color: GOLD }]}>{t('home.left_breast', 'Left breast')}</Text>
-                  </View>
-                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Timer immediat' : 'Immediate timer'}</Text>
-                </View>
-              </PressScale>
-              <PressScale
-                onPress={() => beginNextFeed('breast', 'right')}
-                pressedScale={0.96}
-                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
-              >
-                <View style={[styles.choiceChip, { borderColor: GREEN, backgroundColor: `${GREEN}18` }]}>
-                  <View style={styles.choiceTitleRow}>
-                    <Ionicons name="body-outline" size={16} color={GREEN} />
-                    <Text style={[styles.choiceTitle, { color: GREEN }]}>{t('home.right_breast', 'Right breast')}</Text>
-                  </View>
-                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Timer immediat' : 'Immediate timer'}</Text>
-                </View>
-              </PressScale>
-              <PressScale
-                onPress={() => beginNextFeed('breast', 'both')}
-                pressedScale={0.96}
-                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
-              >
-                <View style={[styles.choiceChip, { borderColor: TEXT, backgroundColor: `${TEXT}12` }]}>
-                  <View style={styles.choiceTitleRow}>
-                    <Ionicons name="body-outline" size={16} color={TEXT} />
-                    <Text style={[styles.choiceTitle, { color: TEXT }]}>{t('home.breast_both', 'Both sides')}</Text>
-                  </View>
-                  <Text style={styles.choiceSubtitle}>{t('home.both_sides', 'Both sides')}</Text>
-                </View>
-              </PressScale>
-            </View>
-            <Button label={t('common.close', 'Close')} onPress={() => setShowNextFeedPicker(false)} variant="ghost" />
+            <PressScale onPress={restoreHomeCustomization} pressedScale={0.98}>
+              <View style={[styles.menuItem, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
+                <Text style={[styles.menuItemText, { color: COLORS.alert }]}>{t('home.restore_defaults', 'Restore defaults')}</Text>
+              </View>
+            </PressScale>
           </View>
         </View>
       </Modal>
 
       <Modal visible={showHomeCustomizer} transparent animationType="fade" onRequestClose={() => setShowHomeCustomizer(false)}>
         <View style={styles.menuOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowHomeCustomizer(false)} />
-          <View style={[styles.menuSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
-            <Text style={styles.menuTitle}>{t('home.customize_home', 'Customize home')}</Text>
-            <Text style={styles.menuSubtitle}>
-              {language === 'fr'
-                ? 'Masque ou restaure les blocs visibles sans changer la logique.'
-                : 'Hide or restore visible blocks without changing logic.'}
-            </Text>
-            <View style={styles.customizerGrid}>
-              {orderedSections.map((key, index) => {
-                const labels: Record<HomeSectionKey, string> = {
-                  nextFeed: t('home.next_feed_label', 'Next feed'),
-                  smartSignals: t('home.smart_signals', 'Priority alerts'),
-                  dailyStatus: 'Daily status',
-                  guidance: 'Belgian guidance',
-                  lastFeeds: 'Last feeds',
-                  medication: 'Medication',
-                  sickChild: 'Sick child mode',
-                  timeline: t('home.timeline', 'Timeline'),
-                  quickActions: t('home.direct_actions', 'Direct actions'),
-                  hydration: t('home.hydration', 'Hydration'),
-                  recentActivity: t('home.recent_activity', 'Recent activity'),
-                };
-                const enabled = appSettings.dashboardMetrics[key];
-                return (
-                  <View key={key} style={[styles.customizerItem, { gap: 8 }]}>
-                    <Button
-                      label={`${enabled ? t('home.hide_section', 'Hide') : t('home.show_section', 'Show')} ${labels[key]}`}
-                      onPress={() => void updateDashboardMetric(key, !enabled)}
-                      variant={enabled ? 'secondary' : 'ghost'}
-                      size="sm"
-                    />
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <Pressable onPress={() => void moveHomeSection(key, 'up')} disabled={index === 0} style={({ pressed }) => ({ flex: 1, minHeight: 38, borderRadius: 14, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? '#1B2430' : BG, opacity: index === 0 ? 0.35 : 1 })}>
-                        <Ionicons name="chevron-up" size={16} color={TEXT} />
-                      </Pressable>
-                      <Pressable onPress={() => void moveHomeSection(key, 'down')} disabled={index === orderedSections.length - 1} style={({ pressed }) => ({ flex: 1, minHeight: 38, borderRadius: 14, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? '#1B2430' : BG, opacity: index === orderedSections.length - 1 ? 0.35 : 1 })}>
-                        <Ionicons name="chevron-down" size={16} color={TEXT} />
-                      </Pressable>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>{t('home.customize_home', 'Customize Home')}</Text>
+            <View style={{ gap: 12 }}>
+              {[
+                { key: 'nextFeed', label: 'Next feeding', description: 'Show when next feed is due' },
+                { key: 'smartSignals', label: 'Smart signals', description: 'Priority alerts and reminders' },
+                { key: 'dailyStatus', label: 'Daily status', description: 'Milk intake and feeding stats' },
+                { key: 'guidance', label: 'Guidance', description: 'Belgian care recommendations' },
+                { key: 'lastFeeds', label: 'Last feeds', description: 'Recent breast and bottle feeds' },
+                { key: 'medication', label: 'Medication', description: 'Medicine tracking and schedule' },
+                { key: 'sickChild', label: 'Sick child', description: 'Compact care checklist' },
+                { key: 'timeline', label: 'Timeline', description: '24h activity overview' },
+                { key: 'quickActions', label: 'Quick actions', description: 'Fast access to common tasks' },
+                { key: 'hydration', label: 'Hydration', description: 'Mother hydration tracking' },
+                { key: 'recentActivity', label: 'Recent activity', description: 'Latest entries and events' },
+              ].map((item) => (
+                <PressScale key={item.key} onPress={() => updateDashboardMetric(item.key as keyof typeof appSettings.dashboardMetrics, !appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics])} pressedScale={0.98}>
+                  <View style={styles.menuItem}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.menuItemText}>{item.label}</Text>
+                      <Text style={{ color: MUTED, fontSize: 12, marginTop: 2 }}>{item.description}</Text>
+                    </View>
+                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics] ? COLORS.success : BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                      {appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics] && <Ionicons name="checkmark" size={12} color={COLORS.success} />}
                     </View>
                   </View>
-                );
-              })}
+                </PressScale>
+              ))}
             </View>
-            <View style={{ gap: 8 }}>
-              <Button label={t('home.restore_all', 'Restore all')} onPress={() => void restoreHomeCustomization()} variant="secondary" />
-              <Button label={t('common.close', 'Close')} onPress={() => setShowHomeCustomizer(false)} variant="ghost" />
-            </View>
+            <PressScale onPress={restoreHomeCustomization} pressedScale={0.98}>
+              <View style={[styles.menuItem, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
+                <Text style={[styles.menuItemText, { color: COLORS.alert }]}>{t('home.restore_defaults', 'Restore defaults')}</Text>
+              </View>
+            </PressScale>
           </View>
         </View>
       </Modal>
 
       <Modal visible={showBabySwitcher} transparent animationType="fade" onRequestClose={() => setShowBabySwitcher(false)}>
-        <View style={styles.switcherOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowBabySwitcher(false)} />
-          <View style={[styles.switcherSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
-            <View style={styles.switcherHeader}>
-              <View>
-                <Text style={styles.switcherTitle}>{t('home.switch_profile', 'Switch child profile')}</Text>
-                <Text style={styles.switcherSubtitle}>{t('home.choose_profile', 'Choose the active profile for this dashboard.')}</Text>
-              </View>
-              <View style={styles.switcherBadge}>
-                <Text style={{ color: GOLD, fontSize: 11, fontWeight: '800' }}>{babies.length}</Text>
-              </View>
-            </View>
-            <ScrollView
-              style={styles.switcherList}
-              contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {babies.length ? (
-                babies.map((baby) => {
-                  const active = baby.id === babyId;
-                  return (
-                    <Pressable
-                      key={baby.id}
-                      onPress={() => {
-                        void switchBaby(baby);
-                      }}
-                      style={({ pressed }) => [
-                        styles.switcherItem,
-                        { borderColor: active ? GOLD : BORDER, backgroundColor: active ? `${GOLD}18` : CARD, opacity: pressed ? 0.88 : 1 },
-                      ]}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                        <Text style={{ color: active ? GOLD : TEXT, fontSize: 15, fontWeight: '700' }}>{baby.name}</Text>
-                        <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: active ? `${GOLD}66` : BORDER, backgroundColor: active ? `${GOLD}22` : BG }}>
-                          <Text style={{ color: active ? GOLD : MUTED, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>
-                            {active ? (language === 'fr' ? 'Actif' : 'Active') : language === 'fr' ? 'Utiliser' : 'Use'}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text style={{ color: MUTED, fontSize: 12 }}>{language === 'fr' ? 'Naissance:' : 'Birth:'} {baby.birthDate}</Text>
-                    </Pressable>
-                  );
-                })
-              ) : (
-                <View style={styles.emptySwitcherCard}>
-                  <View style={styles.emptyIconWrap}>
-                    <Ionicons name="people-outline" size={18} color={MUTED} />
+        <View style={styles.menuOverlay}>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>{t('home.switch_baby', 'Switch Baby')}</Text>
+            <View style={{ gap: 12 }}>
+              {babies.map((baby) => (
+                <PressScale key={baby.id} onPress={() => switchBaby(baby)} pressedScale={0.98}>
+                  <View style={[styles.menuItem, { backgroundColor: baby.id === babyId ? `${COLORS.primary}15` : 'rgba(255, 255, 255, 0.05)', borderColor: baby.id === babyId ? COLORS.primary : BORDER }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.menuItemText}>{baby.name}</Text>
+                      <Text style={{ color: MUTED, fontSize: 12, marginTop: 2 }}>{new Date(baby.birthDate).toLocaleDateString(locale, { month: 'short', day: 'numeric' })}</Text>
+                    </View>
+                    {baby.id === babyId && <Ionicons name="checkmark" size={16} color={COLORS.primary} />}
                   </View>
-                  <Text style={styles.emptySwitcherTitle}>{t('home.no_child_profile', 'No child profile yet')}</Text>
-                  <Text style={styles.emptySwitcherSubtitle}>
-                    {language === 'fr'
-                      ? t('home.go_profile', 'Go to Profile to create one, then return here to set it active.')
-                      : t('home.go_profile', 'Go to Profile to create one, then return here to set it active.')}
-                  </Text>
+                </PressScale>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showNextFeedPicker} transparent animationType="fade" onRequestClose={closeNextFeedPicker}>
+        <View style={styles.menuOverlay}>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>{t('home.start_feed', 'Start Feed')}</Text>
+            <View style={{ gap: 12 }}>
+              <PressScale onPress={() => { startQuickTimer('breast', 'left'); closeNextFeedPicker(); }} pressedScale={0.98}>
+                <View style={styles.menuItem}>
+                  <Text style={styles.menuItemText}>{t('home.left_breast', 'Left breast')}</Text>
                 </View>
+              </PressScale>
+              <PressScale onPress={() => { startQuickTimer('breast', 'right'); closeNextFeedPicker(); }} pressedScale={0.98}>
+                <View style={styles.menuItem}>
+                  <Text style={styles.menuItemText}>{t('home.right_breast', 'Right breast')}</Text>
+                </View>
+              </PressScale>
+              <PressScale onPress={() => { startQuickTimer('breast', 'both'); closeNextFeedPicker(); }} pressedScale={0.98}>
+                <View style={styles.menuItem}>
+                  <Text style={styles.menuItemText}>{t('home.both', 'Both')}</Text>
+                </View>
+              </PressScale>
+              <PressScale onPress={() => { startQuickTimer('bottle'); closeNextFeedPicker(); }} pressedScale={0.98}>
+                <View style={styles.menuItem}>
+                  <Text style={styles.menuItemText}>{t('home.bottle', 'Bottle')}</Text>
+                </View>
+              </PressScale>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showSaveSheet} transparent animationType="slide" onRequestClose={() => setShowSaveSheet(false)}>
+        <View style={styles.menuOverlay}>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>{t('home.save_feed', 'Save Feed')}</Text>
+            <View style={{ gap: 12 }}>
+              <View style={{ padding: 16, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
+                <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{activeFeedTitle}</Text>
+                <Text style={{ color: MUTED, fontSize: 14, marginTop: 4 }}>
+                  {activeFeedSubtitlePrefix} • {Math.max(1, Math.round(timerElapsedSeconds / 60))}m
+                </Text>
+              </View>
+              {quickTimerMode === 'bottle' && (
+                <QuantityPicker
+                  value={quickAmount}
+                  onChange={setQuickAmount}
+                  label={t('home.amount', 'Amount')}
+                  presets={[30, 60, 90, 120, 150, 180, 210, 240, 270, 300]}
+                />
               )}
-            </ScrollView>
-            <View style={styles.switcherFooter}>
-              <Button
-                label={t('home.open_profile_cta', 'Open Profile')}
-                onPress={() => {
-                  setShowBabySwitcher(false);
-                  router.push('/profile');
-                }}
-                variant="secondary"
-              />
-              <Button label={t('common.close', 'Close')} onPress={() => setShowBabySwitcher(false)} variant="ghost" />
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <PressScale onPress={() => setShowSaveSheet(false)} pressedScale={0.98} style={{ flex: 1 }}>
+                  <View style={[styles.menuItem, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
+                    <Text style={[styles.menuItemText, { color: COLORS.alert, textAlign: 'center' }]}>{t('home.cancel', 'Cancel')}</Text>
+                  </View>
+                </PressScale>
+                <PressScale onPress={saveQuickTimerEntry} pressedScale={0.98} style={{ flex: 1 }}>
+                  <View style={[styles.menuItem, { backgroundColor: `${COLORS.success}15`, borderColor: COLORS.success }]}>
+                    <Text style={[styles.menuItemText, { color: COLORS.success, textAlign: 'center' }]}>{t('home.save', 'Save')}</Text>
+                  </View>
+                </PressScale>
+              </View>
             </View>
           </View>
         </View>
       </Modal>
 
       <FullscreenTimerModal
-        visible={Boolean(quickTimerMode && timerStartedAt && !showSaveSheet)}
-        emoji={quickTimerMode === 'bottle' ? '\u{1F37C}' : '\u{1F931}'}
+        visible={!!quickTimerMode}
+        emoji={quickTimerMode === 'bottle' ? '🍼' : '🤱'}
         title={activeFeedTitle}
         subtitlePrefix={activeFeedSubtitlePrefix}
-        startedAt={timerStartedAt ?? Date.now()}
+        startedAt={timerStartedAt || 0}
         elapsedSeconds={timerElapsedSeconds}
-        animatePulse={appSettings.effects.emojiPulse}
-        onStop={() => setShowSaveSheet(true)}
+        animatePulse={true}
+        onStop={() => {
+          setQuickTimerMode(null);
+          setTimerStartedAt(null);
+          setTimerElapsedSeconds(0);
+          setQuickAmount(150);
+          setQuickFeedSide('left');
+        }}
       />
-
-      <Modal visible={showSaveSheet} transparent animationType="slide" onRequestClose={() => setShowSaveSheet(false)}>
-        <View style={styles.sheetOverlay}>
-          <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
-            <View style={[styles.sheetCard, { maxWidth: isLargePhone ? 480 : 420, paddingHorizontal: isCompactPhone ? 16 : 22, paddingVertical: isCompactPhone ? 16 : 22 }]}>
-              <Text style={styles.sheetTitle}>
-                {quickTimerMode === 'bottle' ? `${t('home.bottle', 'Bottle')} ${t('home.end', 'ended')}` : `${activeFeedTitle} ${t('home.end', 'ended')}`}
-              </Text>
-              <Text style={styles.sheetSubtitle}>
-                {language === 'fr' ? 'Durée' : 'Duration'} {Math.max(1, Math.round(timerElapsedSeconds / 60))} min - {language === 'fr' ? 'commencé à' : 'started at'} {formatClock(timerStartedAt ? new Date(timerStartedAt).toISOString() : undefined, locale)}
-              </Text>
-              <QuantityPicker value={quickAmount} onChange={setQuickAmount} largeTouchMode={appSettings.largeTouchMode} />
-              <View style={styles.sheetActions}>
-                <Button label={t('common.save', 'Save')} onPress={saveQuickTimerEntry} />
-                <Button
-                  label={t('common.cancel', 'Cancel')}
-                  variant="ghost"
-                  onPress={() => {
-                    setQuickTimerMode(null);
-                    setShowSaveSheet(false);
-                    setTimerStartedAt(null);
-                    setTimerElapsedSeconds(0);
-                    setQuickAmount(150);
-                  }}
-                />
-              </View>
-            </View>
-          </SafeAreaView>
-        </View>
-      </Modal>
     </Page>
   );
 }
 
-const styles = StyleSheet.create({
-  pageContent: {
-    width: '100%',
-    maxWidth: 1100,
-    alignSelf: 'center',
-  },
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.62)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  sheetSafeArea: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheetCard: {
-    width: '100%',
-    maxWidth: 420,
-    alignSelf: 'center',
-    borderRadius: 28,
-    backgroundColor: 'rgba(18, 23, 31, 0.96)',
-    borderWidth: 1,
-    borderColor: BORDER,
-    paddingHorizontal: 22,
-    paddingVertical: 22,
-    gap: 18,
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
-  sheetTitle: {
-    color: TEXT,
-    fontSize: 22,
-    fontWeight: '800',
-    textAlign: 'center',
-    letterSpacing: 0.2,
-  },
-  sheetSubtitle: {
-    color: MUTED,
-    textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  sheetActions: {
-    gap: 12,
-  },
-  menuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.68)',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  menuSheet: {
-    width: '100%',
-    maxWidth: 560,
-    alignSelf: 'center',
-    maxHeight: '86%',
-    borderRadius: 22,
-    backgroundColor: 'rgba(18, 23, 31, 0.96)',
-    borderWidth: 1,
-    borderColor: BORDER,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 7,
-  },
-  menuTitle: {
-    color: TEXT,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  menuSubtitle: {
-    color: MUTED,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  choiceGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  choiceChip: {
-    minHeight: 72,
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    justifyContent: 'center',
-    gap: 4,
-  },
-  choiceTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  choiceTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  choiceSubtitle: {
-    color: MUTED,
-    fontSize: 11,
-  },
-  customizerGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  customizerItem: {
-    flexBasis: '48%',
-    minWidth: 140,
-    flexGrow: 1,
-  },
-  switcherOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.68)',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 24,
-  },
-  switcherSheet: {
-    width: '100%',
-    maxWidth: 560,
-    maxHeight: '84%',
-    alignSelf: 'center',
-    borderRadius: 24,
-    backgroundColor: 'rgba(18, 23, 31, 0.96)',
-    borderWidth: 1,
-    borderColor: BORDER,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 7,
-  },
-  switcherTitle: {
-    color: TEXT,
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  switcherHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  switcherBadge: {
-    minWidth: 26,
-    height: 26,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: `${GOLD}88`,
-    backgroundColor: `${GOLD}18`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 1,
-  },
-  switcherSubtitle: {
-    color: MUTED,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  switcherItem: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
-    backgroundColor: BG,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 4,
-  },
-  switcherList: {
-    maxHeight: 320,
-  },
-  emptySwitcherCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
-    backgroundColor: BG,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 8,
-    alignItems: 'flex-start',
-  },
-  emptyIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: BORDER,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: CARD,
-  },
-  emptySwitcherTitle: {
-    color: TEXT,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  emptySwitcherSubtitle: {
-    color: MUTED,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  switcherFooter: {
-    gap: 8,
-  },
-});
-
-
+function HeaderAction({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: BORDER,
+        backgroundColor: pressed ? '#1B2430' : CARD,
+      })}
+    >
+      <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{label}</Text>
+    </Pressable>
+  );
+}

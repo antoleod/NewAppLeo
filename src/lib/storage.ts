@@ -60,6 +60,7 @@ export interface MedicationPreset {
   id: string;
   name: string;
   dosage?: string;
+  intervalHours?: number | null;
   symptomTags: string[];
   commonFor: string[];
   minAgeMonths?: number | null;
@@ -99,33 +100,48 @@ const SYMPTOM_MEDICATION_MAP: Record<string, string[]> = {
 export const MEDICATION_PRESETS: MedicationPreset[] = [
   {
     id: 'paracetamol-acetaminophen',
-    name: 'Paracetamol / Acetaminophen',
-    dosage: 'Follow label and weight-based dosing',
+    name: 'Paracetamol',
+    dosage: '15mg/kg every 6h',
+    intervalHours: 6,
     symptomTags: ['fever', 'pain', 'irritability'],
     commonFor: ['Fever / Pain'],
     minAgeMonths: null,
-    notes: 'Commonly logged for fever or pain. Record only. Confirm label and pediatric guidance.',
+    notes: 'Commonly used for fever or pain. Standard interval is 6 hours.',
     isCustom: false,
     section: 'Fever / Pain',
   },
   {
-    id: 'ibuprofen',
-    name: 'Ibuprofen',
-    dosage: 'Use only if age/weight appropriate on label',
+    id: 'ibuprofen-nurofen',
+    name: 'Ibuprofen (Nurofen)',
+    dosage: '10mg/kg every 8h',
+    intervalHours: 8,
     symptomTags: ['fever', 'pain'],
     commonFor: ['Fever / Pain'],
-    minAgeMonths: 6,
-    notes: 'Useful to log for fever or pain when age-appropriate. Avoid assuming dosing.',
+    minAgeMonths: 3,
+    notes: 'Often used for fever or inflammation. Standard interval is 8 hours. Not for < 3 months/5kg.',
+    isCustom: false,
+    section: 'Fever / Pain',
+  },
+  {
+    id: 'paracetamol-suppository',
+    name: 'Paracetamol Suppository',
+    dosage: 'Weight-based dose every 6h',
+    intervalHours: 6,
+    symptomTags: ['fever', 'pain', 'vomiting'],
+    commonFor: ['Fever / Pain'],
+    minAgeMonths: null,
+    notes: 'Useful when the child is vomiting. Standard interval is 6 hours.',
     isCustom: false,
     section: 'Fever / Pain',
   },
   {
     id: 'saline-nasal-spray',
     name: 'Saline nasal spray',
+    dosage: 'As needed before feeds',
     symptomTags: ['congestion', 'cold'],
     commonFor: ['Cold / Congestion'],
     minAgeMonths: null,
-    notes: 'Supportive care entry for congestion. No medication dosing implied.',
+    notes: 'Clears nasal passages. No medication dosing.',
     isCustom: false,
     section: 'Cold / Congestion',
   },
@@ -151,11 +167,13 @@ export const MEDICATION_PRESETS: MedicationPreset[] = [
   },
   {
     id: 'oral-rehydration-solution',
-    name: 'Oral rehydration solution',
+    name: 'Oral rehydration (ORS)',
+    dosage: 'Small frequent sips',
+    intervalHours: 1,
     symptomTags: ['dehydration', 'diarrhea', 'vomiting'],
     commonFor: ['Hydration / Recovery', 'Stomach / Digestion'],
     minAgeMonths: null,
-    notes: 'Useful supportive recovery log for vomiting, diarrhea, or dehydration concerns.',
+    notes: 'Key for recovery from fluid loss. Offer frequently.',
     isCustom: false,
     section: 'Hydration / Recovery',
   },
