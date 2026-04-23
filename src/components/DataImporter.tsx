@@ -7,57 +7,9 @@ import { Button, Card, SectionHeader } from '@/components/ui';
 import { parseImportData, importJsonData, ImportValidator } from '@/lib/importExport';
 import { useAppData } from '@/context/AppDataContext';
 
-function mapImportedEntry(entry: any) {
-  if (!entry || typeof entry !== 'object') return null;
-
-  if (entry.type === 'feeding') {
-    return {
-      type: 'feed' as const,
-      title: 'Imported feed',
-      occurredAt: entry.dateISO,
-      notes: entry.notes || '',
-      payload: {
-        mode: entry.source === 'breast' ? 'breast' : 'bottle',
-        amountMl: entry.amountMl || undefined,
-        durationMin: entry.durationSec ? Math.round(entry.durationSec / 60) : undefined,
-        notes: entry.notes || '',
-      },
-    };
-  }
-
-  if (entry.type === 'diaper') {
-    return {
-      type: 'diaper' as const,
-      title: 'Imported diaper',
-      occurredAt: entry.dateISO,
-      notes: entry.notes || '',
-      payload: {
-        pee: entry.kind?.includes('pee') ? 1 : 0,
-        poop: entry.kind?.includes('poo') ? 1 : 0,
-        notes: entry.notes || '',
-      },
-    };
-  }
-
-  if (entry.type === 'sleep') {
-    return {
-      type: 'sleep' as const,
-      title: 'Imported sleep',
-      occurredAt: entry.endISO || entry.dateISO,
-      notes: entry.notes || '',
-      payload: {
-        durationMin: entry.durationSec ? Math.round(entry.durationSec / 60) : undefined,
-        notes: entry.notes || '',
-      },
-    };
-  }
-
-  return null;
-}
-
 export function DataImporter() {
   const { theme, colors } = useTheme();
-  const { addEntry } = useAppData();
+  const { importEntries } = useAppData();
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [importedData, setImportedData] = useState<any[]>([]);
@@ -80,7 +32,8 @@ export function DataImporter() {
         input.click();
         return;
       }
-      Alert.alert('Unavailable', 'JSON file upload is currently supported on web.');
+
+      Alert.alert('Unavailable', 'Direct JSON file upload is currently supported on web. On native, paste the JSON manually for now.');
     } catch (error: any) {
       Alert.alert('Error', error?.message ?? 'Failed to load file');
     }
@@ -89,20 +42,8 @@ export function DataImporter() {
   const handleConfirmImport = async (entries: any[]) => {
     try {
       setImporting(true);
-      const imported = entries.map(mapImportedEntry).filter(Boolean);
-      let success = 0;
-      let failed = 0;
-
-      for (const item of imported) {
-        try {
-          await addEntry(item as any);
-          success += 1;
-        } catch {
-          failed += 1;
-        }
-      }
-
-      Alert.alert('Import Success', `${success} entries imported${failed ? `, ${failed} failed` : ''}.`);
+      const result = await importEntries(entries);
+      Alert.alert('Import Success', `${result.imported} entries imported and synced to Firebase.`);
       setImportedData([]);
       setPreview(null);
       setJsonInput('');
@@ -125,8 +66,14 @@ export function DataImporter() {
       const entries = importJsonData(data);
       const summary = ImportValidator.getImportSummary(entries);
       setImportedData(entries);
-      setPreview(`${summary.total} entries detected`);
-      Alert.alert('Import preview', `Found ${summary.total} entries. Continue to import?`, [
+      setPreview(
+        `${summary.total} entries detected\n` +
+          `Feeds: ${summary.feeds} · Diapers: ${summary.diapers} · Sleeps: ${summary.sleeps}\n` +
+          `Pumps: ${summary.pumps} · Measurements: ${summary.measurements}\n` +
+          `Medications: ${summary.medications} · Milestones: ${summary.milestones} · Symptoms: ${summary.symptoms}`,
+      );
+
+      Alert.alert('Import preview', `Found ${summary.total} entries ready to import to your current BabyFlow account and sync scope. Continue?`, [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Import', onPress: async () => handleConfirmImport(entries) },
       ]);
@@ -146,7 +93,7 @@ export function DataImporter() {
     <Card>
       <SectionHeader title="Import Data" />
       <Text style={[typography.body, { color: colors.muted, marginBottom: spacing.md, fontSize: 12, lineHeight: 17 }]}>
-        Import JSON from a file or paste it manually.
+        Import JSON from Leo or BabyFlow exports. Imported entries are written to the active account and synced to Firebase.
       </Text>
 
       <View style={{ gap: spacing.sm }}>
@@ -157,7 +104,7 @@ export function DataImporter() {
       {preview ? (
         <View style={{ gap: spacing.md, marginTop: spacing.md }}>
           <View style={{ backgroundColor: `${theme.accent}11`, borderColor: theme.accent, borderWidth: 1, borderRadius: radii.lg, padding: spacing.md }}>
-            <Text style={[typography.body, { color: theme.textPrimary, fontWeight: '600' }]}>{preview}</Text>
+            <Text style={[typography.body, { color: theme.textPrimary, fontWeight: '600', lineHeight: 20 }]}>{preview}</Text>
           </View>
           <Button label={importing ? 'Importing...' : 'Confirm Import'} onPress={() => handleConfirmImport(importedData)} loading={importing} disabled={importing} />
           <Button label="Cancel" onPress={handleClearPreview} variant="ghost" disabled={importing} />
@@ -170,7 +117,7 @@ export function DataImporter() {
               borderColor: theme.border,
               borderRadius: radii.md,
               padding: spacing.md,
-              minHeight: 120,
+              minHeight: 140,
               color: theme.textPrimary,
               backgroundColor: theme.bgCardAlt,
               fontSize: 12,
@@ -190,7 +137,7 @@ export function DataImporter() {
       <View style={{ backgroundColor: theme.bgCardAlt, borderRadius: radii.md, padding: spacing.md, marginTop: spacing.md, gap: spacing.xs }}>
         <Text style={[typography.detail, { color: theme.textPrimary, fontWeight: '600' }]}>Supported formats:</Text>
         <Text style={[typography.detail, { color: theme.textMuted, fontSize: 10, lineHeight: 15 }]}>
-          {"• Feeds\n• Diapers\n• Sleeps"}
+          {'• Feeds\n• Diapers / elims\n• Sleeps / sleepSessions\n• Pumps\n• Measurements\n• Medications\n• Milestones\n• Symptoms'}
         </Text>
       </View>
     </Card>

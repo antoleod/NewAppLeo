@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   addDoc,
+  getDocs,
+  limit,
   collection,
   deleteDoc,
   doc,
@@ -9,6 +11,7 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { EntryPayload, EntryRecord, EntryType } from '@/types';
@@ -23,6 +26,7 @@ export interface AppDataContextValue {
   loading: boolean;
   summary: ReturnType<typeof getTodaySummary>;
   addEntry: (input: { type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }) => Promise<void>;
+  importEntries: (items: Array<{ type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }>) => Promise<{ imported: number }>;
   updateEntry: (id: string, patch: Partial<EntryRecord>) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
   seedDemoData: () => Promise<void>;
@@ -149,7 +153,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     setLoading(true);
     setRemoteAvailable(true);
-    const q = query(entriesRef(user.uid), orderBy('occurredAt', 'desc'));
+    const scopeId = syncScope ?? user.uid;
+    const q = query(entriesRef(scopeId), orderBy('occurredAt', 'desc'));
     return onSnapshot(
       q,
       (snapshot) => {
@@ -166,7 +171,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       },
     );
-  }, [guestMode, user]);
+  }, [guestMode, syncScope, user]);
 
   const summary = useMemo(() => getTodaySummary(entries, profile), [entries, profile]);
 
@@ -207,6 +212,69 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
 
     setEntries((current) => [nextEntry, ...current.filter((entry) => entry.id !== nextEntry.id)].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)));
+  }
+
+  async function importEntries(items: Array<{ type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }>) {
+    if (!user) throw new Error('You must be signed in to import and sync entries.');
+    if (!items.length) return { imported: 0 };
+
+    const scopeId = syncScope ?? user.uid;
+    const normalized = items.map((item) => ({
+      type: item.type,
+      title: item.title ?? item.type,
+      notes: item.notes ?? '',
+      payload: item.payload,
+      occurredAt: item.occurredAt ?? new Date().toISOString(),
+    }));
+
+    if (remoteAvailable) {
+      try {
+        const existingSnapshot = await getDocs(query(entriesRef(scopeId), orderBy('occurredAt', 'desc'), limit(500)));
+        const existingKeys = new Set(
+          existingSnapshot.docs.map((docItem) => {
+            const data = docItem.data();
+            return JSON.stringify({
+              type: data.type,
+              occurredAt: data.occurredAt,
+              payload: data.payload ?? {},
+            });
+          }),
+        );
+
+        const toCreate = normalized.filter((item) => {
+          const key = JSON.stringify({ type: item.type, occurredAt: item.occurredAt, payload: item.payload ?? {} });
+          return !existingKeys.has(key);
+        });
+
+        if (!toCreate.length) return { imported: 0 };
+
+        for (let index = 0; index < toCreate.length; index += 250) {
+          const chunk = toCreate.slice(index, index + 250);
+          const batch = writeBatch(db);
+          for (const item of chunk) {
+            const ref = doc(entriesRef(scopeId));
+            batch.set(ref, {
+              ...item,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            });
+          }
+          await batch.commit();
+        }
+
+        return { imported: toCreate.length };
+      } catch (error) {
+        if (!isPermissionDenied(error)) throw error;
+        setRemoteAvailable(false);
+      }
+    }
+
+    let imported = 0;
+    for (const item of normalized) {
+      await addEntry(item);
+      imported += 1;
+    }
+    return { imported };
   }
 
   async function updateEntry(id: string, patch: Partial<EntryRecord>) {
@@ -299,6 +367,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       loading,
       summary,
       addEntry,
+      importEntries,
       updateEntry,
       deleteEntry,
       seedDemoData,

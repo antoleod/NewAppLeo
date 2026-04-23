@@ -83,6 +83,15 @@ function appSettingsKey(uid: string) {
   return `${APP_SETTINGS_PREFIX}:${uid}`;
 }
 
+function appSettingsCacheKey() {
+  const uid = auth.currentUser?.uid ?? 'guest';
+  return appSettingsKey(uid);
+}
+
+function profileSettingsRef(uid: string) {
+  return doc(db, 'profiles', uid);
+}
+
 const SYMPTOM_MEDICATION_MAP: Record<string, string[]> = {
   fever: ['paracetamol / acetaminophen', 'ibuprofen'],
   pain: ['paracetamol / acetaminophen', 'ibuprofen'],
@@ -291,6 +300,7 @@ export const defaultModuleVisibility: ModuleVisibility = {
 export interface AppSettings {
   dailySummaryTime: string;
   largeTouchMode: boolean;
+  highContrastMode: boolean;
   redNightMode: boolean;
   backgroundPhotoUri: string;
   themeVariant: ThemeVariant;
@@ -310,6 +320,7 @@ export interface AppSettings {
 export const defaultAppSettings: AppSettings = {
   dailySummaryTime: '22:00',
   largeTouchMode: false,
+  highContrastMode: false,
   redNightMode: false,
   backgroundPhotoUri: '',
   themeVariant: 'sage',
@@ -474,20 +485,19 @@ export async function setModuleVisibility(next: ModuleVisibility) {
 }
 
 export async function getAppSettings() {
+  const cachedRaw = await AsyncStorage.getItem(appSettingsCacheKey());
+  const cached = hydrateAppSettings(cachedRaw ? (JSON.parse(cachedRaw) as Partial<AppSettings>) : {});
   const uid = auth.currentUser?.uid;
-  if (!uid) return defaultAppSettings;
+  if (!uid) return cached;
   try {
-    const snap = await getDoc(doc(db, 'users', uid, SETTINGS_DOC, 'main'));
+    const snap = await getDoc(profileSettingsRef(uid));
     const parsed = (snap.exists() ? (snap.data() as Partial<AppSettings>) : {}) ?? {};
     const next = hydrateAppSettings(parsed);
     await AsyncStorage.setItem(appSettingsKey(uid), JSON.stringify(next));
     return next;
   } catch (error) {
-    if (!isPermissionDenied(error)) {
-      throw error;
-    }
-    const cached = await AsyncStorage.getItem(appSettingsKey(uid));
-    return hydrateAppSettings(cached ? (JSON.parse(cached) as Partial<AppSettings>) : {});
+    if (!isPermissionDenied(error)) throw error;
+    return cached;
   }
 }
 
@@ -662,17 +672,16 @@ export async function deleteSavedMedicine(name: string) {
 }
 
 export async function setAppSettings(next: AppSettings) {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return;
   const normalized = hydrateAppSettings(next);
-  await AsyncStorage.setItem(appSettingsKey(uid), JSON.stringify(normalized));
+  await AsyncStorage.setItem(appSettingsCacheKey(), JSON.stringify(normalized));
+  const uid = auth.currentUser?.uid;
+  if (!uid) return normalized;
   try {
-    await setDoc(doc(db, 'users', uid, SETTINGS_DOC, 'main'), normalized, { merge: true });
+    await setDoc(profileSettingsRef(uid), normalized, { merge: true });
   } catch (error) {
-    if (!isPermissionDenied(error)) {
-      throw error;
-    }
+    if (!isPermissionDenied(error)) throw error;
   }
+  return normalized;
 }
 
 export async function updateAppSettings(partial: Partial<AppSettings>) {

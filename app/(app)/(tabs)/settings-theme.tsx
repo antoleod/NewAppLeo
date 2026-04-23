@@ -1,18 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Alert, ScrollView, Pressable } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
-import { Button, Card, Heading, Page, SectionHeader, Segment, ColorSwatch } from '@/components/ui';
-import { ThemeVariantGrid, ThemePreview, HexColorInput, ThemeSurfaceSelector } from '@/components/ThemeCustomizer';
+import { Button, Card, Page, Segment } from '@/components/ui';
 import { BackgroundPhotoSelector } from '@/components/BackgroundPhotoSelector';
 import { DataImporter } from '@/components/DataImporter';
 import { spacing } from '@/theme';
-import { getAppSettings, updateAppSettings } from '@/lib/storage';
-import { useLocale } from '@/context/LocaleContext';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { getAppSettings, updateAppSettings, type ThemeVariant } from '@/lib/storage';
+import { BabyFlowIcon } from '@/components/BabyFlowIcon';
+
+const quickPalette = [
+  { key: 'sage', color: '#4d7c6b' },
+  { key: 'gold', color: '#c18f54' },
+  { key: 'forest', color: '#2f7d57' },
+  { key: 'sky', color: '#8eb5ea' },
+  { key: 'rose', color: '#d08ba0' },
+  { key: 'navy', color: '#1d4e89' },
+  { key: 'sand', color: '#e6b566' },
+  { key: 'ocean', color: '#4a6fa5' },
+];
+
+const themeVariants: Array<{ label: string; value: ThemeVariant; description: string }> = [
+  { label: 'Sage', value: 'sage', description: 'Soft green and wellness tones' },
+  { label: 'Rose', value: 'rose', description: 'Warm and caring accents' },
+  { label: 'Navy', value: 'navy', description: 'Deep calm and high clarity' },
+  { label: 'Sand', value: 'sand', description: 'Warm neutral softness' },
+];
+
+function isDarkHex(hex: string) {
+  const safe = hex.replace('#', '');
+  if (safe.length !== 6) return false;
+  const r = parseInt(safe.slice(0, 2), 16);
+  const g = parseInt(safe.slice(2, 4), 16);
+  const b = parseInt(safe.slice(4, 6), 16);
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return luminance < 0.5;
+}
 
 export default function ThemeSettings() {
-  const { t } = useLocale();
   const {
     colors,
     theme,
@@ -21,33 +47,32 @@ export default function ThemeSettings() {
     themeVariant,
     themeStyle,
     backgroundPhotoUri,
+    highContrastMode,
+    themeSyncError,
     setThemeVariant,
     setThemeStyle,
     setBackgroundPhotoUri,
-    setCustomTheme,
+    setHighContrastMode,
     toggleTheme,
   } = useTheme();
   const { setThemeMode } = useAuth();
 
-  const [customPrimary, setCustomPrimary] = useState('');
-  const [customSecondary, setCustomSecondary] = useState('');
-  const [customBackgroundAlt, setCustomBackgroundAlt] = useState('');
-  const [settings, setSettings] = useState<any>({});
-  const [isCustomThemeEnabled, setIsCustomThemeEnabled] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [presetColor, setPresetColor] = useState('#4d7c6b');
-  const quickPalette = ['#4d7c6b', '#c18f54', '#2f7d57', '#8eb5ea', '#d08ba0', '#1d4e89', '#e6b566', '#4a6fa5'];
+  const [savingVariant, setSavingVariant] = useState<ThemeVariant | null>(null);
 
   useEffect(() => {
-    void (async () => {
-      const appSettings = await getAppSettings();
-      setSettings(appSettings);
-      setCustomPrimary(appSettings.customTheme?.primary || '');
-      setCustomSecondary(appSettings.customTheme?.secondary || '');
-      setCustomBackgroundAlt(appSettings.customTheme?.backgroundAlt || '');
-      setIsCustomThemeEnabled(appSettings.customTheme?.enabled || false);
-    })();
+    void getAppSettings();
   }, []);
+
+  const solidCardStyle = useMemo(
+    () => ({
+      backgroundColor: colors.surface,
+      borderColor: paletteMode === 'nuit' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+    }),
+    [colors.surface, paletteMode],
+  );
+
+  const previewAccentText = isDarkHex(theme.accent) ? '#FFFFFF' : '#101418';
 
   const handlePhotoSelected = async (uri: string) => {
     try {
@@ -55,7 +80,7 @@ export default function ThemeSettings() {
       await updateAppSettings({ backgroundPhotoUri: uri });
       await setBackgroundPhotoUri(uri);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save photo');
+      Alert.alert('Theme saved locally', error?.message ?? 'Photo could not sync right now. The screen will keep working with local settings.');
     } finally {
       setUploadingPhoto(false);
     }
@@ -67,141 +92,329 @@ export default function ThemeSettings() {
       await updateAppSettings({ backgroundPhotoUri: '' });
       await setBackgroundPhotoUri('');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to remove photo');
+      Alert.alert('Theme saved locally', error?.message ?? 'Background removal could not sync right now.');
     } finally {
       setUploadingPhoto(false);
     }
   };
 
-  const handleApplyCustomTheme = async () => {
-    const customTheme = {
-      enabled: !isCustomThemeEnabled,
-      primary: customPrimary || settings.customTheme?.primary,
-      secondary: customSecondary || settings.customTheme?.secondary,
-      backgroundAlt: customBackgroundAlt || settings.customTheme?.backgroundAlt,
-    };
-    const nextSettings = await updateAppSettings({ customTheme });
-    setSettings(nextSettings);
-    await setCustomTheme(customTheme);
-    setIsCustomThemeEnabled(!isCustomThemeEnabled);
-  };
-
   return (
     <Page>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120, gap: 6, paddingHorizontal: 4 }}>
-        <Card style={{ boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.12)', elevation: 3, borderRadius: 12 }}>
-          <Animated.View entering={FadeIn.duration(220)}>
-            <Heading eyebrow="Personalization" title="Theme & Design" subtitle="Customize colors, palette, visual style, and background" />
-          </Animated.View>
-          <SectionHeader title="Light/Dark Mode" />
-          <Segment
-            value={themeMode}
-            onChange={(value) => setThemeMode(value as any)}
-            options={[
-              { label: 'System', value: 'system' },
-              { label: 'Light', value: 'light' },
-              { label: 'Dark', value: 'dark' },
-            ]}
-          />
-          <Button label={paletteMode === 'nuit' ? 'Switch to Light' : 'Switch to Dark'} onPress={() => void toggleTheme()} variant="ghost" fullWidth />
-        </Card>
-
-        <Card style={{ boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.12)', elevation: 3, borderRadius: 12 }}>
-          <SectionHeader title="Quick palette" />
-          <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 16, marginBottom: spacing.sm }}>
-            Choose from ready-made palettes, then fine-tune with HEX.
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: spacing.sm }}>
-            {quickPalette.map((color) => (
-              <Pressable
-                key={color}
-                onPress={() => setPresetColor(color)}
-                style={({ pressed }) => ({
-                  width: 36,
-                  height: 36,
-                  borderRadius: 999,
-                  backgroundColor: color,
-                  borderWidth: presetColor === color ? 3 : 1,
-                  borderColor: presetColor === color ? colors.text : colors.border,
-                  boxShadow: presetColor === color ? '0px 3px 6px rgba(0, 0, 0, 0.15)' : '0px 3px 6px rgba(0, 0, 0, 0.06)',
-                  elevation: presetColor === color ? 2 : 1,
-                  opacity: pressed ? 0.8 : 1,
-                  transform: [{ scale: pressed ? 0.95 : 1 }],
-                })}
-              />
-            ))}
-          </View>
-          <ThemeVariantGrid value={themeVariant} onChange={async (variant) => setThemeVariant(variant)} />
-        </Card>
-
-        <Card style={{ boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.12)', elevation: 3, borderRadius: 12 }}>
-          <SectionHeader title="Visual Style" />
-          <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 16, marginBottom: spacing.sm }}>
-            Select how backgrounds and cards appear
-          </Text>
-          <ThemeSurfaceSelector value={themeStyle} onChange={async (surface) => setThemeStyle(surface)} />
-        </Card>
-
-        <BackgroundPhotoSelector currentPhotoUri={backgroundPhotoUri} onPhotoSelected={handlePhotoSelected} onPhotoRemoved={handlePhotoRemoved} isLoading={uploadingPhoto} />
-
-        <Card style={{ boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.12)', elevation: 3, borderRadius: 12 }}>
-          <SectionHeader title="Live Preview" />
-          <ThemePreview />
-        </Card>
-
-        <Card style={{ boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.12)', elevation: 3, borderRadius: 12 }}>
-          <Animated.View entering={FadeInDown.duration(220)}>
-            <SectionHeader title="Advanced Colors" />
-            <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 16, marginBottom: spacing.sm }}>
-              Fine-tune custom colors for personalization
-            </Text>
-          </Animated.View>
-          <View style={{ gap: spacing.sm }}>
-            <View style={{ gap: 6 }}>
-              <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700' }}>Quick palette</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                {quickPalette.map((color) => (
-                  <Pressable
-                    key={color}
-                    onPress={() => setPresetColor(color)}
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 999,
-                      backgroundColor: color,
-                      borderWidth: presetColor === color ? 3 : 1,
-                      borderColor: presetColor === color ? colors.text : colors.border,
-                      boxShadow: presetColor === color ? '0px 3px 6px rgba(0, 0, 0, 0.15)' : '0px 3px 6px rgba(0, 0, 0, 0.06)',
-                      elevation: presetColor === color ? 2 : 1,
-                    }}
-                  />
-                ))}
+      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[0]} contentContainerStyle={{ paddingBottom: 140 }}>
+        <View style={[styles.stickyHeader, { backgroundColor: colors.background }]}>
+          <Card style={[styles.headerCard, solidCardStyle]}>
+            <View style={styles.headerTop}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={[styles.eyebrow, { color: theme.accent }]}>Personalization</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Theme & Design</Text>
+                <Text style={[styles.headerSubtitle, { color: colors.muted }]}>Readable, solid, mobile-first customization with safe sync fallback.</Text>
+              </View>
+              <View style={[styles.previewMini, { backgroundColor: theme.bgCardAlt, borderColor: solidCardStyle.borderColor }]}>
+                <View style={[styles.previewMiniAccent, { backgroundColor: theme.accent }]} />
+                <View style={[styles.previewMiniLine, { backgroundColor: colors.text }]} />
+                <View style={[styles.previewMiniSubline, { backgroundColor: colors.muted }]} />
               </View>
             </View>
-            <View style={{ gap: spacing.sm }}>
-              <HexColorInput label="Primary accent color" value={customPrimary || presetColor} onChange={setCustomPrimary} placeholder="e.g., #4d7c6b" />
-              <HexColorInput label="Secondary accent color" value={customSecondary} onChange={setCustomSecondary} placeholder="e.g., #c18f54" />
-              <HexColorInput label="Card background color" value={customBackgroundAlt} onChange={setCustomBackgroundAlt} placeholder="e.g., #eef4ef" />
-            </View>
-            <View style={{ flexDirection: 'row', gap: spacing.sm, justifyContent: 'center', flexWrap: 'wrap', paddingVertical: spacing.sm }}>
-              {customPrimary ? <ColorSwatch color={customPrimary} label="Primary" /> : null}
-              {customSecondary ? <ColorSwatch color={customSecondary} label="Secondary" /> : null}
-              {customBackgroundAlt ? <ColorSwatch color={customBackgroundAlt} label="Background" /> : null}
-            </View>
-            <Button label={isCustomThemeEnabled ? 'Disable Custom Theme' : 'Apply Custom Theme'} onPress={handleApplyCustomTheme} variant={isCustomThemeEnabled ? 'secondary' : 'primary'} fullWidth />
-          </View>
-        </Card>
+            {themeSyncError ? (
+              <View style={styles.toast}>
+                <Text style={styles.toastTitle}>{themeSyncError === 'no-permission' ? 'No Firebase permission' : 'Sync unavailable'}</Text>
+                <Text style={styles.toastBody}>Using local theme settings. The screen stays fully usable.</Text>
+              </View>
+            ) : null}
+          </Card>
+        </View>
 
-        <DataImporter />
+        <View style={styles.content}>
+          <Animated.View entering={FadeInDown.duration(220)}>
+            <Card style={[styles.sectionCard, solidCardStyle]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Mode</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>Choose the reading mode first. Active options stay clearly filled.</Text>
+              <Segment
+                value={themeMode}
+                onChange={(value) => setThemeMode(value as any)}
+                options={[
+                  { label: 'System', value: 'system' },
+                  { label: 'Light', value: 'light' },
+                  { label: 'Dark', value: 'dark' },
+                ]}
+              />
+              <Button label={paletteMode === 'nuit' ? 'Switch to Light Now' : 'Switch to Dark Now'} onPress={() => void toggleTheme()} variant="secondary" />
+              <View style={styles.switchRow}>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={[styles.switchTitle, { color: colors.text }]}>High Contrast Mode</Text>
+                  <Text style={[styles.switchBody, { color: colors.muted }]}>Boost readability and keep contrast strong on every surface.</Text>
+                </View>
+                <Switch value={highContrastMode} onValueChange={(value) => void setHighContrastMode(value)} />
+              </View>
+            </Card>
+          </Animated.View>
 
-        <Card style={{ boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.12)', elevation: 3, borderRadius: 12 }}>
-          <Text style={{ color: theme.textPrimary, fontWeight: '700', marginBottom: spacing.sm, fontSize: 13 }}>Tips for best results</Text>
-          <Text style={{ color: theme.textMuted, fontSize: 11, lineHeight: 16 }}>
-            {"• Hex colors should be in format #RRGGBB\n• Test custom themes in both light and dark modes\n• Use complementary colors for better contrast\n• Background photo works with all styles\n• Import JSON with feeds, diapers, or sleep data"}
-          </Text>
-        </Card>
+          <Animated.View entering={FadeInDown.duration(220).delay(50)}>
+            <Card style={[styles.sectionCard, solidCardStyle]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Palette</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>Swipe horizontally and pick a palette chip. Selected state is scaled, bordered, and checked.</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.paletteRail}>
+                {quickPalette.map((item) => {
+                  const selected = theme.accent.toLowerCase() === item.color.toLowerCase();
+                  return (
+                    <View
+                      key={item.key}
+                      style={[
+                        styles.paletteChip,
+                        {
+                          backgroundColor: item.color,
+                          borderColor: selected ? colors.text : 'transparent',
+                          transform: [{ scale: selected ? 1.06 : 1 }],
+                        },
+                      ]}
+                    >
+                      {selected ? <Text style={styles.checkMark}>✓</Text> : null}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={{ gap: 10 }}>
+                {themeVariants.map((item) => {
+                  const active = item.value === themeVariant;
+                  return (
+                    <Button
+                      key={item.value}
+                      label={savingVariant === item.value ? `Saving ${item.label}...` : `${item.label}  ${active ? '• Active' : ''}`}
+                      onPress={async () => {
+                        setSavingVariant(item.value);
+                        try {
+                          await setThemeVariant(item.value);
+                        } finally {
+                          setSavingVariant(null);
+                        }
+                      }}
+                      variant={active ? 'primary' : 'ghost'}
+                    />
+                  );
+                })}
+              </View>
+            </Card>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.duration(220).delay(90)}>
+            <Card style={[styles.sectionCard, solidCardStyle]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Visual Style</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>No transparency required. Use solid surfaces that stay readable everywhere.</Text>
+              <Segment
+                value={themeStyle}
+                onChange={(value) => void setThemeStyle(value as any)}
+                options={[
+                  { label: 'Classic', value: 'classic' },
+                  { label: 'Default', value: 'default' },
+                  { label: 'Photo', value: 'photo' },
+                ]}
+              />
+            </Card>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.duration(220).delay(120)}>
+            <Card style={[styles.sectionCard, solidCardStyle]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Live Preview</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>A real preview block with title, supporting text, button, and secondary card.</Text>
+              <View style={[styles.previewBlock, { backgroundColor: theme.bgCardAlt, borderColor: solidCardStyle.borderColor }]}>
+                <Text style={[styles.previewTitle, { color: colors.text }]}>Tonight routine</Text>
+                <Text style={[styles.previewCopy, { color: colors.muted }]}>Everything remains readable even if cloud sync fails or contrast mode is enabled.</Text>
+                <View style={[styles.previewButton, { backgroundColor: theme.accent }]}>
+                  <Text style={[styles.previewButtonText, { color: previewAccentText }]}>Primary action</Text>
+                </View>
+                <View style={[styles.previewInnerCard, { backgroundColor: colors.surface, borderColor: solidCardStyle.borderColor }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <BabyFlowIcon name="insights" active bare />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={[styles.previewInnerTitle, { color: colors.text }]}>Secondary card</Text>
+                      <Text style={[styles.previewInnerBody, { color: colors.muted }]}>Readable text, solid card, safe border.</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </Card>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.duration(220).delay(150)}>
+            <BackgroundPhotoSelector currentPhotoUri={backgroundPhotoUri} onPhotoSelected={handlePhotoSelected} onPhotoRemoved={handlePhotoRemoved} isLoading={uploadingPhoto} />
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.duration(220).delay(180)}>
+            <DataImporter />
+          </Animated.View>
+        </View>
       </ScrollView>
     </Page>
   );
 }
 
+const styles = StyleSheet.create({
+  stickyHeader: {
+    paddingHorizontal: 6,
+    paddingTop: 2,
+    paddingBottom: 10,
+    zIndex: 2,
+  },
+  headerCard: {
+    padding: 18,
+    borderWidth: 1,
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'center',
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  previewMini: {
+    width: 86,
+    minHeight: 86,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 12,
+    justifyContent: 'center',
+    gap: 8,
+  },
+  previewMiniAccent: {
+    height: 12,
+    borderRadius: 999,
+  },
+  previewMiniLine: {
+    height: 8,
+    borderRadius: 999,
+    opacity: 0.92,
+  },
+  previewMiniSubline: {
+    height: 8,
+    width: '70%',
+    borderRadius: 999,
+    opacity: 0.6,
+  },
+  toast: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: '#FFF1D6',
+    gap: 2,
+  },
+  toastTitle: {
+    color: '#6B4D00',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  toastBody: {
+    color: '#765B1A',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  content: {
+    paddingHorizontal: 6,
+    gap: 12,
+  },
+  sectionCard: {
+    padding: 18,
+    borderWidth: 1,
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+    gap: 14,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  sectionBody: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  switchTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  switchBody: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  paletteRail: {
+    gap: 12,
+    paddingRight: 10,
+  },
+  paletteChip: {
+    width: 52,
+    height: 52,
+    borderRadius: 999,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkMark: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  previewBlock: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    gap: 14,
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  previewCopy: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  previewButton: {
+    minHeight: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewButtonText: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  previewInnerCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+  },
+  previewInnerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  previewInnerBody: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+});
