@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Button, Card, Input, Page, Segment } from '@/components/ui';
+import { MedicationPicker } from '@/components/MedicationPicker';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useLocale } from '@/context/LocaleContext';
@@ -10,7 +11,16 @@ import { BreastSide, EntryPayload, EntryType } from '@/types';
 import { TimerWidget } from '@/components/TimerWidget';
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { DateTimeField } from '@/components/DateTimeField';
-import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
+import {
+  getAppSettings,
+  getMedicationPresetsBySymptom,
+  getSavedMedicines,
+  getSavedMedicinesRanked,
+  recordMedicineUse,
+  upsertSavedMedicine,
+  type MedicationPreset,
+  type SavedMedicine,
+} from '@/lib/storage';
 import * as ImagePicker from 'expo-image-picker';
 
 const typeLabels: Record<EntryType, string> = {
@@ -297,11 +307,25 @@ const entryCopy = {
 } as const;
 
 const symptomOptions = [
-  { label: 'Irritable', value: 'irritable' },
-  { label: 'Cry', value: 'cry' },
-  { label: 'Green stool', value: 'green stool' },
+  { label: 'Fever', value: 'fever' },
+  { label: 'Pain', value: 'pain' },
+  { label: 'Cough', value: 'cough' },
+  { label: 'Congestion', value: 'congestion' },
   { label: 'Colic', value: 'colic' },
+  { label: 'Rash', value: 'rash' },
+  { label: 'Diarrhea', value: 'diarrhea' },
+  { label: 'Vomiting', value: 'vomiting' },
+  { label: 'Irritability', value: 'irritability' },
 ];
+
+function normalizeSymptom(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function toggleListItem(items: string[], value: string) {
+  const normalized = normalizeSymptom(value);
+  return items.includes(normalized) ? items.filter((item) => item !== normalized) : [...items, normalized];
+}
 
 const typeMeta: Record<
   EntryType,
@@ -415,13 +439,14 @@ export default function EntryComposerScreen() {
   const { colors } = useTheme();
   const { language } = useLocale();
   const copy = entryCopy[language as keyof typeof entryCopy] ?? entryCopy.en;
-  const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string }>();
-  const { addEntry, updateEntry, deleteEntry, entryById } = useAppData();
+  const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string; symptom?: string }>();
+  const { addEntry, updateEntry, deleteEntry, entryById, entries } = useAppData();
   const type = (params.type as EntryType) || 'feed';
   const editing = params.id ? entryById(String(params.id)) : undefined;
   const presetAmount = typeof params.presetAmount === 'string' ? Number(params.presetAmount) : undefined;
   const presetMode = typeof params.presetMode === 'string' ? (params.presetMode as 'breast' | 'bottle') : undefined;
   const presetSide = typeof params.presetSide === 'string' ? params.presetSide : undefined;
+  const presetSymptom = typeof params.symptom === 'string' ? normalizeSymptom(params.symptom) : undefined;
 
   const [mode, setMode] = useState<'breast' | 'bottle'>('bottle');
   const [side, setSide] = useState('left');
@@ -448,6 +473,9 @@ export default function EntryComposerScreen() {
   const [saving, setSaving] = useState(false);
   const [largeTouchMode, setLargeTouchMode] = useState(false);
   const [savedMedicines, setSavedMedicines] = useState<SavedMedicine[]>([]);
+  const [medicationSearch, setMedicationSearch] = useState('');
+  const [selectedMedicationSymptoms, setSelectedMedicationSymptoms] = useState<string[]>(presetSymptom ? [presetSymptom] : []);
+  const [selectedMedicationMeta, setSelectedMedicationMeta] = useState<Partial<SavedMedicine> | Partial<MedicationPreset>>({});
   const meta = typeMeta[type];
 
   useEffect(() => {
@@ -488,6 +516,7 @@ export default function EntryComposerScreen() {
       case 'medication':
         setName(editing.payload?.name ?? '');
         setDosage(editing.payload?.dosage ?? '');
+        setSelectedMedicationSymptoms((editing.payload?.tags ?? []).map(normalizeSymptom));
         break;
       case 'milestone':
         setTitle(editing.payload?.title ?? '');
@@ -514,6 +543,53 @@ export default function EntryComposerScreen() {
     if (presetMode) setMode(presetMode);
     if (presetSide) setSide(presetSide);
   }, [editing, presetAmount, presetMode, presetSide]);
+
+  useEffect(() => {
+    if (type !== 'medication') return;
+    if (presetSymptom) {
+      setSelectedMedicationSymptoms((current) => (current.includes(presetSymptom) ? current : [presetSymptom, ...current]));
+      return;
+    }
+    const lastSymptomEntry = entries.find((entry) => entry.type === 'symptom');
+    const inferredTags = (lastSymptomEntry?.payload?.tags ?? []).map(normalizeSymptom).filter(Boolean);
+    if (inferredTags.length) {
+      setSelectedMedicationSymptoms((current) => (current.length ? current : inferredTags.slice(0, 3)));
+    }
+  }, [entries, presetSymptom, type]);
+
+  const rankedSavedMedicines = useMemo(
+    () => getSavedMedicinesRanked(savedMedicines, selectedMedicationSymptoms),
+    [savedMedicines, selectedMedicationSymptoms],
+  );
+
+  const recommendedPresets = useMemo(
+    () => getMedicationPresetsBySymptom(selectedMedicationSymptoms).filter((item) => item.symptomTags.some((tag) => selectedMedicationSymptoms.includes(tag))).slice(0, 6),
+    [selectedMedicationSymptoms],
+  );
+
+  const medicationQuery = medicationSearch.trim().toLowerCase();
+
+  const filteredSavedMedicines = useMemo(() => {
+    if (!medicationQuery) return rankedSavedMedicines;
+    return rankedSavedMedicines.filter((medicine) => {
+      const haystack = [medicine.name, medicine.dosage, ...(medicine.symptomTags ?? []), ...(medicine.commonFor ?? [])].join(' ').toLowerCase();
+      return haystack.includes(medicationQuery);
+    });
+  }, [medicationQuery, rankedSavedMedicines]);
+
+  const filteredPresets = useMemo(() => {
+    const presets = getMedicationPresetsBySymptom(selectedMedicationSymptoms);
+    if (!medicationQuery) return presets;
+    return presets.filter((preset) => {
+      const haystack = [preset.name, preset.dosage, preset.notes, ...preset.symptomTags, ...preset.commonFor].join(' ').toLowerCase();
+      return haystack.includes(medicationQuery);
+    });
+  }, [medicationQuery, selectedMedicationSymptoms]);
+
+  const mostUsedMedicines = filteredSavedMedicines.filter((medicine) => medicine.useCount > 0).slice(0, 4);
+  const recommendedSavedMedicines = filteredSavedMedicines
+    .filter((medicine) => (medicine.symptomTags ?? []).some((tag) => selectedMedicationSymptoms.includes(tag)))
+    .slice(0, 4);
 
   function buildPayload(): EntryPayload {
     switch (type) {
@@ -543,7 +619,7 @@ export default function EntryComposerScreen() {
           notes,
         };
       case 'medication':
-        return { name, dosage, notes };
+        return { name, dosage, notes, tags: selectedMedicationSymptoms };
       case 'milestone':
         return { title: title || 'Milestone', icon, photoUri: photoUri || undefined, notes };
       case 'symptom':
@@ -574,6 +650,27 @@ export default function EntryComposerScreen() {
     }
   }
 
+  function applyMedicationSelection(medicine: {
+    name: string;
+    dosage?: string;
+    symptomTags?: string[];
+    commonFor?: string[];
+    minAgeMonths?: number | null;
+    notes?: string;
+    isCustom?: boolean;
+  }) {
+    setName(medicine.name);
+    if (medicine.dosage) setDosage(medicine.dosage);
+    const medicineSymptoms = medicine.symptomTags ?? [];
+    if (medicineSymptoms.length) {
+      setSelectedMedicationSymptoms((current) => Array.from(new Set([...current, ...medicineSymptoms.map(normalizeSymptom)])));
+    }
+    setSelectedMedicationMeta(medicine);
+    if (medicine.notes && !notes.trim()) {
+      setNotes(medicine.notes);
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -587,7 +684,18 @@ export default function EntryComposerScreen() {
         await addEntry({ type, title: titleValue, notes, occurredAt: timestamp, payload });
       }
       if (type === 'medication' && name.trim()) {
-        setSavedMedicines(await upsertSavedMedicine({ name, dosage }));
+        setSavedMedicines(
+          await recordMedicineUse({
+            name,
+            dosage,
+            usedAt: timestamp,
+            symptomTags: selectedMedicationSymptoms,
+            commonFor: (selectedMedicationMeta.commonFor as string[] | undefined) ?? [],
+            minAgeMonths: selectedMedicationMeta.minAgeMonths ?? null,
+            notes: selectedMedicationMeta.notes ?? notes,
+            isCustom: selectedMedicationMeta.isCustom ?? true,
+          }),
+        );
       }
       router.back();
     } catch (error: any) {
@@ -788,55 +896,53 @@ export default function EntryComposerScreen() {
             <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'MEDICINE FLOW' : 'MEDICINE FLOW'}</Text>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Nom, dose et contexte' : 'Name, dosage and context'}</Text>
             <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-            <View style={styles.chipRow}>
-              <Pressable onPress={() => setName('Paracetamol')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>Med</Text>
-              </Pressable>
-              <Pressable onPress={() => setDosage('1 dose')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>Dose</Text>
-              </Pressable>
-              <Pressable onPress={() => setNotesOpen(true)} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>Time</Text>
-              </Pressable>
-            </View>
-            <View style={styles.savedWrap}>
-              <Text style={[styles.savedLabel, { color: colors.muted }]}>{language === 'fr' ? 'Medicaments sauvegardes' : 'Saved medicines'}</Text>
-              <View style={styles.savedRow}>
-                {savedMedicines.length ? (
-                  savedMedicines.slice(0, 8).map((medicine) => (
-                    <Pressable
-                      key={`${medicine.name}-${medicine.dosage ?? ''}`}
-                      onPress={() => {
-                        setName(medicine.name);
-                        if (medicine.dosage) setDosage(medicine.dosage);
-                      }}
-                      style={styles.savedChip}
-                    >
-                      <Text style={styles.savedChipTitle}>{medicine.name}</Text>
-                      {medicine.dosage ? <Text style={styles.savedChipSubtitle}>{medicine.dosage}</Text> : null}
-                    </Pressable>
-                  ))
-                ) : (
-                  <Text style={[styles.sectionBody, { color: colors.muted }]}>{language === 'fr' ? 'Aucun modele garde.' : 'No saved medicine yet.'}</Text>
-                )}
-              </View>
-              {name.trim() ? (
-                <Pressable onPress={async () => setSavedMedicines(await upsertSavedMedicine({ name, dosage }))} style={styles.savePresetButton}>
-                  <Text style={styles.savePresetText}>{language === 'fr' ? 'Sauver en modele' : 'Save as preset'}</Text>
-                </Pressable>
-              ) : null}
-            </View>
-            <Input label={language === 'fr' ? 'Nom du medicament' : 'Medication name'} value={name} onChangeText={setName} />
-            <View style={styles.savedRow}>
-              {savedMedicines
-                .filter((medicine) => medicine.name.toLowerCase() === name.trim().toLowerCase())
-                .map((medicine) => (
-                  <Pressable key={`${medicine.name}-${medicine.dosage ?? ''}`} onPress={() => medicine.dosage && setDosage(medicine.dosage)} style={styles.smallChip}>
-                    <Text style={styles.smallChipText}>{medicine.dosage || 'Usual dose'}</Text>
-                  </Pressable>
-                ))}
-            </View>
-            <Input label={language === 'fr' ? 'Dose' : 'Dosage'} value={dosage} onChangeText={setDosage} />
+            <MedicationPicker
+              search={medicationSearch}
+              onSearchChange={setMedicationSearch}
+              name={name}
+              dosage={dosage}
+              onNameChange={setName}
+              onDosageChange={setDosage}
+              selectedSymptoms={selectedMedicationSymptoms}
+              onSelectSymptom={(value) => setSelectedMedicationSymptoms((current) => toggleListItem(current, value))}
+              symptomOptions={symptomOptions}
+              mostUsed={mostUsedMedicines}
+              recommendedSaved={recommendedSavedMedicines}
+              recommendedPresets={recommendedPresets}
+              savedByYou={filteredSavedMedicines.slice(0, 12)}
+              filteredPresets={filteredPresets}
+              onSelectMedicine={applyMedicationSelection}
+              onSavePreset={async () =>
+                setSavedMedicines(
+                  await upsertSavedMedicine({
+                    name,
+                    dosage,
+                    symptomTags: selectedMedicationSymptoms,
+                    commonFor: (selectedMedicationMeta.commonFor as string[] | undefined) ?? [],
+                    minAgeMonths: selectedMedicationMeta.minAgeMonths ?? null,
+                    notes: selectedMedicationMeta.notes ?? notes,
+                    isCustom: selectedMedicationMeta.isCustom ?? true,
+                  }),
+                )
+              }
+              showSavePreset={Boolean(name.trim())}
+              copy={{
+                searchLabel: 'Search',
+                searchPlaceholder: 'Paracetamol, cough, hydration...',
+                medicationName: language === 'fr' ? 'Nom du medicament' : 'Medication name',
+                dosage: language === 'fr' ? 'Dose' : 'Dosage',
+                symptomChips: 'Symptoms',
+                mostUsed: 'Most used',
+                recommended: 'Recommended for selected symptom',
+                savedByYou: 'Saved by you',
+                allPresets: 'All presets',
+                noSavedMedicine: language === 'fr' ? 'Aucun modele garde.' : 'No saved medicine yet.',
+                savePreset: language === 'fr' ? 'Sauver en modele' : 'Save as preset',
+                supportOnly: 'Informational support only',
+                checkLabel: 'Check label/weight-based dosing',
+                consultDoctor: 'Consult a doctor for infants or concerning symptoms',
+              }}
+            />
           </View>
         ) : null}
 
@@ -870,11 +976,25 @@ export default function EntryComposerScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Tags et notes' : 'Tags and notes'}</Text>
             <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
             <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16, textAlign: 'center' }}>{language === 'fr' ? 'Tags' : 'Tags'}</Text>
-            <Segment
-              value={symptoms[0] ?? 'irritable'}
-              onChange={(value) => setSymptoms((current) => Array.from(new Set([value, ...current])).slice(0, 4))}
-              options={symptomOptions}
-            />
+            <View style={styles.savedRow}>
+              {symptomOptions.map((symptom) => {
+                const selected = symptoms.includes(symptom.value);
+                return (
+                  <Pressable
+                    key={symptom.value}
+                    onPress={() => setSymptoms((current) => toggleListItem(current, symptom.value))}
+                    style={[styles.smallChip, selected && styles.smallChipSelected]}
+                  >
+                    <Text style={styles.smallChipText}>{symptom.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {symptoms.length ? (
+              <Pressable onPress={() => router.push(`/entry/medication?symptom=${encodeURIComponent(symptoms[0])}`)} style={styles.savePresetButton}>
+                <Text style={styles.savePresetText}>Open medication suggestions</Text>
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
 
@@ -1025,6 +1145,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#1C2128',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  smallChipSelected: {
+    backgroundColor: 'rgba(124,194,255,0.2)',
+    borderColor: '#7CC2FF',
   },
   smallChipText: {
     color: '#F0F6FC',

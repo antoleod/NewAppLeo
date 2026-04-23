@@ -31,6 +31,153 @@ export interface SavedMedicine {
   dosage?: string;
   createdAt: string;
   updatedAt: string;
+  useCount: number;
+  lastUsedAt: string;
+  symptomTags?: string[];
+  commonFor?: string[];
+  minAgeMonths?: number | null;
+  notes?: string;
+  isCustom?: boolean;
+}
+
+export interface MedicationPreset {
+  id: string;
+  name: string;
+  dosage?: string;
+  symptomTags: string[];
+  commonFor: string[];
+  minAgeMonths?: number | null;
+  notes?: string;
+  isCustom?: boolean;
+  section: 'Fever / Pain' | 'Cold / Congestion' | 'Cough / Throat' | 'Hydration / Recovery' | 'Skin / Irritation' | 'Stomach / Digestion';
+}
+
+const DEFAULT_MEDICINE_USE_COUNT = 0;
+
+const SYMPTOM_MEDICATION_MAP: Record<string, string[]> = {
+  fever: ['paracetamol / acetaminophen', 'ibuprofen'],
+  pain: ['paracetamol / acetaminophen', 'ibuprofen'],
+  cough: [],
+  congestion: ['saline nasal spray'],
+  colic: [],
+  rash: ['zinc oxide cream'],
+  diarrhea: ['oral rehydration solution'],
+  vomiting: ['oral rehydration solution'],
+  irritability: ['paracetamol / acetaminophen'],
+  dehydration: ['oral rehydration solution'],
+  skin: ['zinc oxide cream'],
+};
+
+export const MEDICATION_PRESETS: MedicationPreset[] = [
+  {
+    id: 'paracetamol-acetaminophen',
+    name: 'Paracetamol / Acetaminophen',
+    dosage: 'Follow label and weight-based dosing',
+    symptomTags: ['fever', 'pain', 'irritability'],
+    commonFor: ['Fever / Pain'],
+    minAgeMonths: null,
+    notes: 'Commonly logged for fever or pain. Record only. Confirm label and pediatric guidance.',
+    isCustom: false,
+    section: 'Fever / Pain',
+  },
+  {
+    id: 'ibuprofen',
+    name: 'Ibuprofen',
+    dosage: 'Use only if age/weight appropriate on label',
+    symptomTags: ['fever', 'pain'],
+    commonFor: ['Fever / Pain'],
+    minAgeMonths: 6,
+    notes: 'Useful to log for fever or pain when age-appropriate. Avoid assuming dosing.',
+    isCustom: false,
+    section: 'Fever / Pain',
+  },
+  {
+    id: 'saline-nasal-spray',
+    name: 'Saline nasal spray',
+    symptomTags: ['congestion', 'cold'],
+    commonFor: ['Cold / Congestion'],
+    minAgeMonths: null,
+    notes: 'Supportive care entry for congestion. No medication dosing implied.',
+    isCustom: false,
+    section: 'Cold / Congestion',
+  },
+  {
+    id: 'humidified-steam-support',
+    name: 'Nasal care / humidified support',
+    symptomTags: ['congestion', 'cough'],
+    commonFor: ['Cold / Congestion', 'Cough / Throat'],
+    minAgeMonths: null,
+    notes: 'Use to track supportive care context when helpful for symptoms.',
+    isCustom: false,
+    section: 'Cold / Congestion',
+  },
+  {
+    id: 'throat-comfort-support',
+    name: 'Throat comfort support',
+    symptomTags: ['cough', 'throat'],
+    commonFor: ['Cough / Throat'],
+    minAgeMonths: null,
+    notes: 'Organizational log only. Check age suitability for any product used.',
+    isCustom: false,
+    section: 'Cough / Throat',
+  },
+  {
+    id: 'oral-rehydration-solution',
+    name: 'Oral rehydration solution',
+    symptomTags: ['dehydration', 'diarrhea', 'vomiting'],
+    commonFor: ['Hydration / Recovery', 'Stomach / Digestion'],
+    minAgeMonths: null,
+    notes: 'Useful supportive recovery log for vomiting, diarrhea, or dehydration concerns.',
+    isCustom: false,
+    section: 'Hydration / Recovery',
+  },
+  {
+    id: 'zinc-oxide-cream',
+    name: 'Zinc oxide cream',
+    symptomTags: ['rash', 'skin', 'irritation'],
+    commonFor: ['Skin / Irritation'],
+    minAgeMonths: null,
+    notes: 'Commonly logged for diaper-area irritation or mild skin protection.',
+    isCustom: false,
+    section: 'Skin / Irritation',
+  },
+  {
+    id: 'probiotic-support',
+    name: 'Digestive support',
+    symptomTags: ['colic', 'stomach', 'digestion'],
+    commonFor: ['Stomach / Digestion'],
+    minAgeMonths: null,
+    notes: 'Track only if already in use with your clinician guidance or label instructions.',
+    isCustom: false,
+    section: 'Stomach / Digestion',
+  },
+];
+
+function normalizeSymptomTag(value?: string) {
+  return value?.trim().toLowerCase() ?? '';
+}
+
+function uniqueNormalized(values: Array<string | undefined> = []) {
+  return Array.from(new Set(values.map(normalizeSymptomTag).filter(Boolean)));
+}
+
+function normalizeSavedMedicine(input: Partial<SavedMedicine> & Pick<SavedMedicine, 'name'>): SavedMedicine {
+  const now = new Date().toISOString();
+  const createdAt = input.createdAt ?? input.updatedAt ?? input.lastUsedAt ?? now;
+  const updatedAt = input.updatedAt ?? input.lastUsedAt ?? createdAt;
+  return {
+    name: input.name.trim(),
+    dosage: input.dosage?.trim() || undefined,
+    createdAt,
+    updatedAt,
+    useCount: typeof input.useCount === 'number' && Number.isFinite(input.useCount) ? input.useCount : DEFAULT_MEDICINE_USE_COUNT,
+    lastUsedAt: input.lastUsedAt ?? updatedAt,
+    symptomTags: uniqueNormalized(input.symptomTags),
+    commonFor: Array.from(new Set((input.commonFor ?? []).map((item) => item.trim()).filter(Boolean))),
+    minAgeMonths: typeof input.minAgeMonths === 'number' ? input.minAgeMonths : null,
+    notes: input.notes?.trim() || undefined,
+    isCustom: input.isCustom ?? true,
+  };
 }
 
 export type ModuleVisibility = Record<string, boolean>;
@@ -259,21 +406,99 @@ export async function getSavedMedicines() {
   const uid = auth.currentUser?.uid;
   if (!uid) return [];
   const snap = await getDocs(query(collection(db, 'users', uid, SAVED_MEDICINES_COLLECTION), orderBy('updatedAt', 'desc')));
-  return snap.docs.map((item) => item.data() as SavedMedicine).slice(0, 24);
+  return mergeLegacySavedMedicines(snap.docs.map((item) => item.data() as Partial<SavedMedicine>));
 }
 
-export async function upsertSavedMedicine(input: { name: string; dosage?: string }) {
+export function mergeLegacySavedMedicines(medicines: Array<Partial<SavedMedicine>>) {
+  return medicines
+    .filter((item): item is Partial<SavedMedicine> & Pick<SavedMedicine, 'name'> => typeof item?.name === 'string' && Boolean(item.name.trim()))
+    .map((item) => normalizeSavedMedicine(item))
+    .sort((left, right) => {
+      if (right.useCount !== left.useCount) return right.useCount - left.useCount;
+      return right.lastUsedAt.localeCompare(left.lastUsedAt);
+    })
+    .slice(0, 24);
+}
+
+function scoreMedicineForSymptoms(medicine: SavedMedicine, selectedSymptoms: string[]) {
+  if (!selectedSymptoms.length) return 0;
+  const normalizedSymptoms = uniqueNormalized(selectedSymptoms);
+  const medicineTags = uniqueNormalized([...(medicine.symptomTags ?? []), ...(medicine.commonFor ?? []).map((item) => item.toLowerCase())]);
+  const mappedNames = normalizedSymptoms.flatMap((symptom) => SYMPTOM_MEDICATION_MAP[symptom] ?? []);
+  let score = 0;
+  for (const symptom of normalizedSymptoms) {
+    if (medicineTags.includes(symptom)) score += 3;
+  }
+  if (mappedNames.some((candidate) => candidate === medicine.name.trim().toLowerCase())) {
+    score += 4;
+  }
+  return score;
+}
+
+export function getMedicationPresetsBySymptom(symptoms: string[] = []) {
+  const normalizedSymptoms = uniqueNormalized(symptoms);
+  const presets = MEDICATION_PRESETS.map((preset) => ({
+    ...preset,
+    score: scoreMedicineForSymptoms(
+      normalizeSavedMedicine({
+        ...preset,
+        createdAt: new Date(0).toISOString(),
+        updatedAt: new Date(0).toISOString(),
+        lastUsedAt: new Date(0).toISOString(),
+        useCount: 0,
+      }),
+      normalizedSymptoms,
+    ),
+  }));
+
+  return presets
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      return left.name.localeCompare(right.name);
+    })
+    .map(({ score, ...preset }) => preset);
+}
+
+export function getSavedMedicinesRanked(savedMedicines: SavedMedicine[], selectedSymptoms: string[] = []) {
+  const normalizedSymptoms = uniqueNormalized(selectedSymptoms);
+  return [...mergeLegacySavedMedicines(savedMedicines)].sort((left, right) => {
+    if (right.useCount !== left.useCount) return right.useCount - left.useCount;
+    if (right.lastUsedAt !== left.lastUsedAt) return right.lastUsedAt.localeCompare(left.lastUsedAt);
+    const symptomDelta = scoreMedicineForSymptoms(right, normalizedSymptoms) - scoreMedicineForSymptoms(left, normalizedSymptoms);
+    if (symptomDelta !== 0) return symptomDelta;
+    return left.name.localeCompare(right.name);
+  });
+}
+
+export async function upsertSavedMedicine(input: {
+  name: string;
+  dosage?: string;
+  symptomTags?: string[];
+  commonFor?: string[];
+  minAgeMonths?: number | null;
+  notes?: string;
+  isCustom?: boolean;
+}) {
   const name = input.name.trim();
   if (!name) return getSavedMedicines();
 
   const now = new Date().toISOString();
   const medicines = await getSavedMedicines();
-  const nextItem: SavedMedicine = {
+  const current = medicines.find((item) => item.name.toLowerCase() === name.toLowerCase());
+  const nextItem = normalizeSavedMedicine({
+    ...current,
     name,
-    dosage: input.dosage?.trim() || undefined,
-    createdAt: medicines.find((item) => item.name.toLowerCase() === name.toLowerCase())?.createdAt ?? now,
+    dosage: input.dosage?.trim() || current?.dosage,
+    symptomTags: [...(current?.symptomTags ?? []), ...(input.symptomTags ?? [])],
+    commonFor: [...(current?.commonFor ?? []), ...(input.commonFor ?? [])],
+    minAgeMonths: input.minAgeMonths ?? current?.minAgeMonths ?? null,
+    notes: input.notes ?? current?.notes,
+    isCustom: input.isCustom ?? current?.isCustom ?? true,
+    createdAt: current?.createdAt ?? now,
     updatedAt: now,
-  };
+    lastUsedAt: current?.lastUsedAt ?? current?.updatedAt ?? now,
+    useCount: current?.useCount ?? DEFAULT_MEDICINE_USE_COUNT,
+  });
   const next = [
     nextItem,
     ...medicines.filter((item) => item.name.toLowerCase() !== name.toLowerCase()),
@@ -283,6 +508,43 @@ export async function upsertSavedMedicine(input: { name: string; dosage?: string
     await setDoc(doc(db, 'users', uid, SAVED_MEDICINES_COLLECTION, name.toLowerCase()), nextItem, { merge: true });
   }
   return next;
+}
+
+export async function recordMedicineUse(input: {
+  name: string;
+  dosage?: string;
+  usedAt?: string;
+  symptomTags?: string[];
+  commonFor?: string[];
+  minAgeMonths?: number | null;
+  notes?: string;
+  isCustom?: boolean;
+}) {
+  const name = input.name.trim();
+  if (!name) return getSavedMedicines();
+
+  const medicines = await getSavedMedicines();
+  const current = medicines.find((item) => item.name.toLowerCase() === name.toLowerCase());
+  const usedAt = input.usedAt ?? new Date().toISOString();
+  const nextItem = normalizeSavedMedicine({
+    ...current,
+    name,
+    dosage: input.dosage?.trim() || current?.dosage,
+    symptomTags: [...(current?.symptomTags ?? []), ...(input.symptomTags ?? [])],
+    commonFor: [...(current?.commonFor ?? []), ...(input.commonFor ?? [])],
+    minAgeMonths: input.minAgeMonths ?? current?.minAgeMonths ?? null,
+    notes: input.notes ?? current?.notes,
+    isCustom: input.isCustom ?? current?.isCustom ?? true,
+    createdAt: current?.createdAt ?? usedAt,
+    updatedAt: usedAt,
+    lastUsedAt: usedAt,
+    useCount: Math.max(0, current?.useCount ?? DEFAULT_MEDICINE_USE_COUNT) + 1,
+  });
+  const uid = auth.currentUser?.uid;
+  if (uid) {
+    await setDoc(doc(db, 'users', uid, SAVED_MEDICINES_COLLECTION, name.toLowerCase()), nextItem, { merge: true });
+  }
+  return getSavedMedicines();
 }
 
 export async function deleteSavedMedicine(name: string) {
