@@ -49,7 +49,8 @@ export default function LoginScreen() {
   }
 
   if (user || guestMode) {
-    if (!profile?.hasCompletedOnboarding) return <Redirect href="/onboarding" />;
+    // Allow access to home/app even if onboarding is incomplete.
+    // Profile shows pending state and allows completion from there.
     return <Redirect href="/home" />;
   }
 

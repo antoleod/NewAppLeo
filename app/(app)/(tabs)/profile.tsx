@@ -255,6 +255,18 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 24 }}>
       <Heading eyebrow={t('tabs.profile')} title={t('profile.title', 'Family and preferences')} subtitle={t('profile.subtitle', 'Language, themes, effects, photos, and sync.')} />
 
+      {!profile?.hasCompletedOnboarding && (
+        <Card style={{ borderColor: theme.accent, borderWidth: 1.5, backgroundColor: `${theme.accent}12` }}>
+          <View style={{ gap: 12 }}>
+            <View style={{ gap: 4 }}>
+              <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800' }}>⏳ Onboarding Incomplete</Text>
+              <Text style={{ color: colors.muted, fontSize: 13 }}>Complete your baby's profile to unlock all features and better personalization.</Text>
+            </View>
+            <Button label="Complete Onboarding" onPress={() => router.push('/onboarding')} variant="secondary" />
+          </View>
+        </Card>
+      )}
+
       <Card>
         <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.family_profile', 'Family profile')}</Text>
         <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -265,6 +277,7 @@ export default function ProfileScreen() {
             <Text style={{ color: colors.muted }}>Mode: {guestMode ? 'Guest' : 'Cloud account'}</Text>
             <Text style={{ color: colors.muted }}>{t('profile.theme_layout', 'Theme and layout')}: {themeVariant}</Text>
             <Text style={{ color: colors.muted }}>{t('common.language', 'Language')}: {language.toUpperCase()}</Text>
+            {profile?.hasCompletedOnboarding && <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 12 }}>✓ Onboarding complete</Text>}
           </View>
         </View>
         <Input label="Parent" value={caregiverName} onChangeText={setCaregiverName} />

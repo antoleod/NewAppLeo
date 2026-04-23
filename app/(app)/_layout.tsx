@@ -25,14 +25,15 @@ export default function AppLayout() {
     return <Redirect href="/login" />;
   }
 
-  if (!profile?.hasCompletedOnboarding && !onOnboardingRoute) {
-    return <Redirect href="/onboarding" />;
-  }
+  // Allow app access even if onboarding is incomplete.
+  // Users can complete or edit onboarding later from Profile tab.
+  // Only force onboarding if explicitly navigating there.
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="entry/[type]" options={{ presentation: 'modal', title: 'Entry' }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
     </Stack>
   );
 }

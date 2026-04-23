@@ -20,7 +20,8 @@ export default function IndexRoute() {
   }
 
   if (user || guestMode) {
-    if (!profile?.hasCompletedOnboarding) return <Redirect href="/onboarding" />;
+    // Allow access to home even if onboarding is incomplete.
+    // Users can complete onboarding from the Profile tab.
     return <Redirect href="/home" />;
   }
 
