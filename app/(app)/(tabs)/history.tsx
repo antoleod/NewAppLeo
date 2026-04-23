@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Share, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Card, EmptyState, Heading, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
 import { EntryRecord, EntryType } from '@/types';
 import { generateWeeklyPdf } from '@/lib/pdf';
+import { useResponsiveMetrics } from '@/lib/responsive';
 import { dateKey, formatLongDate, formatTime, isSameDay, startOfDay, subtractDays, toDate } from '@/utils/date';
 import { getOmsRow, interpolatePercentileBand, omsBySex, type OmsSex } from '@/lib/omsData';
 
@@ -390,6 +391,8 @@ function OmsMetricCard({
 }
 
 export default function HistoryScreen() {
+  const { width } = useWindowDimensions();
+  const responsive = useResponsiveMetrics();
   const { entries, deleteEntry, addEntry } = useAppData();
   const { profile } = useAuth();
   const [filter, setFilter] = useState<EntryType | 'all'>('all');
@@ -544,7 +547,7 @@ export default function HistoryScreen() {
 
   return (
     <Page contentStyle={{ width: '100%' }}>
-      <View style={{ gap: 18 }}>
+      <View style={{ gap: responsive.verticalGap + 2 }}>
         <Heading eyebrow="REPORT" title="Historique & OMS" subtitle="Resume quotidien, courbes de croissance, timeline unifiee et export docteur." />
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
@@ -628,7 +631,7 @@ export default function HistoryScreen() {
               { label: 'Medicaments', value: String(medEntries.length), detail: medEntries.map((entry) => entry.payload.name).filter(Boolean).join(', ') || 'Aucun' },
               { label: 'Mesures', value: String(measureEntries.length), detail: latestMeasure ? getDetail(latestMeasure) : 'Aucune' },
             ].map((stat) => (
-              <View key={stat.label} style={{ flexBasis: '48%', minWidth: 220, gap: 8, padding: 14, borderRadius: 12, backgroundColor: BG, borderWidth: 1, borderColor: BORDER }}>
+              <View key={stat.label} style={{ flexBasis: width < 680 ? '100%' : '48%', minWidth: width < 680 ? 0 : 220, gap: 8, padding: 14, borderRadius: 12, backgroundColor: BG, borderWidth: 1, borderColor: BORDER }}>
                 <Text style={{ color: MUTED, fontSize: 12, fontWeight: '600' }}>{stat.label}</Text>
                 <Text style={{ color: TEXT, fontSize: 24, fontWeight: '700' }}>{stat.value}</Text>
                 <Text style={{ color: MUTED, fontSize: 13 }}>{stat.detail}</Text>
@@ -641,7 +644,7 @@ export default function HistoryScreen() {
               { label: 'Moy. ml/prise', value: `${avgMlPerFeed} ml` },
               { label: 'Premiere prise', value: firstFeed ? formatTime(firstFeed.occurredAt) : '--' },
             ].map((badge) => (
-              <View key={badge.label} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: BG, borderWidth: 1, borderColor: BORDER }}>
+              <View key={badge.label} style={{ width: width < 680 ? '100%' : undefined, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: BG, borderWidth: 1, borderColor: BORDER }}>
                 <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600' }}>{badge.label}</Text>
                 <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{badge.value}</Text>
               </View>
@@ -771,8 +774,8 @@ export default function HistoryScreen() {
           <View
             style={{
               position: 'absolute',
-              left: 16,
-              right: 16,
+              left: responsive.horizontalPadding,
+              right: responsive.horizontalPadding,
               bottom: 16,
               paddingHorizontal: 14,
               paddingVertical: 12,

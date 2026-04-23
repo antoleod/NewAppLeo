@@ -6,6 +6,7 @@ import { Button, EmptyState, Heading, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useLocale } from '@/context/LocaleContext';
 import { getMeanFeedingInterval } from '@/lib/patterns';
+import { useResponsiveMetrics } from '@/lib/responsive';
 import { whoHeightTable, whoWeightTable } from '@/lib/who-data';
 import { getWeeklyTrend } from '@/utils/entries';
 import { dateKey, formatDuration, startOfDay, subtractDays } from '@/utils/date';
@@ -30,6 +31,7 @@ function titleStyle() {
 }
 
 export default function InsightsScreen() {
+  const responsive = useResponsiveMetrics();
   const { t, language } = useLocale();
   const { entries, summary } = useAppData();
   const [range, setRange] = useState<RangeKey>('7d');
@@ -102,7 +104,15 @@ export default function InsightsScreen() {
 
   return (
     <Page contentStyle={{ width: '100%' }}>
-      <View style={{ backgroundColor: BG, borderRadius: 16, paddingTop: 12, paddingHorizontal: 12, paddingBottom: 80 }}>
+      <View
+        style={{
+          backgroundColor: BG,
+          borderRadius: 16,
+          paddingTop: responsive.isPhone ? 10 : 12,
+          paddingHorizontal: responsive.isCompactPhone ? 10 : 12,
+          paddingBottom: 80,
+        }}
+      >
         <Animated.View entering={FadeIn.duration(280)} style={{ marginBottom: 10 }}>
           <Heading
             eyebrow={t('insights.eyebrow')}
@@ -135,8 +145,8 @@ export default function InsightsScreen() {
               key={card.label}
               entering={FadeInDown.duration(240).delay(index * 60)}
               style={{
-                flexBasis: '48%',
-                minWidth: 140,
+                flexBasis: responsive.isCompactPhone ? '100%' : '48%',
+                minWidth: responsive.isCompactPhone ? 0 : 140,
                 paddingHorizontal: 12,
                 paddingVertical: 10,
                 borderRadius: 12,
@@ -175,7 +185,7 @@ export default function InsightsScreen() {
         </Animated.View>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          <Animated.View entering={FadeIn.duration(280).delay(240)} style={{ flex: 1, minWidth: 260, marginBottom: 10 }}>
+          <Animated.View entering={FadeIn.duration(280).delay(240)} style={{ flex: 1, minWidth: responsive.isPhone ? '100%' : 260, marginBottom: 10 }}>
             <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
               <Text style={eyebrowStyle()}>{t('insights.growth')}</Text>
               <Text style={titleStyle()}>{language === 'fr' ? 'Croissance' : 'Growth'}</Text>
@@ -194,7 +204,7 @@ export default function InsightsScreen() {
             </View>
           </Animated.View>
 
-          <Animated.View entering={FadeIn.duration(280).delay(320)} style={{ flex: 1, minWidth: 260, marginBottom: 10 }}>
+          <Animated.View entering={FadeIn.duration(280).delay(320)} style={{ flex: 1, minWidth: responsive.isPhone ? '100%' : 260, marginBottom: 10 }}>
             <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
               <Text style={eyebrowStyle()}>{t('insights.sleepAnalysis')}</Text>
               <Text style={titleStyle()}>{language === 'fr' ? 'Sommeil' : 'Sleep'}</Text>

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useResponsiveMetrics } from '@/lib/responsive';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
@@ -27,13 +28,14 @@ export function Page({
   contentStyle?: any;
 }) {
   const { colors, gradients, themeStyle, backgroundPhotoUri } = useTheme();
+  const responsive = useResponsiveMetrics();
   const usePhotoBackdrop = themeStyle !== 'classic';
   const backdropSource = backgroundPhotoUri
     ? ({ uri: backgroundPhotoUri } as const)
     : require('../../assets/img/baby1.f57cad83ec056a25eac37625af9c68fb.jpg');
   const backdropBlur = themeStyle === 'photo' ? 0 : Platform.OS === 'web' ? 0 : 4;
   const content = (
-    <View style={[styles.pageInner, contentStyle]}>
+    <View style={[styles.pageInner, { maxWidth: responsive.containerMaxWidth, gap: responsive.verticalGap }, contentStyle]}>
       {children}
     </View>
   );
@@ -72,11 +74,30 @@ export function Page({
       )}
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         {scroll ? (
-          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.scroll,
+              {
+                paddingHorizontal: responsive.horizontalPadding,
+                paddingTop: responsive.isPhone ? 8 : 12,
+              },
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
             {content}
           </ScrollView>
         ) : (
-          <View style={styles.scroll}>{content}</View>
+          <View
+            style={[
+              styles.scroll,
+              {
+                paddingHorizontal: responsive.horizontalPadding,
+                paddingTop: responsive.isPhone ? 8 : 12,
+              },
+            ]}
+          >
+            {content}
+          </View>
         )}
       </SafeAreaView>
     </View>
@@ -85,11 +106,13 @@ export function Page({
 
 export function Card({ children, style }: { children: React.ReactNode; style?: any }) {
   const { theme } = useTheme();
+  const responsive = useResponsiveMetrics();
   return (
     <View
       style={[
         styles.card,
         {
+          padding: responsive.cardPadding,
           backgroundColor: theme.bgCard,
           borderColor: theme.border,
           shadowColor: theme.textPrimary,
@@ -117,7 +140,7 @@ export function Heading({
 }) {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
-  const scale = width >= 900 ? 1.08 : width >= 700 ? 1.04 : 1.12;
+  const scale = width >= 1120 ? 1.04 : width >= 768 ? 1 : width >= 430 ? 0.96 : 0.88;
   return (
     <View style={[styles.headingRow, align === 'center' && styles.headingCentered]}>
       <View style={{ flex: 1, gap: spacing.xs, alignItems: align === 'center' ? 'center' : 'flex-start' }}>
@@ -150,6 +173,7 @@ export function Button({
   style?: any;
 }) {
   const { theme } = useTheme();
+  const responsive = useResponsiveMetrics();
   const background =
     variant === 'primary'
       ? theme.accent
@@ -171,7 +195,7 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         {
-          minHeight: isSmall ? 50 : 62,
+          minHeight: isSmall ? responsive.touchTarget : Math.max(52, responsive.touchTarget + 6),
           width: fullWidth ? '100%' : undefined,
           backgroundColor: background,
           borderColor,
@@ -224,12 +248,14 @@ export function Input({
   rightAccessory?: React.ReactNode;
 }) {
   const { theme } = useTheme();
+  const responsive = useResponsiveMetrics();
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: theme.textPrimary }]}>{label}</Text>
       <View
         style={[
           styles.inputShell,
+          { minHeight: responsive.touchTarget + 10 },
           { borderColor: error ? theme.red : theme.border, backgroundColor: theme.bgCardAlt },
           multiline && styles.textArea,
         ]}
@@ -247,7 +273,7 @@ export function Input({
           inputMode={inputMode}
           style={[
             styles.input,
-            { color: theme.textPrimary },
+            { color: theme.textPrimary, minHeight: responsive.touchTarget + 10, paddingVertical: responsive.isPhone ? 13 : 16 },
             multiline && styles.textAreaInput,
             !!rightAccessory && styles.inputWithAccessory,
           ]}

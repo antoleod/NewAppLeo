@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '@/lib/firebase';
 import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { AppLanguage, EntryRecord, UserProfile } from '@/types';
@@ -7,6 +8,8 @@ const SETTINGS_DOC = 'settings';
 const BABIES_COLLECTION = 'babies';
 const ACTIVE_BABY_DOC = 'meta';
 const SAVED_MEDICINES_COLLECTION = 'savedMedicines';
+const AUTH_PROFILE_PREFIX = 'appleo.authProfile';
+const APP_SETTINGS_PREFIX = 'appleo.appSettings';
 
 export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand';
 export type ThemeStyle = 'default' | 'photo' | 'classic';
@@ -66,6 +69,18 @@ export interface MedicationPreset {
 }
 
 const DEFAULT_MEDICINE_USE_COUNT = 0;
+
+function isPermissionDenied(error: unknown) {
+  return Boolean((error as any)?.code === 'permission-denied' || /permission/i.test((error as any)?.message ?? ''));
+}
+
+function authProfileKey(uid: string) {
+  return `${AUTH_PROFILE_PREFIX}:${uid}`;
+}
+
+function appSettingsKey(uid: string) {
+  return `${APP_SETTINGS_PREFIX}:${uid}`;
+}
 
 const SYMPTOM_MEDICATION_MAP: Record<string, string[]> = {
   fever: ['paracetamol / acetaminophen', 'ibuprofen'],
@@ -333,8 +348,15 @@ function safeParse<T>(raw: string | null, fallback: T): T {
 export async function getBabies() {
   const uid = auth.currentUser?.uid;
   if (!uid) return [];
-  const snap = await getDocs(query(collection(db, 'users', uid, BABIES_COLLECTION), orderBy('createdAt', 'desc')));
-  return snap.docs.map((item) => item.data() as BabyProfile);
+  try {
+    const snap = await getDocs(query(collection(db, 'users', uid, BABIES_COLLECTION), orderBy('createdAt', 'desc')));
+    return snap.docs.map((item) => item.data() as BabyProfile);
+  } catch (error) {
+    if (isPermissionDenied(error)) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 export async function saveBaby(profile: BabyProfile) {
@@ -365,8 +387,15 @@ export async function removeBaby(babyId: string) {
 export async function getActiveBabyId() {
   const uid = auth.currentUser?.uid;
   if (!uid) return null;
-  const snap = await getDoc(doc(db, 'users', uid, SETTINGS_DOC, ACTIVE_BABY_DOC));
-  return (snap.data()?.activeBabyId as string | undefined) ?? null;
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, SETTINGS_DOC, ACTIVE_BABY_DOC));
+    return (snap.data()?.activeBabyId as string | undefined) ?? null;
+  } catch (error) {
+    if (isPermissionDenied(error)) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function setActiveBabyId(babyId: string) {
@@ -429,46 +458,33 @@ export async function setModuleVisibility(next: ModuleVisibility) {
 export async function getAppSettings() {
   const uid = auth.currentUser?.uid;
   if (!uid) return defaultAppSettings;
-  const snap = await getDoc(doc(db, 'users', uid, SETTINGS_DOC, 'main'));
-  const parsed = (snap.exists() ? (snap.data() as Partial<AppSettings>) : {}) ?? {};
-  return {
-    ...defaultAppSettings,
-    ...parsed,
-    dashboardMetrics: {
-      ...defaultAppSettings.dashboardMetrics,
-      ...(parsed.dashboardMetrics ?? {}),
-    },
-    homeSectionOrder: Array.from(
-      new Set([
-        ...((parsed.homeSectionOrder ?? []).filter((item): item is HomeSectionKey =>
-          (defaultHomeSectionOrder as readonly string[]).includes(item),
-        )),
-        ...defaultHomeSectionOrder,
-      ]),
-    ) as HomeSectionKey[],
-    effects: {
-      ...defaultAppSettings.effects,
-      ...(parsed.effects ?? {}),
-    },
-    customTheme: {
-      ...defaultAppSettings.customTheme,
-      ...(parsed.customTheme ?? {}),
-    },
-    medicationAlternatingPlan: {
-      ...defaultAppSettings.medicationAlternatingPlan,
-      ...(parsed.medicationAlternatingPlan ?? {}),
-      medicines: (parsed.medicationAlternatingPlan?.medicines ?? defaultAppSettings.medicationAlternatingPlan.medicines)
-        .filter((item) => item?.name && typeof item?.intervalHours === 'number')
-        .map((item) => ({ name: item.name.trim(), intervalHours: item.intervalHours })),
-    },
-  } as AppSettings;
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, SETTINGS_DOC, 'main'));
+    const parsed = (snap.exists() ? (snap.data() as Partial<AppSettings>) : {}) ?? {};
+    const next = hydrateAppSettings(parsed);
+    await AsyncStorage.setItem(appSettingsKey(uid), JSON.stringify(next));
+    return next;
+  } catch (error) {
+    if (!isPermissionDenied(error)) {
+      throw error;
+    }
+    const cached = await AsyncStorage.getItem(appSettingsKey(uid));
+    return hydrateAppSettings(cached ? (JSON.parse(cached) as Partial<AppSettings>) : {});
+  }
 }
 
 export async function getSavedMedicines() {
   const uid = auth.currentUser?.uid;
   if (!uid) return [];
-  const snap = await getDocs(query(collection(db, 'users', uid, SAVED_MEDICINES_COLLECTION), orderBy('updatedAt', 'desc')));
-  return mergeLegacySavedMedicines(snap.docs.map((item) => item.data() as Partial<SavedMedicine>));
+  try {
+    const snap = await getDocs(query(collection(db, 'users', uid, SAVED_MEDICINES_COLLECTION), orderBy('updatedAt', 'desc')));
+    return mergeLegacySavedMedicines(snap.docs.map((item) => item.data() as Partial<SavedMedicine>));
+  } catch (error) {
+    if (isPermissionDenied(error)) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 export function mergeLegacySavedMedicines(medicines: Array<Partial<SavedMedicine>>) {
@@ -630,7 +646,15 @@ export async function deleteSavedMedicine(name: string) {
 export async function setAppSettings(next: AppSettings) {
   const uid = auth.currentUser?.uid;
   if (!uid) return;
-  await setDoc(doc(db, 'users', uid, SETTINGS_DOC, 'main'), next, { merge: true });
+  const normalized = hydrateAppSettings(next);
+  await AsyncStorage.setItem(appSettingsKey(uid), JSON.stringify(normalized));
+  try {
+    await setDoc(doc(db, 'users', uid, SETTINGS_DOC, 'main'), normalized, { merge: true });
+  } catch (error) {
+    if (!isPermissionDenied(error)) {
+      throw error;
+    }
+  }
 }
 
 export async function updateAppSettings(partial: Partial<AppSettings>) {
@@ -689,6 +713,7 @@ export function createGuestProfile(): UserProfile {
 }
 
 let guestProfileMemory: UserProfile | null = null;
+const authProfileMemory = new Map<string, UserProfile>();
 
 export async function getGuestProfile() {
   return guestProfileMemory;
@@ -700,6 +725,30 @@ export async function setGuestProfile(profile: UserProfile) {
 
 export async function clearGuestProfile() {
   guestProfileMemory = null;
+}
+
+export async function getCachedAuthProfile(uid: string) {
+  const inMemory = authProfileMemory.get(uid);
+  if (inMemory) return inMemory;
+  const raw = await AsyncStorage.getItem(authProfileKey(uid));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as UserProfile;
+    authProfileMemory.set(uid, parsed);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function setCachedAuthProfile(profile: UserProfile) {
+  authProfileMemory.set(profile.uid, profile);
+  await AsyncStorage.setItem(authProfileKey(profile.uid), JSON.stringify(profile));
+}
+
+export async function clearCachedAuthProfile(uid: string) {
+  authProfileMemory.delete(uid);
+  await AsyncStorage.removeItem(authProfileKey(uid));
 }
 
 export async function buildBabyFromProfile(
@@ -723,4 +772,38 @@ export async function buildBabyFromProfile(
     language: profile.language,
     createdAt: new Date().toISOString(),
   });
+}
+
+function hydrateAppSettings(parsed: Partial<AppSettings> = {}): AppSettings {
+  return {
+    ...defaultAppSettings,
+    ...parsed,
+    dashboardMetrics: {
+      ...defaultAppSettings.dashboardMetrics,
+      ...(parsed.dashboardMetrics ?? {}),
+    },
+    homeSectionOrder: Array.from(
+      new Set([
+        ...((parsed.homeSectionOrder ?? []).filter((item): item is HomeSectionKey =>
+          (defaultHomeSectionOrder as readonly string[]).includes(item),
+        )),
+        ...defaultHomeSectionOrder,
+      ]),
+    ) as HomeSectionKey[],
+    effects: {
+      ...defaultAppSettings.effects,
+      ...(parsed.effects ?? {}),
+    },
+    customTheme: {
+      ...defaultAppSettings.customTheme,
+      ...(parsed.customTheme ?? {}),
+    },
+    medicationAlternatingPlan: {
+      ...defaultAppSettings.medicationAlternatingPlan,
+      ...(parsed.medicationAlternatingPlan ?? {}),
+      medicines: (parsed.medicationAlternatingPlan?.medicines ?? defaultAppSettings.medicationAlternatingPlan.medicines)
+        .filter((item) => item?.name && typeof item?.intervalHours === 'number')
+        .map((item) => ({ name: item.name.trim(), intervalHours: item.intervalHours })),
+    },
+  } as AppSettings;
 }

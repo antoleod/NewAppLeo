@@ -18,7 +18,15 @@ import {
   signInWithGoogle,
   signOutUser,
 } from '@/services/authService';
-import { clearGuestProfile, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
+import {
+  clearCachedAuthProfile,
+  clearGuestProfile,
+  createGuestProfile,
+  getCachedAuthProfile,
+  getGuestProfile,
+  setCachedAuthProfile,
+  setGuestProfile,
+} from '@/lib/storage';
 
 interface AuthContextValue {
   user: User | null;
@@ -77,20 +85,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unsubscribeProfile?.();
       unsubscribeProfile = undefined;
       setGuestMode(false);
-      setUser(nextUser);
       if (!nextUser) {
         void restoreGuestSession();
+        setUser(null);
         return;
       }
+
+      setUser(nextUser);
 
       unsubscribeProfile = watchProfile(
         nextUser.uid,
         (nextProfile) => {
-          setProfile(nextProfile);
+          if (nextProfile) {
+            void setCachedAuthProfile(nextProfile);
+            setProfile(nextProfile);
+            setLoading(false);
+            return;
+          }
+          void getCachedAuthProfile(nextUser.uid).then((cachedProfile) => {
+            setProfile(cachedProfile);
+            setLoading(false);
+          });
           setLoading(false);
         },
         () => {
-          setLoading(false);
+          void getCachedAuthProfile(nextUser.uid).then((cachedProfile) => {
+            setProfile(cachedProfile);
+            setLoading(false);
+          });
         },
       );
     });
@@ -125,6 +147,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);
+        if (result.profile) {
+          await setCachedAuthProfile(result.profile);
+        }
       },
       signInEmailPin: async (payload) => {
         await clearGuestProfile();
@@ -134,6 +159,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setGuestMode(false);
           setUser(result.user);
           setProfile(result.profile);
+          if (result.profile) {
+            await setCachedAuthProfile(result.profile);
+          }
         } catch (error: any) {
           if (String(error?.message ?? '').includes('could not be verified')) {
             pendingPinRecovery.current = { email: payload.email.trim().toLowerCase(), pin: payload.pin };
@@ -147,6 +175,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);
+        if (result.profile) {
+          await setCachedAuthProfile(result.profile);
+        }
       },
       signInGuest: async () => {
         const nextProfile = createGuestProfile();
@@ -166,12 +197,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);
+        if (result.profile) {
+          await setCachedAuthProfile(result.profile);
+        }
       },
       signOut: async () => {
         if (guestMode) {
           await clearGuestProfile();
         } else {
           await signOutUser();
+          if (user?.uid) {
+            await clearCachedAuthProfile(user.uid);
+          }
         }
         setUser(null);
         setProfile(null);
@@ -206,6 +243,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await completeOnboarding(user.uid, payload);
           const nextProfile = await loadProfile(user.uid);
           setProfile(nextProfile);
+          if (nextProfile) {
+            await setCachedAuthProfile(nextProfile);
+          }
           return nextProfile as UserProfile;
         } catch (error) {
           if (!isPermissionDenied(error)) {
@@ -229,6 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             hasCompletedOnboarding: true,
           } as UserProfile;
           setProfile(fallbackProfile);
+          await setCachedAuthProfile(fallbackProfile);
           return fallbackProfile;
         }
       },
@@ -241,7 +282,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         await updateProfile(user.uid, partial);
-        setProfile(await loadProfile(user.uid));
+        const nextProfile = await loadProfile(user.uid);
+        setProfile(nextProfile);
+        if (nextProfile) {
+          await setCachedAuthProfile(nextProfile);
+        }
       },
       setThemeMode: async (mode) => {
         if (!user) throw new Error('You must be signed in.');
@@ -252,7 +297,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         await updateThemeMode(user.uid, mode);
-        setProfile(await loadProfile(user.uid));
+        const nextProfile = await loadProfile(user.uid);
+        setProfile(nextProfile);
+        if (nextProfile) {
+          await setCachedAuthProfile(nextProfile);
+        }
       },
     }),
     [guestMode, loading, profile, user],

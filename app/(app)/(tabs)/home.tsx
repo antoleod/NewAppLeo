@@ -538,13 +538,25 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const refresh = async () => {
-      setBabies(await getBabies());
-      const activeBaby = await getActiveBaby();
-      if (!activeBaby) return;
+      const [nextBabies, activeBaby, nextVisibility, nextSettings] = await Promise.all([
+        getBabies(),
+        getActiveBaby(),
+        getModuleVisibility(),
+        getAppSettings(),
+      ]);
+
+      setBabies(nextBabies);
+      setVisibility(nextVisibility);
+      setAppSettingsState(nextSettings);
+
+      if (!activeBaby) {
+        setBabyId(null);
+        setHydration(0);
+        return;
+      }
+
       setBabyId(activeBaby.id);
       setHydration(await getMomHydration(activeBaby.id));
-      setVisibility(await getModuleVisibility());
-      setAppSettingsState(await getAppSettings());
     };
 
     void refresh();

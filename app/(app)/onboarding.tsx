@@ -100,6 +100,23 @@ export default function OnboardingScreen() {
     setStep((current) => (current < 1 ? 1 : current));
   }, [guestMode, setPath, setStep]);
 
+  useEffect(() => {
+    if (!profile) return;
+    setCaregiverName(profile.caregiverName ?? '');
+    setBabyName(profile.babyName ?? 'Leo');
+    setBabyBirthDate(new Date(profile.babyBirthDate ?? '2025-10-21T08:00:00.000Z'));
+    setBabySex(profile.babySex ?? 'unspecified');
+    setBirthWeightKg(profile.birthWeightKg ? String(profile.birthWeightKg) : '');
+    setCurrentWeightKg(profile.currentWeightKg ? String(profile.currentWeightKg) : '');
+    setHeightCm(profile.heightCm ? String(profile.heightCm) : '');
+    setHeadCircCm(profile.headCircCm ? String(profile.headCircCm) : '');
+    setBabyNotes(profile.babyNotes ?? '');
+    setLanguage(profile.language ?? 'fr');
+    setGoalFeedingsPerDay(profile.goalFeedingsPerDay ? String(profile.goalFeedingsPerDay) : '');
+    setGoalSleepHoursPerDay(profile.goalSleepHoursPerDay ? String(profile.goalSleepHoursPerDay) : '');
+    setGoalDiapersPerDay(profile.goalDiapersPerDay ? String(profile.goalDiapersPerDay) : '');
+  }, [profile]);
+
   const canContinueProfile = useMemo(() => {
     return Boolean(babyName.trim() && caregiverName.trim());
   }, [babyName, caregiverName]);
