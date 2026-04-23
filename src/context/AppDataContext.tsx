@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   addDoc,
   getDocs,
@@ -49,9 +50,29 @@ function createLocalId() {
   return globalThis.crypto?.randomUUID?.() ?? `local_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function entriesCacheKey(scopeId: string) {
+  return `babyflow.entries:${scopeId}`;
+}
+
+async function readEntriesCache(scopeId: string) {
+  const raw = await AsyncStorage.getItem(entriesCacheKey(scopeId));
+  if (!raw) return [] as EntryRecord[];
+  try {
+    const parsed = JSON.parse(raw) as EntryRecord[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeEntriesCache(scopeId: string, items: EntryRecord[]) {
+  await AsyncStorage.setItem(entriesCacheKey(scopeId), JSON.stringify(items));
+}
+
 function normalizeEntry(id: string, data: Record<string, any>): EntryRecord {
   return {
     id,
+    slug: data.slug ?? id,
     type: data.type,
     title: data.title ?? data.type,
     notes: data.notes ?? undefined,
@@ -95,6 +116,19 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [remoteAvailable, setRemoteAvailable] = useState(true);
   const [syncScope, setSyncScope] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user || guestMode) return;
+    const scopeId = syncScope ?? user.uid;
+    let active = true;
+    void readEntriesCache(scopeId).then((cached) => {
+      if (!active || !cached.length) return;
+      setEntries((current) => (current.length ? current : cached));
+    });
+    return () => {
+      active = false;
+    };
+  }, [guestMode, syncScope, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -158,13 +192,18 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     return onSnapshot(
       q,
       (snapshot) => {
-        setEntries(snapshot.docs.map((item) => normalizeEntry(item.id, item.data())));
+        const nextEntries = snapshot.docs.map((item) => normalizeEntry(item.id, item.data()));
+        setEntries(nextEntries);
+        void writeEntriesCache(scopeId, nextEntries);
         setLoading(false);
       },
       (error) => {
         if (isPermissionDenied(error)) {
           setRemoteAvailable(false);
-          setEntries([]);
+          setLoading(false);
+          void readEntriesCache(scopeId).then((cached) => {
+            setEntries(cached);
+          });
           return;
         }
         console.error('Entry listener error:', error);
@@ -180,6 +219,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const timestamp = input.occurredAt ?? new Date().toISOString();
     const nextEntry: EntryRecord = {
       id: createLocalId(),
+      slug: createLocalId(),
       type: input.type,
       title: input.title ?? input.type,
       notes: input.notes ?? '',
@@ -211,7 +251,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    setEntries((current) => [nextEntry, ...current.filter((entry) => entry.id !== nextEntry.id)].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)));
+    const nextEntries = [nextEntry, ...entries.filter((entry) => entry.id !== nextEntry.id)].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+    setEntries(nextEntries);
+    void writeEntriesCache(scopeId, nextEntries);
   }
 
   async function importEntries(items: Array<{ type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }>) {
@@ -262,6 +304,20 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           await batch.commit();
         }
 
+        const cachedExisting = await readEntriesCache(scopeId);
+        const cachedNext = [
+          ...toCreate.map((item) => ({
+            id: createLocalId(),
+            slug: createLocalId(),
+            ...item,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })),
+          ...cachedExisting,
+        ].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+        setEntries(cachedNext);
+        await writeEntriesCache(scopeId, cachedNext);
+
         return { imported: toCreate.length };
       } catch (error) {
         if (!isPermissionDenied(error)) throw error;
@@ -299,11 +355,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (next) {
-      setEntries((currentEntries) =>
-        currentEntries
-          .map((entry) => (entry.id === id ? next : entry))
-          .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)),
-      );
+      const nextEntries = entries
+        .map((entry) => (entry.id === id ? next : entry))
+        .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+      setEntries(nextEntries);
+      void writeEntriesCache(scopeId, nextEntries);
     }
   }
 
@@ -323,7 +379,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    setEntries((current) => current.filter((entry) => entry.id !== id));
+    const nextEntries = entries.filter((entry) => entry.id !== id);
+    setEntries(nextEntries);
+    void writeEntriesCache(scopeId, nextEntries);
   }
 
   async function seedDemoData() {
@@ -331,6 +389,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const seeded = DEMO_ENTRIES.map((entry) => ({
       ...entry,
       id: createLocalId(),
+      slug: createLocalId(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }));
@@ -354,7 +413,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    setEntries(seeded.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)));
+    const nextEntries = seeded.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+    setEntries(nextEntries);
+    void writeEntriesCache(scopeId, nextEntries);
   }
 
   function entryById(id: string) {

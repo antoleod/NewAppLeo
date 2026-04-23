@@ -6,6 +6,7 @@ import { Button, Card, EmptyState, EntryCard, Heading, Input, Page, Segment } fr
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocale } from '@/context/LocaleContext';
+import { themeVariantDescriptions } from '@/theme';
 import {
   defaultAppSettings,
   defaultModuleVisibility,
@@ -58,6 +59,7 @@ export default function ProfileScreen() {
   const [customSecondary, setCustomSecondary] = useState(defaultAppSettings.customTheme.secondary);
   const [customBackgroundAlt, setCustomBackgroundAlt] = useState(defaultAppSettings.customTheme.backgroundAlt);
   const milestones = useMemo(() => entries.filter((entry) => entry.type === 'milestone').slice(0, 5), [entries]);
+  const themeVariantLabel = themeVariantDescriptions[themeVariant]?.label ?? themeVariant;
 
   useEffect(() => {
     setCaregiverName(profile?.caregiverName ?? '');
@@ -271,7 +273,7 @@ export default function ProfileScreen() {
           </Pressable>
           <View style={{ flex: 1, minWidth: 220, gap: 6 }}>
             <Text style={{ color: colors.muted }}>Mode: {guestMode ? 'Guest' : 'Cloud account'}</Text>
-            <Text style={{ color: colors.muted }}>{t('profile.theme_layout', 'Theme and layout')}: {themeVariant}</Text>
+            <Text style={{ color: colors.muted }}>{t('profile.theme_layout', 'Theme and layout')}: {themeVariantLabel}</Text>
             <Text style={{ color: colors.muted }}>{t('common.language', 'Language')}: {language.toUpperCase()}</Text>
             {profile?.hasCompletedOnboarding && <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 12 }}>✓ Onboarding complete</Text>}
           </View>
@@ -427,10 +429,10 @@ export default function ProfileScreen() {
             await setThemeVariant(value as any);
           }}
           options={[
-            { label: 'Sage', value: 'sage' },
-            { label: 'Rose', value: 'rose' },
-            { label: 'Navy', value: 'navy' },
-            { label: 'Sand', value: 'sand' },
+            { label: 'Light', value: 'light' },
+            { label: 'Custom', value: 'custom' },
+            { label: 'Parliament', value: 'parliament' },
+            { label: 'Noir', value: 'noir' },
           ]}
         />
         <Button

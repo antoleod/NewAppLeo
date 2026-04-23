@@ -268,7 +268,7 @@ export function getMedicationTimelineStatus(entries: EntryRecord[], settings?: A
       otherMedicineAvailable: null,
       otherMedicineLabel: null,
       planActive: false,
-      suggestedNextName: payloadOf(lastMedicine).name,
+      suggestedNextName: payloadOf(lastMedicine).name ?? null,
     };
   }
 

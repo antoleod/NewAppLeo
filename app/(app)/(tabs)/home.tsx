@@ -1433,7 +1433,13 @@ export default function HomeScreen() {
                                 : entry.type === 'sleep'
                                   ? `${entry.payload?.durationMin || 0}m`
                                   : entry.type === 'diaper'
-                                    ? entry.payload?.type || 'wet'
+                                    ? entry.payload?.poop
+                                      ? 'Poop'
+                                      : entry.payload?.pee
+                                        ? 'Wet'
+                                        : entry.payload?.vomit
+                                          ? 'Vomit'
+                                          : 'Diaper'
                                     : ''
                             }
                             time={formatClock(entry.occurredAt, locale)}

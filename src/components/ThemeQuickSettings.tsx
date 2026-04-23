@@ -4,9 +4,11 @@ import { router } from 'expo-router';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
+import { themeVariantDescriptions } from '@/theme';
 
 export function ThemeQuickSettings() {
   const { theme, paletteMode, themeStyle, themeVariant, toggleTheme } = useTheme();
+  const variantLabel = themeVariantDescriptions[themeVariant]?.label ?? themeVariant;
 
   return (
     <View style={{ gap: spacing.md }}>
@@ -66,7 +68,7 @@ export function ThemeQuickSettings() {
         </Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text style={[typography.detail, { color: theme.textMuted }]}>
-            Palette: <Text style={{ color: theme.textPrimary, fontWeight: '600' }}>{themeVariant}</Text>
+            Palette: <Text style={{ color: theme.textPrimary, fontWeight: '600' }}>{variantLabel}</Text>
           </Text>
           <Text style={[typography.detail, { color: theme.textMuted }]}>
             Style: <Text style={{ color: theme.textPrimary, fontWeight: '600' }}>{themeStyle}</Text>

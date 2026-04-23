@@ -11,7 +11,7 @@ const SAVED_MEDICINES_COLLECTION = 'savedMedicines';
 const AUTH_PROFILE_PREFIX = 'babyflow.authProfile';
 const APP_SETTINGS_PREFIX = 'babyflow.appSettings';
 
-export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand';
+export type ThemeVariant = 'light' | 'custom' | 'parliament' | 'noir';
 export type ThemeStyle = 'default' | 'photo' | 'classic';
 
 export interface BabyProfile {
@@ -86,6 +86,26 @@ function appSettingsKey(uid: string) {
 function appSettingsCacheKey() {
   const uid = auth.currentUser?.uid ?? 'guest';
   return appSettingsKey(uid);
+}
+
+function normalizeThemeVariant(value?: string): ThemeVariant {
+  switch (value) {
+    case 'sage':
+      return 'light';
+    case 'rose':
+      return 'parliament';
+    case 'navy':
+      return 'custom';
+    case 'sand':
+      return 'noir';
+    case 'light':
+    case 'custom':
+    case 'parliament':
+    case 'noir':
+      return value;
+    default:
+      return defaultAppSettings.themeVariant;
+  }
 }
 
 function profileSettingsRef(uid: string) {
@@ -323,7 +343,7 @@ export const defaultAppSettings: AppSettings = {
   highContrastMode: false,
   redNightMode: false,
   backgroundPhotoUri: '',
-  themeVariant: 'sage',
+  themeVariant: 'noir',
   themeStyle: 'default',
   language: 'en',
   hydrationGoalMl: 2500,
@@ -805,6 +825,7 @@ function hydrateAppSettings(parsed: Partial<AppSettings> = {}): AppSettings {
   return {
     ...defaultAppSettings,
     ...parsed,
+    themeVariant: normalizeThemeVariant(parsed.themeVariant),
     dashboardMetrics: {
       ...defaultAppSettings.dashboardMetrics,
       ...(parsed.dashboardMetrics ?? {}),

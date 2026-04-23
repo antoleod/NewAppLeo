@@ -18,7 +18,7 @@ export function ThemeVariantGrid({
   onChange: (variant: ThemeVariant) => void;
 }) {
   const { theme } = useTheme();
-  const variants: ThemeVariant[] = ['sage', 'rose', 'navy', 'sand'];
+  const variants: ThemeVariant[] = ['light', 'custom', 'parliament', 'noir'];
 
   return (
     <View style={styles.gridContainer}>
@@ -68,10 +68,10 @@ export function ThemeVariantGrid({
 
 function VariantColorPill({ variant }: { variant: ThemeVariant }) {
   const colors: Record<ThemeVariant, [string, string, string]> = {
-    sage: ['#4d7c6b', '#c18f54', '#2F7D57'],
-    rose: ['#D08BA0', '#66C28F', '#B95B74'],
-    navy: ['#8EB5EA', '#1A5FA5', '#1D4E89'],
-    sand: ['#D9B97D', '#7AB58E', '#8C6B3F'],
+    light: ['#E5E5E5', '#1F5EDC', '#1A1A1A'],
+    custom: ['#13294B', '#00C2E0', '#00E5FF'],
+    parliament: ['#2B124C', '#F5C518', '#6D28D9'],
+    noir: ['#121212', '#FF6A00', '#FF7A1A'],
   };
 
   const variantColors = colors[variant];
@@ -231,7 +231,7 @@ export function ThemeSurfaceSelector({
     },
     {
       value: 'default',
-      label: 'AppLeo Default',
+      label: 'BabyFlow Default',
       description: 'Subtle gradients & depth',
     },
     {

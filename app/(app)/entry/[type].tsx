@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Button, Card, Input, Page, Segment } from '@/components/ui';
@@ -1294,7 +1294,7 @@ export default function EntryComposerScreen() {
                             onPress={async () => {
                               if (confirm('Delete this entry?')) {
                                 await deleteEntry(entry.id);
-                                void triggerHaptic('impactLight');
+                                void triggerHaptic('light');
                               }
                             }}
                             style={[styles.timelineMiniAction, { backgroundColor: 'rgba(231,76,60,0.1)' }]}
@@ -1923,11 +1923,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
   },
-  emptyTimelineText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
   sickModeContainer: {
     gap: 10,
   },
@@ -1963,19 +1958,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
-  quickActionsSection: {
-    gap: 12,
-  },
   quickActionsTitle: {
     fontSize: 11,
     fontWeight: '900',
     color: '#8B949E',
     letterSpacing: 1.2,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
   },
   quickActionButton: {
     flexBasis: '48%',

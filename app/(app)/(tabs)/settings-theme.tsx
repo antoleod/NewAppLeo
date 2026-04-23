@@ -6,26 +6,15 @@ import { useAuth } from '@/context/AuthContext';
 import { Button, Card, Page, Segment } from '@/components/ui';
 import { BackgroundPhotoSelector } from '@/components/BackgroundPhotoSelector';
 import { DataImporter } from '@/components/DataImporter';
-import { spacing } from '@/theme';
+import { themeVariantDescriptions } from '@/theme';
 import { getAppSettings, updateAppSettings, type ThemeVariant } from '@/lib/storage';
 import { BabyFlowIcon } from '@/components/BabyFlowIcon';
 
-const quickPalette = [
-  { key: 'sage', color: '#4d7c6b' },
-  { key: 'gold', color: '#c18f54' },
-  { key: 'forest', color: '#2f7d57' },
-  { key: 'sky', color: '#8eb5ea' },
-  { key: 'rose', color: '#d08ba0' },
-  { key: 'navy', color: '#1d4e89' },
-  { key: 'sand', color: '#e6b566' },
-  { key: 'ocean', color: '#4a6fa5' },
-];
-
-const themeVariants: Array<{ label: string; value: ThemeVariant; description: string }> = [
-  { label: 'Sage', value: 'sage', description: 'Soft green and wellness tones' },
-  { label: 'Rose', value: 'rose', description: 'Warm and caring accents' },
-  { label: 'Navy', value: 'navy', description: 'Deep calm and high clarity' },
-  { label: 'Sand', value: 'sand', description: 'Warm neutral softness' },
+const themeVariants: Array<{ label: string; value: ThemeVariant; description: string; swatches: [string, string, string]; glow?: string }> = [
+  { label: 'Light', value: 'light', description: 'Background #E5E5E5, accent #1F5EDC, text #1A1A1A.', swatches: ['#E5E5E5', '#1F5EDC', '#1A1A1A'] },
+  { label: 'Custom', value: 'custom', description: 'Background #13294B, accent #00C2E0, border #00E5FF.', swatches: ['#13294B', '#00C2E0', '#00E5FF'] },
+  { label: 'Parliament', value: 'parliament', description: 'Background #2B124C, gold accent, violet border.', swatches: ['#2B124C', '#F5C518', '#6D28D9'] },
+  { label: 'Noir', value: 'noir', description: 'Background #121212, orange accent, warm premium glow.', swatches: ['#121212', '#FF6A00', '#FF7A1A'], glow: 'rgba(255,106,0,0.6)' },
 ];
 
 function isDarkHex(hex: string) {
@@ -73,6 +62,7 @@ export default function ThemeSettings() {
   );
 
   const previewAccentText = isDarkHex(theme.accent) ? '#FFFFFF' : '#101418';
+  const activeVariantLabel = themeVariantDescriptions[themeVariant]?.label ?? themeVariant;
 
   const handlePhotoSelected = async (uri: string) => {
     try {
@@ -107,7 +97,7 @@ export default function ThemeSettings() {
               <View style={{ flex: 1, gap: 6 }}>
                 <Text style={[styles.eyebrow, { color: theme.accent }]}>Personalization</Text>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Theme & Design</Text>
-                <Text style={[styles.headerSubtitle, { color: colors.muted }]}>Readable, solid, mobile-first customization with safe sync fallback.</Text>
+                <Text style={[styles.headerSubtitle, { color: colors.muted }]}>Mobile-first presets with readable colors, clear hierarchy, and safe local fallback.</Text>
               </View>
               <View style={[styles.previewMini, { backgroundColor: theme.bgCardAlt, borderColor: solidCardStyle.borderColor }]}>
                 <View style={[styles.previewMiniAccent, { backgroundColor: theme.accent }]} />
@@ -151,23 +141,27 @@ export default function ThemeSettings() {
 
           <Animated.View entering={FadeInDown.duration(220).delay(50)}>
             <Card style={[styles.sectionCard, solidCardStyle]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Palette</Text>
-              <Text style={[styles.sectionBody, { color: colors.muted }]}>Swipe horizontally and pick a palette chip. Selected state is scaled, bordered, and checked.</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Theme Presets</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>Swipe the rail to compare real swatches. Each preset card explains the background, accent, and border before applying it.</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.paletteRail}>
-                {quickPalette.map((item) => {
-                  const selected = theme.accent.toLowerCase() === item.color.toLowerCase();
+                {themeVariants.map((item) => {
+                  const selected = item.value === themeVariant;
                   return (
                     <View
-                      key={item.key}
+                      key={item.value}
                       style={[
                         styles.paletteChip,
                         {
-                          backgroundColor: item.color,
                           borderColor: selected ? colors.text : 'transparent',
                           transform: [{ scale: selected ? 1.06 : 1 }],
                         },
                       ]}
                     >
+                      <View style={styles.paletteChipRow}>
+                        {item.swatches.map((color) => (
+                          <View key={color} style={[styles.paletteChipBit, { backgroundColor: color }]} />
+                        ))}
+                      </View>
                       {selected ? <Text style={styles.checkMark}>✓</Text> : null}
                     </View>
                   );
@@ -178,19 +172,42 @@ export default function ThemeSettings() {
                 {themeVariants.map((item) => {
                   const active = item.value === themeVariant;
                   return (
-                    <Button
+                    <View
                       key={item.value}
-                      label={savingVariant === item.value ? `Saving ${item.label}...` : `${item.label}  ${active ? '• Active' : ''}`}
-                      onPress={async () => {
-                        setSavingVariant(item.value);
-                        try {
-                          await setThemeVariant(item.value);
-                        } finally {
-                          setSavingVariant(null);
-                        }
-                      }}
-                      variant={active ? 'primary' : 'ghost'}
-                    />
+                      style={[
+                        styles.themePresetCard,
+                        {
+                          backgroundColor: active ? colors.surface : theme.bgCardAlt,
+                          borderColor: active ? theme.accent : solidCardStyle.borderColor,
+                          shadowColor: item.glow ?? theme.accent,
+                          shadowOpacity: active && item.glow ? 0.22 : 0.08,
+                        },
+                      ]}
+                    >
+                      <View style={styles.themePresetTop}>
+                        <View style={{ flex: 1, gap: 4 }}>
+                          <Text style={[styles.themePresetTitle, { color: colors.text }]}>{item.label}</Text>
+                          <Text style={[styles.themePresetBody, { color: colors.muted }]}>{item.description}</Text>
+                        </View>
+                        <View style={styles.themePresetSwatches}>
+                          {item.swatches.map((color) => (
+                            <View key={color} style={[styles.themePresetSwatch, { backgroundColor: color }]} />
+                          ))}
+                        </View>
+                      </View>
+                      <Button
+                        label={savingVariant === item.value ? `Saving ${item.label}...` : active ? `${item.label} Active` : `Use ${item.label}`}
+                        onPress={async () => {
+                          setSavingVariant(item.value);
+                          try {
+                            await setThemeVariant(item.value);
+                          } finally {
+                            setSavingVariant(null);
+                          }
+                        }}
+                        variant={active ? 'primary' : 'ghost'}
+                      />
+                    </View>
                   );
                 })}
               </View>
@@ -200,7 +217,7 @@ export default function ThemeSettings() {
           <Animated.View entering={FadeInDown.duration(220).delay(90)}>
             <Card style={[styles.sectionCard, solidCardStyle]}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Visual Style</Text>
-              <Text style={[styles.sectionBody, { color: colors.muted }]}>No transparency required. Use solid surfaces that stay readable everywhere.</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>Classic keeps the preset pure. Default and photo add extra presentation layers when needed.</Text>
               <Segment
                 value={themeStyle}
                 onChange={(value) => void setThemeStyle(value as any)}
@@ -216,10 +233,10 @@ export default function ThemeSettings() {
           <Animated.View entering={FadeInDown.duration(220).delay(120)}>
             <Card style={[styles.sectionCard, solidCardStyle]}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Live Preview</Text>
-              <Text style={[styles.sectionBody, { color: colors.muted }]}>A real preview block with title, supporting text, button, and secondary card.</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>Previewing {activeVariantLabel}. The title, supporting text, primary button, and secondary card update together.</Text>
               <View style={[styles.previewBlock, { backgroundColor: theme.bgCardAlt, borderColor: solidCardStyle.borderColor }]}>
                 <Text style={[styles.previewTitle, { color: colors.text }]}>Tonight routine</Text>
-                <Text style={[styles.previewCopy, { color: colors.muted }]}>Everything remains readable even if cloud sync fails or contrast mode is enabled.</Text>
+                <Text style={[styles.previewCopy, { color: colors.muted }]}>Everything remains readable even if cloud sync fails or high contrast mode is enabled.</Text>
                 <View style={[styles.previewButton, { backgroundColor: theme.accent }]}>
                   <Text style={[styles.previewButtonText, { color: previewAccentText }]}>Primary action</Text>
                 </View>
@@ -368,17 +385,59 @@ const styles = StyleSheet.create({
     paddingRight: 10,
   },
   paletteChip: {
-    width: 52,
+    width: 76,
     height: 52,
-    borderRadius: 999,
+    borderRadius: 18,
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  paletteChipRow: {
+    width: '100%',
+    height: '100%',
+    flexDirection: 'row',
+  },
+  paletteChipBit: {
+    flex: 1,
   },
   checkMark: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '800',
+    position: 'absolute',
+  },
+  themePresetCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 14,
+    gap: 12,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+  },
+  themePresetTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  themePresetTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  themePresetBody: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  themePresetSwatches: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  themePresetSwatch: {
+    width: 18,
+    height: 48,
+    borderRadius: 999,
   },
   previewBlock: {
     borderRadius: 20,
