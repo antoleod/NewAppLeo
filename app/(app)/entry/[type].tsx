@@ -25,6 +25,8 @@ import {
   type SavedMedicine,
 } from '@/lib/storage';
 import { getCareStagePolicy, getSickChildStatus } from '@/lib/careGuidance';
+import { triggerHaptic } from '@/lib/mobile';
+import { getMedicationTimelineStatus } from '@/utils/entries';
 import * as ImagePicker from 'expo-image-picker';
 
 const typeLabels: Record<EntryType, string> = {
@@ -439,6 +441,35 @@ function typeSubtitle(type: EntryType) {
   }
 }
 
+function formatClockTime(value?: string | null) {
+  if (!value) return '--';
+  return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+}
+
+function formatRelativeDose(value?: string | null) {
+  if (!value) return '';
+  const diffMs = Date.now() - new Date(value).getTime();
+  const totalMinutes = Math.max(0, Math.round(diffMs / 60000));
+  if (totalMinutes < 60) return `${totalMinutes} min ago`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes ? `${hours}h ${minutes}m ago` : `${hours}h ago`;
+}
+
+function medicationTimingState(nextAllowedAt?: string | null) {
+  if (!nextAllowedAt) {
+    return { label: 'No rule', tone: '#8B949E', bg: 'rgba(139,148,158,0.14)' };
+  }
+  const diff = new Date(nextAllowedAt).getTime() - Date.now();
+  if (diff <= 0) {
+    return { label: 'Due', tone: '#E74C3C', bg: 'rgba(231,76,60,0.16)' };
+  }
+  if (diff <= 60 * 60000) {
+    return { label: 'Soon', tone: '#C9A227', bg: 'rgba(201,162,39,0.16)' };
+  }
+  return { label: 'OK', tone: '#58A6FF', bg: 'rgba(88,166,255,0.16)' };
+}
+
 export default function EntryComposerScreen() {
   const { colors } = useTheme();
   const { language } = useLocale();
@@ -488,9 +519,23 @@ export default function EntryComposerScreen() {
   const [alternatingMedicineB, setAlternatingMedicineB] = useState('');
   const [alternatingMedicineBInterval, setAlternatingMedicineBInterval] = useState('');
   const [alternatingNotes, setAlternatingNotes] = useState('');
+  const [medicationConfirmKey, setMedicationConfirmKey] = useState('');
   const meta = typeMeta[type];
   const careStage = useMemo(() => getCareStagePolicy(profile), [profile]);
   const sickChild = useMemo(() => getSickChildStatus(entries), [entries]);
+  const medicationTimeline = useMemo(() => getMedicationTimelineStatus(entries, { medicationAlternatingPlan: {
+    enabled: alternatingEnabled && Boolean(alternatingMedicineA.trim() && alternatingMedicineB.trim()),
+    medicines: [
+      alternatingMedicineA.trim() && alternatingMedicineAInterval ? { name: alternatingMedicineA.trim(), intervalHours: Number(alternatingMedicineAInterval) || 0 } : null,
+      alternatingMedicineB.trim() && alternatingMedicineBInterval ? { name: alternatingMedicineB.trim(), intervalHours: Number(alternatingMedicineBInterval) || 0 } : null,
+    ].filter((item): item is { name: string; intervalHours: number } => Boolean(item && item.intervalHours > 0)),
+    notes: alternatingNotes.trim(),
+  } } as AppSettings), [entries, alternatingEnabled, alternatingMedicineA, alternatingMedicineAInterval, alternatingMedicineB, alternatingMedicineBInterval, alternatingNotes]);
+  const recentMedicationEntries = useMemo(
+    () => entries.filter((entry) => entry.type === 'medication' && entry.payload?.name).slice(0, 8),
+    [entries],
+  );
+  const medicationState = useMemo(() => medicationTimingState(medicationTimeline.nextAllowedAt), [medicationTimeline.nextAllowedAt]);
 
   useEffect(() => {
     if (!editing) return;
@@ -698,6 +743,85 @@ export default function EntryComposerScreen() {
     setSelectedMedicationMeta(medicine);
     if (medicine.notes && !notes.trim()) {
       setNotes(medicine.notes);
+    }
+  }
+
+  function inferMedicationIntervalHours(medicineName: string, medicineMeta?: Partial<SavedMedicine> | Partial<MedicationPreset>) {
+    if (medicineMeta && 'intervalHours' in medicineMeta && typeof medicineMeta.intervalHours === 'number' && Number.isFinite(medicineMeta.intervalHours)) {
+      return medicineMeta.intervalHours;
+    }
+    const normalized = medicineName.trim().toLowerCase();
+    const sameMedicine = recentMedicationEntries.find((entry) => entry.payload?.name?.trim().toLowerCase() === normalized);
+    if (typeof sameMedicine?.payload?.intervalHours === 'number' && Number.isFinite(sameMedicine.payload.intervalHours)) {
+      return sameMedicine.payload.intervalHours;
+    }
+    const planItem = [alternatingMedicineA, alternatingMedicineB]
+      .map((item, index) => ({
+        name: item.trim().toLowerCase(),
+        intervalHours: index === 0 ? Number(alternatingMedicineAInterval) : Number(alternatingMedicineBInterval),
+      }))
+      .find((item) => item.name === normalized && item.intervalHours > 0);
+    return planItem?.intervalHours;
+  }
+
+  async function quickLogMedication(medicine: {
+    name: string;
+    dosage?: string;
+    intervalHours?: number | null;
+    symptomTags?: string[];
+    notes?: string;
+    isCustom?: boolean;
+  }) {
+    const medicineName = medicine.name.trim();
+    if (!medicineName) return;
+
+    const timestamp = new Date().toISOString();
+    const interval = medicine.intervalHours ?? inferMedicationIntervalHours(medicineName, medicine);
+    const payload = {
+      name: medicineName,
+      dosage: medicine.dosage ?? '',
+      intervalHours: typeof interval === 'number' && Number.isFinite(interval) ? interval : undefined,
+      intervalLabel: typeof interval === 'number' && Number.isFinite(interval) ? `Every ${interval}h` : undefined,
+      notes: medicine.notes ?? '',
+      tags: medicine.symptomTags?.length ? medicine.symptomTags : selectedMedicationSymptoms,
+    };
+
+    setSaving(true);
+    try {
+      await addEntry({
+        type: 'medication',
+        title: medicineName,
+        notes: payload.notes,
+        occurredAt: timestamp,
+        payload,
+      });
+      setSavedMedicines(
+        await recordMedicineUse({
+          name: medicineName,
+          dosage: payload.dosage,
+          usedAt: timestamp,
+          intervalHours: payload.intervalHours ?? null,
+          intervalLabel: payload.intervalLabel,
+          symptomTags: payload.tags,
+          commonFor: (selectedMedicationMeta.commonFor as string[] | undefined) ?? [],
+          minAgeMonths: selectedMedicationMeta.minAgeMonths ?? null,
+          notes: medicine.notes ?? notes,
+          isCustom: medicine.isCustom ?? false,
+        }),
+      );
+      setName(medicineName);
+      setDosage(payload.dosage);
+      setIntervalHours(payload.intervalHours ? String(payload.intervalHours) : '');
+      setSelectedMedicationMeta(medicine);
+      setMedicationConfirmKey(`${medicineName}-${timestamp}`);
+      void triggerHaptic('success');
+      setTimeout(() => {
+        setMedicationConfirmKey((current) => (current === `${medicineName}-${timestamp}` ? '' : current));
+      }, 1200);
+    } catch (error: any) {
+      Alert.alert(copy.saveFailed, error?.message ?? copy.saveFailedBody);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -970,101 +1094,164 @@ export default function EntryComposerScreen() {
 
         {type === 'medication' ? (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'MEDICINE FLOW' : 'MEDICINE FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Nom, dose et contexte' : 'Name, dosage and context'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-            <MedicationPicker
-              search={medicationSearch}
-              onSearchChange={setMedicationSearch}
-              name={name}
-              dosage={dosage}
-              onNameChange={setName}
-              onDosageChange={setDosage}
-              selectedSymptoms={selectedMedicationSymptoms}
-              onSelectSymptom={(value) => setSelectedMedicationSymptoms((current) => toggleListItem(current, value))}
-              symptomOptions={symptomOptions}
-              mostUsed={mostUsedMedicines}
-              recommendedSaved={recommendedSavedMedicines}
-              recommendedPresets={recommendedPresets}
-              savedByYou={filteredSavedMedicines.slice(0, 12)}
-              filteredPresets={filteredPresets}
-              onSelectMedicine={applyMedicationSelection}
-              onSavePreset={async () =>
-                setSavedMedicines(
-                  await upsertSavedMedicine({
-                    name,
-                    dosage,
-                    intervalHours: intervalHours ? Number(intervalHours) : null,
-                    intervalLabel: intervalHours ? `Every ${intervalHours}h` : undefined,
-                    symptomTags: selectedMedicationSymptoms,
-                    commonFor: (selectedMedicationMeta.commonFor as string[] | undefined) ?? [],
-                    minAgeMonths: selectedMedicationMeta.minAgeMonths ?? null,
-                    notes: selectedMedicationMeta.notes ?? notes,
-                    isCustom: selectedMedicationMeta.isCustom ?? true,
-                  }),
-                )
-              }
-              showSavePreset={Boolean(name.trim())}
-              copy={{
-                searchLabel: 'Search',
-                searchPlaceholder: 'Paracetamol, cough, hydration...',
-                medicationName: language === 'fr' ? 'Nom du medicament' : 'Medication name',
-                dosage: language === 'fr' ? 'Dose' : 'Dosage',
-                symptomChips: 'Symptoms',
-                mostUsed: 'Most used',
-                recommended: 'Recommended for selected symptom',
-                savedByYou: 'Saved by you',
-                allPresets: 'All presets',
-                noSavedMedicine: language === 'fr' ? 'Aucun modele garde.' : 'No saved medicine yet.',
-                savePreset: language === 'fr' ? 'Sauver en modele' : 'Save as preset',
-                supportOnly: 'Informational support only',
-                checkLabel: 'Check label/weight-based dosing',
-                consultDoctor: 'Consult a doctor for infants or concerning symptoms',
-              }}
-            />
-            <View style={styles.stack}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>CARE TIMELINE</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {language === 'fr' ? 'Médication en un geste' : 'Medication at a glance'}
+            </Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>
+              {language === 'fr'
+                ? 'Suivi uniquement. Respectez les consignes médicales et la dose selon le poids.'
+                : 'Follow medical guidance and dosage by weight.'}
+            </Text>
+
+            <View style={[styles.sectionCard, { backgroundColor: '#0D1117', borderColor: '#21262D' }]}>
+              <View style={styles.statusRow}>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={[styles.timelineLabel, { color: colors.muted }]}>Last medication</Text>
+                  <Text style={[styles.timelineValue, { color: colors.text }]}>
+                    {medicationTimeline.lastMedicine?.payload?.name ?? 'Nothing logged yet'}
+                  </Text>
+                  <Text style={[styles.timelineSubvalue, { color: colors.muted }]}>
+                    {medicationTimeline.lastMedicine ? `${formatClockTime(medicationTimeline.lastMedicine.occurredAt)} • ${formatRelativeDose(medicationTimeline.lastMedicine.occurredAt)}` : 'Tap a quick action to log instantly'}
+                  </Text>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: medicationState.bg }]}>
+                  <Text style={[styles.statusBadgeText, { color: medicationState.tone }]}>{medicationState.label}</Text>
+                </View>
+              </View>
+              <View style={styles.statusDivider} />
+              <View style={{ gap: 4 }}>
+                <Text style={[styles.timelineLabel, { color: colors.muted }]}>Next allowed time</Text>
+                <Text style={[styles.timelineValue, { color: colors.text }]}>
+                  {medicationTimeline.nextAllowedAt ? formatClockTime(medicationTimeline.nextAllowedAt) : 'No saved timing rule'}
+                </Text>
+                <Text style={[styles.timelineSubvalue, { color: colors.muted }]}>
+                  {medicationTimeline.nextAllowedLabel ?? 'Track timing only. No dosing advice is provided.'}
+                </Text>
+              </View>
+            </View>
+
+            {sickChild.enabled ? (
+              <View style={[styles.sectionCard, { backgroundColor: '#0D1117', borderColor: '#21262D' }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Sick mode</Text>
+                <View style={styles.mobileChecklistGrid}>
+                  {sickChild.checklist
+                    .filter((item) => ['temperature', 'hydration', 'pee', 'stool', 'last_medication', 'next_allowed'].includes(item.key))
+                    .map((item) => (
+                      <Pressable
+                        key={item.key}
+                        onPress={() => router.push(item.href as any)}
+                        style={[styles.checklistCard, item.done && styles.checklistCardDone]}
+                      >
+                        <Text style={styles.checklistIcon}>{item.done ? '✓' : '○'}</Text>
+                        <Text style={[styles.checklistTitle, { color: colors.text }]}>{item.label}</Text>
+                        <Text style={[styles.checklistDetail, { color: colors.muted }]}>{item.detail}</Text>
+                      </Pressable>
+                    ))}
+                </View>
+              </View>
+            ) : null}
+
+            <View style={styles.quickMedicationStack}>
+              {[
+                { name: 'Paracetamol', dosage: '', isCustom: false },
+                { name: 'Ibuprofen', dosage: '', isCustom: false },
+                { name: name.trim() || 'Custom medication', dosage, isCustom: true },
+              ].map((action) => (
+                <Pressable
+                  key={action.name}
+                  disabled={saving || (action.isCustom && !name.trim())}
+                  onPress={() => {
+                    if (action.isCustom && !name.trim()) return;
+                    void quickLogMedication({
+                      name: action.name,
+                      dosage: action.dosage,
+                      intervalHours: action.isCustom ? (intervalHours ? Number(intervalHours) : undefined) : inferMedicationIntervalHours(action.name, selectedMedicationMeta),
+                      symptomTags: selectedMedicationSymptoms,
+                      notes,
+                      isCustom: action.isCustom,
+                    });
+                  }}
+                  style={({ pressed }) => [
+                    styles.quickMedicationButton,
+                    action.isCustom && !name.trim() ? { opacity: 0.45 } : null,
+                    pressed ? { transform: [{ scale: 0.98 }] } : null,
+                    medicationConfirmKey.startsWith(action.name) ? styles.quickMedicationButtonSuccess : null,
+                  ]}
+                >
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={styles.quickMedicationTitle}>{action.name}</Text>
+                    <Text style={styles.quickMedicationSubtitle}>
+                      {action.isCustom
+                        ? 'Log the current custom medication'
+                        : `1 tap to log ${action.name}`}
+                    </Text>
+                  </View>
+                  <Text style={styles.quickMedicationPlus}>+</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={[styles.sectionCard, { backgroundColor: '#0D1117', borderColor: '#21262D' }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Custom medication</Text>
+              <Input label={language === 'fr' ? 'Nom du médicament' : 'Medication name'} value={name} onChangeText={setName} placeholder="Paracetamol / Ibuprofen / Oral rehydration" />
+              <Input label={language === 'fr' ? 'Dose notée' : 'Logged dosage'} value={dosage} onChangeText={setDosage} placeholder="2.5 ml / 125 mg" />
               <Input
-                label="Interval rule (hours)"
+                label={language === 'fr' ? 'Règle d’intervalle (heures)' : 'Timing rule (hours)'}
                 value={intervalHours}
                 onChangeText={setIntervalHours}
                 placeholder="6"
                 keyboardType="decimal-pad"
                 inputMode="decimal"
               />
-              <Text style={[styles.sectionBody, { color: colors.muted }]}>
-                Medication tracking only. Informational support. Follow Belgian guidance and label or pharmacist instructions.
-              </Text>
-            </View>
-            <View style={styles.sectionCard}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Alternating plan</Text>
-              <Text style={[styles.sectionBody, { color: colors.muted }]}>
-                Optional manual setup. Only timeline support is shown when you enable two medicines and their intervals.
-              </Text>
               <View style={styles.savedRow}>
-                <Pressable onPress={() => setAlternatingEnabled((current) => !current)} style={[styles.smallChip, alternatingEnabled && styles.smallChipSelected]}>
-                  <Text style={styles.smallChipText}>{alternatingEnabled ? 'Alternating ON' : 'Alternating OFF'}</Text>
-                </Pressable>
+                {symptomOptions.slice(0, 6).map((option) => {
+                  const selected = selectedMedicationSymptoms.includes(option.value);
+                  return (
+                    <Pressable key={option.value} onPress={() => setSelectedMedicationSymptoms((current) => toggleListItem(current, option.value))} style={[styles.smallChip, selected && styles.smallChipSelected]}>
+                      <Text style={styles.smallChipText}>{option.label}</Text>
+                    </Pressable>
+                  );
+                })}
               </View>
-              <Input label="Medicine A" value={alternatingMedicineA} onChangeText={setAlternatingMedicineA} placeholder="Paracetamol / Acetaminophen" />
-              <Input
-                label="Medicine A interval (hours)"
-                value={alternatingMedicineAInterval}
-                onChangeText={setAlternatingMedicineAInterval}
-                placeholder="6"
-                keyboardType="decimal-pad"
-                inputMode="decimal"
-              />
-              <Input label="Medicine B" value={alternatingMedicineB} onChangeText={setAlternatingMedicineB} placeholder="Ibuprofen" />
-              <Input
-                label="Medicine B interval (hours)"
-                value={alternatingMedicineBInterval}
-                onChangeText={setAlternatingMedicineBInterval}
-                placeholder="6"
-                keyboardType="decimal-pad"
-                inputMode="decimal"
-              />
-              <Input label="Plan note" value={alternatingNotes} onChangeText={setAlternatingNotes} placeholder="Doctor/pharmacist instructions summary" />
+              <Pressable
+                onPress={async () =>
+                  setSavedMedicines(
+                    await upsertSavedMedicine({
+                      name,
+                      dosage,
+                      intervalHours: intervalHours ? Number(intervalHours) : null,
+                      intervalLabel: intervalHours ? `Every ${intervalHours}h` : undefined,
+                      symptomTags: selectedMedicationSymptoms,
+                      commonFor: (selectedMedicationMeta.commonFor as string[] | undefined) ?? [],
+                      minAgeMonths: selectedMedicationMeta.minAgeMonths ?? null,
+                      notes: selectedMedicationMeta.notes ?? notes,
+                      isCustom: true,
+                    }),
+                  )
+                }
+                style={styles.savePresetButton}
+              >
+                <Text style={styles.savePresetText}>{language === 'fr' ? 'Enregistrer comme raccourci' : 'Save as shortcut'}</Text>
+              </Pressable>
             </View>
+
+            {recentMedicationEntries.length ? (
+              <View style={[styles.sectionCard, { backgroundColor: '#0D1117', borderColor: '#21262D' }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent doses</Text>
+                <View style={styles.stack}>
+                  {recentMedicationEntries.slice(0, 6).map((entry) => (
+                    <View key={entry.id} style={styles.timelineDoseRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.timelineDoseName}>{entry.payload?.name}</Text>
+                        <Text style={styles.timelineDoseMeta}>{entry.payload?.dosage || 'Dose logged'}</Text>
+                      </View>
+                      <Text style={styles.timelineDoseTime}>{formatClockTime(entry.occurredAt)}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
           </View>
         ) : null}
 
@@ -1147,10 +1334,12 @@ export default function EntryComposerScreen() {
         </View>
         {notesOpen ? <Input label={language === 'fr' ? 'Notes' : 'Notes'} value={notes} onChangeText={setNotes} multiline placeholder={language === 'fr' ? 'Details optionnels' : 'Optional details'} /> : null}
 
-        <View style={styles.actions}>
-          <Button label={editing ? (language === 'fr' ? 'Mettre a jour' : 'Update entry') : language === 'fr' ? 'Enregistrer' : 'Save entry'} onPress={handleSave} loading={saving} />
-          {editing ? <Button label={language === 'fr' ? 'Supprimer' : 'Delete entry'} onPress={handleDelete} variant="danger" /> : null}
-        </View>
+        {type !== 'medication' ? (
+          <View style={styles.actions}>
+            <Button label={editing ? (language === 'fr' ? 'Mettre a jour' : 'Update entry') : language === 'fr' ? 'Enregistrer' : 'Save entry'} onPress={handleSave} loading={saving} />
+            {editing ? <Button label={language === 'fr' ? 'Supprimer' : 'Delete entry'} onPress={handleDelete} variant="danger" /> : null}
+          </View>
+        ) : null}
       </Card>
     </Page>
   );
@@ -1197,6 +1386,140 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '900',
     lineHeight: 26,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  statusBadge: {
+    minWidth: 76,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+  },
+  statusDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginVertical: 6,
+  },
+  timelineLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+  },
+  timelineValue: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  timelineSubvalue: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  quickMedicationStack: {
+    gap: 10,
+    marginTop: 4,
+  },
+  quickMedicationButton: {
+    minHeight: 58,
+    width: '100%',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#161B22',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  quickMedicationButtonSuccess: {
+    borderColor: '#58A6FF',
+    backgroundColor: 'rgba(88,166,255,0.14)',
+  },
+  quickMedicationTitle: {
+    color: '#F0F6FC',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  quickMedicationSubtitle: {
+    color: '#8B949E',
+    fontSize: 12,
+  },
+  quickMedicationPlus: {
+    color: '#58A6FF',
+    fontSize: 26,
+    fontWeight: '900',
+    lineHeight: 26,
+  },
+  mobileChecklistGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  checklistCard: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    minHeight: 82,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#161B22',
+    padding: 12,
+    gap: 4,
+  },
+  checklistCardDone: {
+    borderColor: '#58A6FF',
+    backgroundColor: 'rgba(88,166,255,0.10)',
+  },
+  checklistIcon: {
+    color: '#58A6FF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  checklistTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  checklistDetail: {
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  timelineDoseRow: {
+    minHeight: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#161B22',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  timelineDoseName: {
+    color: '#F0F6FC',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  timelineDoseMeta: {
+    color: '#8B949E',
+    fontSize: 12,
+  },
+  timelineDoseTime: {
+    color: '#8B949E',
+    fontSize: 13,
+    fontWeight: '700',
   },
   heroSubtitle: {
     color: '#8B949E',
