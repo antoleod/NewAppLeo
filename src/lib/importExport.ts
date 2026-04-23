@@ -118,7 +118,7 @@ function importMeasurements(rawMeasurements: any[]): ImportableEntry[] {
       weightKg: numberOrUndefined(measurement.weightKg ?? measurement.weight),
       heightCm: numberOrUndefined(measurement.heightCm ?? measurement.height),
       headCircCm: numberOrUndefined(measurement.headCircCm ?? measurement.headCircumferenceCm),
-      tempC: numberOrUndefined(measurement.tempC ?? measurement.temperatureC),
+      tempC: numberOrUndefined(measurement.tempC ?? measurement.temperatureC ?? measurement.temp),
       notes: measurement.notes || '',
     },
   }));

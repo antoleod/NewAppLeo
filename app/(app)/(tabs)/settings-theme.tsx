@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -28,6 +28,7 @@ function isDarkHex(hex: string) {
 }
 
 export default function ThemeSettings() {
+  const { width } = useWindowDimensions();
   const {
     colors,
     theme,
@@ -48,6 +49,8 @@ export default function ThemeSettings() {
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [savingVariant, setSavingVariant] = useState<ThemeVariant | null>(null);
+  const carouselRef = useRef<ScrollView | null>(null);
+  const [carouselOffset, setCarouselOffset] = useState(0);
 
   useEffect(() => {
     void getAppSettings();
@@ -63,6 +66,23 @@ export default function ThemeSettings() {
 
   const previewAccentText = isDarkHex(theme.accent) ? '#FFFFFF' : '#101418';
   const activeVariantLabel = themeVariantDescriptions[themeVariant]?.label ?? themeVariant;
+  const carouselCardWidth = Math.min(width - 56, 320);
+  const carouselGap = 14;
+  const carouselStride = carouselCardWidth + carouselGap;
+
+  useEffect(() => {
+    const index = themeVariants.findIndex((item) => item.value === themeVariant);
+    if (index < 0) return;
+    const offset = index * carouselStride;
+    const timeout = setTimeout(() => {
+      carouselRef.current?.scrollTo({ x: offset, animated: true });
+    }, 80);
+    return () => clearTimeout(timeout);
+  }, [carouselStride, themeVariant]);
+
+  const handleCarouselScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setCarouselOffset(event.nativeEvent.contentOffset.x);
+  };
 
   const handlePhotoSelected = async (uri: string) => {
     try {
@@ -142,28 +162,91 @@ export default function ThemeSettings() {
           <Animated.View entering={FadeInDown.duration(220).delay(50)}>
             <Card style={[styles.sectionCard, solidCardStyle]}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Theme Presets</Text>
-              <Text style={[styles.sectionBody, { color: colors.muted }]}>Swipe the rail to compare real swatches. Each preset card explains the background, accent, and border before applying it.</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.paletteRail}>
-                {themeVariants.map((item) => {
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>Desliza el carrusel para comparar cada preset con su fondo, acento y borde reales. La tarjeta activa queda centrada y más marcada.</Text>
+              <ScrollView
+                ref={carouselRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                decelerationRate="fast"
+                snapToInterval={carouselStride}
+                snapToAlignment="start"
+                contentContainerStyle={styles.carouselContent}
+                onScroll={handleCarouselScroll}
+                scrollEventThrottle={16}
+              >
+                {themeVariants.map((item, index) => {
                   const selected = item.value === themeVariant;
+                  const cardCenter = index * carouselStride;
+                  const distance = Math.min(1, Math.abs(carouselOffset - cardCenter) / carouselStride);
+                  const dynamicScale = 1 - distance * 0.08;
+                  const dynamicOpacity = 1 - distance * 0.22;
+                  const dynamicTranslateY = distance * 10;
                   return (
-                    <View
+                    <Pressable
                       key={item.value}
+                      onPress={async () => {
+                        setSavingVariant(item.value);
+                        try {
+                          await setThemeVariant(item.value);
+                        } finally {
+                          setSavingVariant(null);
+                        }
+                      }}
                       style={[
-                        styles.paletteChip,
+                        styles.carouselCard,
                         {
-                          borderColor: selected ? colors.text : 'transparent',
-                          transform: [{ scale: selected ? 1.06 : 1 }],
+                          width: carouselCardWidth,
+                          backgroundColor: item.swatches[0],
+                          borderColor: selected ? theme.accent : solidCardStyle.borderColor,
+                          opacity: dynamicOpacity,
+                          transform: [{ scale: selected ? Math.max(dynamicScale, 1.04) : dynamicScale }, { translateY: dynamicTranslateY }],
+                          shadowColor: item.glow ?? theme.accent,
+                          shadowOpacity: selected ? 0.26 : 0.08 + (1 - distance) * 0.06,
                         },
                       ]}
                     >
-                      <View style={styles.paletteChipRow}>
-                        {item.swatches.map((color) => (
-                          <View key={color} style={[styles.paletteChipBit, { backgroundColor: color }]} />
-                        ))}
+                      <View style={styles.carouselHeader}>
+                        <View style={{ flex: 1, gap: 6 }}>
+                          <Text style={[styles.carouselTitle, { color: isDarkHex(item.swatches[0]) ? '#FFFFFF' : '#111111' }]}>{item.label}</Text>
+                          <Text style={[styles.carouselBody, { color: isDarkHex(item.swatches[0]) ? 'rgba(255,255,255,0.78)' : 'rgba(17,17,17,0.72)' }]}>{item.description}</Text>
+                        </View>
+                        {selected ? (
+                          <View style={[styles.carouselBadge, { backgroundColor: item.swatches[1] }]}>
+                            <Text style={[styles.carouselBadgeText, { color: isDarkHex(item.swatches[1]) ? '#FFFFFF' : '#101418' }]}>Active</Text>
+                          </View>
+                        ) : null}
                       </View>
-                      {selected ? <Text style={styles.checkMark}>✓</Text> : null}
-                    </View>
+                      <View style={styles.carouselPreview}>
+                        <View style={[styles.carouselPreviewPanel, { backgroundColor: item.swatches[0], borderColor: item.swatches[2] }]}>
+                          <View style={[styles.carouselPreviewLineLg, { backgroundColor: item.swatches[1] }]} />
+                          <View style={styles.carouselPreviewSwatches}>
+                            {item.swatches.map((color) => (
+                              <View key={color} style={[styles.carouselPreviewSwatch, { backgroundColor: color, borderColor: 'rgba(255,255,255,0.14)' }]} />
+                            ))}
+                          </View>
+                          <View style={[styles.carouselPreviewLineSm, { backgroundColor: isDarkHex(item.swatches[0]) ? 'rgba(255,255,255,0.82)' : 'rgba(17,17,17,0.82)' }]} />
+                          <View style={[styles.carouselPreviewLineXs, { backgroundColor: isDarkHex(item.swatches[0]) ? 'rgba(255,255,255,0.52)' : 'rgba(17,17,17,0.45)' }]} />
+                        </View>
+                      </View>
+                      <View style={styles.carouselFooter}>
+                        <Text style={[styles.carouselMeta, { color: isDarkHex(item.swatches[0]) ? 'rgba(255,255,255,0.72)' : 'rgba(17,17,17,0.7)' }]}>
+                          {selected ? 'Selected now' : 'Tap to apply'}
+                        </Text>
+                        <View style={styles.carouselDots}>
+                          {themeVariants.map((dotItem) => (
+                            <View
+                              key={dotItem.value}
+                              style={[
+                                styles.carouselDot,
+                                {
+                                  backgroundColor: dotItem.value === item.value ? item.swatches[1] : isDarkHex(item.swatches[0]) ? 'rgba(255,255,255,0.22)' : 'rgba(17,17,17,0.18)',
+                                },
+                              ]}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    </Pressable>
                   );
                 })}
               </ScrollView>
@@ -383,6 +466,100 @@ const styles = StyleSheet.create({
   paletteRail: {
     gap: 12,
     paddingRight: 10,
+  },
+  carouselContent: {
+    gap: 14,
+    paddingRight: 12,
+  },
+  carouselCard: {
+    minHeight: 232,
+    borderRadius: 24,
+    borderWidth: 2,
+    padding: 18,
+    gap: 16,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
+  },
+  carouselHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  carouselTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+  },
+  carouselBody: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  carouselBadge: {
+    minHeight: 28,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  carouselBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  carouselPreview: {
+    flex: 1,
+  },
+  carouselPreviewPanel: {
+    flex: 1,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    padding: 14,
+    gap: 12,
+    justifyContent: 'center',
+  },
+  carouselPreviewLineLg: {
+    height: 18,
+    borderRadius: 999,
+  },
+  carouselPreviewSwatches: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  carouselPreviewSwatch: {
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  carouselPreviewLineSm: {
+    height: 10,
+    width: '72%',
+    borderRadius: 999,
+  },
+  carouselPreviewLineXs: {
+    height: 10,
+    width: '48%',
+    borderRadius: 999,
+  },
+  carouselFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  carouselMeta: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  carouselDots: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  carouselDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
   },
   paletteChip: {
     width: 76,
