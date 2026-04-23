@@ -148,7 +148,7 @@ export async function batchImportEntries(
 /**
  * Export entries to JSON
  */
-export function exportEntriesToJson(entries: any[], filename: string = 'leo-export.json') {
+export function exportEntriesToJson(entries: any[], filename: string = 'babyflow-export.json') {
   const json = JSON.stringify({ entries }, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   

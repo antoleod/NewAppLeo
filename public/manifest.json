@@ -1,6 +1,6 @@
 {
-  "name": "App Leo",
-  "short_name": "App Leo",
+  "name": "BabyFlow",
+  "short_name": "BabyFlow",
   "description": "Track baby feeding, sleep, diapers, and milestones.",
   "start_url": "/",
   "scope": "/",

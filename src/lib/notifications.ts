@@ -56,7 +56,7 @@ export async function scheduleDailySummary(time = '22:00', summary = 'Daily summ
   const { hour, minute } = parseTime(time);
   const id = await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'App Leo',
+      title: 'BabyFlow',
       body: summary,
       sound: true,
     },

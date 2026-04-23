@@ -71,7 +71,7 @@ const now = Date.now();
 const testAccount = {
   displayName: `Test ${now}`,
   username: `leo${String(now).slice(-8)}`,
-  email: `appleo.${now}@example.com`,
+  email: `babyflow.${now}@example.com`,
   password: 'Passw0rd!23',
   pin: '123456',
 };

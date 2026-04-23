@@ -3,13 +3,13 @@ import { auth, db } from '@/lib/firebase';
 import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { AppLanguage, EntryRecord, UserProfile } from '@/types';
 
-const MOM_HYDRATION_PREFIX = 'appleo.momHydration';
+const MOM_HYDRATION_PREFIX = 'babyflow.momHydration';
 const SETTINGS_DOC = 'settings';
 const BABIES_COLLECTION = 'babies';
 const ACTIVE_BABY_DOC = 'meta';
 const SAVED_MEDICINES_COLLECTION = 'savedMedicines';
-const AUTH_PROFILE_PREFIX = 'appleo.authProfile';
-const APP_SETTINGS_PREFIX = 'appleo.appSettings';
+const AUTH_PROFILE_PREFIX = 'babyflow.authProfile';
+const APP_SETTINGS_PREFIX = 'babyflow.appSettings';
 
 export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand';
 export type ThemeStyle = 'default' | 'photo' | 'classic';

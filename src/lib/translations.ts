@@ -21,7 +21,7 @@ const common = {
 const dictionaries: Record<AppLanguage, Dictionary> = {
   en: {
     ...common,
-    'app.name': 'App Leo',
+    'app.name': 'BabyFlow',
     'app.tagline': 'A calm, premium space to track your baby.',
     'language.select.title': 'Choose your language',
     'language.select.subtitle': 'This will be used across the whole app.',
@@ -143,7 +143,7 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
   },
   fr: {
     ...common,
-    'app.name': 'App Leo',
+    'app.name': 'BabyFlow',
     'app.tagline': 'Un espace premium et apaisant pour suivre bébé.',
     'language.select.title': 'Choisissez votre langue',
     'language.select.subtitle': 'Elle sera utilisée dans toute l’application.',
@@ -265,7 +265,7 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
   },
   es: {
     ...common,
-    'app.name': 'App Leo',
+    'app.name': 'BabyFlow',
     'app.tagline': 'Un espacio premium y tranquilo para seguir a tu bebé.',
     'language.select.title': 'Elige tu idioma',
     'language.select.subtitle': 'Se usará en toda la app.',
@@ -387,7 +387,7 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
   },
   nl: {
     ...common,
-    'app.name': 'App Leo',
+    'app.name': 'BabyFlow',
     'app.tagline': 'Een rustige, premium plek om je baby te volgen.',
     'language.select.title': 'Kies je taal',
     'language.select.subtitle': 'Deze taal wordt in de hele app gebruikt.',

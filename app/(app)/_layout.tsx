@@ -15,7 +15,7 @@ export default function AppLayout() {
       <Page scroll={false}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
           <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Loading App Leo</Text>
+          <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Loading BabyFlow</Text>
         </View>
       </Page>
     );

@@ -173,7 +173,7 @@ export default function RegisterScreen() {
         <View style={styles.container}>
           <Card style={styles.card}>
             <View style={styles.headerBlock}>
-              <Text style={[styles.brand, { color: colors.accent }]}>APP LEO</Text>
+              <Text style={[styles.brand, { color: colors.accent }]}>BABYFLOW</Text>
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Create your account in one step</Text>
               <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>Secure, simple and designed for parents</Text>
               <Text style={[styles.cardNote, { color: colors.textMuted }]}>Your data stays private on your device</Text>

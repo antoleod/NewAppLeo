@@ -11,7 +11,7 @@ export interface PairingSession {
 }
 
 const COLLECTION = 'pairingSessions';
-const PAIRING_EVENT = 'appleo:pairing-session-changed';
+const PAIRING_EVENT = 'babyflow:pairing-session-changed';
 
 function emitPairingChange() {
   try {

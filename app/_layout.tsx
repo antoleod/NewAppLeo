@@ -57,7 +57,7 @@ export default function RootLayout() {
 
   const handleUnlock = async () => {
       const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Unlock App Leo',
+      promptMessage: 'Unlock BabyFlow',
       fallbackLabel: 'Use passcode',
     });
     if (result.success) {
@@ -91,7 +91,7 @@ export default function RootLayout() {
                   {isIncognito && (
                     <View style={[StyleSheet.absoluteFill, styles.incognitoOverlay, { backgroundColor: '#1A1C1E' }]}>
                       <Text style={{ fontSize: 40 }}>\u2728</Text>
-                      <Text style={{ color: '#fff', marginTop: 10, fontWeight: '600' }}>App Leo</Text>
+                      <Text style={{ color: '#fff', marginTop: 10, fontWeight: '600' }}>BabyFlow</Text>
                     </View>
                   )}
 

@@ -89,11 +89,10 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
   return (
     <Page>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140, gap: 10, paddingHorizontal: 2 }}>
-        <Animated.View entering={FadeIn.duration(220)}>
-          <Heading eyebrow="Personalization" title="Theme & Design" subtitle="Customize colors, palette, visual style, and background" />
-        </Animated.View>
-
         <Card style={{ shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 }}>
+          <Animated.View entering={FadeIn.duration(220)}>
+            <Heading eyebrow="Personalization" title="Theme & Design" subtitle="Customize colors, palette, visual style, and background" />
+          </Animated.View>
           <SectionHeader title="Light/Dark Mode" />
           <Segment
             value={themeMode}
@@ -211,3 +210,4 @@ const [presetColor, setPresetColor] = useState('#4d7c6b');
     </Page>
   );
 }
+

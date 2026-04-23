@@ -92,12 +92,14 @@ export default function InsightsScreen() {
   if (!entries.length) {
     return (
       <Page contentStyle={{ width: '100%' }}>
-        <Heading eyebrow={t('insights.eyebrow')} title={t('insights.title')} subtitle={t('insights.subtitle.none')} />
-        <EmptyState
-          title={t('insights.noDataTitle')}
-          body={t('insights.noDataBody')}
-          action={<Button label={t('insights.createFeed')} onPress={() => router.push('/entry/feed')} />}
-        />
+        <View style={{ backgroundColor: BG, borderRadius: 16, paddingTop: responsive.isPhone ? 10 : 12, paddingHorizontal: responsive.isCompactPhone ? 10 : 12, paddingBottom: 24 }}>
+          <Heading eyebrow={t('insights.eyebrow')} title={t('insights.title')} subtitle={t('insights.subtitle.none')} />
+          <EmptyState
+            title={t('insights.noDataTitle')}
+            body={t('insights.noDataBody')}
+            action={<Button label={t('insights.createFeed')} onPress={() => router.push('/entry/feed')} />}
+          />
+        </View>
       </Page>
     );
   }

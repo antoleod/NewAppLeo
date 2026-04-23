@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "App Leo",
-    "slug": "appleo",
-    "scheme": "appleo",
+    "name": "BabyFlow",
+    "slug": "babyflow",
+    "scheme": "babyflow",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -13,8 +13,8 @@
       "bundler": "metro",
       "output": "static",
       "favicon": "./source-repo/img/icon/icon-square-180.png",
-      "name": "App Leo",
-      "shortName": "App Leo",
+      "name": "BabyFlow",
+      "shortName": "BabyFlow",
       "lang": "en"
     },
     "plugins": [
@@ -25,7 +25,7 @@
       "expo-secure-store"
     ],
     "experiments": {
-      "baseUrl": "/NewAppLeo"
+      "baseUrl": "/BabyFlow"
     }
   }
 }

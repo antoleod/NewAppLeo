@@ -548,9 +548,8 @@ export default function HistoryScreen() {
   return (
     <Page contentStyle={{ width: '100%' }}>
       <View style={{ gap: responsive.verticalGap + 2 }}>
-        <Heading eyebrow="REPORT" title="Historique & OMS" subtitle="Resume quotidien, courbes de croissance, timeline unifiee et export docteur." />
-
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
+          <Heading eyebrow="REPORT" title="Historique & OMS" subtitle="Resume quotidien, courbes de croissance, timeline unifiee et export docteur." />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <Button
               label="<"
