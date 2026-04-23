@@ -207,6 +207,7 @@ export function Input({
   autoCapitalize = 'none',
   textContentType,
   inputMode,
+  rightAccessory,
 }: {
   label: string;
   hint?: string;
@@ -220,28 +221,39 @@ export function Input({
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   textContentType?: any;
   inputMode?: any;
+  rightAccessory?: React.ReactNode;
 }) {
   const { theme } = useTheme();
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: theme.textPrimary }]}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textMuted}
-        secureTextEntry={secureTextEntry}
-        multiline={multiline}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        textContentType={textContentType}
-        inputMode={inputMode}
+      <View
         style={[
-          styles.input,
-          { color: theme.textPrimary, borderColor: error ? theme.red : theme.border, backgroundColor: theme.bgCardAlt },
+          styles.inputShell,
+          { borderColor: error ? theme.red : theme.border, backgroundColor: theme.bgCardAlt },
           multiline && styles.textArea,
         ]}
-      />
+      >
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={theme.textMuted}
+          secureTextEntry={secureTextEntry}
+          multiline={multiline}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          textContentType={textContentType}
+          inputMode={inputMode}
+          style={[
+            styles.input,
+            { color: theme.textPrimary },
+            multiline && styles.textAreaInput,
+            !!rightAccessory && styles.inputWithAccessory,
+          ]}
+        />
+        {rightAccessory ? <View style={styles.inputAccessory}>{rightAccessory}</View> : null}
+      </View>
       {error ? <Text style={[styles.hint, { color: theme.red }]}>{error}</Text> : hint ? <Text style={[styles.hint, { color: theme.textMuted }]}>{hint}</Text> : null}
     </View>
   );
@@ -565,15 +577,33 @@ const styles = StyleSheet.create({
     ...typography.statLabel,
     fontWeight: '700',
   },
-  input: {
+  inputShell: {
     minHeight: 62,
     borderRadius: radii.md,
     borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  input: {
+    minHeight: 62,
     paddingHorizontal: spacing.md,
     paddingVertical: 16,
+    flex: 1,
     ...typography.body,
   },
+  inputWithAccessory: {
+    paddingRight: 8,
+  },
+  inputAccessory: {
+    paddingRight: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   textArea: {
+    minHeight: 132,
+    alignItems: 'flex-start',
+  },
+  textAreaInput: {
     minHeight: 132,
     textAlignVertical: 'top',
   },

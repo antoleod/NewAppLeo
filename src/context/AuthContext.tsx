@@ -13,8 +13,8 @@ import {
   registerAccount,
   resetPasswordWithEmail,
   signInWithEmail,
+  signInWithEmailPin,
   signInWithGoogle,
-  signInWithUsernamePin,
   signOutUser,
 } from '@/services/authService';
 import { clearGuestProfile, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
@@ -24,19 +24,16 @@ interface AuthContextValue {
   profile: UserProfile | null;
   guestMode: boolean;
   loading: boolean;
-  profileLoading: boolean;
-  signInEmail: (payload: { email: string; password: string } | string, password?: string) => Promise<void>;
-  signUpEmail: (email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  signInEmail: (payload: { email: string; password: string } | string, password?: string) => Promise<void>;
+  signInEmailPin: (payload: { email: string; pin: string }) => Promise<void>;
   signInGoogle: () => Promise<void>;
-  signInUsernamePin: (payload: { username: string; pin: string }) => Promise<void>;
   signInGuest: () => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   signOut: () => Promise<void>;
   completeUserOnboarding: (payload: OnboardingPayload) => Promise<UserProfile>;
   saveProfile: (partial: Partial<UserProfile>) => Promise<void>;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
-  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -50,7 +47,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [guestMode, setGuestMode] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | undefined;
@@ -72,7 +68,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setProfile(null);
       }
-      setProfileLoading(false);
       setLoading(false);
     };
 
@@ -86,16 +81,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setProfileLoading(true);
       unsubscribeProfile = watchProfile(
         nextUser.uid,
         (nextProfile) => {
           setProfile(nextProfile);
-          setProfileLoading(false);
           setLoading(false);
         },
         () => {
-          setProfileLoading(false);
           setLoading(false);
         },
       );
@@ -114,7 +106,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       guestMode,
       loading,
-      profileLoading,
+      resetPassword: async (email) => {
+        await resetPasswordWithEmail(email);
+      },
       signInEmail: async (payloadOrEmail, maybePassword) => {
         const payload =
           typeof payloadOrEmail === 'string'
@@ -126,34 +120,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(result.user);
         setProfile(result.profile);
       },
-      signUpEmail: async (email, password) => {
-        const localPart = email.split('@')[0] || 'caregiver';
-        const usernameBase = localPart.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'caregiver';
-        const username = `${usernameBase}${Math.floor(Math.random() * 9000 + 1000)}`;
-        const result = await registerAccount({
-          displayName: localPart,
-          username,
-          email,
-          password,
-          pin: `${Math.floor(Math.random() * 9000 + 1000)}`,
-        });
+      signInEmailPin: async (payload) => {
+        await clearGuestProfile();
+        const result = await signInWithEmailPin(payload);
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);
-      },
-      resetPassword: async (email) => {
-        await resetPasswordWithEmail(email);
       },
       signInGoogle: async () => {
         await clearGuestProfile();
         const result = await signInWithGoogle();
-        setGuestMode(false);
-        setUser(result.user);
-        setProfile(result.profile);
-      },
-      signInUsernamePin: async (payload) => {
-        await clearGuestProfile();
-        const result = await signInWithUsernamePin(payload);
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);
@@ -264,16 +240,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await updateThemeMode(user.uid, mode);
         setProfile(await loadProfile(user.uid));
       },
-      refreshProfile: async () => {
-        if (!user) return;
-        if (guestMode) {
-          setProfile(await getGuestProfile());
-          return;
-        }
-        setProfile(await loadProfile(user.uid));
-      },
     }),
-    [guestMode, loading, profile, profileLoading, user],
+    [guestMode, loading, profile, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

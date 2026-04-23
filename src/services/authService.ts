@@ -6,20 +6,22 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { RegisterPayload } from '@/types';
 import {
-  claimUsername,
   createProfileRecord,
   defaultProfile,
   loadProfile,
   userProfileRef,
-  resolveUsernameToProfile,
   verifyPinAgainstProfile,
 } from './userProfileService';
 import { decryptWithPin, encryptWithPin, generateSalt, hashPin, normalizeEmail, normalizeUsername } from '@/utils/crypto';
 import { Platform } from 'react-native';
+
+function isPermissionDenied(error: unknown) {
+  return Boolean((error as any)?.code === 'permission-denied' || /permission/i.test((error as any)?.message ?? ''));
+}
 
 export async function registerAccount(payload: RegisterPayload) {
   const email = normalizeEmail(payload.email);
@@ -116,6 +118,52 @@ export async function signInWithEmail(payload: { email: string; password: string
   return { user: authResult.user, profile };
 }
 
+export async function signInWithEmailPin(payload: { email: string; pin: string }) {
+  const email = normalizeEmail(payload.email);
+  let lookup;
+  try {
+    lookup = await getDoc(doc(db, 'emails', email));
+  } catch (error) {
+    if (isPermissionDenied(error)) {
+      throw new Error('PIN sign-in is not available right now. Please use your password.');
+    }
+    throw error;
+  }
+  if (!lookup.exists()) {
+    throw new Error('Unknown email address.');
+  }
+
+  const data = lookup.data() as { uid?: string };
+  if (!data?.uid) {
+    throw new Error('Profile lookup failed.');
+  }
+
+  let profile = null;
+  try {
+    profile = await loadProfile(data.uid);
+  } catch (error) {
+    if (isPermissionDenied(error)) {
+      throw new Error('PIN sign-in is not available right now. Please use your password.');
+    }
+    throw error;
+  }
+  if (!profile) {
+    throw new Error('Profile not found.');
+  }
+
+  if (!verifyPinAgainstProfile(payload.pin, profile)) {
+    throw new Error('Incorrect PIN.');
+  }
+
+  const password = decryptWithPin(profile.encryptedPassword, payload.pin, profile.pinSalt);
+  if (!password) {
+    throw new Error('Could not unlock this account with the provided PIN.');
+  }
+
+  const authResult = await signInWithEmailAndPassword(auth, email, password);
+  return { user: authResult.user, profile };
+}
+
 export async function signInWithGoogle() {
   if (Platform.OS !== 'web') {
     throw new Error('Google Sign-In is currently available on web only.');
@@ -125,13 +173,20 @@ export async function signInWithGoogle() {
   provider.setCustomParameters({ prompt: 'select_account' });
 
   const authResult = await signInWithPopup(auth, provider);
-  let profile = await loadProfile(authResult.user.uid);
+  let profile = null;
+  try {
+    profile = await loadProfile(authResult.user.uid);
+  } catch (error) {
+    if (!isPermissionDenied(error)) {
+      throw error;
+    }
+  }
 
   if (!profile) {
     const email = authResult.user.email ?? `google_${authResult.user.uid}@local.app`;
     const displayName = authResult.user.displayName ?? email.split('@')[0];
     const bootstrap = {
-      ...defaultProfile(authResult.user.uid, email, '', displayName),
+      ...defaultProfile(authResult.user.uid, email, normalizeUsername(email.split('@')[0] || authResult.user.uid.slice(0, 8)), displayName),
       displayName,
       caregiverName: displayName,
       createdAt: new Date().toISOString(),
@@ -148,28 +203,22 @@ export async function signInWithGoogle() {
         },
         { merge: true },
       );
+      await setDoc(
+        doc(db, 'emails', normalizeEmail(email)),
+        {
+          uid: authResult.user.uid,
+          email: normalizeEmail(email),
+          createdAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
     } catch {
-      // fall back to local profile in restrictive Firestore environments
+      // fall back to local bootstrap profile in restrictive environments
     }
 
     profile = bootstrap;
   }
 
-  return { user: authResult.user, profile };
-}
-
-export async function signInWithUsernamePin(payload: { username: string; pin: string }) {
-  const profile = await resolveUsernameToProfile(payload.username);
-  if (!verifyPinAgainstProfile(payload.pin, profile)) {
-    throw new Error('Incorrect PIN.');
-  }
-
-  const password = decryptWithPin(profile.encryptedPassword, payload.pin, profile.pinSalt);
-  if (!password) {
-    throw new Error('Could not decrypt the stored credentials.');
-  }
-
-  const authResult = await signInWithEmailAndPassword(auth, profile.authEmail, password);
   return { user: authResult.user, profile };
 }
 
@@ -179,8 +228,4 @@ export async function signOutUser() {
 
 export async function resetPasswordWithEmail(email: string) {
   await sendPasswordResetEmail(auth, normalizeEmail(email));
-}
-
-export async function linkUsername(uid: string, username: string) {
-  await claimUsername(uid, username);
 }

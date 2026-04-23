@@ -17,7 +17,7 @@ export interface SmartAlert {
   id: string;
   title: string;
   body: string;
-  icon: string;
+  icon: 'nutrition-outline' | 'moon-outline' | 'medical-outline';
   value: string;
   statusLabel: string;
   tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
@@ -41,11 +41,11 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   if (feedHours !== null && feedHours >= 3) {
     alerts.push({
       id: 'feed-due',
-      title: 'Feeding due',
+      title: 'Next feeding',
       body: `Last feed was ${Math.round(feedHours * 10) / 10}h ago.`,
-      icon: '🍼',
+      icon: 'nutrition-outline',
       value: formatCompactHours(feedHours),
-      statusLabel: 'overdue',
+      statusLabel: 'Due now',
       tone: feedHours >= 4 ? 'danger' : 'warning',
       actionLabel: 'Log feed',
       targetType: 'feed',
@@ -56,11 +56,11 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   if (sleepHours !== null && sleepHours >= 6) {
     alerts.push({
       id: 'sleep-due',
-      title: 'Nap check',
+      title: 'Nap window',
       body: profile?.babyName ? `${profile.babyName} has been awake for a while.` : 'Baby may be ready for a nap.',
-      icon: '😴',
-      value: 'Awake',
-      statusLabel: 'active',
+      icon: 'moon-outline',
+      value: formatCompactHours(sleepHours),
+      statusLabel: 'Awake time',
       tone: 'secondary',
       actionLabel: 'Log sleep',
       targetType: 'sleep',
@@ -71,11 +71,11 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   if (medicationHours !== null && medicationHours >= 6) {
     alerts.push({
       id: 'med-due',
-      title: 'Medication review',
+      title: 'Medication',
       body: 'Check if the next dose or follow-up is due.',
-      icon: '💊',
-      value: 'Due',
-      statusLabel: 'pending',
+      icon: 'medical-outline',
+      value: formatCompactHours(medicationHours),
+      statusLabel: 'Review due',
       tone: 'danger',
       actionLabel: 'Log medication',
       targetType: 'medication',

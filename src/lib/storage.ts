@@ -200,14 +200,34 @@ export type ModuleVisibility = Record<string, boolean>;
 export interface DashboardMetrics {
   dailyStatus: boolean;
   nextFeed: boolean;
+  guidance: boolean;
   lastFeeds: boolean;
+  medication: boolean;
+  sickChild: boolean;
   timeline: boolean;
+  quickActions: boolean;
   recentActivity: boolean;
   hydration: boolean;
   widget: boolean;
   weeklyDigest: boolean;
   smartSignals: boolean;
 }
+
+export const defaultHomeSectionOrder = [
+  'nextFeed',
+  'smartSignals',
+  'dailyStatus',
+  'guidance',
+  'lastFeeds',
+  'medication',
+  'sickChild',
+  'timeline',
+  'quickActions',
+  'hydration',
+  'recentActivity',
+] as const;
+
+export type HomeSectionKey = (typeof defaultHomeSectionOrder)[number];
 
 export interface MotionEffects {
   emojiPulse: boolean;
@@ -248,6 +268,7 @@ export interface AppSettings {
   hasImportedLeoData: boolean;
   moduleVisibility: ModuleVisibility;
   dashboardMetrics: DashboardMetrics;
+  homeSectionOrder: HomeSectionKey[];
   effects: MotionEffects;
   customTheme: CustomThemeSettings;
   medicationAlternatingPlan: MedicationAlternatingPlan;
@@ -268,14 +289,19 @@ export const defaultAppSettings: AppSettings = {
   dashboardMetrics: {
     dailyStatus: true,
     nextFeed: true,
+    guidance: true,
     lastFeeds: true,
+    medication: true,
+    sickChild: true,
     timeline: true,
+    quickActions: true,
     recentActivity: true,
     hydration: true,
     widget: true,
     weeklyDigest: true,
     smartSignals: true,
   },
+  homeSectionOrder: [...defaultHomeSectionOrder],
   effects: {
     emojiPulse: true,
     liveCountdown: true,
@@ -412,6 +438,14 @@ export async function getAppSettings() {
       ...defaultAppSettings.dashboardMetrics,
       ...(parsed.dashboardMetrics ?? {}),
     },
+    homeSectionOrder: Array.from(
+      new Set([
+        ...((parsed.homeSectionOrder ?? []).filter((item): item is HomeSectionKey =>
+          (defaultHomeSectionOrder as readonly string[]).includes(item),
+        )),
+        ...defaultHomeSectionOrder,
+      ]),
+    ) as HomeSectionKey[],
     effects: {
       ...defaultAppSettings.effects,
       ...(parsed.effects ?? {}),

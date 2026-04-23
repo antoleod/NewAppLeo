@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { AppState, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -22,8 +22,10 @@ import { buildSmartAlerts, getMeanFeedingInterval } from '@/lib/patterns';
 import { getMedicationTimelineStatus } from '@/utils/entries';
 import { getCareStagePolicy, getSickChildStatus } from '@/lib/careGuidance';
 import {
+  defaultHomeSectionOrder,
   defaultAppSettings,
   defaultModuleVisibility,
+  HomeSectionKey,
   getActiveBaby,
   getBabies,
   getAppSettings,
@@ -246,17 +248,145 @@ function formatAvailability(timestamp: string | null, locale: string, language: 
   return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(timestamp));
 }
 
-function SmartSignalChip({ alert, onPress, compact }: { alert: any; onPress: () => void; compact: boolean }) {
-  const color = alert.status === 'OVERDUE' ? RED : alert.status === 'ACTIVE' ? GREEN : '#F2C86F';
+function SmartSignalChip({
+  alert,
+  onPress,
+  compact,
+}: {
+  alert: {
+    id: string;
+    title: string;
+    value: string;
+    statusLabel: string;
+    tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
+    icon: keyof typeof Ionicons.glyphMap;
+  };
+  onPress: () => void;
+  compact: boolean;
+}) {
+  const color = alertToneColor(alert.tone);
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1, flexBasis: compact ? '100%' : '48%' })}>
-      <View style={{ minHeight: 44, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: color, backgroundColor: `${color}12`, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Text style={{ color, fontSize: 10, fontWeight: '900', letterSpacing: 1 }}>{alert.status}</Text>
-        <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', flex: 1 }} numberOfLines={1}>
-          {alert.value}
-        </Text>
+      <View
+        style={{
+          minHeight: compact ? 60 : 64,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: `${color}55`,
+          backgroundColor: `${color}12`,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+        }}
+      >
+        <View style={{ width: 34, height: 34, borderRadius: 12, backgroundColor: `${color}20`, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name={alert.icon} size={17} color={color} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', letterSpacing: 1.1, textTransform: 'uppercase' }} numberOfLines={1}>
+            {alert.statusLabel}
+          </Text>
+          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }} numberOfLines={1}>
+            {alert.title}
+          </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+          <Text style={{ color, fontSize: 15, fontWeight: '800' }} numberOfLines={1}>
+            {alert.value}
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color={MUTED} />
+        </View>
       </View>
     </Pressable>
+  );
+}
+
+function HomeSectionCard({
+  sectionKey,
+  children,
+  isMobile,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
+  onHide,
+}: {
+  sectionKey: HomeSectionKey;
+  children: React.ReactNode;
+  isMobile: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onHide: () => void;
+}) {
+  const panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => isMobile && Math.abs(gesture.dx) > 18 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+    onPanResponderRelease: (_, gesture) => {
+      if (gesture.dx >= 88) onHide();
+    },
+  });
+
+  return (
+    <View {...(isMobile ? panResponder.panHandlers : {})} style={{ marginBottom: 10 }}>
+      <View style={{ position: 'relative' }}>
+        {children}
+        <View style={{ position: 'absolute', top: 10, right: 10, flexDirection: 'row', gap: 6 }}>
+          <Pressable
+            onPress={onMoveUp}
+            disabled={!canMoveUp}
+            style={({ pressed }) => ({
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: BORDER,
+              backgroundColor: pressed ? '#1B2430' : BG,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: canMoveUp ? 1 : 0.35,
+            })}
+          >
+            <Ionicons name="chevron-up" size={14} color={TEXT} />
+          </Pressable>
+          <Pressable
+            onPress={onMoveDown}
+            disabled={!canMoveDown}
+            style={({ pressed }) => ({
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: BORDER,
+              backgroundColor: pressed ? '#1B2430' : BG,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: canMoveDown ? 1 : 0.35,
+            })}
+          >
+            <Ionicons name="chevron-down" size={14} color={TEXT} />
+          </Pressable>
+          <Pressable
+            onPress={onHide}
+            accessibilityLabel={`Hide section ${sectionKey}`}
+            style={({ pressed }) => ({
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: BORDER,
+              backgroundColor: pressed ? '#341B1B' : BG,
+              alignItems: 'center',
+              justifyContent: 'center',
+            })}
+          >
+            <Ionicons name="eye-off-outline" size={14} color={TEXT} />
+          </Pressable>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -548,11 +678,33 @@ export default function HomeScreen() {
     setAppSettingsState(next);
   }
 
+  async function updateHomeSectionOrder(nextOrder: HomeSectionKey[]) {
+    const next = await updateAppSettings({
+      homeSectionOrder: nextOrder,
+    });
+    setAppSettingsState(next);
+  }
+
+  async function moveHomeSection(key: HomeSectionKey, direction: 'up' | 'down') {
+    const current = [...appSettings.homeSectionOrder];
+    const index = current.indexOf(key);
+    if (index < 0) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= current.length) return;
+    [current[index], current[targetIndex]] = [current[targetIndex], current[index]];
+    await updateHomeSectionOrder(current);
+  }
+
+  async function hideHomeSection(key: HomeSectionKey) {
+    await updateDashboardMetric(key as keyof typeof appSettings.dashboardMetrics, false);
+  }
+
   async function restoreHomeCustomization() {
     const next = await updateAppSettings({
       dashboardMetrics: {
         ...defaultAppSettings.dashboardMetrics,
       },
+      homeSectionOrder: [...defaultHomeSectionOrder],
     });
     setAppSettingsState(next);
     setShowHomeCustomizer(false);
@@ -602,6 +754,11 @@ export default function HomeScreen() {
     setShowNextFeedPicker(false);
     startQuickTimer(mode, side);
   }
+
+  const isMobilePlatform = Platform.OS !== 'web';
+  const orderedSections = appSettings.homeSectionOrder.filter((key): key is HomeSectionKey =>
+    (defaultHomeSectionOrder as readonly string[]).includes(key),
+  );
 
   return (
     <Page contentStyle={[styles.pageContent, { maxWidth: isLargePhone ? 760 : 680 }]}>
@@ -666,115 +823,173 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ marginBottom: 10 }}>
-          <NextFeedingCard onPress={openNextFeedPicker} />
-        </Animated.View>
+        {orderedSections.map((sectionKey, index) => {
+          const canMoveUp = index > 0;
+          const canMoveDown = index < orderedSections.length - 1;
+          const delay = 60 + index * 40;
+          const hidden = !appSettings.dashboardMetrics[sectionKey as keyof typeof appSettings.dashboardMetrics];
 
-        {showSmartSignals && smartAlerts.length ? (
-        <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={sectionEyebrowStyle()}>{t('home.reminders', 'Reminders')}</Text>
-                <Text style={sectionTitleStyle()}>{t('home.smart_signals', 'Smart signals')}</Text>
-                </View>
-                <Pressable
-                  onPress={() => setShowSmartSignalsMenu(true)}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 999,
-                    borderWidth: 1,
-                    borderColor: BORDER,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: BG,
-                  }}
-                >
-                  <Text style={{ color: TEXT, fontSize: 18, fontWeight: '800', lineHeight: 18 }}>...</Text>
-                </Pressable>
-              </View>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {smartAlerts.map((alert) => (
-                  <SmartSignalChip
-                    key={alert.id}
-                    alert={alert}
-                    compact={isCompactPhone}
-                    onPress={() => {
-                      if (alert.targetType) {
-                        router.push({ pathname: '/entry/[type]', params: { type: alert.targetType } });
-                      }
-                    }}
-                  />
-                ))}
-              </View>
-            </View>
-          </Animated.View>
-        ) : null}
+          if (hidden) return null;
 
-        <Animated.View entering={FadeIn.duration(300).delay(180)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: '#172018', borderWidth: 1, borderColor: BORDER, gap: 12 }}>
-            <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={sectionEyebrowStyle()}>{t('home.milk', 'Milk')}</Text>
-                <Text style={{ color: TEXT, fontSize: 28, fontWeight: '700' }}>{totalMilkToday} ml</Text>
-                <Text style={{ color: MUTED, fontSize: 11 }}>{milkStatus}</Text>
-              </View>
-              <View style={{ flex: 1, gap: 6, alignItems: 'flex-end' }}>
-                <Text style={{ color: GREEN, fontSize: 11, fontWeight: '900', letterSpacing: 1.3, textTransform: 'uppercase' }}>{t('home.next_feed_label', 'Next feed')}</Text>
-                <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', textAlign: 'right' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
-                <Animated.View style={[nextBadgeStyle, { marginTop: 2, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${GREEN}18` : `${GOLD}18` }]}>
-                  <Text style={{ color: nextFeedDueIn && nextFeedDueIn > 0 ? GREEN : GOLD, fontSize: 11, fontWeight: '700' }}>
-                    {lastFeed ? formatRelative(lastFeed.occurredAt, locale) : '--'}
-                  </Text>
+          if (sectionKey === 'nextFeed') {
+            return (
+              <HomeSectionCard
+                key={sectionKey}
+                sectionKey={sectionKey}
+                isMobile={isMobilePlatform}
+                canMoveUp={canMoveUp}
+                canMoveDown={canMoveDown}
+                onMoveUp={() => void moveHomeSection(sectionKey, 'up')}
+                onMoveDown={() => void moveHomeSection(sectionKey, 'down')}
+                onHide={() => void hideHomeSection(sectionKey)}
+              >
+                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                  <NextFeedingCard onPress={openNextFeedPicker} />
                 </Animated.View>
-              </View>
-            </View>
-            <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
-              <Animated.View style={[{ height: '100%', backgroundColor: GREEN, borderRadius: 999 }, milkBarStyle]} />
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 }}>
-              {[
-                { label: t('home.feeds', 'Feeds'), value: String(summary.today.feedCount), icon: 'water-outline' as const },
-                { label: t('home.bottle', 'Bottle'), value: `${summary.today.bottleMl} ml`, icon: 'water-outline' as const },
-                { label: t('insights.sleep', 'Sleep'), value: `${summary.today.sleepMinutes}m`, icon: 'moon-outline' as const },
-                { label: t('home.diapers', 'Diapers'), value: String(summary.today.diaperCount), icon: 'cube-outline' as const },
-                { label: t('home.food', 'Food'), value: String(summary.today.foodCount), icon: 'restaurant-outline' as const },
-              ].map((item, index) => (
-                <StatCell key={item.label} label={item.label} value={item.value} icon={item.icon} index={index} highlight={index === 1} />
-              ))}
-            </View>
-          </View>
-        </Animated.View>
+              </HomeSectionCard>
+            );
+          }
 
-        <Animated.View entering={FadeIn.duration(300).delay(200)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-            <Text style={sectionEyebrowStyle()}>Belgian guidance</Text>
-            <Text style={sectionTitleStyle()}>{careStage.ageLabel}</Text>
-            <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{careStage.feedingFocus}</Text>
-            <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>{careStage.waterGuidance}</Text>
-            <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>{careStage.foodGuidance}</Text>
-          </View>
-        </Animated.View>
+          if (sectionKey === 'smartSignals') {
+            if (!(showSmartSignals && smartAlerts.length)) return null;
+            return (
+              <HomeSectionCard
+                key={sectionKey}
+                sectionKey={sectionKey}
+                isMobile={isMobilePlatform}
+                canMoveUp={canMoveUp}
+                canMoveDown={canMoveDown}
+                onMoveUp={() => void moveHomeSection(sectionKey, 'up')}
+                onMoveDown={() => void moveHomeSection(sectionKey, 'down')}
+                onHide={() => void hideHomeSection(sectionKey)}
+              >
+                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={sectionEyebrowStyle()}>{t('home.reminders', 'Reminders')}</Text>
+                        <Text style={sectionTitleStyle()}>{t('home.smart_signals', 'Priority alerts')}</Text>
+                      </View>
+                      <Pressable
+                        onPress={() => setShowSmartSignalsMenu(true)}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          borderColor: BORDER,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: 'rgba(255,255,255,0.04)',
+                        }}
+                      >
+                        <Ionicons name="ellipsis-horizontal" size={16} color={TEXT} />
+                      </Pressable>
+                    </View>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {smartAlerts.map((alert) => (
+                        <SmartSignalChip
+                          key={alert.id}
+                          alert={alert}
+                          compact={isCompactPhone}
+                          onPress={() => {
+                            if (alert.targetType) {
+                              router.push({ pathname: '/entry/[type]', params: { type: alert.targetType } });
+                            }
+                          }}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </Animated.View>
+              </HomeSectionCard>
+            );
+          }
 
-        <Animated.View entering={FadeIn.duration(300).delay(220)} style={{ marginBottom: 10 }}>
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
-            {[
-              { label: t('home.last_breast', 'Last breast'), value: formatClock(lastBreastFeed?.occurredAt, locale), detail: formatRelative(lastBreastFeed?.occurredAt, locale) },
-              { label: t('home.last_bottle', 'Last bottle'), value: formatClock(lastBottleFeed?.occurredAt, locale), detail: formatRelative(lastBottleFeed?.occurredAt, locale) },
-            ].map((item) => (
-              <View key={item.label} style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
-                <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 }}>{item.label.toUpperCase()}</Text>
-                <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{item.value}</Text>
-                <Text style={{ color: MUTED, fontSize: 11 }}>{item.detail}</Text>
-              </View>
-            ))}
-          </View>
-        </Animated.View>
+          if (sectionKey === 'dailyStatus') {
+            return (
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: '#172018', borderWidth: 1, borderColor: BORDER, gap: 12 }}>
+                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
+                      <View style={{ flex: 1, gap: 6 }}>
+                        <Text style={sectionEyebrowStyle()}>{t('home.milk', 'Milk')}</Text>
+                        <Text style={{ color: TEXT, fontSize: 28, fontWeight: '700' }}>{totalMilkToday} ml</Text>
+                        <Text style={{ color: MUTED, fontSize: 11 }}>{milkStatus}</Text>
+                      </View>
+                      <View style={{ flex: 1, gap: 6, alignItems: 'flex-end', paddingRight: 96 }}>
+                        <Text style={{ color: GREEN, fontSize: 11, fontWeight: '900', letterSpacing: 1.3, textTransform: 'uppercase' }}>{t('home.next_feed_label', 'Next feed')}</Text>
+                        <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', textAlign: 'right' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
+                        <Animated.View style={[nextBadgeStyle, { marginTop: 2, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${GREEN}18` : `${GOLD}18` }]}>
+                          <Text style={{ color: nextFeedDueIn && nextFeedDueIn > 0 ? GREEN : GOLD, fontSize: 11, fontWeight: '700' }}>
+                            {lastFeed ? formatRelative(lastFeed.occurredAt, locale) : '--'}
+                          </Text>
+                        </Animated.View>
+                      </View>
+                    </View>
+                    <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
+                      <Animated.View style={[{ height: '100%', backgroundColor: GREEN, borderRadius: 999 }, milkBarStyle]} />
+                    </View>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 }}>
+                      {[
+                        { label: t('home.feeds', 'Feeds'), value: String(summary.today.feedCount), icon: 'water-outline' as const },
+                        { label: t('home.bottle', 'Bottle'), value: `${summary.today.bottleMl} ml`, icon: 'water-outline' as const },
+                        { label: t('insights.sleep', 'Sleep'), value: `${summary.today.sleepMinutes}m`, icon: 'moon-outline' as const },
+                        { label: t('home.diapers', 'Diapers'), value: String(summary.today.diaperCount), icon: 'cube-outline' as const },
+                        { label: t('home.food', 'Food'), value: String(summary.today.foodCount), icon: 'restaurant-outline' as const },
+                      ].map((item, statIndex) => (
+                        <StatCell key={item.label} label={item.label} value={item.value} icon={item.icon} index={statIndex} highlight={statIndex === 1} />
+                      ))}
+                    </View>
+                  </View>
+                </Animated.View>
+              </HomeSectionCard>
+            );
+          }
 
-        {visibility.medication ? (
-          <Animated.View entering={FadeIn.duration(300).delay(260)} style={{ marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+          if (sectionKey === 'guidance') {
+            return (
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+                    <Text style={sectionEyebrowStyle()}>Belgian guidance</Text>
+                    <Text style={[sectionTitleStyle(), { paddingRight: 96 }]}>{careStage.ageLabel}</Text>
+                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{careStage.feedingFocus}</Text>
+                    <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>{careStage.waterGuidance}</Text>
+                    <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>{careStage.foodGuidance}</Text>
+                  </View>
+                </Animated.View>
+              </HomeSectionCard>
+            );
+          }
+
+          if (sectionKey === 'lastFeeds') {
+            return (
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
+                    {[
+                      { label: t('home.last_breast', 'Last breast'), value: formatClock(lastBreastFeed?.occurredAt, locale), detail: formatRelative(lastBreastFeed?.occurredAt, locale) },
+                      { label: t('home.last_bottle', 'Last bottle'), value: formatClock(lastBottleFeed?.occurredAt, locale), detail: formatRelative(lastBottleFeed?.occurredAt, locale) },
+                    ].map((item) => (
+                      <View key={item.label} style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
+                        <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 }}>{item.label.toUpperCase()}</Text>
+                        <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{item.value}</Text>
+                        <Text style={{ color: MUTED, fontSize: 11 }}>{item.detail}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </Animated.View>
+              </HomeSectionCard>
+            );
+          }
+
+          if (sectionKey === 'medication') {
+            if (!visibility.medication) return null;
+            return (
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
               <Text style={sectionEyebrowStyle()}>Medication</Text>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                 <View style={{ flex: 1, gap: 4 }}>
@@ -822,13 +1037,18 @@ export default function HomeScreen() {
               <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>
                 Informational only. Follow Belgian guidance and the product label. Dose must follow weight-based or label instructions.
               </Text>
-            </View>
-          </Animated.View>
-        ) : null}
+                  </View>
+                </Animated.View>
+              </HomeSectionCard>
+            );
+          }
 
-        {sickChild.enabled ? (
-          <Animated.View entering={FadeIn.duration(300).delay(290)} style={{ marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: '#211818', borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+          if (sectionKey === 'sickChild') {
+            if (!sickChild.enabled) return null;
+            return (
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: '#211818', borderWidth: 1, borderColor: BORDER, gap: 10 }}>
               <Text style={sectionEyebrowStyle()}>Sick child mode</Text>
               <Text style={sectionTitleStyle()}>Compact care checklist</Text>
               <Text style={{ color: MUTED, fontSize: 11 }}>
@@ -852,12 +1072,17 @@ export default function HomeScreen() {
               <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>
                 Tracking and safety support only. This app does not prescribe treatment.
               </Text>
-            </View>
-          </Animated.View>
-        ) : null}
+                  </View>
+                </Animated.View>
+              </HomeSectionCard>
+            );
+          }
 
-        <Animated.View entering={FadeIn.duration(300).delay(320)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+          if (sectionKey === 'timeline') {
+            return (
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
             <Text style={sectionEyebrowStyle()}>{t('home.timeline', 'Timeline')}</Text>
             <Text style={sectionTitleStyle()}>24h</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 8 }}>
@@ -878,13 +1103,19 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 </PressScale>
-              ))}
+                ))}
             </View>
-          </View>
-        </Animated.View>
+                  </View>
+                </Animated.View>
+              </HomeSectionCard>
+            );
+          }
 
-        <Animated.View entering={FadeIn.duration(300).delay(400)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 6 }}>
+          if (sectionKey === 'quickActions') {
+            return (
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 6 }}>
             <Text style={sectionEyebrowStyle()}>{t('home.rapid_actions', 'Quick actions')}</Text>
             <Text style={sectionTitleStyle()}>{t('home.direct_actions', 'Direct actions')}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -944,13 +1175,19 @@ export default function HomeScreen() {
                     <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{preset.label}</Text>
                   </View>
                 </PressScale>
-              ))}
+                ))}
             </View>
-          </View>
-        </Animated.View>
+                  </View>
+                </Animated.View>
+              </HomeSectionCard>
+            );
+          }
 
-        <Animated.View entering={FadeIn.duration(300).delay(480)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+          if (sectionKey === 'hydration') {
+            return (
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
             <Text style={sectionEyebrowStyle()}>{t('home.hydration', 'Hydration')}</Text>
             <Text style={sectionTitleStyle()}>{t('home.hydration', 'Hydration')}</Text>
             <Text style={{ color: MUTED, fontSize: 11 }}>{hydration} ml / {appSettings.hydrationGoalMl} ml</Text>
@@ -976,13 +1213,19 @@ export default function HomeScreen() {
                     <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{item.label}</Text>
                   </View>
                 </PressScale>
-              ))}
+                ))}
             </View>
-          </View>
-        </Animated.View>
+                  </View>
+                </Animated.View>
+              </HomeSectionCard>
+            );
+          }
 
-        <Animated.View entering={FadeIn.duration(300).delay(560)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER }}>
+          if (sectionKey === 'recentActivity') {
+            return (
+              <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={isMobilePlatform} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
+                <Animated.View entering={FadeIn.duration(300).delay(delay)}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER }}>
             <Text style={sectionEyebrowStyle()}>{t('home.recent', 'Recent')}</Text>
             <Text style={sectionTitleStyle()}>{t('home.recent_activity', 'Recent activity')}</Text>
             <View style={{ marginTop: 8 }}>
@@ -1017,15 +1260,21 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
-          </View>
-        </Animated.View>
+                  </View>
+                </Animated.View>
+              </HomeSectionCard>
+            );
+          }
+
+          return null;
+        })}
       </View>
 
       <Modal visible={showSmartSignalsMenu} transparent animationType="fade" onRequestClose={() => setShowSmartSignalsMenu(false)}>
         <View style={styles.menuOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowSmartSignalsMenu(false)} />
           <View style={[styles.menuSheet, { maxWidth: isLargePhone ? 620 : 560, paddingHorizontal: isCompactPhone ? 12 : 16, paddingVertical: isCompactPhone ? 12 : 16 }]}>
-            <Text style={styles.menuTitle}>{t('home.smart_signals', 'Smart signals')}</Text>
+            <Text style={styles.menuTitle}>{t('home.smart_signals', 'Priority alerts')}</Text>
             <Text style={styles.menuSubtitle}>
               {showSmartSignals
                 ? language === 'fr'
@@ -1139,26 +1388,37 @@ export default function HomeScreen() {
                 : 'Hide or restore visible blocks without changing logic.'}
             </Text>
             <View style={styles.customizerGrid}>
-              {[
-                { key: 'nextFeed', label: t('home.next_feed_label', 'Next feed') },
-                { key: 'smartSignals', label: t('home.smart_signals', 'Smart signals') },
-                { key: 'lastFeeds', label: t('home.last_bottle', 'Last feeds') },
-                { key: 'timeline', label: t('home.timeline', 'Timeline') },
-                { key: 'recentActivity', label: t('home.recent_activity', 'Recent activity') },
-                { key: 'hydration', label: t('home.hydration', 'Hydration') },
-                { key: 'dailyStatus', label: 'Daily status' },
-                { key: 'weeklyDigest', label: 'Weekly digest' },
-                { key: 'widget', label: 'Widget' },
-              ].map((item) => {
-                const enabled = appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics];
+              {orderedSections.map((key, index) => {
+                const labels: Record<HomeSectionKey, string> = {
+                  nextFeed: t('home.next_feed_label', 'Next feed'),
+                  smartSignals: t('home.smart_signals', 'Priority alerts'),
+                  dailyStatus: 'Daily status',
+                  guidance: 'Belgian guidance',
+                  lastFeeds: 'Last feeds',
+                  medication: 'Medication',
+                  sickChild: 'Sick child mode',
+                  timeline: t('home.timeline', 'Timeline'),
+                  quickActions: t('home.direct_actions', 'Direct actions'),
+                  hydration: t('home.hydration', 'Hydration'),
+                  recentActivity: t('home.recent_activity', 'Recent activity'),
+                };
+                const enabled = appSettings.dashboardMetrics[key];
                 return (
-                  <View key={item.key} style={styles.customizerItem}>
+                  <View key={key} style={[styles.customizerItem, { gap: 8 }]}>
                     <Button
-                      label={`${enabled ? t('home.hide_section', 'Hide') : t('home.show_section', 'Show')} ${item.label}`}
-                      onPress={() => void updateDashboardMetric(item.key as keyof typeof appSettings.dashboardMetrics, !enabled)}
+                      label={`${enabled ? t('home.hide_section', 'Hide') : t('home.show_section', 'Show')} ${labels[key]}`}
+                      onPress={() => void updateDashboardMetric(key, !enabled)}
                       variant={enabled ? 'secondary' : 'ghost'}
                       size="sm"
                     />
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Pressable onPress={() => void moveHomeSection(key, 'up')} disabled={index === 0} style={({ pressed }) => ({ flex: 1, minHeight: 38, borderRadius: 14, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? '#1B2430' : BG, opacity: index === 0 ? 0.35 : 1 })}>
+                        <Ionicons name="chevron-up" size={16} color={TEXT} />
+                      </Pressable>
+                      <Pressable onPress={() => void moveHomeSection(key, 'down')} disabled={index === orderedSections.length - 1} style={({ pressed }) => ({ flex: 1, minHeight: 38, borderRadius: 14, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? '#1B2430' : BG, opacity: index === orderedSections.length - 1 ? 0.35 : 1 })}>
+                        <Ionicons name="chevron-down" size={16} color={TEXT} />
+                      </Pressable>
+                    </View>
                   </View>
                 );
               })}
