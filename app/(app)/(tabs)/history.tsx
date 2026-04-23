@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Share, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Card, EmptyState, Heading, Page } from '@/components/ui';
@@ -463,7 +463,6 @@ export default function HistoryScreen() {
   const [showOmsTable, setShowOmsTable] = useState(false);
   const [omsSex, setOmsSex] = useState<OmsSex>(profile?.babySex === 'male' ? 'male' : 'female');
   const [undoEntry, setUndoEntry] = useState<EntryRecord | null>(null);
-  const didAutoSelectLatest = useRef(false);
 
   const dayEntries = useMemo(
     () =>
@@ -478,14 +477,11 @@ export default function HistoryScreen() {
   }, [entries]);
 
   useEffect(() => {
-    if (didAutoSelectLatest.current || !entries.length || !latestEntryDate) return;
-    if (dayEntries.length) {
-      didAutoSelectLatest.current = true;
-      return;
+    if (!entries.length || !latestEntryDate) return;
+    if (!dayEntries.length || selectedDate.getTime() > latestEntryDate.getTime()) {
+      setSelectedDate(latestEntryDate);
     }
-    didAutoSelectLatest.current = true;
-    setSelectedDate(latestEntryDate);
-  }, [dayEntries.length, entries.length, latestEntryDate]);
+  }, [dayEntries.length, entries.length, latestEntryDate, selectedDate]);
 
   const timelineEntries = useMemo(
     () => entries.filter((entry) => filter === 'all' || entry.type === filter).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),

@@ -75,6 +75,14 @@ function sortEntries(entries: EntryRecord[]) {
   return [...entries].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
 }
 
+function normalizeBreastSide(value?: string) {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === 'gauche' || normalized === 'left') return 'left';
+  if (normalized === 'droite' || normalized === 'right') return 'right';
+  if (normalized === 'both' || normalized === 'deux' || normalized === 'both breasts') return 'both';
+  return undefined;
+}
+
 export function importLeoEntries(): EntryRecord[] {
   const data = getLeoDataset();
   const mapped: EntryRecord[] = [];
@@ -82,6 +90,7 @@ export function importLeoEntries(): EntryRecord[] {
   for (const feed of data.feeds ?? []) {
     mapped.push({
       id: `leo_feed_${feed.id}`,
+      slug: `demo_feed_${feed.id}`,
       type: 'feed',
       title: feed.source === 'bottle' ? 'Biberon' : 'Sein',
       occurredAt: feed.dateISO,
@@ -89,7 +98,7 @@ export function importLeoEntries(): EntryRecord[] {
       updatedAt: feed.dateISO,
       payload: {
         mode: feed.source,
-        side: feed.breastSide,
+        side: normalizeBreastSide(feed.breastSide),
         amountMl: feed.amountMl,
         durationMin: toDurationMin(feed.durationSec),
       },
@@ -99,6 +108,7 @@ export function importLeoEntries(): EntryRecord[] {
   for (const diaper of data.elims ?? []) {
     mapped.push({
       id: `leo_diaper_${diaper.id}`,
+      slug: `demo_diaper_${diaper.id}`,
       type: 'diaper',
       title: 'Couche',
       notes: diaper.notes,
@@ -116,6 +126,7 @@ export function importLeoEntries(): EntryRecord[] {
   for (const medication of data.meds ?? []) {
     mapped.push({
       id: `leo_med_${medication.id}`,
+      slug: `demo_med_${medication.id}`,
       type: 'medication',
       title: medication.name || 'Medicament',
       notes: medication.notes,
@@ -132,6 +143,7 @@ export function importLeoEntries(): EntryRecord[] {
   for (const measurement of data.measurements ?? []) {
     mapped.push({
       id: `leo_measure_${measurement.id}`,
+      slug: `demo_measure_${measurement.id}`,
       type: 'measurement',
       title: 'Mesure',
       notes: measurement.notes,
@@ -149,6 +161,7 @@ export function importLeoEntries(): EntryRecord[] {
   for (const sleep of data.sleepSessions ?? []) {
     mapped.push({
       id: `leo_sleep_${sleep.id}`,
+      slug: `demo_sleep_${sleep.id}`,
       type: 'sleep',
       title: 'Sommeil',
       notes: sleep.notes,
@@ -164,6 +177,7 @@ export function importLeoEntries(): EntryRecord[] {
   for (const pump of data.pumpSessions ?? []) {
     mapped.push({
       id: `leo_pump_${pump.id}`,
+      slug: `demo_pump_${pump.id}`,
       type: 'pump',
       title: 'Tire-lait',
       notes: pump.notes,

@@ -25,6 +25,7 @@ import { buildSmartAlerts, getMeanFeedingInterval } from '@/lib/patterns';
 import { getMedicationTimelineStatus } from '@/utils/entries';
 import { getCareStagePolicy, getSickChildStatus } from '@/lib/careGuidance';
 import cacheManager from '@/utils/cacheManager';
+import { isSameDay, startOfDay } from '@/utils/date';
 import {
   defaultHomeSectionOrder,
   defaultAppSettings,
@@ -377,6 +378,35 @@ export default function HomeScreen() {
   const sectionPadV = isCompactPhone ? 4 : 6;
   const twoColBasis = isCompactPhone ? ('100%' as const) : ('48%' as const);
   const quickActionBasis = isCompactPhone ? ('48%' as const) : ('31%' as const);
+  const latestEntryDay = useMemo(() => {
+    const latest = entries[0];
+    return latest ? startOfDay(new Date(latest.occurredAt)) : null;
+  }, [entries]);
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const todaysEntries = useMemo(() => entries.filter((entry) => isSameDay(entry.occurredAt, today)), [entries, today]);
+  const activeSummaryDate = todaysEntries.length ? today : latestEntryDay;
+  const activeDayEntries = useMemo(() => {
+    if (!activeSummaryDate) return [] as typeof entries;
+    return entries.filter((entry) => isSameDay(entry.occurredAt, activeSummaryDate));
+  }, [activeSummaryDate, entries]);
+  const effectiveSummary = useMemo(() => {
+    const feedEntriesForDay = activeDayEntries.filter((entry) => entry.type === 'feed');
+    const foodCount = activeDayEntries.filter((entry) => entry.type === 'food').length;
+    const bottleMl = feedEntriesForDay
+      .filter((entry) => entry.payload?.mode === 'bottle')
+      .reduce((sum, entry) => sum + (entry.payload?.amountMl ?? 0), 0);
+    const sleepMinutes = activeDayEntries
+      .filter((entry) => entry.type === 'sleep')
+      .reduce((sum, entry) => sum + (entry.payload?.durationMin ?? 0), 0);
+    const diaperCount = activeDayEntries.filter((entry) => entry.type === 'diaper').length;
+    return {
+      feedCount: feedEntriesForDay.length,
+      foodCount,
+      bottleMl,
+      sleepMinutes,
+      diaperCount,
+    };
+  }, [activeDayEntries]);
 
   // Optimized dependencies with better memoization
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
@@ -442,7 +472,7 @@ export default function HomeScreen() {
     }
 
     // Daily Status Module - Normal priority, compact size
-    const totalMilkToday = summary.today.bottleMl;
+    const totalMilkToday = effectiveSummary.bottleMl;
     configs.push({
       id: 'dailyStatus',
       type: 'status',
@@ -491,7 +521,7 @@ export default function HomeScreen() {
       if (a.urgency !== b.urgency) return b.urgency - a.urgency;
       return b.lastUpdated - a.lastUpdated;
     });
-  }, [nextFeedDueIn, lastFeed, smartAlerts, medicationTimeline, careStage]);
+  }, [nextFeedDueIn, lastFeed, smartAlerts, medicationTimeline, careStage, effectiveSummary.bottleMl]);
 
   // Intelligent quick actions based on context
   const intelligentQuickActions = useMemo((): QuickAction[] => {
@@ -567,7 +597,7 @@ export default function HomeScreen() {
     return actions.sort((a, b) => b.priority - a.priority).slice(0, 4); // Top 4 actions
   }, [nextFeedDueIn, lastBottleFeed, lastFeed, medicationTimeline]);
 
-  const totalMilkToday = summary.today.bottleMl;
+  const totalMilkToday = effectiveSummary.bottleMl;
   const milkGoalMin = 750;
   const milkGoalMax = 1050;
   const milkTargetPercent = Math.max(0, Math.min(100, (totalMilkToday / milkGoalMax) * 100));
@@ -1077,11 +1107,11 @@ export default function HomeScreen() {
                     </View>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
                       {[
-                        { label: t('home.feeds', 'Feeds'), value: String(summary.today.feedCount), icon: 'water-outline' as const },
-                        { label: t('home.bottle', 'Bottle'), value: `${summary.today.bottleMl} ml`, icon: 'water-outline' as const },
-                        { label: t('insights.sleep', 'Sleep'), value: `${summary.today.sleepMinutes}m`, icon: 'moon-outline' as const },
-                        { label: t('home.diapers', 'Diapers'), value: String(summary.today.diaperCount), icon: 'cube-outline' as const },
-                        { label: t('home.food', 'Food'), value: String(summary.today.foodCount), icon: 'restaurant-outline' as const },
+                        { label: t('home.feeds', 'Feeds'), value: String(effectiveSummary.feedCount), icon: 'water-outline' as const },
+                        { label: t('home.bottle', 'Bottle'), value: `${effectiveSummary.bottleMl} ml`, icon: 'water-outline' as const },
+                        { label: t('insights.sleep', 'Sleep'), value: `${effectiveSummary.sleepMinutes}m`, icon: 'moon-outline' as const },
+                        { label: t('home.diapers', 'Diapers'), value: String(effectiveSummary.diaperCount), icon: 'cube-outline' as const },
+                        { label: t('home.food', 'Food'), value: String(effectiveSummary.foodCount), icon: 'restaurant-outline' as const },
                       ].map((item, statIndex) => (
                         <StatCell key={item.label} label={item.label} value={item.value} icon={item.icon} index={statIndex} highlight={statIndex === 1} />
                       ))}

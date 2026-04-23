@@ -38,7 +38,7 @@ export default function ProfileScreen() {
   const { colors, theme, paletteMode, themeMode, themeVariant, themeStyle, backgroundPhotoUri, setBackgroundPhotoUri, setThemeVariant, setThemeStyle, setCustomTheme, toggleTheme } = useTheme();
   const { t } = useLocale();
   const { profile, guestMode, saveProfile, setThemeMode, signOut } = useAuth();
-  const { entries } = useAppData();
+  const { entries, clearDemoData } = useAppData();
   const [caregiverName, setCaregiverName] = useState(profile?.caregiverName ?? '');
   const [babyName, setBabyName] = useState(profile?.babyName ?? 'Leo');
   const [babyBirthDate, setBabyBirthDate] = useState(profile?.babyBirthDate ?? '');
@@ -250,6 +250,15 @@ export default function ProfileScreen() {
   async function patchSettings(patch: Partial<typeof settings>) {
     const next = await updateAppSettings(patch);
     setSettings(next);
+  }
+
+  async function handleClearDemoData() {
+    try {
+      const result = await clearDemoData();
+      Alert.alert('Demo data removed', `${result.removed} imported demo entries were deleted.`);
+    } catch (error: any) {
+      Alert.alert('Could not remove demo data', error?.message ?? 'Please try again.');
+    }
   }
 
   return (
@@ -574,6 +583,7 @@ export default function ProfileScreen() {
         <Button label="Sync now" onPress={handleSyncNow} variant="ghost" />
         <Button label="Schedule daily summary" onPress={handleScheduleSummary} variant="ghost" />
         <Button label="Pair with partner" onPress={() => router.push('/pair')} variant="ghost" />
+        <Button label="Remove demo imported data" onPress={handleClearDemoData} variant="ghost" />
         <Button label="Log out" onPress={signOut} variant="danger" />
       </Card>
 

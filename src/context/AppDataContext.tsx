@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   addDoc,
@@ -26,11 +26,12 @@ export interface AppDataContextValue {
   entries: EntryRecord[];
   loading: boolean;
   summary: ReturnType<typeof getTodaySummary>;
-  addEntry: (input: { type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }) => Promise<void>;
-  importEntries: (items: Array<{ type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }>) => Promise<{ imported: number }>;
+  addEntry: (input: { type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string; slug?: string }) => Promise<void>;
+  importEntries: (items: Array<{ type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string; slug?: string }>) => Promise<{ imported: number }>;
   updateEntry: (id: string, patch: Partial<EntryRecord>) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
   seedDemoData: () => Promise<void>;
+  clearDemoData: () => Promise<{ removed: number }>;
   entryById: (id: string) => EntryRecord | undefined;
 }
 
@@ -116,6 +117,20 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [remoteAvailable, setRemoteAvailable] = useState(true);
   const [syncScope, setSyncScope] = useState<string | null>(null);
+  const entriesRefState = useRef<EntryRecord[]>([]);
+
+  useEffect(() => {
+    entriesRefState.current = entries;
+  }, [entries]);
+
+  function commitEntries(scopeId: string, nextOrUpdater: EntryRecord[] | ((current: EntryRecord[]) => EntryRecord[])) {
+    setEntries((current) => {
+      const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(current) : nextOrUpdater;
+      entriesRefState.current = next;
+      void writeEntriesCache(scopeId, next);
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!user || guestMode) return;
@@ -158,7 +173,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, [profile?.uid]);
 
   useEffect(() => {
-    if (!user || !guestMode || loading || entries.length) return;
+    if (!user || loading || entries.length) return;
 
     let cancelled = false;
 
@@ -167,15 +182,24 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       if (settings.hasImportedLeoData || cancelled) return;
       const importedEntries = importLeoEntries();
       if (!importedEntries.length) return;
+      await importEntries(
+        importedEntries.map((entry) => ({
+          type: entry.type,
+          title: entry.title,
+          payload: entry.payload,
+          occurredAt: entry.occurredAt,
+          notes: entry.notes,
+          slug: entry.slug,
+        })),
+      );
       await setAppSettings({ ...settings, hasImportedLeoData: true });
-      if (!cancelled) setEntries(importedEntries);
     };
 
     void bootstrapLeoData();
     return () => {
       cancelled = true;
     };
-  }, [entries.length, guestMode, loading, profile, user]);
+  }, [entries.length, importEntries, loading, user]);
 
   useEffect(() => {
     if (!user || guestMode) {
@@ -193,8 +217,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       q,
       (snapshot) => {
         const nextEntries = snapshot.docs.map((item) => normalizeEntry(item.id, item.data()));
-        setEntries(nextEntries);
-        void writeEntriesCache(scopeId, nextEntries);
+        commitEntries(scopeId, nextEntries);
         setLoading(false);
       },
       (error) => {
@@ -202,7 +225,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           setRemoteAvailable(false);
           setLoading(false);
           void readEntriesCache(scopeId).then((cached) => {
-            setEntries(cached);
+            commitEntries(scopeId, cached);
           });
           return;
         }
@@ -214,12 +237,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const summary = useMemo(() => getTodaySummary(entries, profile), [entries, profile]);
 
-  async function addEntry(input: { type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }) {
+  async function addEntry(input: { type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string; slug?: string }) {
     if (!user) throw new Error('You must be signed in.');
     const timestamp = input.occurredAt ?? new Date().toISOString();
     const nextEntry: EntryRecord = {
       id: createLocalId(),
-      slug: createLocalId(),
+      slug: input.slug ?? createLocalId(),
       type: input.type,
       title: input.title ?? input.type,
       notes: input.notes ?? '',
@@ -234,6 +257,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     if (remoteAvailable) {
       try {
         const ref = await addDoc(entriesRef(scopeId), {
+          slug: input.slug ?? null,
           type: input.type,
           title: input.title ?? input.type,
           notes: input.notes ?? '',
@@ -251,12 +275,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const nextEntries = [nextEntry, ...entries.filter((entry) => entry.id !== nextEntry.id)].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
-    setEntries(nextEntries);
-    void writeEntriesCache(scopeId, nextEntries);
+    commitEntries(scopeId, (current) =>
+      [nextEntry, ...current.filter((entry) => entry.id !== nextEntry.id)].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)),
+    );
   }
 
-  async function importEntries(items: Array<{ type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }>) {
+  async function importEntries(items: Array<{ type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string; slug?: string }>) {
     if (!user) throw new Error('You must be signed in to import and sync entries.');
     if (!items.length) return { imported: 0 };
 
@@ -267,6 +291,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       notes: item.notes ?? '',
       payload: item.payload,
       occurredAt: item.occurredAt ?? new Date().toISOString(),
+      slug: item.slug,
     }));
 
     if (remoteAvailable) {
@@ -308,15 +333,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         const cachedNext = [
           ...toCreate.map((item) => ({
             id: createLocalId(),
-            slug: createLocalId(),
             ...item,
+            slug: item.slug ?? createLocalId(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           })),
           ...cachedExisting,
         ].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
-        setEntries(cachedNext);
-        await writeEntriesCache(scopeId, cachedNext);
+        commitEntries(scopeId, cachedNext);
 
         return { imported: toCreate.length };
       } catch (error) {
@@ -355,11 +379,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (next) {
-      const nextEntries = entries
-        .map((entry) => (entry.id === id ? next : entry))
-        .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
-      setEntries(nextEntries);
-      void writeEntriesCache(scopeId, nextEntries);
+      commitEntries(scopeId, (currentEntries) =>
+        currentEntries
+          .map((entry) => (entry.id === id ? next : entry))
+          .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)),
+      );
     }
   }
 
@@ -379,9 +403,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const nextEntries = entries.filter((entry) => entry.id !== id);
-    setEntries(nextEntries);
-    void writeEntriesCache(scopeId, nextEntries);
+    commitEntries(scopeId, (current) => current.filter((entry) => entry.id !== id));
   }
 
   async function seedDemoData() {
@@ -413,9 +435,35 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const nextEntries = seeded.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
-    setEntries(nextEntries);
-    void writeEntriesCache(scopeId, nextEntries);
+    commitEntries(scopeId, seeded.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)));
+  }
+
+  async function clearDemoData() {
+    if (!user) throw new Error('You must be signed in.');
+    const scopeId = syncScope ?? user.uid;
+    const demoEntries = entriesRefState.current.filter((entry) => entry.slug?.startsWith('demo_'));
+
+    if (remoteAvailable && demoEntries.length) {
+      try {
+        for (let index = 0; index < demoEntries.length; index += 250) {
+          const chunk = demoEntries.slice(index, index + 250);
+          const batch = writeBatch(db);
+          for (const entry of chunk) {
+            batch.delete(doc(entriesRef(scopeId), entry.id));
+          }
+          await batch.commit();
+        }
+      } catch (error) {
+        if (!isPermissionDenied(error)) throw error;
+        setRemoteAvailable(false);
+      }
+    }
+
+    const nextEntries = entriesRefState.current.filter((entry) => !entry.slug?.startsWith('demo_'));
+    commitEntries(scopeId, nextEntries);
+    const settings = await getAppSettings();
+    await setAppSettings({ ...settings, hasImportedLeoData: false });
+    return { removed: demoEntries.length };
   }
 
   function entryById(id: string) {
@@ -432,6 +480,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       updateEntry,
       deleteEntry,
       seedDemoData,
+      clearDemoData,
       entryById,
     }),
     [entries, loading, summary],

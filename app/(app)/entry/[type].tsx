@@ -1021,43 +1021,55 @@ export default function EntryComposerScreen() {
         {type === 'feed' ? (
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionLabel, { color: meta.tone }]}>{copy.feedFlow}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{copy.breastOrBottle}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[1]}</Text>
-            <Segment
-              value={mode}
-              onChange={(value) => setMode(value as 'breast' | 'bottle')}
-              options={[
-                { label: copy.bottle, value: 'bottle' },
-                { label: copy.breast, value: 'breast' },
-              ]}
-            />
-            <View style={styles.chipRow}>
-              <Pressable onPress={() => router.push('/entry/feed?presetMode=bottle&presetAmount=150')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>+150 ml</Text>
-              </Pressable>
-              <Pressable onPress={() => setMode('breast')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>{copy.timer}</Text>
-              </Pressable>
-              <Pressable onPress={() => setMode('bottle')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>{typeLabels.feed}</Text>
-              </Pressable>
+            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>{language === 'fr' ? 'Démarrer la tétée' : 'Start Feed'}</Text>
+            
+            <View style={styles.quickActionsGrid}>
+              {[
+                { id: 'left', label: language === 'fr' ? 'Sein gauche' : 'Left breast', icon: '🤱', mode: 'breast' as const, side: 'left' },
+                { id: 'right', label: language === 'fr' ? 'Sein droit' : 'Right breast', icon: '🤱', mode: 'breast' as const, side: 'right' },
+                { id: 'both', label: language === 'fr' ? 'Les deux' : 'Both', icon: '🤱🤱', mode: 'breast' as const, side: 'both' },
+                { id: 'bottle', label: language === 'fr' ? 'Biberon' : 'Biberon', icon: '🍼', mode: 'bottle' as const, side: 'left' },
+              ].map((opt) => (
+                <Pressable
+                  key={opt.id}
+                  onPress={() => {
+                    setMode(opt.mode);
+                    setSide(opt.side);
+                    void triggerHaptic('impactLight');
+                  }}
+                  style={({ pressed }) => [
+                    styles.feedQuickButton,
+                    { 
+                      borderColor: (mode === opt.mode && (opt.mode === 'bottle' || side === opt.side)) ? meta.tone : 'transparent',
+                      backgroundColor: (mode === opt.mode && (opt.mode === 'bottle' || side === opt.side)) ? 'rgba(255,255,255,0.05)' : colors.bgCardAlt,
+                      opacity: pressed ? 0.7 : 1 
+                    }
+                  ]}
+                >
+                  <Text style={styles.feedQuickIcon}>{opt.icon}</Text>
+                  <Text style={[styles.feedQuickLabel, { color: colors.text }]}>{opt.label}</Text>
+                </Pressable>
+              ))}
             </View>
-            {mode === 'bottle' ? (
-              <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
-            ) : (
-              <View style={styles.stack}>
-                <TimerWidget
-                  label={copy.sessionBreast}
-                  valueMinutes={Number(durationMin) || 0}
-                  onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
-                  allowSides
-                  side={side as 'left' | 'right' | 'both'}
-                  onSideChange={(nextSide) => setSide(nextSide)}
-                  largeTouchMode={largeTouchMode}
-                />
-                <QuantityPicker label={copy.estimatedMl} value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
-              </View>
-            )}
+
+            <View style={{ marginTop: 20 }}>
+              {mode === 'bottle' ? (
+                <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
+              ) : (
+                <View style={styles.stack}>
+                  <TimerWidget
+                    label={copy.sessionBreast}
+                    valueMinutes={Number(durationMin) || 0}
+                    onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
+                    allowSides
+                    side={side as 'left' | 'right' | 'both'}
+                    onSideChange={(nextSide) => setSide(nextSide)}
+                    largeTouchMode={largeTouchMode}
+                  />
+                  <QuantityPicker label={copy.estimatedMl} value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
+                </View>
+              )}
+            </View>
           </View>
         ) : null}
 
@@ -1202,6 +1214,7 @@ export default function EntryComposerScreen() {
               >
                 <Text style={styles.primaryGiveButtonText}>Give Medication</Text>
               </Pressable>
+              <Button label={language === 'fr' ? 'Annuler' : 'Cancel'} onPress={() => router.back()} variant="ghost" />
             </View>
 
             {/* Health Snapshot (Sick Mode) */}
@@ -1395,6 +1408,7 @@ export default function EntryComposerScreen() {
         {type !== 'medication' ? (
           <View style={styles.actions}>
             <Button label={editing ? (language === 'fr' ? 'Mettre a jour' : 'Update entry') : language === 'fr' ? 'Enregistrer' : 'Save entry'} onPress={handleSave} loading={saving} />
+            <Button label={language === 'fr' ? 'Annuler' : 'Cancel'} onPress={() => router.back()} variant="ghost" />
             {editing ? <Button label={language === 'fr' ? 'Supprimer' : 'Delete entry'} onPress={handleDelete} variant="danger" /> : null}
           </View>
         ) : null}
@@ -1597,6 +1611,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8B949E',
     fontWeight: '700',
+  },
+  feedQuickButton: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: '#161B22',
+    borderWidth: 1.5,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  feedQuickIcon: {
+    fontSize: 20,
+  },
+  feedQuickLabel: {
+    fontSize: 14,
+    fontWeight: '800',
   },
   babyFlowTimeline: {
     gap: 16,
