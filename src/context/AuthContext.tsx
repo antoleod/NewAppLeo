@@ -5,6 +5,7 @@ import { OnboardingPayload, RegisterPayload, ThemeMode, UserProfile } from '@/ty
 import {
   completeOnboarding,
   loadProfile,
+  syncPasswordAccessCredentials,
   updateProfile,
   updateThemeMode,
   watchProfile,
@@ -47,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [guestMode, setGuestMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const pendingPinRecovery = React.useRef<{ email: string; pin: string } | null>(null);
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | undefined;
@@ -116,16 +118,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             : payloadOrEmail;
         await clearGuestProfile();
         const result = await signInWithEmail(payload);
+        if (pendingPinRecovery.current?.email === payload.email.trim().toLowerCase()) {
+          await syncPasswordAccessCredentials(result.user.uid, payload.password, pendingPinRecovery.current.pin);
+          pendingPinRecovery.current = null;
+        }
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);
       },
       signInEmailPin: async (payload) => {
         await clearGuestProfile();
-        const result = await signInWithEmailPin(payload);
-        setGuestMode(false);
-        setUser(result.user);
-        setProfile(result.profile);
+        try {
+          const result = await signInWithEmailPin(payload);
+          pendingPinRecovery.current = null;
+          setGuestMode(false);
+          setUser(result.user);
+          setProfile(result.profile);
+        } catch (error: any) {
+          if (String(error?.message ?? '').includes('could not be verified')) {
+            pendingPinRecovery.current = { email: payload.email.trim().toLowerCase(), pin: payload.pin };
+          }
+          throw error;
+        }
       },
       signInGoogle: async () => {
         await clearGuestProfile();

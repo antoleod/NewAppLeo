@@ -1,6 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,7 +21,7 @@ const LANGS: Array<{ code: AppLanguage; label: string }> = [
 export default function LoginScreen() {
   const { colors } = useTheme();
   const { language, setLanguage, t } = useLocale();
-  const { loading, user, profile, guestMode, signInGuest, signInEmail, signInEmailPin, signInGoogle } = useAuth();
+  const { loading, user, profile, guestMode, signInGuest, signInEmail, signInEmailPin, signInGoogle, resetPassword } = useAuth();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1024;
   const isTablet = width >= 768;
@@ -100,6 +100,23 @@ export default function LoginScreen() {
     }
   }
 
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      setErrorMessage('Enter your email first to recover access.');
+      return;
+    }
+    setBusy(true);
+    setErrorMessage('');
+    try {
+      await resetPassword(email.trim());
+      Alert.alert('Recovery request received', 'If this email is registered, a recovery email has been sent.');
+    } catch (error: any) {
+      setErrorMessage(error?.message ?? 'Could not send the recovery email.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient colors={['#0A1A15', '#122A20', '#0A1A15']} start={{ x: 0.3, y: 0 }} end={{ x: 0.7, y: 1 }} style={styles.gradient}>
@@ -149,8 +166,18 @@ export default function LoginScreen() {
                 <View style={styles.actions}>
                   <Button label={t('auth.sign_in')} onPress={() => void handleLogin()} style={styles.actionButton} size="sm" disabled={busy || !canSubmit} />
                   <Button label="Continue with Google" onPress={() => void handleGoogle()} variant="ghost" style={styles.actionButton} size="sm" disabled={busy} />
-                  <Button label={busy ? '...' : t('auth.guest')} onPress={() => void handleGuest()} variant="secondary" style={styles.actionButton} size="sm" disabled={busy} />
                   <Button label={t('auth.create_account')} variant="ghost" onPress={() => router.push('/register')} style={styles.createButton} size="sm" />
+                </View>
+
+                <View style={styles.utilityRow}>
+                  <Pressable onPress={() => void handleForgotPassword()} style={styles.utilityAction} disabled={busy}>
+                    <Ionicons name="help-circle-outline" size={15} color="rgba(212,231,222,0.72)" />
+                    <Text style={styles.utilityText}>Forgot password?</Text>
+                  </Pressable>
+                  <Pressable onPress={() => void handleGuest()} style={styles.utilityAction} disabled={busy}>
+                    <Ionicons name="person-outline" size={15} color="rgba(212,231,222,0.72)" />
+                    <Text style={styles.utilityText}>{t('auth.guest')}</Text>
+                  </Pressable>
                 </View>
 
                 <Pressable onPress={() => router.push('/pair')} style={styles.pairCard}>
@@ -218,6 +245,9 @@ const styles = StyleSheet.create({
   actions: { gap: 8, paddingTop: 2 },
   actionButton: { minHeight: 46 },
   createButton: { borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'transparent', minHeight: 42 },
+  utilityRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginTop: -2 },
+  utilityAction: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
+  utilityText: { color: 'rgba(212,231,222,0.72)', fontSize: 12, fontWeight: '700' },
   pairCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', marginTop: 2 },
   pairIconWrap: { width: 36, height: 36, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(192,237,204,0.08)' },
   pairTextBlock: { flex: 1, gap: 2 },

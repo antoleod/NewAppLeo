@@ -182,6 +182,19 @@ export async function updateThemeMode(uid: string, themeMode: ThemeMode) {
   await updateProfile(uid, { themeMode });
 }
 
+export async function syncPasswordAccessCredentials(uid: string, password: string, pin: string) {
+  const pinSalt = await generateSalt();
+  const pinHash = hashPin(pin, pinSalt);
+  const encryptedPassword = encryptWithPin(password, pin, pinSalt);
+
+  await updateProfile(uid, {
+    encryptedPassword,
+    pinHash,
+    pinSalt,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
 export async function claimUsername(uid: string, username: string) {
   const normalized = normalizeUsername(username);
   try {

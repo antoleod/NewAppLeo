@@ -120,12 +120,31 @@ export async function signInWithEmail(payload: { email: string; password: string
 
 export async function signInWithEmailPin(payload: { email: string; pin: string }) {
   const email = normalizeEmail(payload.email);
+  const derivedPassword = `leo:${payload.pin}:${email}`;
+
+  try {
+    const authResult = await signInWithEmailAndPassword(auth, email, derivedPassword);
+    let profile = null;
+    try {
+      profile = await loadProfile(authResult.user.uid);
+    } catch (error) {
+      if (!isPermissionDenied(error)) {
+        throw error;
+      }
+    }
+    return { user: authResult.user, profile };
+  } catch (directError: any) {
+    if (directError?.code && directError.code !== 'auth/wrong-password' && directError.code !== 'auth/invalid-credential') {
+      throw directError;
+    }
+  }
+
   let lookup;
   try {
     lookup = await getDoc(doc(db, 'emails', email));
   } catch (error) {
     if (isPermissionDenied(error)) {
-      throw new Error('PIN sign-in is not available right now. Please use your password.');
+      throw new Error('This PIN could not be verified. Use your password or reset your access key.');
     }
     throw error;
   }
@@ -143,7 +162,7 @@ export async function signInWithEmailPin(payload: { email: string; pin: string }
     profile = await loadProfile(data.uid);
   } catch (error) {
     if (isPermissionDenied(error)) {
-      throw new Error('PIN sign-in is not available right now. Please use your password.');
+      throw new Error('This PIN could not be verified. Use your password or reset your access key.');
     }
     throw error;
   }
