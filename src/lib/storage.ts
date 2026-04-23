@@ -33,11 +33,24 @@ export interface SavedMedicine {
   updatedAt: string;
   useCount: number;
   lastUsedAt: string;
+  intervalHours?: number | null;
+  intervalLabel?: string;
   symptomTags?: string[];
   commonFor?: string[];
   minAgeMonths?: number | null;
   notes?: string;
   isCustom?: boolean;
+}
+
+export interface MedicationPlanItem {
+  name: string;
+  intervalHours: number;
+}
+
+export interface MedicationAlternatingPlan {
+  enabled: boolean;
+  medicines: MedicationPlanItem[];
+  notes?: string;
 }
 
 export interface MedicationPreset {
@@ -172,6 +185,8 @@ function normalizeSavedMedicine(input: Partial<SavedMedicine> & Pick<SavedMedici
     updatedAt,
     useCount: typeof input.useCount === 'number' && Number.isFinite(input.useCount) ? input.useCount : DEFAULT_MEDICINE_USE_COUNT,
     lastUsedAt: input.lastUsedAt ?? updatedAt,
+    intervalHours: typeof input.intervalHours === 'number' && Number.isFinite(input.intervalHours) ? input.intervalHours : null,
+    intervalLabel: input.intervalLabel?.trim() || undefined,
     symptomTags: uniqueNormalized(input.symptomTags),
     commonFor: Array.from(new Set((input.commonFor ?? []).map((item) => item.trim()).filter(Boolean))),
     minAgeMonths: typeof input.minAgeMonths === 'number' ? input.minAgeMonths : null,
@@ -235,6 +250,7 @@ export interface AppSettings {
   dashboardMetrics: DashboardMetrics;
   effects: MotionEffects;
   customTheme: CustomThemeSettings;
+  medicationAlternatingPlan: MedicationAlternatingPlan;
 }
 
 export const defaultAppSettings: AppSettings = {
@@ -271,6 +287,11 @@ export const defaultAppSettings: AppSettings = {
     primary: '#4d7c6b',
     secondary: '#c18f54',
     backgroundAlt: '#eef4ef',
+  },
+  medicationAlternatingPlan: {
+    enabled: false,
+    medicines: [],
+    notes: '',
   },
 };
 
@@ -399,6 +420,13 @@ export async function getAppSettings() {
       ...defaultAppSettings.customTheme,
       ...(parsed.customTheme ?? {}),
     },
+    medicationAlternatingPlan: {
+      ...defaultAppSettings.medicationAlternatingPlan,
+      ...(parsed.medicationAlternatingPlan ?? {}),
+      medicines: (parsed.medicationAlternatingPlan?.medicines ?? defaultAppSettings.medicationAlternatingPlan.medicines)
+        .filter((item) => item?.name && typeof item?.intervalHours === 'number')
+        .map((item) => ({ name: item.name.trim(), intervalHours: item.intervalHours })),
+    },
   } as AppSettings;
 }
 
@@ -473,6 +501,8 @@ export function getSavedMedicinesRanked(savedMedicines: SavedMedicine[], selecte
 export async function upsertSavedMedicine(input: {
   name: string;
   dosage?: string;
+  intervalHours?: number | null;
+  intervalLabel?: string;
   symptomTags?: string[];
   commonFor?: string[];
   minAgeMonths?: number | null;
@@ -489,6 +519,8 @@ export async function upsertSavedMedicine(input: {
     ...current,
     name,
     dosage: input.dosage?.trim() || current?.dosage,
+    intervalHours: input.intervalHours ?? current?.intervalHours ?? null,
+    intervalLabel: input.intervalLabel?.trim() || current?.intervalLabel,
     symptomTags: [...(current?.symptomTags ?? []), ...(input.symptomTags ?? [])],
     commonFor: [...(current?.commonFor ?? []), ...(input.commonFor ?? [])],
     minAgeMonths: input.minAgeMonths ?? current?.minAgeMonths ?? null,
@@ -514,6 +546,8 @@ export async function recordMedicineUse(input: {
   name: string;
   dosage?: string;
   usedAt?: string;
+  intervalHours?: number | null;
+  intervalLabel?: string;
   symptomTags?: string[];
   commonFor?: string[];
   minAgeMonths?: number | null;
@@ -530,6 +564,8 @@ export async function recordMedicineUse(input: {
     ...current,
     name,
     dosage: input.dosage?.trim() || current?.dosage,
+    intervalHours: input.intervalHours ?? current?.intervalHours ?? null,
+    intervalLabel: input.intervalLabel?.trim() || current?.intervalLabel,
     symptomTags: [...(current?.symptomTags ?? []), ...(input.symptomTags ?? [])],
     commonFor: [...(current?.commonFor ?? []), ...(input.commonFor ?? [])],
     minAgeMonths: input.minAgeMonths ?? current?.minAgeMonths ?? null,
@@ -579,6 +615,11 @@ export async function updateAppSettings(partial: Partial<AppSettings>) {
     customTheme: {
       ...current.customTheme,
       ...(partial.customTheme ?? {}),
+    },
+    medicationAlternatingPlan: {
+      ...current.medicationAlternatingPlan,
+      ...(partial.medicationAlternatingPlan ?? {}),
+      medicines: partial.medicationAlternatingPlan?.medicines ?? current.medicationAlternatingPlan.medicines,
     },
   };
   await setAppSettings(next);

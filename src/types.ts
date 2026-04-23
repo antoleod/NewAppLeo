@@ -31,6 +31,8 @@ export interface EntryPayload {
   tempC?: number;
   name?: string;
   dosage?: string;
+  intervalHours?: number | null;
+  intervalLabel?: string;
   title?: string;
   icon?: string;
   photoUri?: string;

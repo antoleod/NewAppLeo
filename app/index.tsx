@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -33,6 +34,9 @@ export default function IndexRoute() {
   const { colors } = useTheme();
   const { language, setLanguage, t } = useLocale();
   const { loading, user, profile, guestMode, signInGuest, signInEmail, register } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
+  const isTablet = width >= 768;
   const [view, setView] = useState<AuthView>('landing');
   const [selectedLanguage, setSelectedLanguage] = useState<AppLanguage>(language);
   const [busy, setBusy] = useState(false);
@@ -132,22 +136,15 @@ export default function IndexRoute() {
         style={styles.gradient}
       >
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
-          <ScrollView contentContainerStyle={styles.shell} showsVerticalScrollIndicator={false}>
-            <View style={styles.hero}>
-              <View style={styles.heroBadge}>
-                <Text style={styles.heroBadgeText}>AL</Text>
-              </View>
-              <Text style={styles.heroTitle}>{view === 'walkthrough' ? t('language.select.title') : t('app.tagline')}</Text>
-              <Text style={styles.heroSubtitle}>
+          <ScrollView contentContainerStyle={[styles.shell, isDesktop && styles.shellDesktop]} showsVerticalScrollIndicator={false}>
+            <View style={[styles.authShell, isDesktop ? styles.authShellDesktop : isTablet ? styles.authShellTablet : null]}>
+            <View style={[styles.hero, isDesktop ? styles.heroDesktop : isTablet ? styles.heroTablet : null]}>
+              <Text style={[styles.heroTitle, isDesktop && styles.heroTitleDesktop]}>{view === 'walkthrough' ? t('language.select.title') : t('app.tagline')}</Text>
+              <Text style={[styles.heroSubtitle, isDesktop && styles.heroSubtitleDesktop]}>
                 {view === 'walkthrough'
                   ? t('language.select.subtitle')
                   : t('auth.privacy', 'Guest mode stays on-device and uses local storage only.')}
               </Text>
-              <View style={styles.heroMoonGlowOuter}>
-                <View style={styles.heroMoonGlowInner}>
-                  <Text style={styles.heroMoon}>🌙</Text>
-                </View>
-              </View>
               <View style={styles.heroPillsRow}>
                 <View style={styles.heroPill}>
                   <Text style={styles.heroPillText}>🍼 Feeding</Text>
@@ -161,7 +158,7 @@ export default function IndexRoute() {
               </View>
             </View>
 
-            <View style={styles.sheet}>
+            <View style={[styles.sheet, isDesktop ? styles.sheetDesktop : isTablet ? styles.sheetTablet : null]}>
               <Text style={styles.brand}>APP LEO</Text>
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.languageRail}>
@@ -269,6 +266,7 @@ export default function IndexRoute() {
                 <Text style={styles.walkthroughText}>{t('language.select.primary')}</Text>
               </Pressable>
             </View>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
@@ -282,72 +280,49 @@ const styles = StyleSheet.create({
   keyboard: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
   loadingText: { fontSize: 19, fontWeight: '700' },
-  shell: { flexGrow: 1, justifyContent: 'space-between' },
+  shell: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 20 },
+  shellDesktop: { paddingVertical: 28 },
+  authShell: { width: '100%', maxWidth: 680, alignSelf: 'center', gap: 12 },
+  authShellTablet: { maxWidth: 620 },
+  authShellDesktop: { maxWidth: 560, gap: 10 },
   hero: {
-    flex: 1,
-    minHeight: 250,
+    minHeight: 170,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 26,
-    paddingTop: 14,
-    paddingBottom: 8,
-    gap: 14,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+    gap: 10,
   },
-  heroMoonGlowOuter: {
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(74,140,101,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    marginTop: 10,
-  },
-  heroMoonGlowInner: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(74,140,101,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroMoon: { fontSize: 84, lineHeight: 90 },
-  heroBadge: {
-    width: 84,
-    height: 84,
-    borderRadius: 24,
-    backgroundColor: 'rgba(5, 36, 22, 0.46)',
-    borderWidth: 1,
-    borderColor: 'rgba(192,237,204,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroBadgeText: { color: '#F1BD7E', fontSize: 30, fontWeight: '800', letterSpacing: 1 },
+  heroTablet: { minHeight: 150, gap: 8 },
+  heroDesktop: { minHeight: 128, gap: 8 },
   heroTitle: {
     color: '#FFFFFF',
-    fontSize: 56,
+    fontSize: 34,
     fontWeight: '900',
     letterSpacing: -0.6,
     textAlign: 'center',
-    lineHeight: 61,
-    maxWidth: 480,
+    lineHeight: 38,
+    maxWidth: 460,
   },
+  heroTitleDesktop: { fontSize: 28, lineHeight: 32, maxWidth: 420 },
   heroSubtitle: {
     color: 'rgba(212,231,222,0.72)',
-    fontSize: 20,
-    lineHeight: 28,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
-    maxWidth: 360,
-    marginBottom: 12,
+    maxWidth: 380,
+    marginBottom: 2,
   },
+  heroSubtitleDesktop: { fontSize: 13, lineHeight: 18 },
   heroPillsRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 10,
+    gap: 8,
+    marginTop: 2,
   },
   heroPill: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: 20,
     borderWidth: 1,
@@ -355,26 +330,27 @@ const styles = StyleSheet.create({
   },
   heroPillText: {
     color: 'rgba(168,213,181,0.7)',
-    fontSize: 17,
+    fontSize: 12,
     fontWeight: '600',
   },
   sheet: {
     backgroundColor: 'rgba(15, 35, 25, 0.92)',
-    borderTopLeftRadius: 34,
-    borderTopRightRadius: 34,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 28,
-    paddingTop: 24,
-    paddingBottom: 40,
-    gap: 14,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 24,
+    gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 20,
-    marginTop: 12,
+    marginTop: 4,
   },
+  sheetTablet: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 20 },
+  sheetDesktop: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 18, gap: 8 },
   brand: {
     fontSize: 15,
     letterSpacing: 4,
@@ -383,11 +359,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: 'rgba(241,189,126,0.92)',
   },
-  languageRail: { gap: 12, paddingTop: 8, paddingBottom: 8, paddingRight: 10 },
+  languageRail: { gap: 8, paddingTop: 4, paddingBottom: 4, paddingRight: 6 },
   languageCard: {
-    minWidth: 142,
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    minWidth: 108,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 999,
     borderWidth: 1,
     alignItems: 'center',
@@ -400,37 +376,37 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
     backgroundColor: 'rgba(255,255,255,0.03)',
   },
-  languageText: { fontSize: 17, fontWeight: '700' },
+  languageText: { fontSize: 14, fontWeight: '700' },
   languageTextActive: { color: '#C0EDCC' },
   languageTextIdle: { color: 'rgba(255,255,255,0.65)' },
-  actions: { gap: 14, paddingTop: 10 },
-  actionButton: { minHeight: 64 },
+  actions: { gap: 10, paddingTop: 6 },
+  actionButton: { minHeight: 52 },
   createButton: { borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'transparent' },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 10 },
+  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 6 },
   pairCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    padding: 20,
-    borderRadius: 20,
+    gap: 12,
+    padding: 14,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
   },
   pairIconWrap: {
-    width: 42,
-    height: 42,
+    width: 36,
+    height: 36,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(192,237,204,0.08)',
   },
   pairTextBlock: { flex: 1, gap: 2 },
-  pairTitle: { color: '#FFFFFF', fontWeight: '800', fontSize: 20 },
-  pairHintText: { fontSize: 16, lineHeight: 22, color: 'rgba(212,231,222,0.58)' },
-  pairHint: { alignItems: 'center', justifyContent: 'center', paddingTop: 6 },
-  continueLabel: { color: 'rgba(168,213,181,0.7)', fontWeight: '800', letterSpacing: 0.4, fontSize: 17 },
-  formBlock: { gap: 12, paddingTop: 10 },
+  pairTitle: { color: '#FFFFFF', fontWeight: '800', fontSize: 16 },
+  pairHintText: { fontSize: 13, lineHeight: 18, color: 'rgba(212,231,222,0.58)' },
+  pairHint: { alignItems: 'center', justifyContent: 'center', paddingTop: 2 },
+  continueLabel: { color: 'rgba(168,213,181,0.7)', fontWeight: '800', letterSpacing: 0.4, fontSize: 13 },
+  formBlock: { gap: 10, paddingTop: 6 },
   walkthroughLink: { alignSelf: 'center', paddingVertical: 8 },
   walkthroughText: { color: 'rgba(241,189,126,0.9)', fontWeight: '800', letterSpacing: 0.2 },
   error: { color: '#E74C3C', textAlign: 'center', fontWeight: '700' },

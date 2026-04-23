@@ -19,6 +19,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
 import { BreastSide } from '@/types';
 import { buildSmartAlerts, getMeanFeedingInterval } from '@/lib/patterns';
+import { getMedicationTimelineStatus } from '@/utils/entries';
+import { getCareStagePolicy, getSickChildStatus } from '@/lib/careGuidance';
 import {
   defaultAppSettings,
   defaultModuleVisibility,
@@ -237,6 +239,13 @@ function StatCell({
   );
 }
 
+function formatAvailability(timestamp: string | null, locale: string, language: string) {
+  if (!timestamp) return language === 'fr' ? 'Aucune regle' : 'No interval rule';
+  const due = new Date(timestamp).getTime();
+  if (due <= Date.now()) return language === 'fr' ? 'Possible maintenant' : 'Available now';
+  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(timestamp));
+}
+
 function SmartSignalChip({ alert, onPress, compact }: { alert: any; onPress: () => void; compact: boolean }) {
   const color = alert.status === 'OVERDUE' ? RED : alert.status === 'ACTIVE' ? GREEN : '#F2C86F';
   return (
@@ -349,6 +358,9 @@ export default function HomeScreen() {
   const lastMeasurement = useMemo(() => entries.find((entry) => entry.type === 'measurement'), [entries]);
   const meanInterval = getMeanFeedingInterval(entries);
   const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
+  const medicationTimeline = useMemo(() => getMedicationTimelineStatus(entries, appSettings), [entries, appSettings]);
+  const careStage = useMemo(() => getCareStagePolicy(profile), [profile]);
+  const sickChild = useMemo(() => getSickChildStatus(entries, medicationTimeline.lastMedicine?.payload?.name), [entries, medicationTimeline.lastMedicine?.payload?.name]);
   const nextFeedDueIn = useMemo(() => {
     if (!meanInterval || !lastFeed) return null;
     return new Date(lastFeed.occurredAt).getTime() + meanInterval - now;
@@ -445,7 +457,7 @@ export default function HomeScreen() {
     { label: `20 min`, href: '/entry/pump' },
   ];
   const hydrationButtons = ['+250 ml', '+500 ml'];
-  const visibleActions = quickActions.filter(([, , key]) => visibility[key]);
+  const visibleActions = quickActions.filter(([, , key]) => visibility[key] && !careStage.hiddenActionTypes.includes(key));
   const showSmartSignals = appSettings.dashboardMetrics.smartSignals;
   const timelineChips = useMemo(() => {
     const source = entries.slice(0, 24);
@@ -549,6 +561,15 @@ export default function HomeScreen() {
 
   const recentEntries = entries.slice(0, 6);
   const activeBabyName = babies.find((baby) => baby.id === babyId)?.name ?? profile?.babyName ?? 'Leo';
+  const contextualSuggestions = sickChild.enabled
+    ? [
+        { label: 'Hydration', href: '/entry/feed' },
+        { label: 'Diapers', href: '/entry/diaper' },
+        { label: 'Temperature', href: '/entry/measurement' },
+        { label: 'Stools', href: '/entry/diaper' },
+        { label: 'Behavior', href: '/entry/symptom' },
+      ]
+    : careStage.homeSuggestions;
   const activeFeedTitle =
     quickTimerMode === 'bottle'
       ? t('home.bottle', 'Bottle')
@@ -726,6 +747,16 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
+        <Animated.View entering={FadeIn.duration(300).delay(200)} style={{ marginBottom: 10 }}>
+          <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+            <Text style={sectionEyebrowStyle()}>Belgian guidance</Text>
+            <Text style={sectionTitleStyle()}>{careStage.ageLabel}</Text>
+            <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{careStage.feedingFocus}</Text>
+            <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>{careStage.waterGuidance}</Text>
+            <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>{careStage.foodGuidance}</Text>
+          </View>
+        </Animated.View>
+
         <Animated.View entering={FadeIn.duration(300).delay(220)} style={{ marginBottom: 10 }}>
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
             {[
@@ -740,6 +771,90 @@ export default function HomeScreen() {
             ))}
           </View>
         </Animated.View>
+
+        {visibility.medication ? (
+          <Animated.View entering={FadeIn.duration(300).delay(260)} style={{ marginBottom: 10 }}>
+            <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+              <Text style={sectionEyebrowStyle()}>Medication</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700' }}>
+                    {medicationTimeline.lastMedicine?.payload?.name ?? 'No medicine logged'}
+                  </Text>
+                  <Text style={{ color: MUTED, fontSize: 12 }}>
+                    {medicationTimeline.lastMedicine
+                      ? `Last given ${formatClock(medicationTimeline.lastMedicine.occurredAt, locale)}`
+                      : 'Informational support only'}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => router.push('/entry/medication')}
+                  style={({ pressed }) => ({
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 999,
+                    borderWidth: 1,
+                    borderColor: BORDER,
+                    backgroundColor: pressed ? '#1B2430' : BG,
+                  })}
+                >
+                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>Log</Text>
+                </Pressable>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                <View style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: '#172018', borderWidth: 1, borderColor: BORDER, gap: 4 }}>
+                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>Next same medicine</Text>
+                  <Text style={{ color: GREEN, fontSize: 18, fontWeight: '800' }}>{formatAvailability(medicationTimeline.nextAllowedAt, locale, language)}</Text>
+                  <Text style={{ color: MUTED, fontSize: 11 }}>{medicationTimeline.nextAllowedLabel ?? 'Check Belgian guidance, label, or pharmacist instructions'}</Text>
+                </View>
+                {appSettings.medicationAlternatingPlan.enabled ? (
+                  <View style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: '#172018', borderWidth: 1, borderColor: BORDER, gap: 4 }}>
+                    <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>Other medicine</Text>
+                    <Text style={{ color: medicationTimeline.otherMedicineAvailable ? GOLD : TEXT, fontSize: 18, fontWeight: '800' }}>
+                      {medicationTimeline.otherMedicineAvailable ? 'Available' : 'Not yet'}
+                    </Text>
+                    <Text style={{ color: MUTED, fontSize: 11 }}>
+                      {medicationTimeline.otherMedicineLabel ?? 'Manual alternating plan only'}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>
+                Informational only. Follow Belgian guidance and the product label. Dose must follow weight-based or label instructions.
+              </Text>
+            </View>
+          </Animated.View>
+        ) : null}
+
+        {sickChild.enabled ? (
+          <Animated.View entering={FadeIn.duration(300).delay(290)} style={{ marginBottom: 10 }}>
+            <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: '#211818', borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+              <Text style={sectionEyebrowStyle()}>Sick child mode</Text>
+              <Text style={sectionTitleStyle()}>Compact care checklist</Text>
+              <Text style={{ color: MUTED, fontSize: 11 }}>
+                {sickChild.reasons.join(' · ')}
+              </Text>
+              <View style={{ gap: 8 }}>
+                {sickChild.checklist.map((item) => (
+                  <PressScale key={item.key} onPress={() => router.push(item.href as any)} pressedScale={0.97}>
+                    <View style={{ paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: item.done ? `${GREEN}22` : `${GOLD}22`, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: item.done ? GREEN : GOLD, fontSize: 11, fontWeight: '900' }}>{item.done ? 'OK' : '!'}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{item.label}</Text>
+                        <Text style={{ color: MUTED, fontSize: 11 }}>{item.detail}</Text>
+                      </View>
+                    </View>
+                  </PressScale>
+                ))}
+              </View>
+              <Text style={{ color: MUTED, fontSize: 11, lineHeight: 16 }}>
+                Tracking and safety support only. This app does not prescribe treatment.
+              </Text>
+            </View>
+          </Animated.View>
+        ) : null}
 
         <Animated.View entering={FadeIn.duration(300).delay(320)} style={{ marginBottom: 10 }}>
           <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
@@ -772,6 +887,15 @@ export default function HomeScreen() {
           <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 6 }}>
             <Text style={sectionEyebrowStyle()}>{t('home.rapid_actions', 'Quick actions')}</Text>
             <Text style={sectionTitleStyle()}>{t('home.direct_actions', 'Direct actions')}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {contextualSuggestions.map((item) => (
+                <PressScale key={`${item.label}-${item.href}`} onPress={() => router.push(item.href as any)} pressedScale={0.95} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 120 : 130, flexGrow: 1 }}>
+                  <View style={{ minHeight: 38, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: GOLD, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
+                  </View>
+                </PressScale>
+              ))}
+            </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
               {visibleActions.map(([label, href]) => (
                 <PressScale

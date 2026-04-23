@@ -1,4 +1,5 @@
 import { EntryRecord, EntryType, UserProfile } from '@/types';
+import { AppSettings } from '@/lib/storage';
 import { dateKey, formatDuration, formatLongDate, formatTime, isSameDay, startOfDay, subtractDays } from './date';
 
 export interface TimelineSection {
@@ -21,8 +22,20 @@ export interface DashboardSummary {
   trend: Array<{ label: string; feedCount: number; bottleMl: number; sleepMinutes: number }>;
 }
 
+export interface MedicationTimelineStatus {
+  lastMedicine: EntryRecord | null;
+  nextAllowedAt: string | null;
+  nextAllowedLabel: string | null;
+  otherMedicineAvailable: boolean | null;
+  otherMedicineLabel: string | null;
+}
+
 function payloadOf(entry: EntryRecord) {
   return entry.payload ?? {};
+}
+
+function normalizeMedicineName(value?: string) {
+  return value?.trim().toLowerCase() ?? '';
 }
 
 export function getEntryTitle(entry: EntryRecord) {
@@ -217,5 +230,52 @@ export function getTodaySummary(entries: EntryRecord[], profile?: UserProfile | 
     ],
     recent,
     trend,
+  };
+}
+
+export function getMedicationTimelineStatus(entries: EntryRecord[], settings?: AppSettings | null): MedicationTimelineStatus {
+  const medicationEntries = [...entries]
+    .filter((entry) => entry.type === 'medication' && payloadOf(entry).name)
+    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+
+  const lastMedicine = medicationEntries[0] ?? null;
+  if (!lastMedicine) {
+    return {
+      lastMedicine: null,
+      nextAllowedAt: null,
+      nextAllowedLabel: null,
+      otherMedicineAvailable: null,
+      otherMedicineLabel: null,
+    };
+  }
+
+  const intervalHours = payloadOf(lastMedicine).intervalHours;
+  const nextAllowedAt =
+    typeof intervalHours === 'number' && Number.isFinite(intervalHours)
+      ? new Date(new Date(lastMedicine.occurredAt).getTime() + intervalHours * 3600000).toISOString()
+      : null;
+
+  const plan = settings?.medicationAlternatingPlan;
+  const currentName = normalizeMedicineName(payloadOf(lastMedicine).name);
+  const otherMedicine = plan?.enabled
+    ? plan.medicines.find((item) => normalizeMedicineName(item.name) !== currentName)
+    : undefined;
+  const otherMedicineLastEntry = otherMedicine
+    ? medicationEntries.find((entry) => normalizeMedicineName(payloadOf(entry).name) === normalizeMedicineName(otherMedicine.name))
+    : undefined;
+  const otherMedicineAvailable =
+    otherMedicine && typeof otherMedicine.intervalHours === 'number'
+      ? !otherMedicineLastEntry || new Date(otherMedicineLastEntry.occurredAt).getTime() + otherMedicine.intervalHours * 3600000 <= Date.now()
+      : null;
+
+  return {
+    lastMedicine,
+    nextAllowedAt,
+    nextAllowedLabel:
+      nextAllowedAt && typeof intervalHours === 'number'
+        ? `${payloadOf(lastMedicine).name} · informational every ${intervalHours}h`
+        : null,
+    otherMedicineAvailable,
+    otherMedicineLabel: otherMedicine ? otherMedicine.name : null,
   };
 }

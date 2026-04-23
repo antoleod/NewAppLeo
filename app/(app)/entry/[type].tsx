@@ -6,6 +6,7 @@ import { MedicationPicker } from '@/components/MedicationPicker';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useLocale } from '@/context/LocaleContext';
+import { useAuth } from '@/context/AuthContext';
 import { clamp } from '@/utils/date';
 import { BreastSide, EntryPayload, EntryType } from '@/types';
 import { TimerWidget } from '@/components/TimerWidget';
@@ -18,9 +19,12 @@ import {
   getSavedMedicinesRanked,
   recordMedicineUse,
   upsertSavedMedicine,
+  updateAppSettings,
+  type AppSettings,
   type MedicationPreset,
   type SavedMedicine,
 } from '@/lib/storage';
+import { getCareStagePolicy, getSickChildStatus } from '@/lib/careGuidance';
 import * as ImagePicker from 'expo-image-picker';
 
 const typeLabels: Record<EntryType, string> = {
@@ -438,6 +442,7 @@ function typeSubtitle(type: EntryType) {
 export default function EntryComposerScreen() {
   const { colors } = useTheme();
   const { language } = useLocale();
+  const { profile } = useAuth();
   const copy = entryCopy[language as keyof typeof entryCopy] ?? entryCopy.en;
   const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string; symptom?: string }>();
   const { addEntry, updateEntry, deleteEntry, entryById, entries } = useAppData();
@@ -476,7 +481,16 @@ export default function EntryComposerScreen() {
   const [medicationSearch, setMedicationSearch] = useState('');
   const [selectedMedicationSymptoms, setSelectedMedicationSymptoms] = useState<string[]>(presetSymptom ? [presetSymptom] : []);
   const [selectedMedicationMeta, setSelectedMedicationMeta] = useState<Partial<SavedMedicine> | Partial<MedicationPreset>>({});
+  const [intervalHours, setIntervalHours] = useState('');
+  const [alternatingEnabled, setAlternatingEnabled] = useState(false);
+  const [alternatingMedicineA, setAlternatingMedicineA] = useState('');
+  const [alternatingMedicineAInterval, setAlternatingMedicineAInterval] = useState('');
+  const [alternatingMedicineB, setAlternatingMedicineB] = useState('');
+  const [alternatingMedicineBInterval, setAlternatingMedicineBInterval] = useState('');
+  const [alternatingNotes, setAlternatingNotes] = useState('');
   const meta = typeMeta[type];
+  const careStage = useMemo(() => getCareStagePolicy(profile), [profile]);
+  const sickChild = useMemo(() => getSickChildStatus(entries), [entries]);
 
   useEffect(() => {
     if (!editing) return;
@@ -516,6 +530,7 @@ export default function EntryComposerScreen() {
       case 'medication':
         setName(editing.payload?.name ?? '');
         setDosage(editing.payload?.dosage ?? '');
+        setIntervalHours(editing.payload?.intervalHours ? String(editing.payload.intervalHours) : '');
         setSelectedMedicationSymptoms((editing.payload?.tags ?? []).map(normalizeSymptom));
         break;
       case 'milestone':
@@ -533,6 +548,12 @@ export default function EntryComposerScreen() {
     (async () => {
       const settings = await getAppSettings();
       setLargeTouchMode(settings.largeTouchMode);
+      setAlternatingEnabled(settings.medicationAlternatingPlan?.enabled ?? false);
+      setAlternatingMedicineA(settings.medicationAlternatingPlan?.medicines?.[0]?.name ?? '');
+      setAlternatingMedicineAInterval(settings.medicationAlternatingPlan?.medicines?.[0]?.intervalHours ? String(settings.medicationAlternatingPlan.medicines[0].intervalHours) : '');
+      setAlternatingMedicineB(settings.medicationAlternatingPlan?.medicines?.[1]?.name ?? '');
+      setAlternatingMedicineBInterval(settings.medicationAlternatingPlan?.medicines?.[1]?.intervalHours ? String(settings.medicationAlternatingPlan.medicines[1].intervalHours) : '');
+      setAlternatingNotes(settings.medicationAlternatingPlan?.notes ?? '');
       setSavedMedicines(await getSavedMedicines());
     })();
   }, []);
@@ -619,7 +640,14 @@ export default function EntryComposerScreen() {
           notes,
         };
       case 'medication':
-        return { name, dosage, notes, tags: selectedMedicationSymptoms };
+        return {
+          name,
+          dosage,
+          intervalHours: intervalHours ? Number(intervalHours) : undefined,
+          intervalLabel: intervalHours ? `Every ${intervalHours}h` : undefined,
+          notes,
+          tags: selectedMedicationSymptoms,
+        };
       case 'milestone':
         return { title: title || 'Milestone', icon, photoUri: photoUri || undefined, notes };
       case 'symptom':
@@ -653,6 +681,7 @@ export default function EntryComposerScreen() {
   function applyMedicationSelection(medicine: {
     name: string;
     dosage?: string;
+    intervalHours?: number | null;
     symptomTags?: string[];
     commonFor?: string[];
     minAgeMonths?: number | null;
@@ -661,6 +690,7 @@ export default function EntryComposerScreen() {
   }) {
     setName(medicine.name);
     if (medicine.dosage) setDosage(medicine.dosage);
+    if (medicine.intervalHours) setIntervalHours(String(medicine.intervalHours));
     const medicineSymptoms = medicine.symptomTags ?? [];
     if (medicineSymptoms.length) {
       setSelectedMedicationSymptoms((current) => Array.from(new Set([...current, ...medicineSymptoms.map(normalizeSymptom)])));
@@ -674,9 +704,17 @@ export default function EntryComposerScreen() {
   async function handleSave() {
     setSaving(true);
     try {
+      if (type === 'food' && careStage.foodEntryLocked) {
+        Alert.alert('Food locked', careStage.foodEntryReason ?? 'Food logging is not available yet for this age.');
+        return;
+      }
       const timestamp = occurredAt.toISOString();
       const payload = buildPayload();
       const titleValue = buildTitle();
+      const alternatingMedicines = [
+        alternatingMedicineA.trim() && alternatingMedicineAInterval ? { name: alternatingMedicineA.trim(), intervalHours: Number(alternatingMedicineAInterval) || 0 } : null,
+        alternatingMedicineB.trim() && alternatingMedicineBInterval ? { name: alternatingMedicineB.trim(), intervalHours: Number(alternatingMedicineBInterval) || 0 } : null,
+      ].filter((item): item is { name: string; intervalHours: number } => Boolean(item && item.intervalHours > 0));
 
       if (editing) {
         await updateEntry(editing.id, { type, title: titleValue, notes, occurredAt: timestamp, payload } as any);
@@ -684,11 +722,20 @@ export default function EntryComposerScreen() {
         await addEntry({ type, title: titleValue, notes, occurredAt: timestamp, payload });
       }
       if (type === 'medication' && name.trim()) {
+        await updateAppSettings({
+          medicationAlternatingPlan: {
+            enabled: alternatingEnabled && alternatingMedicines.length === 2,
+            medicines: alternatingMedicines,
+            notes: alternatingNotes.trim(),
+          },
+        } as Partial<AppSettings>);
         setSavedMedicines(
           await recordMedicineUse({
             name,
             dosage,
             usedAt: timestamp,
+            intervalHours: intervalHours ? Number(intervalHours) : null,
+            intervalLabel: intervalHours ? `Every ${intervalHours}h` : undefined,
             symptomTags: selectedMedicationSymptoms,
             commonFor: (selectedMedicationMeta.commonFor as string[] | undefined) ?? [],
             minAgeMonths: selectedMedicationMeta.minAgeMonths ?? null,
@@ -736,11 +783,11 @@ export default function EntryComposerScreen() {
                 ? language === 'fr'
                   ? 'Ajoutez poids, taille, perimetre cranien et temperature.'
                   : 'Add weight, height, head circumference, or temperature.'
-                : type === 'medication'
-                  ? language === 'fr'
-                    ? 'Nom, dosage et contexte.'
-                    : 'Save the medication name, dosage, and any context.'
-                  : type === 'milestone'
+                 : type === 'medication'
+                   ? language === 'fr'
+                     ? 'Nom, dose, heure et contexte de securite.'
+                     : 'Save the medication name, timing rule, and safety context.'
+                   : type === 'milestone'
                     ? language === 'fr'
                       ? 'Ajoutez une etape avec photo si besoin.'
                       : 'Mark a new milestone and optionally attach a photo.'
@@ -775,6 +822,13 @@ export default function EntryComposerScreen() {
         </View>
       </View>
       <Card>
+        <View style={styles.sectionCard}>
+          <Text style={[styles.sectionLabel, { color: meta.tone }]}>BELGIAN GUIDANCE</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{careStage.ageLabel}</Text>
+          <Text style={[styles.sectionBody, { color: colors.muted }]}>{careStage.waterGuidance}</Text>
+          <Text style={[styles.sectionBody, { color: colors.muted }]}>{careStage.foodGuidance}</Text>
+        </View>
+
         <View style={styles.sectionCard}>
           <Text style={[styles.sectionLabel, { color: meta.tone }]}>{meta.eyebrow}</Text>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>{copy.whenItHappened}</Text>
@@ -829,9 +883,32 @@ export default function EntryComposerScreen() {
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'FOOD FLOW' : 'FOOD FLOW'}</Text>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Repas et portions' : 'Meals and portions'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-            <Input label={copy.foodName} value={foodName} onChangeText={setFoodName} placeholder={language === 'fr' ? 'Pomme, riz, puree...' : 'Apple, rice, puree...'} />
-            <Input label={copy.quantity} value={quantity} onChangeText={setQuantity} placeholder="250 ml / 120 g / 1 portion" />
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>
+              {careStage.foodEntryLocked
+                ? careStage.foodEntryReason
+                : careStage.stage === 'solids_intro'
+                  ? 'Start with simple solids, small water sips around meals, and iron-focused foods.'
+                  : 'Meals are open. Keep water visible daily and log broader meal patterns.'}
+            </Text>
+            {careStage.foodEntryLocked ? (
+              <Pressable onPress={() => router.replace('/entry/feed')} style={styles.savePresetButton}>
+                <Text style={styles.savePresetText}>Open milk flow instead</Text>
+              </Pressable>
+            ) : (
+              <>
+                <View style={styles.savedRow}>
+                  {(careStage.stage === 'solids_intro'
+                    ? ['Iron-rich puree', 'Vegetable puree', 'Fruit', 'Small water sips']
+                    : ['Breakfast', 'Lunch', 'Snack', 'Dinner']).map((item) => (
+                    <Pressable key={item} onPress={() => setFoodName(item)} style={styles.smallChip}>
+                      <Text style={styles.smallChipText}>{item}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Input label={copy.foodName} value={foodName} onChangeText={setFoodName} placeholder={language === 'fr' ? 'Pomme, riz, puree...' : 'Apple, rice, puree...'} />
+                <Input label={copy.quantity} value={quantity} onChangeText={setQuantity} placeholder="250 ml / 120 g / 1 portion" />
+              </>
+            )}
           </View>
         ) : null}
 
@@ -917,6 +994,8 @@ export default function EntryComposerScreen() {
                   await upsertSavedMedicine({
                     name,
                     dosage,
+                    intervalHours: intervalHours ? Number(intervalHours) : null,
+                    intervalLabel: intervalHours ? `Every ${intervalHours}h` : undefined,
                     symptomTags: selectedMedicationSymptoms,
                     commonFor: (selectedMedicationMeta.commonFor as string[] | undefined) ?? [],
                     minAgeMonths: selectedMedicationMeta.minAgeMonths ?? null,
@@ -943,6 +1022,49 @@ export default function EntryComposerScreen() {
                 consultDoctor: 'Consult a doctor for infants or concerning symptoms',
               }}
             />
+            <View style={styles.stack}>
+              <Input
+                label="Interval rule (hours)"
+                value={intervalHours}
+                onChangeText={setIntervalHours}
+                placeholder="6"
+                keyboardType="decimal-pad"
+                inputMode="decimal"
+              />
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>
+                Medication tracking only. Informational support. Follow Belgian guidance and label or pharmacist instructions.
+              </Text>
+            </View>
+            <View style={styles.sectionCard}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Alternating plan</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>
+                Optional manual setup. Only timeline support is shown when you enable two medicines and their intervals.
+              </Text>
+              <View style={styles.savedRow}>
+                <Pressable onPress={() => setAlternatingEnabled((current) => !current)} style={[styles.smallChip, alternatingEnabled && styles.smallChipSelected]}>
+                  <Text style={styles.smallChipText}>{alternatingEnabled ? 'Alternating ON' : 'Alternating OFF'}</Text>
+                </Pressable>
+              </View>
+              <Input label="Medicine A" value={alternatingMedicineA} onChangeText={setAlternatingMedicineA} placeholder="Paracetamol / Acetaminophen" />
+              <Input
+                label="Medicine A interval (hours)"
+                value={alternatingMedicineAInterval}
+                onChangeText={setAlternatingMedicineAInterval}
+                placeholder="6"
+                keyboardType="decimal-pad"
+                inputMode="decimal"
+              />
+              <Input label="Medicine B" value={alternatingMedicineB} onChangeText={setAlternatingMedicineB} placeholder="Ibuprofen" />
+              <Input
+                label="Medicine B interval (hours)"
+                value={alternatingMedicineBInterval}
+                onChangeText={setAlternatingMedicineBInterval}
+                placeholder="6"
+                keyboardType="decimal-pad"
+                inputMode="decimal"
+              />
+              <Input label="Plan note" value={alternatingNotes} onChangeText={setAlternatingNotes} placeholder="Doctor/pharmacist instructions summary" />
+            </View>
           </View>
         ) : null}
 
@@ -974,7 +1096,11 @@ export default function EntryComposerScreen() {
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'SYMPTOM FLOW' : 'SYMPTOM FLOW'}</Text>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Tags et notes' : 'Tags and notes'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>
+              {sickChild.enabled
+                ? 'Fever or illness context is active. Prioritize temperature, hydration, diapers, stool, vomiting, and behavior.'
+                : meta.details[0]}
+            </Text>
             <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16, textAlign: 'center' }}>{language === 'fr' ? 'Tags' : 'Tags'}</Text>
             <View style={styles.savedRow}>
               {symptomOptions.map((symptom) => {
@@ -991,9 +1117,25 @@ export default function EntryComposerScreen() {
               })}
             </View>
             {symptoms.length ? (
-              <Pressable onPress={() => router.push(`/entry/medication?symptom=${encodeURIComponent(symptoms[0])}`)} style={styles.savePresetButton}>
-                <Text style={styles.savePresetText}>Open medication suggestions</Text>
-              </Pressable>
+              <View style={styles.stack}>
+                <Pressable onPress={() => router.push(`/entry/medication?symptom=${encodeURIComponent(symptoms[0])}`)} style={styles.savePresetButton}>
+                  <Text style={styles.savePresetText}>Open medication suggestions</Text>
+                </Pressable>
+                {symptoms.includes('fever') ? (
+                  <View style={styles.savedRow}>
+                    {[
+                      { label: 'Hydration', href: '/entry/feed' },
+                      { label: 'Diapers', href: '/entry/diaper' },
+                      { label: 'Temperature', href: '/entry/measurement' },
+                      { label: 'Behavior', href: '/entry/symptom' },
+                    ].map((item) => (
+                      <Pressable key={item.label} onPress={() => router.push(item.href as any)} style={styles.smallChip}>
+                        <Text style={styles.smallChipText}>{item.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
             ) : null}
           </View>
         ) : null}
