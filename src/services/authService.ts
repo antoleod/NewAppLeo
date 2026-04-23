@@ -9,6 +9,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { RegisterPayload } from '@/types';
+import { getCachedAuthProfile } from '@/lib/storage';
 import {
   createProfileRecord,
   defaultProfile,
@@ -94,6 +95,10 @@ export async function signInWithEmail(payload: { email: string; password: string
     if ((error as any)?.code !== 'permission-denied' && !/permission/i.test((error as any)?.message ?? '')) {
       throw error;
     }
+  }
+
+  if (!profile) {
+    profile = await getCachedAuthProfile(authResult.user.uid);
   }
 
   if (!profile) {
@@ -199,6 +204,10 @@ export async function signInWithGoogle() {
     if (!isPermissionDenied(error)) {
       throw error;
     }
+  }
+
+  if (!profile) {
+    profile = await getCachedAuthProfile(authResult.user.uid);
   }
 
   if (!profile) {

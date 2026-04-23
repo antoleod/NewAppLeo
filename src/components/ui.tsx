@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { triggerHaptic } from '@/lib/mobile';
 import { useResponsiveMetrics } from '@/lib/responsive';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
@@ -185,13 +186,18 @@ export function Button({
   const color = variant === 'ghost' ? theme.textPrimary : variant === 'primary' ? theme.accentText : '#ffffff';
   const borderColor = variant === 'ghost' ? theme.border : 'transparent';
   const isSmall = size === 'sm';
+  const handlePress = () => {
+    void triggerHaptic(disabled ? 'warning' : variant === 'danger' ? 'warning' : 'light');
+    return onPress();
+  };
 
   return (
     <Pressable
-      onPress={disabled || loading ? undefined : onPress}
+      onPress={disabled || loading ? undefined : handlePress}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || loading }}
+      hitSlop={6}
       style={({ pressed }) => [
         styles.button,
         {
@@ -295,6 +301,7 @@ export function Segment({
   onChange: (value: string) => void;
 }) {
   const { theme } = useTheme();
+  const responsive = useResponsiveMetrics();
   return (
     <View style={[styles.segment, { borderColor: theme.border, backgroundColor: theme.pillBg }]}>
       {options.map((option) => {
@@ -302,9 +309,14 @@ export function Segment({
         return (
           <Pressable
             key={option.value}
-            onPress={() => onChange(option.value)}
+            onPress={() => {
+              void triggerHaptic('selection');
+              onChange(option.value);
+            }}
+            hitSlop={4}
             style={[
               styles.segmentItem,
+              { minHeight: responsive.touchTarget },
               selected && { backgroundColor: theme.bgCard, borderColor: theme.borderActive },
             ]}
           >
@@ -328,7 +340,11 @@ export function Chip({
   const { theme } = useTheme();
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        void triggerHaptic('selection');
+        onPress();
+      }}
+      hitSlop={4}
       style={[
         styles.chip,
         { borderColor: selected ? theme.accent : theme.border, backgroundColor: selected ? `${theme.accent}22` : theme.bgCardAlt },
@@ -394,7 +410,10 @@ export function EntryCard({
   const { theme } = useTheme();
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        void triggerHaptic('light');
+        onPress?.();
+      }}
       style={({ pressed }: any) => [
         styles.entryCard,
         { backgroundColor: theme.bgCard, borderColor: theme.border, opacity: pressed ? 0.92 : 1 },
@@ -426,7 +445,11 @@ export function Toggle({
   const { theme } = useTheme();
   return (
     <Pressable
-      onPress={() => onChange(!value)}
+      onPress={() => {
+        void triggerHaptic('selection');
+        onChange(!value);
+      }}
+      hitSlop={4}
       style={[
         styles.toggleContainer,
         {

@@ -206,9 +206,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await clearGuestProfile();
         } else {
           await signOutUser();
-          if (user?.uid) {
-            await clearCachedAuthProfile(user.uid);
-          }
         }
         setUser(null);
         setProfile(null);

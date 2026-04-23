@@ -1,9 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocale } from '@/context/LocaleContext';
 import { useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { triggerHaptic } from '@/lib/mobile';
 
 export default function TabsLayout() {
   const { theme, paletteMode, themeStyle } = useTheme();
@@ -51,6 +53,19 @@ export default function TabsLayout() {
           borderRadius: isCompactPhone ? 12 : 16,
           marginHorizontal: isCompactPhone ? 1 : 2,
           minHeight: 48,
+        },
+        tabBarButton: (props) => {
+          const { onPress, style, ref: _ref, ...rest } = props as any;
+          return (
+          <Pressable
+            {...rest}
+            onPress={(event) => {
+              void triggerHaptic('selection');
+              onPress?.(event);
+            }}
+            style={[style, { minHeight: isCompactPhone ? 54 : 58, justifyContent: 'center' }]}
+          />
+          );
         },
         tabBarLabelStyle: {
           fontSize: isCompactPhone ? 10 : 11,
