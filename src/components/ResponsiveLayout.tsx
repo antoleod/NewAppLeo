@@ -129,12 +129,10 @@ export function ResponsiveGrid({
       {React.Children.map(children, (child) => (
         <View
           style={{
-            flexBasis: layout.isPhone
-              ? `calc(50% - ${layout.gridGap / 2}px)`
-              : layout.isTablet
-              ? `calc(33.333% - ${layout.gridGap / 2}px)`
-              : `calc(25% - ${layout.gridGap / 2}px)`,
+            flexBasis: layout.isPhone ? '50%' : layout.isTablet ? '33.333%' : '25%',
             minWidth: minItemWidth,
+            paddingHorizontal: layout.gridGap / 2,
+            marginBottom: layout.gridGap,
           }}
         >
           {child}
