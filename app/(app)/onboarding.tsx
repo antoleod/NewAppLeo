@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeInRight, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { FadeInRight, useAnimatedStyle } from 'react-native-reanimated';
 import { Button, Card, Input, Page, Segment } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { DateTimeField } from '@/components/DateTimeField';
@@ -19,12 +19,6 @@ const languageOptions = [
   { label: 'Espanol', value: 'es' },
   { label: 'English', value: 'en' },
   { label: 'Nederlands', value: 'nl' },
-];
-
-const pathCards: Array<{ key: OnboardingPath; title: string; body: string }> = [
-  { key: 'guest', title: 'Guest', body: 'Commencer vite et tout garder en local.' },
-  { key: 'pin', title: 'PIN', body: 'Acces rapide au foyer avec un code local.' },
-  { key: 'account', title: 'Compte', body: 'Profil plus classique avec donnees locales.' },
 ];
 
 function clamp(value: number, min: number, max: number) {
@@ -54,7 +48,7 @@ export default function OnboardingScreen() {
   const { theme } = useTheme();
   const { t } = useLocale();
   const { width } = useWindowDimensions();
-  const { user, profile, guestMode, signInGuest, completeUserOnboarding } = useAuth();
+  const { user, profile, guestMode, completeUserOnboarding } = useAuth();
   const { path, setPath, step, setStep, next, back, progress } = useOnboarding(1);
   const [caregiverName, setCaregiverName] = useState(profile?.caregiverName ?? '');
   const [babyName, setBabyName] = useState(profile?.babyName ?? 'Leo');
@@ -69,11 +63,8 @@ export default function OnboardingScreen() {
   const [goalFeedingsPerDay, setGoalFeedingsPerDay] = useState(profile?.goalFeedingsPerDay ? String(profile.goalFeedingsPerDay) : '');
   const [goalSleepHoursPerDay, setGoalSleepHoursPerDay] = useState(profile?.goalSleepHoursPerDay ? String(profile.goalSleepHoursPerDay) : '');
   const [goalDiapersPerDay, setGoalDiapersPerDay] = useState(profile?.goalDiapersPerDay ? String(profile.goalDiapersPerDay) : '');
-  const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const shake = useSharedValue(0);
   const autoGoals = useMemo(
     () => computeAutoGoals(babyBirthDate, Number(currentWeightKg) || undefined),
     [babyBirthDate, currentWeightKg],
@@ -128,14 +119,6 @@ export default function OnboardingScreen() {
     try {
       if (!guestMode && !user) {
         throw new Error('Session not ready yet. Please sign in again.');
-      }
-
-      if (path === 'pin') {
-        if (pin.length !== 4 || confirmPin.length !== 4 || pin !== confirmPin) {
-          shake.value = withSequence(withTiming(-8, { duration: 70 }), withTiming(8, { duration: 70 }), withTiming(0, { duration: 70 }));
-          Alert.alert('PIN invalide', 'Le PIN doit faire 4 chiffres et correspondre a la confirmation.');
-          return;
-        }
       }
       const parsedFeedings = Number(goalFeedingsPerDay);
       const parsedSleep = Number(goalSleepHoursPerDay);
@@ -199,39 +182,6 @@ export default function OnboardingScreen() {
         </View>
       </Card>
 
-      {step === 0 ? (
-        <Card style={containerCardStyle}>
-          <Animated.View entering={FadeIn.duration(220)} style={{ gap: 12 }}>
-            {pathCards.map((item) => {
-              const active = path === item.key;
-              return (
-                <Pressable
-                  key={item.key}
-                  onPress={async () => {
-                    setPath(item.key);
-                    if (item.key === 'guest' && !profile && !guestMode) {
-                      await signInGuest();
-                    }
-                  }}
-                  style={{
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    padding: 14,
-                    borderColor: active ? theme.borderActive : theme.border,
-                    backgroundColor: active ? `${theme.accent}16` : theme.bgCardAlt,
-                    gap: 4,
-                  }}
-                >
-                  <Text style={[typography.sectionTitle, { color: theme.textPrimary }]}>{item.title}</Text>
-                  <Text style={[typography.body, { color: theme.textMuted }]}>{item.body}</Text>
-                </Pressable>
-              );
-            })}
-            <Button label={path === 'guest' ? 'Continuer en invite' : t('common.continue', 'Continue')} onPress={next} />
-          </Animated.View>
-        </Card>
-      ) : null}
-
       {step === 1 ? (
         <Card style={containerCardStyle}>
           <Animated.View entering={FadeInRight.duration(220)} style={{ gap: 12 }}>
@@ -260,7 +210,7 @@ export default function OnboardingScreen() {
                   <Pressable
                     key={item.value}
                     onPress={() => setBabySex(item.value)}
-                    style={({ pressed }) => ({
+                    style={({ pressed }: any) => ({
                       flexBasis: isCompactPhone ? '100%' : '31%',
                       flexGrow: 1,
                       minHeight: isCompactPhone ? 48 : 44,
@@ -291,19 +241,7 @@ export default function OnboardingScreen() {
         </Card>
       ) : null}
 
-      {step === 3 && path === 'pin' ? (
-        <Card style={containerCardStyle}>
-          <Animated.View entering={FadeInRight.duration(220)} style={{ gap: 12 }}>
-            <Animated.View style={{ transform: [{ translateX: shake }] }}>
-              <Input label="PIN 4 chiffres" value={pin} onChangeText={setPin} keyboardType="number-pad" inputMode="numeric" />
-              <Input label="Confirmer le PIN" value={confirmPin} onChangeText={setConfirmPin} keyboardType="number-pad" inputMode="numeric" />
-            </Animated.View>
-            <Button label={t('common.continue', 'Continue')} onPress={next} disabled={pin.length < 4 || confirmPin.length < 4} />
-          </Animated.View>
-        </Card>
-      ) : null}
-
-      {((step === 3 && path !== 'pin') || (step === 4 && path === 'pin')) ? (
+      {step === 3 ? (
         <Card style={containerCardStyle}>
           <Animated.View entering={FadeInRight.duration(220)} style={{ gap: 12 }}>
             <Input

@@ -84,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
       unsubscribeProfile?.();
       unsubscribeProfile = undefined;
+      setLoading(true);
       setGuestMode(false);
       if (!nextUser) {
         void restoreGuestSession();
@@ -106,7 +107,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setProfile(cachedProfile);
             setLoading(false);
           });
-          setLoading(false);
         },
         () => {
           void getCachedAuthProfile(nextUser.uid).then((cachedProfile) => {

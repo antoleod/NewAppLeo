@@ -1,6 +1,7 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth, inMemoryPersistence, setPersistence } from 'firebase/auth';
+import { browserLocalPersistence, getAuth, setPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { Platform } from 'react-native';
 
 const requiredEnv = (name: string, value: string | undefined) => {
   if (!value) {
@@ -28,8 +29,10 @@ export const db = getFirestore(app);
 
 export const auth = getAuth(app);
 
-setPersistence(auth, inMemoryPersistence).catch((error) => {
-  console.warn('Firebase auth persistence could not be set:', error);
-});
+if (Platform.OS === 'web') {
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.warn('Firebase auth persistence could not be set:', error);
+  });
+}
 
 export { app };
