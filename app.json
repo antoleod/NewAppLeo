@@ -4,6 +4,7 @@
     "slug": "babyflow",
     "scheme": "babyflow",
     "version": "1.0.0",
+    "icon": "./assets/branding/generated-png/babyflow-app-icon-clean.png",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
@@ -12,7 +13,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./source-repo/img/icon/icon-square-180.png",
+      "favicon": "./assets/branding/generated-png/babyflow-app-icon-clean.png",
       "name": "BabyFlow",
       "shortName": "BabyFlow",
       "lang": "en"

@@ -567,20 +567,44 @@ export default function EntryComposerScreen() {
 
   const careStage = useMemo(() => getCareStagePolicy(profile), [profile]);
   const sickChild = useMemo(() => getSickChildStatus(entries), [entries]);
-  const medicationTimeline = useMemo(() => getMedicationTimelineStatus(entries, { medicationAlternatingPlan: {
-    enabled: alternatingEnabled,
-    medicines: [
-      alternatingMedicineA.trim() && alternatingMedicineAInterval ? { name: alternatingMedicineA.trim(), intervalHours: Number(alternatingMedicineAInterval) || 0 } : null,
-      alternatingMedicineB.trim() && alternatingMedicineBInterval ? { name: alternatingMedicineB.trim(), intervalHours: Number(alternatingMedicineBInterval) || 0 } : null,
-    ].filter((item): item is { name: string; intervalHours: number } => Boolean(item && item.intervalHours > 0)),
-    notes: alternatingNotes.trim(),
-  } } as AppSettings), [entries, alternatingEnabled, alternatingMedicineA, alternatingMedicineAInterval, alternatingMedicineB, alternatingMedicineBInterval, alternatingNotes]);
+  const medicationTimeline = useMemo(() => getMedicationTimelineStatus(entries, {
+    medicationAlternatingPlan: {
+      enabled: alternatingEnabled,
+      medicines: [
+        alternatingMedicineA.trim() && alternatingMedicineAInterval ? { name: alternatingMedicineA.trim(), intervalHours: Number(alternatingMedicineAInterval) || 0 } : null,
+        alternatingMedicineB.trim() && alternatingMedicineBInterval ? { name: alternatingMedicineB.trim(), intervalHours: Number(alternatingMedicineBInterval) || 0 } : null,
+      ].filter((item): item is { name: string; intervalHours: number } => Boolean(item && item.intervalHours > 0)),
+      notes: alternatingNotes.trim(),
+    }
+  } as AppSettings), [entries, alternatingEnabled, alternatingMedicineA, alternatingMedicineAInterval, alternatingMedicineB, alternatingMedicineBInterval, alternatingNotes]);
 
   const dosageReferences = useMemo(() => {
     if (babyAgeMonths < 3) return { paracetamol: '60mg (2.5ml)', ibuprofen: 'Not recommended < 3m' };
     if (babyAgeMonths < 6) return { paracetamol: '60-120mg (2.5-5ml)', ibuprofen: '50mg (2.5ml)' };
     if (babyAgeMonths < 12) return { paracetamol: '120mg (5ml)', ibuprofen: '50-100mg (2.5-5ml)' };
     return { paracetamol: '120-250mg (5-10ml)', ibuprofen: '100mg (5ml)' };
+  }, [babyAgeMonths]);
+
+  const smartBottlePresets = useMemo(() => {
+    if (babyAgeMonths < 0.5) return [15, 20, 25, 30];
+    if (babyAgeMonths < 1) return [30, 45, 60, 90];
+    if (babyAgeMonths < 2) return [60, 90, 120, 150];
+    if (babyAgeMonths < 4) return [90, 120, 150, 180];
+    if (babyAgeMonths < 6) return [120, 150, 180, 210];
+    if (babyAgeMonths < 9) return [150, 180, 210, 240];
+    if (babyAgeMonths < 12) return [180, 210, 240, 270];
+    return [150, 180, 210, 240, 270, 300];
+  }, [babyAgeMonths]);
+
+  const smartBottleDefault = useMemo(() => {
+    if (babyAgeMonths < 0.5) return 25;
+    if (babyAgeMonths < 1) return 60;
+    if (babyAgeMonths < 2) return 120;
+    if (babyAgeMonths < 4) return 150;
+    if (babyAgeMonths < 6) return 180;
+    if (babyAgeMonths < 9) return 210;
+    if (babyAgeMonths < 12) return 240;
+    return 240;
   }, [babyAgeMonths]);
 
   const recentMedicationEntries = useMemo(
@@ -657,10 +681,14 @@ export default function EntryComposerScreen() {
 
   useEffect(() => {
     if (editing) return;
-    if (presetAmount && Number.isFinite(presetAmount)) setAmountMl(String(presetAmount));
+    if (presetAmount && Number.isFinite(presetAmount)) {
+      setAmountMl(String(presetAmount));
+    } else if (type === 'feed' && !presetAmount) {
+      setAmountMl(String(smartBottleDefault));
+    }
     if (presetMode) setMode(presetMode);
     if (presetSide) setSide(presetSide);
-  }, [editing, presetAmount, presetMode, presetSide]);
+  }, [editing, presetAmount, presetMode, presetSide, type, smartBottleDefault]);
 
   useEffect(() => {
     if (type !== 'medication') return;
@@ -965,11 +993,11 @@ export default function EntryComposerScreen() {
                 ? language === 'fr'
                   ? 'Ajoutez poids, taille, perimetre cranien et temperature.'
                   : 'Add weight, height, head circumference, or temperature.'
-                 : type === 'medication'
-                   ? language === 'fr'
-                     ? 'Nom, dose, heure et contexte de securite.'
-                     : 'Save the medication name, timing rule, and safety context.'
-                   : type === 'milestone'
+                : type === 'medication'
+                  ? language === 'fr'
+                    ? 'Nom, dose, heure et contexte de securite.'
+                    : 'Save the medication name, timing rule, and safety context.'
+                  : type === 'milestone'
                     ? language === 'fr'
                       ? 'Ajoutez une etape avec photo si besoin.'
                       : 'Mark a new milestone and optionally attach a photo.'
@@ -985,8 +1013,22 @@ export default function EntryComposerScreen() {
           <View style={[styles.heroIcon, { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
             <Text style={styles.heroIconText}>{meta.icon}</Text>
           </View>
-          <Pressable onPress={() => router.back()} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={copy.close}>
-            <Text style={styles.closeButtonLabel}>X</Text>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => ({
+              width: 36,
+              height: 36,
+              borderRadius: 12,
+              backgroundColor: pressed ? colors.border : colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+            })}
+            accessibilityRole="button"
+            accessibilityLabel={copy.close}
+          >
+            <Text style={{ color: colors.muted, fontSize: 16, fontWeight: '900' }}>X</Text>
           </Pressable>
         </View>
 
@@ -1020,41 +1062,85 @@ export default function EntryComposerScreen() {
 
         {type === 'feed' ? (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{copy.feedFlow}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>{language === 'fr' ? 'Démarrer la tétée' : 'Start Feed'}</Text>
-            
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <View>
+                <Text style={[styles.sectionLabel, { color: meta.tone }]}>{copy.feedFlow}</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Démarrer la tétée' : 'Start Feed'}</Text>
+              </View>
+              <Pressable
+                onPress={() => router.back()}
+                style={({ pressed }) => ({
+                  width: 36,
+                  height: 36,
+                  borderRadius: 12,
+                  backgroundColor: pressed ? colors.border : colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                })}
+                accessibilityRole="button"
+                accessibilityLabel={copy.close}
+              >
+                <Text style={{ color: colors.muted, fontSize: 16, fontWeight: '900' }}>X</Text>
+              </Pressable>
+            </View>
+
             <View style={styles.quickActionsGrid}>
               {[
                 { id: 'left', label: language === 'fr' ? 'Sein gauche' : 'Left breast', icon: '🤱', mode: 'breast' as const, side: 'left' },
                 { id: 'right', label: language === 'fr' ? 'Sein droit' : 'Right breast', icon: '🤱', mode: 'breast' as const, side: 'right' },
                 { id: 'both', label: language === 'fr' ? 'Les deux' : 'Both', icon: '🤱🤱', mode: 'breast' as const, side: 'both' },
                 { id: 'bottle', label: language === 'fr' ? 'Biberon' : 'Biberon', icon: '🍼', mode: 'bottle' as const, side: 'left' },
-              ].map((opt) => (
-                <Pressable
-                  key={opt.id}
-                  onPress={() => {
-                    setMode(opt.mode);
-                    setSide(opt.side);
-                    void triggerHaptic('light');
-                  }}
-                  style={({ pressed }) => [
-                    styles.feedQuickButton,
-                    { 
-                      borderColor: (mode === opt.mode && (opt.mode === 'bottle' || side === opt.side)) ? meta.tone : 'transparent',
-                      backgroundColor: (mode === opt.mode && (opt.mode === 'bottle' || side === opt.side)) ? 'rgba(255,255,255,0.05)' : colors.bgCardAlt,
-                      opacity: pressed ? 0.7 : 1 
-                    }
-                  ]}
-                >
-                  <Text style={styles.feedQuickIcon}>{opt.icon}</Text>
-                  <Text style={[styles.feedQuickLabel, { color: colors.text }]}>{opt.label}</Text>
-                </Pressable>
-              ))}
+              ].map((opt) => {
+                const active = mode === opt.mode && (opt.mode === 'bottle' || side === opt.side);
+                return (
+                  <Pressable
+                    key={opt.id}
+                    onPress={() => {
+                      setMode(opt.mode);
+                      setSide(opt.side);
+                      if (opt.mode === 'bottle' && !editing && !presetAmount) {
+                        setAmountMl(String(smartBottleDefault));
+                      }
+                      void triggerHaptic('light');
+                    }}
+                    style={({ pressed }) => ({
+                      flexBasis: '48%',
+                      flexGrow: 1,
+                      height: 56,
+                      borderRadius: 20,
+                      backgroundColor: active ? colors.surface : colors.backgroundAlt,
+                      borderWidth: 1.5,
+                      borderColor: active ? meta.tone : colors.border,
+                      paddingHorizontal: 14,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      opacity: pressed ? 0.7 : 1,
+                      shadowColor: '#000',
+                      shadowOpacity: active ? 0.03 : 0,
+                      shadowRadius: 8,
+                      shadowOffset: { width: 0, height: 3 },
+                      elevation: active ? 1 : 0,
+                    })}
+                  >
+                    <Text style={{ fontSize: 20 }}>{opt.icon}</Text>
+                    <Text style={{ color: active ? colors.text : colors.muted, fontSize: 14, fontWeight: '800' }}>{opt.label}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
 
             <View style={{ marginTop: 20 }}>
               {mode === 'bottle' ? (
-                <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
+                <QuantityPicker
+                  value={Number(amountMl) || 0}
+                  onChange={(value) => setAmountMl(String(value))}
+                  largeTouchMode={largeTouchMode}
+                  presets={smartBottlePresets}
+                  label={language === 'fr' ? 'Quantité (ml)' : 'Amount (ml)'}
+                />
               ) : (
                 <View style={styles.stack}>
                   <TimerWidget
@@ -1094,10 +1180,10 @@ export default function EntryComposerScreen() {
                   {(careStage.stage === 'solids_intro'
                     ? ['Iron-rich puree', 'Vegetable puree', 'Fruit', 'Small water sips']
                     : ['Breakfast', 'Lunch', 'Snack', 'Dinner']).map((item) => (
-                    <Pressable key={item} onPress={() => setFoodName(item)} style={styles.smallChip}>
-                      <Text style={styles.smallChipText}>{item}</Text>
-                    </Pressable>
-                  ))}
+                      <Pressable key={item} onPress={() => setFoodName(item)} style={styles.smallChip}>
+                        <Text style={styles.smallChipText}>{item}</Text>
+                      </Pressable>
+                    ))}
                 </View>
                 <Input label={copy.foodName} value={foodName} onChangeText={setFoodName} placeholder={language === 'fr' ? 'Pomme, riz, puree...' : 'Apple, rice, puree...'} />
                 <Input label={copy.quantity} value={quantity} onChangeText={setQuantity} placeholder="250 ml / 120 g / 1 portion" />
@@ -1205,7 +1291,7 @@ export default function EntryComposerScreen() {
                 )}
               </View>
 
-              <Pressable 
+              <Pressable
                 onPress={() => setNotesOpen(true)}
                 style={({ pressed }) => [
                   styles.primaryGiveButton,
@@ -1291,9 +1377,9 @@ export default function EntryComposerScreen() {
                             <Text style={[styles.timelineActionText, { color: colors.primary }]}>EDIT</Text>
                           </Pressable>
                         </View>
-                        
+
                         <View style={styles.timelineCardActions}>
-                          <Pressable 
+                          <Pressable
                             onPress={() => {
                               setOccurredAt(new Date(entry.occurredAt));
                               setNotesOpen(true);
@@ -1303,7 +1389,7 @@ export default function EntryComposerScreen() {
                           >
                             <Text style={styles.timelineMiniActionText}>🕒 Time</Text>
                           </Pressable>
-                          <Pressable 
+                          <Pressable
                             onPress={async () => {
                               if (confirm('Delete this entry?')) {
                                 await deleteEntry(entry.id);
@@ -1611,25 +1697,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8B949E',
     fontWeight: '700',
-  },
-  feedQuickButton: {
-    flexBasis: '48%',
-    flexGrow: 1,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: '#161B22',
-    borderWidth: 1.5,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  feedQuickIcon: {
-    fontSize: 20,
-  },
-  feedQuickLabel: {
-    fontSize: 14,
-    fontWeight: '800',
   },
   babyFlowTimeline: {
     gap: 16,
@@ -2254,22 +2321,6 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: '800',
-  },
-  closeButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#161B22',
-    borderWidth: 1,
-    borderColor: '#21262D',
-  },
-  closeButtonLabel: {
-    color: '#F0F6FC',
-    fontSize: 16,
-    lineHeight: 16,
     fontWeight: '800',
   },
   sectionCard: {
