@@ -37,34 +37,42 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: inactiveTint,
         tabBarStyle: {
           backgroundColor: tabBarBackground,
-          borderTopColor: tabBarBorder,
+          borderTopColor: 'transparent',
           height: tabHeight,
-          paddingTop: isCompactPhone ? 4 : 6,
+          paddingTop: isCompactPhone ? 6 : 8,
           paddingBottom: bottomInset,
-          marginHorizontal: isCompactPhone ? 8 : 10,
-          marginBottom: Math.max(8, insets.bottom ? insets.bottom - 2 : 8),
-          borderRadius: isCompactPhone ? 18 : 22,
-          borderTopWidth: 1,
+          marginHorizontal: isCompactPhone ? 12 : 16,
+          marginBottom: Math.max(10, insets.bottom ? insets.bottom : 10),
+          borderRadius: isCompactPhone ? 24 : 28,
+          borderTopWidth: 0,
           borderWidth: 1,
           overflow: 'hidden',
-          elevation: 6,
+          elevation: 4,
+          shadowColor: '#000',
+          shadowOpacity: 0.06,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: -4 },
+          position: 'absolute',
+          left: isCompactPhone ? 12 : 16,
+          right: isCompactPhone ? 12 : 16,
+          bottom: Math.max(8, insets.bottom ? insets.bottom - 4 : 8),
         },
         tabBarItemStyle: {
-          borderRadius: isCompactPhone ? 12 : 16,
-          marginHorizontal: isCompactPhone ? 1 : 2,
+          borderRadius: isCompactPhone ? 14 : 18,
+          marginHorizontal: isCompactPhone ? 2 : 4,
           minHeight: 48,
         },
         tabBarButton: (props) => {
           const { onPress, style, ref: _ref, ...rest } = props as any;
           return (
-          <Pressable
-            {...rest}
-            onPress={(event) => {
-              void triggerHaptic('selection');
-              onPress?.(event);
-            }}
-            style={[style, { minHeight: isCompactPhone ? 54 : 58, justifyContent: 'center' }]}
-          />
+            <Pressable
+              {...rest}
+              onPress={(event) => {
+                void triggerHaptic('selection');
+                onPress?.(event);
+              }}
+              style={[style, { minHeight: isCompactPhone ? 54 : 58, justifyContent: 'center' }]}
+            />
           );
         },
         tabBarLabelStyle: {

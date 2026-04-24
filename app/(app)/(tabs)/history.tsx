@@ -11,16 +11,16 @@ import { useResponsiveMetrics } from '@/lib/responsive';
 import { dateKey, formatLongDate, formatTime, isSameDay, startOfDay, subtractDays, toDate } from '@/utils/date';
 import { getOmsRow, interpolatePercentileBand, omsBySex, type OmsSex } from '@/lib/omsData';
 
-const BG = '#0D1117';
-const CARD = '#161B22';
-const BORDER = '#21262D';
-const GOLD = '#C9A227';
-const GREEN = '#B88A2A';
-const BLUE = '#58A6FF';
-const RED = '#E74C3C';
-const PURPLE = '#A371F7';
-const TEXT = '#F0F6FC';
-const MUTED = '#8B949E';
+const BG = '#0D0F12';
+const CARD = '#16181D';
+const BORDER = 'rgba(255,255,255,0.06)';
+const GOLD = '#C9B07A';
+const GREEN = '#5ECCA0';
+const BLUE = '#6BA3E0';
+const RED = '#E87878';
+const PURPLE = '#A88FD8';
+const TEXT = '#F2F4F6';
+const MUTED = '#9CA3AF';
 
 const COPY = {
   en: {
@@ -606,8 +606,8 @@ export default function HistoryScreen() {
   return (
     <Page contentStyle={{ width: '100%' }}>
       <View style={{ gap: responsive.verticalGap + 1 }}>
-        {/* Header Card - More Compact */}
-        <Card style={{ backgroundColor: CARD, borderColor: BORDER, padding: 16 }}>
+        {/* Header Card - Minimalist */}
+        <Card style={{ backgroundColor: CARD, borderColor: BORDER, padding: 18, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <View>
               <Text style={{ color: GOLD, fontSize: 12, fontWeight: '700', letterSpacing: 1 }}>{t('report', 'REPORT')}</Text>
@@ -667,7 +667,7 @@ export default function HistoryScreen() {
         {/* Key Metrics Grid - 2 Column Layout */}
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           {/* Feedings Card */}
-          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 12, padding: 16 }}>
+          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 18, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: GOLD }} />
               <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('feedings', 'Feedings')}</Text>
@@ -679,7 +679,7 @@ export default function HistoryScreen() {
           </View>
 
           {/* Total Milk Card */}
-          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 12, padding: 16 }}>
+          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 18, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: '#F0B85A' }} />
               <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('totalMilk', 'Total Milk')}</Text>
@@ -689,7 +689,7 @@ export default function HistoryScreen() {
           </View>
 
           {/* Sleep Card */}
-          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 12, padding: 16 }}>
+          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 18, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: BLUE }} />
               <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('sleep', 'Sleep')}</Text>
@@ -699,7 +699,7 @@ export default function HistoryScreen() {
           </View>
 
           {/* Diapers Card */}
-          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 12, padding: 16 }}>
+          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 18, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: RED }} />
               <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('diapers', 'Diapers')}</Text>

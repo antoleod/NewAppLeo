@@ -172,31 +172,40 @@ const styles = StyleSheet.create({
   },
   menuContent: {
     backgroundColor: CARD,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 40,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: 44,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -8 },
+    elevation: 8,
   },
   menuTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: TEXT,
-    marginBottom: 16,
+    marginBottom: 20,
+    letterSpacing: -0.3,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    marginBottom: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   menuItemText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: TEXT,
     marginLeft: 12,
+    letterSpacing: 0.2,
   },
 });
 
@@ -1046,7 +1055,7 @@ export default function HomeScreen() {
                 onHide={() => void hideHomeSection(sectionKey)}
               >
                 <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
-                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 20, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                       <View style={{ flex: 1 }}>
                         <Text style={sectionEyebrowStyle()}>{t('home.reminders', 'Reminders')}</Text>
@@ -1126,7 +1135,7 @@ export default function HomeScreen() {
             return (
               <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
                 <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
-                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 2 }}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 20, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 }}>
                     <Text style={sectionEyebrowStyle()}>Belgian guidance</Text>
                     <Text style={[sectionTitleStyle(), { fontSize: 16, paddingRight: 96 }]}>{careStage.ageLabel}</Text>
                     <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{careStage.feedingFocus}</Text>
@@ -1147,7 +1156,7 @@ export default function HomeScreen() {
                       { label: t('home.last_breast', 'Last breast'), value: formatClock(lastBreastFeed?.occurredAt || '', locale), detail: formatRelative(lastBreastFeed?.occurredAt || '', locale) },
                       { label: t('home.last_bottle', 'Last bottle'), value: formatClock(lastBottleFeed?.occurredAt || '', locale), detail: formatRelative(lastBottleFeed?.occurredAt || '', locale) },
                     ].map((item) => (
-                      <View key={item.label} style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
+                      <View key={item.label} style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
                         <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 }}>{item.label.toUpperCase()}</Text>
                         <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{item.value}</Text>
                         <Text style={{ color: MUTED, fontSize: 11 }}>{item.detail}</Text>
@@ -1163,7 +1172,7 @@ export default function HomeScreen() {
             return (
               <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
                 <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
-                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: getStateBorderColor(medicationTimeline.lastMedicine ? 'completed' : 'empty') === COLORS.success ? `${COLORS.success}15` : CARD, borderWidth: 1.5, borderColor: getStateBorderColor(medicationTimeline.lastMedicine ? 'completed' : 'empty'), gap: 4 }}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 20, backgroundColor: getStateBorderColor(medicationTimeline.lastMedicine ? 'completed' : 'empty') === COLORS.success ? `${COLORS.success}15` : CARD, borderWidth: 1, borderColor: getStateBorderColor(medicationTimeline.lastMedicine ? 'completed' : 'empty'), gap: 6, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: COLORS.warning, fontSize: 9, fontWeight: '700', letterSpacing: 1.3, textTransform: 'uppercase' }}>Medication</Text>
@@ -1208,13 +1217,13 @@ export default function HomeScreen() {
 
                     {medicationTimeline.lastMedicine && (
                       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-                        <View style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: `${COLORS.success}15`, borderWidth: 1, borderColor: COLORS.success, gap: 4 }}>
+                        <View style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, backgroundColor: `${COLORS.success}15`, borderWidth: 1, borderColor: COLORS.success, gap: 4, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
                           <Text style={{ color: COLORS.success, fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>Next same medicine</Text>
                           <Text style={{ color: COLORS.success, fontSize: 18, fontWeight: '800' }}>{formatAvailability(medicationTimeline.nextAllowedAt, locale, language)}</Text>
                           <Text style={{ color: MUTED, fontSize: 11 }}>{medicationTimeline.nextAllowedLabel ?? 'Check Belgian guidance, label, or pharmacist instructions'}</Text>
                         </View>
                         {appSettings.medicationAlternatingPlan.enabled ? (
-                          <View style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: `${COLORS.info}15`, borderWidth: 1, borderColor: COLORS.info, gap: 4 }}>
+                          <View style={{ flexBasis: twoColBasis, flexGrow: 1, minWidth: isCompactPhone ? 120 : 150, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, backgroundColor: `${COLORS.info}15`, borderWidth: 1, borderColor: COLORS.info, gap: 4, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
                             <Text style={{ color: COLORS.info, fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>Other medicine</Text>
                             <Text style={{ color: medicationTimeline.otherMedicineAvailable ? COLORS.info : TEXT, fontSize: 18, fontWeight: '800' }}>
                               {medicationTimeline.otherMedicineAvailable ? 'Available' : 'Not yet'}
@@ -1674,15 +1683,20 @@ function HeaderAction({ label, onPress }: { label: string; onPress: () => void }
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: BORDER,
-        backgroundColor: pressed ? '#1B2430' : CARD,
+        borderColor: 'rgba(255,255,255,0.08)',
+        backgroundColor: pressed ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+        shadowColor: '#000',
+        shadowOpacity: 0.03,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 1,
       })}
     >
-      <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{label}</Text>
+      <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700', letterSpacing: 0.2 }}>{label}</Text>
     </Pressable>
   );
 }

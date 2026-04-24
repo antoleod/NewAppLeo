@@ -20,12 +20,12 @@ export function useResponsiveMetrics() {
     const isDesktop = width >= breakpoints.desktop;
     const isCompactPhone = width < 390;
     const isLargePhone = width >= 430 && width < breakpoints.tablet;
-    const horizontalPadding = isCompactPhone ? 12 : isPhone ? 16 : isTablet ? 20 : 24;
-    const verticalGap = isCompactPhone ? 12 : isPhone ? 16 : 18;
+    const horizontalPadding = isCompactPhone ? 14 : isPhone ? 18 : isTablet ? 24 : 28;
+    const verticalGap = isCompactPhone ? 14 : isPhone ? 18 : 22;
     const containerMaxWidth = isDesktop ? 1100 : isTablet ? 940 : 680;
     const formMaxWidth = isDesktop ? 420 : isTablet ? 460 : 560;
-    const cardPadding = isCompactPhone ? 14 : isPhone ? 16 : 20;
-    const touchTarget = isCompactPhone ? 44 : 48;
+    const cardPadding = isCompactPhone ? 16 : isPhone ? 18 : 22;
+    const touchTarget = isCompactPhone ? 48 : 52;
 
     return {
       width,

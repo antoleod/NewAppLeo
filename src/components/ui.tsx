@@ -181,7 +181,7 @@ export function Button({
       : variant === 'secondary'
         ? theme.blue
         : variant === 'danger'
-      ? theme.red
+          ? theme.red
           : 'transparent';
   const color = variant === 'ghost' ? theme.textPrimary : variant === 'primary' ? theme.accentText : '#ffffff';
   const borderColor = variant === 'ghost' ? theme.border : 'transparent';
@@ -576,13 +576,13 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   card: {
-    borderWidth: 1,
-    borderRadius: radii.lg,
+    borderWidth: 0,
+    borderRadius: radii.xl,
     padding: spacing.xl,
     gap: spacing.md,
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.03,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
     elevation: 1,
   },
   headingRow: {
@@ -607,12 +607,16 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   button: {
-    minHeight: 62,
+    minHeight: 56,
     paddingHorizontal: spacing.xl,
     borderRadius: radii.pill,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   buttonLabel: {
     ...typography.pill,
@@ -724,10 +728,14 @@ const styles = StyleSheet.create({
   },
   entryCard: {
     borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.md,
+    borderRadius: radii.xl,
+    padding: spacing.lg,
     flexDirection: 'row',
     gap: spacing.md,
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
   entryTitle: {
     ...typography.sectionTitle,
