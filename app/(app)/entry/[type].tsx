@@ -1035,7 +1035,7 @@ export default function EntryComposerScreen() {
                   onPress={() => {
                     setMode(opt.mode);
                     setSide(opt.side);
-                    void triggerHaptic('impactLight');
+                    void triggerHaptic('light');
                   }}
                   style={({ pressed }) => [
                     styles.feedQuickButton,
