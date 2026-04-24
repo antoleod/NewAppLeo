@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, AppState, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, AppState, Image, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Button, Card, EmptyState, EntryCard, Heading, Input, Page, Segment } from '@/components/ui';
@@ -35,6 +35,7 @@ const languageOptions = [
 ];
 
 export default function ProfileScreen() {
+  const { width } = useWindowDimensions();
   const { colors, theme, paletteMode, themeMode, themeVariant, themeStyle, backgroundPhotoUri, setBackgroundPhotoUri, setThemeVariant, setThemeStyle, setCustomTheme, toggleTheme } = useTheme();
   const { t } = useLocale();
   const { profile, guestMode, saveProfile, setThemeMode, signOut } = useAuth();
@@ -58,8 +59,10 @@ export default function ProfileScreen() {
   const [customPrimary, setCustomPrimary] = useState(defaultAppSettings.customTheme.primary);
   const [customSecondary, setCustomSecondary] = useState(defaultAppSettings.customTheme.secondary);
   const [customBackgroundAlt, setCustomBackgroundAlt] = useState(defaultAppSettings.customTheme.backgroundAlt);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const milestones = useMemo(() => entries.filter((entry) => entry.type === 'milestone').slice(0, 5), [entries]);
   const themeVariantLabel = themeVariantDescriptions[themeVariant]?.label ?? themeVariant;
+  const isPhone = width < 768;
 
   useEffect(() => {
     setCaregiverName(profile?.caregiverName ?? '');
@@ -262,9 +265,8 @@ export default function ProfileScreen() {
   }
 
   return (
-    <Page>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingBottom: 24 }}>
-        <Card style={{ padding: 20, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+    <Page contentStyle={{ gap: isPhone ? 12 : 16, paddingBottom: 24 }}>
+        <Card style={{ padding: isPhone ? 16 : 20, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 16 }}>
             <Pressable onPress={handlePickPhoto} style={{ width: 80, height: 80, borderRadius: 24, overflow: 'hidden', backgroundColor: colors.backgroundAlt, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.border }}>
               {babyPhotoUri ? <Image source={{ uri: babyPhotoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={{ color: colors.primary, fontWeight: '900', fontSize: 12 }}>📷</Text>}
@@ -290,7 +292,7 @@ export default function ProfileScreen() {
           )}
 
           <View style={{ gap: 12 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flexDirection: isPhone ? 'column' : 'row', gap: 8 }}>
               <View style={{ flex: 1 }}>
                 <Input label="Padre/Madre" value={caregiverName} onChangeText={setCaregiverName} placeholder="Tu nombre" />
               </View>
@@ -299,7 +301,7 @@ export default function ProfileScreen() {
               </View>
             </View>
             <Input label="Fecha de nacimiento" value={babyBirthDate} onChangeText={setBabyBirthDate} placeholder="YYYY-MM-DD" />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flexDirection: isPhone ? 'column' : 'row', gap: 8 }}>
               <View style={{ flex: 1 }}>
                 <Input label="P. nacimiento (kg)" value={birthWeightKg} onChangeText={setBirthWeightKg} keyboardType="decimal-pad" inputMode="decimal" placeholder="3.5" />
               </View>
@@ -451,9 +453,18 @@ export default function ProfileScreen() {
                 size="sm"
               />
             </View>
+            <Button label="Abrir tema avanzado" onPress={() => router.push('/settings-theme')} variant="ghost" />
           </View>
         </Card>
 
+        <Card>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>Advanced</Text>
+          <Text style={{ color: colors.muted, lineHeight: 20 }}>Dashboard, effects, sync and voice tools are grouped here so the mobile profile stays focused.</Text>
+          <Button label={advancedOpen ? 'Hide advanced settings' : 'Show advanced settings'} onPress={() => setAdvancedOpen((current) => !current)} variant="ghost" />
+        </Card>
+
+        {advancedOpen ? (
+          <>
         <Card>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.dashboard', 'Dashboard personalization')}</Text>
           <Input
@@ -519,6 +530,8 @@ export default function ProfileScreen() {
             ))}
           </View>
         </Card>
+          </>
+        ) : null}
 
         <Card>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.milestones', 'Milestones')}</Text>
@@ -542,6 +555,8 @@ export default function ProfileScreen() {
           )}
         </Card>
 
+        {advancedOpen ? (
+          <>
         <Card>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.session', 'Session')}</Text>
           <Text style={{ color: colors.muted }}>Signed in as {profile?.authEmail}</Text>
@@ -569,7 +584,8 @@ export default function ProfileScreen() {
           <Text style={{ color: colors.muted }}>Status: {voiceStatus}</Text>
           <Button label="Test voice capture" onPress={handleVoiceBridge} variant="ghost" />
         </Card>
-      </ScrollView>
+          </>
+        ) : null}
     </Page>
   );
 }

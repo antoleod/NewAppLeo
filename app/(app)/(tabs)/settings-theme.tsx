@@ -66,6 +66,7 @@ export default function ThemeSettings() {
 
   const previewAccentText = isDarkHex(theme.accent) ? '#FFFFFF' : '#101418';
   const activeVariantLabel = themeVariantDescriptions[themeVariant]?.label ?? themeVariant;
+  const isPhone = width < 768;
   const carouselCardWidth = Math.min(width - 56, 320);
   const carouselGap = 14;
   const carouselStride = carouselCardWidth + carouselGap;
@@ -110,14 +111,14 @@ export default function ThemeSettings() {
 
   return (
     <Page>
-      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[0]} contentContainerStyle={{ paddingBottom: 140 }}>
+      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={isPhone ? undefined : [0]} contentContainerStyle={{ paddingBottom: isPhone ? 48 : 140 }}>
         <View style={[styles.stickyHeader, { backgroundColor: colors.background }]}>
           <Card style={[styles.headerCard, solidCardStyle]}>
             <View style={styles.headerTop}>
               <View style={{ flex: 1, gap: 6 }}>
                 <Text style={[styles.eyebrow, { color: theme.accent }]}>Personalization</Text>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Theme & Design</Text>
-                <Text style={[styles.headerSubtitle, { color: colors.muted }]}>Mobile-first presets with readable colors, clear hierarchy, and safe local fallback.</Text>
+                <Text style={[styles.headerTitle, { color: colors.text, fontSize: isPhone ? 23 : 28 }]}>Theme & Design</Text>
+                {!isPhone ? <Text style={[styles.headerSubtitle, { color: colors.muted }]}>Mobile-first presets with readable colors, clear hierarchy, and safe local fallback.</Text> : null}
               </View>
               <View style={[styles.previewMini, { backgroundColor: theme.bgCardAlt, borderColor: solidCardStyle.borderColor }]}>
                 <View style={[styles.previewMiniAccent, { backgroundColor: theme.accent }]} />
@@ -251,7 +252,7 @@ export default function ThemeSettings() {
                 })}
               </ScrollView>
 
-              <View style={{ gap: 10 }}>
+              {!isPhone ? <View style={{ gap: 10 }}>
                 {themeVariants.map((item) => {
                   const active = item.value === themeVariant;
                   return (
@@ -297,7 +298,7 @@ export default function ThemeSettings() {
                     </View>
                   );
                 })}
-              </View>
+              </View> : null}
             </Card>
           </Animated.View>
 

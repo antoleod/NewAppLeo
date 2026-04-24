@@ -866,6 +866,24 @@ export default function HomeScreen() {
   const orderedSections = appSettings.homeSectionOrder.filter((key): key is HomeSectionKey =>
     (defaultHomeSectionOrder as readonly string[]).includes(key),
   );
+  const useMobileHome = width < 768;
+  const mobilePrimaryActions = [
+    { label: 'Bottle', detail: '150 ml', icon: 'water-outline' as const, href: '/entry/feed?presetMode=bottle&presetAmount=150', color: BLUE },
+    { label: 'Breast', detail: 'Left side', icon: 'body-outline' as const, href: '/entry/feed?presetMode=breast&presetSide=left', color: GREEN },
+    { label: 'Diaper', detail: 'Quick log', icon: 'cube-outline' as const, href: '/entry/diaper', color: GOLD },
+    { label: 'Sleep', detail: 'Timer', icon: 'moon-outline' as const, href: '/entry/sleep', color: theme.accent },
+  ];
+  const mobileUtilityActions = [
+    { label: 'Medicine', icon: 'medical-outline' as const, href: '/entry/medication', color: RED },
+    { label: 'Food', icon: 'restaurant-outline' as const, href: '/entry/food', color: GREEN },
+    { label: 'Measure', icon: 'analytics-outline' as const, href: '/entry/measurement', color: BLUE },
+  ];
+  const mobileStats = [
+    { label: 'Feeds', value: String(effectiveSummary.feedCount), color: BLUE },
+    { label: 'Milk', value: `${effectiveSummary.bottleMl}ml`, color: GREEN },
+    { label: 'Sleep', value: `${Math.floor(effectiveSummary.sleepMinutes / 60)}h`, color: theme.accent },
+    { label: 'Diapers', value: String(effectiveSummary.diaperCount), color: GOLD },
+  ];
 
   const sectionEyebrowStyle = () => ({
     color: MUTED,
@@ -994,7 +1012,167 @@ export default function HomeScreen() {
           </View>
         </Animated2.View>
 
-        {orderedSections.map((sectionKey, index) => {
+        {useMobileHome ? (
+          <View style={{ gap: 12 }}>
+            <Animated2.View entering={FadeIn.duration(260)}>
+              <View style={{ borderRadius: 22, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, padding: 12, gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={sectionEyebrowStyle()}>Quick log</Text>
+                    <Text style={[sectionTitleStyle(), { fontSize: 20 }]}>What happened?</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => router.push('/entry/feed?presetMode=bottle&presetAmount=150')}
+                    style={({ pressed }) => ({
+                      minHeight: 38,
+                      paddingHorizontal: 14,
+                      borderRadius: 999,
+                      backgroundColor: pressed ? `${BLUE}33` : `${BLUE}18`,
+                      borderWidth: 1,
+                      borderColor: `${BLUE}44`,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    })}
+                  >
+                    <Text style={{ color: BLUE, fontSize: 12, fontWeight: '900' }}>Start feed</Text>
+                  </Pressable>
+                </View>
+
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {mobilePrimaryActions.map((item, actionIndex) => (
+                    <PressScale
+                      key={item.label}
+                      onPress={() => router.push(item.href as any)}
+                      pressedScale={0.96}
+                      style={{ flexBasis: actionIndex < 2 ? '48%' : '31%', flexGrow: 1, minWidth: actionIndex < 2 ? 130 : 92 }}
+                    >
+                      <View style={{
+                        minHeight: actionIndex < 2 ? 82 : 62,
+                        borderRadius: 16,
+                        backgroundColor: `${item.color}16`,
+                        borderWidth: 1,
+                        borderColor: `${item.color}38`,
+                        paddingHorizontal: 12,
+                        paddingVertical: 12,
+                        justifyContent: 'space-between',
+                        gap: 8,
+                      }}>
+                        <Ionicons name={item.icon} size={actionIndex < 2 ? 24 : 20} color={item.color} />
+                        <View>
+                          <Text style={{ color: TEXT, fontSize: actionIndex < 2 ? 16 : 13, fontWeight: '900' }}>{item.label}</Text>
+                          <Text style={{ color: MUTED, fontSize: 11, fontWeight: '700', marginTop: 2 }}>{item.detail}</Text>
+                        </View>
+                      </View>
+                    </PressScale>
+                  ))}
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {mobileUtilityActions.map((item) => (
+                    <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.96} style={{ flex: 1 }}>
+                      <View style={{ height: 42, borderRadius: 14, backgroundColor: `${BORDER}66`, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}>
+                        <Ionicons name={item.icon} size={15} color={item.color} />
+                        <Text style={{ color: TEXT, fontSize: 11, fontWeight: '800' }} numberOfLines={1}>{item.label}</Text>
+                      </View>
+                    </PressScale>
+                  ))}
+                </View>
+              </View>
+            </Animated2.View>
+
+            <Animated2.View entering={FadeIn.duration(260).delay(40)}>
+              <Pressable
+                onPress={() => router.push('/entry/feed?presetMode=bottle&presetAmount=150')}
+                style={({ pressed }) => ({
+                  borderRadius: 18,
+                  backgroundColor: pressed ? `${GREEN}18` : CARD,
+                  borderWidth: 1,
+                  borderColor: nextFeedDueIn && nextFeedDueIn > 0 ? BORDER : `${GREEN}55`,
+                  padding: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                })}
+              >
+                <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: `${GREEN}18`, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="time-outline" size={21} color={GREEN} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={sectionEyebrowStyle()}>Next feed</Text>
+                  <Text style={{ color: TEXT, fontSize: 18, fontWeight: '900', marginTop: 2 }}>
+                    {lastFeed ? (nextFeedDueIn && nextFeedDueIn > 0 ? `In ${formatCountdown(nextFeedDueIn, language)}` : 'Possible now') : 'Start first feed'}
+                  </Text>
+                  <Text style={{ color: MUTED, fontSize: 12, fontWeight: '600', marginTop: 3 }}>
+                    {lastFeed ? `Last at ${formatClock(lastFeed.occurredAt, locale)} - ${formatRelative(lastFeed.occurredAt, locale)} ago` : 'No feed logged yet'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={MUTED} />
+              </Pressable>
+            </Animated2.View>
+
+            <Animated2.View entering={FadeIn.duration(260).delay(80)}>
+              <View style={{ borderRadius: 18, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, padding: 12, gap: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <Text style={sectionEyebrowStyle()}>Today</Text>
+                    <Text style={sectionTitleStyle()}>Daily status</Text>
+                  </View>
+                  <Text style={{ color: milkStatus === 'In target' ? GREEN : GOLD, fontSize: 12, fontWeight: '900' }}>{milkStatus}</Text>
+                </View>
+                <View style={{ height: 7, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
+                  <View style={{ width: `${milkTargetPercent}%`, height: '100%', borderRadius: 999, backgroundColor: GREEN }} />
+                </View>
+                <View style={{ flexDirection: 'row', gap: 7 }}>
+                  {mobileStats.map((item) => (
+                    <View key={item.label} style={{ flex: 1, minHeight: 52, borderRadius: 13, backgroundColor: `${item.color}12`, borderWidth: 1, borderColor: `${item.color}28`, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                      <Text style={{ color: item.color, fontSize: 15, fontWeight: '900' }} numberOfLines={1}>{item.value}</Text>
+                      <Text style={{ color: MUTED, fontSize: 9, fontWeight: '800', marginTop: 2 }} numberOfLines={1}>{item.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </Animated2.View>
+
+            {smartAlerts.length > 0 ? (
+              <Animated2.View entering={FadeIn.duration(260).delay(120)}>
+                <View style={{ borderRadius: 18, backgroundColor: `${RED}10`, borderWidth: 1, borderColor: `${RED}30`, padding: 12, gap: 8 }}>
+                  <Text style={sectionEyebrowStyle()}>Needs attention</Text>
+                  {smartAlerts.slice(0, 2).map((alert) => (
+                    <Text key={alert.id} style={{ color: TEXT, fontSize: 13, fontWeight: '800' }}>{alert.title}</Text>
+                  ))}
+                </View>
+              </Animated2.View>
+            ) : null}
+
+            <Animated2.View entering={FadeIn.duration(260).delay(160)}>
+              <View style={{ borderRadius: 18, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, padding: 12 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <View>
+                    <Text style={sectionEyebrowStyle()}>Recent</Text>
+                    <Text style={sectionTitleStyle()}>Activity</Text>
+                  </View>
+                  <Pressable onPress={() => router.push('/history')}>
+                    <Text style={{ color: BLUE, fontSize: 12, fontWeight: '900' }}>View all</Text>
+                  </Pressable>
+                </View>
+                {recentEntries.length ? (
+                  recentEntries.slice(0, 4).map((entry) => (
+                    <ActivityRow
+                      key={entry.id}
+                      color={entry.type === 'feed' ? BLUE : entry.type === 'sleep' ? theme.accent : entry.type === 'diaper' ? GOLD : entry.type === 'medication' ? RED : GREEN}
+                      title={entry.title}
+                      detail={entry.type === 'feed' ? (entry.payload?.mode === 'bottle' ? `${entry.payload?.amountMl || 0}ml bottle` : `${entry.payload?.side ?? 'breast'}`) : entry.type}
+                      time={formatClock(entry.occurredAt, locale)}
+                      onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
+                    />
+                  ))
+                ) : (
+                  <Text style={{ color: MUTED, fontSize: 12, paddingVertical: 8 }}>No activity yet.</Text>
+                )}
+              </View>
+            </Animated2.View>
+          </View>
+        ) : orderedSections.map((sectionKey, index) => {
           const canMoveUp = index > 0;
           const canMoveDown = index < orderedSections.length - 1;
           const delay = 60 + index * 40;
