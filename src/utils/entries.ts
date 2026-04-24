@@ -103,6 +103,43 @@ export function getEntrySubtitle(entry: EntryRecord) {
   }
 }
 
+export function getEntryHistorySubtitle(entry: EntryRecord) {
+  const time = formatTime(entry.occurredAt);
+  const payload = payloadOf(entry);
+  const join = (parts: Array<string | number | null | undefined>) => parts.filter(Boolean).join(' - ');
+
+  switch (entry.type) {
+    case 'feed':
+      return payload.mode === 'bottle'
+        ? join([`${payload.amountMl ?? 0} ml`, time])
+        : join([`${payload.durationMin ?? 0} min`, payload.side ?? 'side', time]);
+    case 'food':
+      return join([payload.foodName ?? 'Food', payload.quantity, time]);
+    case 'sleep':
+      return join([formatDuration(payload.durationMin ?? 0), time]);
+    case 'diaper':
+      return join([`P ${payload.pee ?? 0}`, `C ${payload.poop ?? 0}`, `V ${payload.vomit ?? 0}`]);
+    case 'pump':
+      return join([formatDuration(payload.durationMin ?? 0), `${payload.amountMl ?? 0} ml`]);
+    case 'measurement':
+      return join([
+        payload.weightKg ? `${payload.weightKg} kg` : null,
+        payload.heightCm ? `${payload.heightCm} cm` : null,
+        payload.headCircCm ? `${payload.headCircCm} cm HC` : null,
+        payload.tempC ? `${payload.tempC} C` : null,
+        time,
+      ]);
+    case 'medication':
+      return join([payload.dosage ?? 'Dose recorded', time]);
+    case 'milestone':
+      return join([payload.icon ?? 'Milestone', time]);
+    case 'symptom':
+      return join([payload.notes ?? 'Symptom log', time]);
+    default:
+      return time;
+  }
+}
+
 export function getTimelineSections(entries: EntryRecord[], filter: EntryType | 'all' = 'all'): TimelineSection[] {
   const sorted = [...entries]
     .filter((entry) => filter === 'all' || entry.type === filter)

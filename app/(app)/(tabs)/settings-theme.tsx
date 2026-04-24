@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Platform, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button, Card, Page, Segment } from '@/components/ui';
@@ -11,10 +11,10 @@ import { getAppSettings, updateAppSettings, type ThemeVariant } from '@/lib/stor
 import { BabyFlowIcon } from '@/components/BabyFlowIcon';
 
 const themeVariants: Array<{ label: string; value: ThemeVariant; description: string; swatches: [string, string, string]; glow?: string }> = [
-  { label: 'Light', value: 'light', description: 'Background #E5E5E5, accent #1F5EDC, text #1A1A1A.', swatches: ['#E5E5E5', '#1F5EDC', '#1A1A1A'] },
-  { label: 'Custom', value: 'custom', description: 'Background #13294B, accent #00C2E0, border #00E5FF.', swatches: ['#13294B', '#00C2E0', '#00E5FF'] },
-  { label: 'Parliament', value: 'parliament', description: 'Background #2B124C, gold accent, violet border.', swatches: ['#2B124C', '#F5C518', '#6D28D9'] },
-  { label: 'Noir', value: 'noir', description: 'Background #121212, orange accent, warm premium glow.', swatches: ['#121212', '#FF6A00', '#FF7A1A'], glow: 'rgba(255,106,0,0.6)' },
+  { label: 'Claro Brillante', value: 'light', description: 'Perfecto para el día, alta legibilidad con fondo claro.', swatches: ['#E5E5E5', '#1F5EDC', '#1A1A1A'] },
+  { label: 'Océano Personalizado', value: 'custom', description: 'Colores marinos profundos con toques brillantes.', swatches: ['#13294B', '#00C2E0', '#00E5FF'] },
+  { label: 'Elegante Púrpura', value: 'parliament', description: 'Toques dorados en fondo violeta, estilo premium.', swatches: ['#2B124C', '#F5C518', '#6D28D9'] },
+  { label: 'Noche Sofisticada', value: 'noir', description: 'Modo oscuro elegante con acentos cálidos.', swatches: ['#121212', '#FF6A00', '#FF7A1A'], glow: 'rgba(255,106,0,0.6)' },
 ];
 
 function isDarkHex(hex: string) {
@@ -126,9 +126,9 @@ export default function ThemeSettings() {
               </View>
             </View>
             {themeSyncError ? (
-              <View style={styles.toast}>
-                <Text style={styles.toastTitle}>{themeSyncError === 'no-permission' ? 'No Firebase permission' : 'Sync unavailable'}</Text>
-                <Text style={styles.toastBody}>Using local theme settings. The screen stays fully usable.</Text>
+              <View style={[styles.toast, { backgroundColor: `${theme.accent}15` }]}>
+                <Text style={[styles.toastTitle, { color: theme.accent }]}>{themeSyncError === 'no-permission' ? 'No Firebase permission' : 'Sync unavailable'}</Text>
+                <Text style={[styles.toastBody, { color: colors.text }]}>Using local theme settings. The screen stays fully usable.</Text>
               </View>
             ) : null}
           </Card>
@@ -161,8 +161,8 @@ export default function ThemeSettings() {
 
           <Animated.View entering={FadeInDown.duration(220).delay(50)}>
             <Card style={[styles.sectionCard, solidCardStyle]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Theme Presets</Text>
-              <Text style={[styles.sectionBody, { color: colors.muted }]}>Desliza el carrusel para comparar cada preset con su fondo, acento y borde reales. La tarjeta activa queda centrada y más marcada.</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Paletas de Colores</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>Explora diferentes estilos visuales. Desliza para ver cómo cada tema cambia los colores de toda la app.</Text>
               <ScrollView
                 ref={carouselRef}
                 horizontal
@@ -279,11 +279,15 @@ export default function ThemeSettings() {
                         </View>
                       </View>
                       <Button
-                        label={savingVariant === item.value ? `Saving ${item.label}...` : active ? `${item.label} Active` : `Use ${item.label}`}
+                        label={savingVariant === item.value ? `Aplicando ${item.label}...` : active ? `${item.label} Activo` : `Usar ${item.label}`}
                         onPress={async () => {
                           setSavingVariant(item.value);
                           try {
                             await setThemeVariant(item.value);
+                            // Forzar actualización inmediata en web
+                            if (Platform.OS === 'web') {
+                              window.dispatchEvent(new CustomEvent('themeChanged', { detail: { variant: item.value } }));
+                            }
                           } finally {
                             setSavingVariant(null);
                           }
@@ -296,6 +300,66 @@ export default function ThemeSettings() {
               </View>
             </Card>
           </Animated.View>
+
+          {/* Sync Status */}
+          {themeSyncError && (
+            <Animated.View entering={FadeInUp.duration(400)}>
+              <Card style={{
+                padding: 16,
+                borderRadius: 16,
+                borderWidth: 1.5,
+                borderColor: themeSyncError === 'no-permission' ? '#EF4444' : '#F59E0B',
+                backgroundColor: themeSyncError === 'no-permission' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)'
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Text style={{ fontSize: 20 }}>
+                    {themeSyncError === 'no-permission' ? '⚠️' : '🔄'}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{
+                      color: themeSyncError === 'no-permission' ? '#EF4444' : '#F59E0B',
+                      fontSize: 14,
+                      fontWeight: '800',
+                      marginBottom: 4
+                    }}>
+                      {themeSyncError === 'no-permission' ? 'Error de Permisos' : 'Error de Sincronización'}
+                    </Text>
+                    <Text style={{
+                      color: colors.muted,
+                      fontSize: 12,
+                      lineHeight: 16
+                    }}>
+                      {themeSyncError === 'no-permission'
+                        ? 'Los cambios se guardan localmente pero no se sincronizan con la nube. Revisa tus permisos de Firebase.'
+                        : 'Los cambios se guardaron localmente. Hay problemas con la sincronización en la nube.'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{
+                  marginTop: 12,
+                  paddingTop: 12,
+                  borderTopWidth: 1,
+                  borderTopColor: `${colors.border}50`
+                }}>
+                  <Text style={{
+                    color: colors.text,
+                    fontSize: 11,
+                    fontWeight: '600',
+                    marginBottom: 4
+                  }}>
+                    ✅ Tus temas están activos localmente
+                  </Text>
+                  <Text style={{
+                    color: colors.muted,
+                    fontSize: 10,
+                    lineHeight: 14
+                  }}>
+                    Los cambios se aplican inmediatamente en esta app. La sincronización con otros dispositivos se reintentará automáticamente.
+                  </Text>
+                </View>
+              </Card>
+            </Animated.View>
+          )}
 
           <Animated.View entering={FadeInDown.duration(220).delay(90)}>
             <Card style={[styles.sectionCard, solidCardStyle]}>
@@ -414,16 +478,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
     padding: 12,
     borderRadius: 16,
-    backgroundColor: '#FFF1D6',
     gap: 2,
   },
   toastTitle: {
-    color: '#6B4D00',
     fontSize: 13,
     fontWeight: '800',
   },
   toastBody: {
-    color: '#765B1A',
     fontSize: 12,
     lineHeight: 17,
   },

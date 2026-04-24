@@ -83,7 +83,7 @@ function appSettingsKey(uid: string) {
   return `${APP_SETTINGS_PREFIX}:${uid}`;
 }
 
-function appSettingsCacheKey() {
+export function appSettingsCacheKey() {
   const uid = auth.currentUser?.uid ?? 'guest';
   return appSettingsKey(uid);
 }
@@ -108,7 +108,7 @@ function normalizeThemeVariant(value?: string): ThemeVariant {
   }
 }
 
-function profileSettingsRef(uid: string) {
+export function profileSettingsRef(uid: string) {
   return doc(db, 'profiles', uid);
 }
 

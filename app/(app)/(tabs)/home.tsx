@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { AppState, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +20,7 @@ import { Button, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
-import { BreastSide } from '@/types';
+import { useTheme } from '@/context/ThemeContext';
 import { buildSmartAlerts, getMeanFeedingInterval } from '@/lib/patterns';
 import { getMedicationTimelineStatus } from '@/utils/entries';
 import { getCareStagePolicy, getSickChildStatus } from '@/lib/careGuidance';
@@ -40,39 +40,10 @@ import {
   setMomHydration,
   updateAppSettings,
 } from '@/lib/storage';
-import { QuantityPicker } from '@/components/QuantityPicker';
-import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
 import { NextFeedingCard } from '@/components/NextFeedingCard';
 import { BabyFlowIcon } from '@/components/BabyFlowIcon';
 
-// Enhanced semantic color system
-const COLORS = {
-  bg: 'rgba(13, 17, 23, 0.95)',
-  card: 'rgba(22, 27, 34, 0.92)',
-  border: 'rgba(255, 255, 255, 0.08)',
-  text: '#FFFFFF',
-  textMuted: 'rgba(255, 255, 255, 0.6)',
-  success: '#10B981',
-  warning: '#F59E0B',
-  alert: '#EF4444',
-  primary: '#3B82F6',
-  info: '#06B6D4',
-  empty: '#6B7280',
-  gold: '#F59E0B',
-  green: '#10B981',
-  red: '#EF4444',
-  blue: '#3B82F6',
-};
-
-const BG = COLORS.bg;
-const CARD = COLORS.card;
-const BORDER = COLORS.border;
-const TEXT = COLORS.text;
-const MUTED = COLORS.textMuted;
-const GREEN = COLORS.green;
-const GOLD = COLORS.gold;
-const RED = COLORS.red;
-const BLUE = COLORS.blue;
+// Colors are now derived from ThemeContext inside components
 
 // Type definitions for module system
 type ModuleState = 'empty' | 'active' | 'alert' | 'completed' | 'pending';
@@ -149,43 +120,42 @@ const formatAvailability = (date: string | null, locale: string, language: strin
   return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 };
 
-const getStateBorderColor = (state: ModuleState) => {
+const getStateBorderColor = (state: ModuleState, t?: { red: string; green: string; accent: string; textMuted: string; border: string }) => {
+  const c = t ?? { red: '#EF4444', green: '#10B981', accent: '#F59E0B', textMuted: '#6B7280', border: 'rgba(255,255,255,0.08)' };
   switch (state) {
-    case 'alert': return COLORS.alert;
-    case 'active': return COLORS.warning;
-    case 'completed': return COLORS.success;
-    case 'empty': return COLORS.empty;
-    default: return COLORS.border;
+    case 'alert': return c.red;
+    case 'active': return c.accent;
+    case 'completed': return c.green;
+    case 'empty': return c.textMuted;
+    default: return c.border;
   }
 };
 
-// Component styles
-const styles = StyleSheet.create({
+// Static (non-color) styles — color styles are applied dynamically via modalStyles inside the component
+const staticStyles = StyleSheet.create({
   pageContent: {
     flex: 1,
     backgroundColor: 'transparent',
   },
   menuOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
   },
   menuContent: {
-    backgroundColor: CARD,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: 44,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
     shadowOffset: { width: 0, height: -8 },
     elevation: 8,
   },
   menuTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: TEXT,
     marginBottom: 20,
     letterSpacing: -0.3,
   },
@@ -195,15 +165,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 18,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   menuItemText: {
     fontSize: 15,
     fontWeight: '600',
-    color: TEXT,
     marginLeft: 12,
     letterSpacing: 0.2,
   },
@@ -219,13 +186,13 @@ function PressScale({ children, onPress, pressedScale = 0.95, style }: any) {
 }
 
 function StatCell({ label, value, icon, index, highlight }: any) {
-  const colors = [COLORS.info, COLORS.warning, COLORS.success, COLORS.primary, COLORS.gold];
-  const color = colors[index % colors.length];
+  const { theme } = useTheme();
+  const palette = [theme.blue, theme.accent, theme.green, theme.accent, theme.accent];
+  const color = palette[index % palette.length];
 
   return (
     <PressScale
       onPress={() => {
-        // Navigate to relevant section based on stat type
         if (label.toLowerCase().includes('feed')) {
           router.push('/insights/feeding');
         } else if (label.toLowerCase().includes('sleep')) {
@@ -241,19 +208,20 @@ function StatCell({ label, value, icon, index, highlight }: any) {
         paddingHorizontal: 6,
         paddingVertical: 6,
         borderRadius: 8,
-        backgroundColor: highlight ? `${color}20` : 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: highlight ? `${color}20` : `${theme.border}44`,
         borderWidth: 1,
-        borderColor: highlight ? `${color}40` : 'rgba(255, 255, 255, 0.08)',
+        borderColor: highlight ? `${color}40` : theme.border,
         alignItems: 'center'
       }}>
         <Text style={{ color: color, fontSize: 15, fontWeight: '700' }}>{value}</Text>
-        <Text style={{ color: MUTED, fontSize: 9, marginTop: 1, fontWeight: '500' }}>{label}</Text>
+        <Text style={{ color: theme.textMuted, fontSize: 9, marginTop: 1, fontWeight: '500' }}>{label}</Text>
       </View>
     </PressScale>
   );
 }
 
 function HomeSectionCard({ children, sectionKey, isMobile, canMoveUp, canMoveDown, onMoveUp, onMoveDown, onHide }: any) {
+  const { theme } = useTheme();
   return (
     <View style={{ marginBottom: 6 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 }}>
@@ -268,14 +236,14 @@ function HomeSectionCard({ children, sectionKey, isMobile, canMoveUp, canMoveDow
                 height: 28,
                 borderRadius: 14,
                 borderWidth: 1,
-                borderColor: BORDER,
-                backgroundColor: pressed ? '#1B2430' : BG,
+                borderColor: theme.border,
+                backgroundColor: pressed ? theme.bgCardAlt : theme.bg,
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: canMoveUp ? 1 : 0.35,
               })}
             >
-              <Ionicons name="chevron-up" size={14} color={TEXT} />
+              <Ionicons name="chevron-up" size={14} color={theme.textPrimary} />
             </Pressable>
             <Pressable
               onPress={onMoveDown}
@@ -285,14 +253,14 @@ function HomeSectionCard({ children, sectionKey, isMobile, canMoveUp, canMoveDow
                 height: 28,
                 borderRadius: 14,
                 borderWidth: 1,
-                borderColor: BORDER,
-                backgroundColor: pressed ? '#1B2430' : BG,
+                borderColor: theme.border,
+                backgroundColor: pressed ? theme.bgCardAlt : theme.bg,
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: canMoveDown ? 1 : 0.35,
               })}
             >
-              <Ionicons name="chevron-down" size={14} color={TEXT} />
+              <Ionicons name="chevron-down" size={14} color={theme.textPrimary} />
             </Pressable>
             <Pressable
               onPress={onHide}
@@ -301,13 +269,13 @@ function HomeSectionCard({ children, sectionKey, isMobile, canMoveUp, canMoveDow
                 height: 28,
                 borderRadius: 14,
                 borderWidth: 1,
-                borderColor: BORDER,
-                backgroundColor: pressed ? '#341B1B' : BG,
+                borderColor: theme.border,
+                backgroundColor: pressed ? `${theme.red}22` : theme.bg,
                 alignItems: 'center',
                 justifyContent: 'center',
               })}
             >
-              <Ionicons name="eye-off-outline" size={14} color={TEXT} />
+              <Ionicons name="eye-off-outline" size={14} color={theme.textMuted} />
             </Pressable>
           </View>
         )}
@@ -330,8 +298,7 @@ function ActivityRow({
   time: string;
   onPress: () => void;
 }) {
-  const scale = useSharedValue(1);
-  const highlight = useSharedValue(0);
+  const { theme } = useTheme();
 
   return (
     <Animated2.View>
@@ -344,16 +311,16 @@ function ActivityRow({
             paddingVertical: 8,
             paddingHorizontal: 12,
             borderRadius: 8,
-            backgroundColor: pressed ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+            backgroundColor: pressed ? `${theme.border}88` : 'transparent',
           },
         ]}
       >
-        <View style={{ width: 3, height: 3, borderRadius: 999, backgroundColor: color, marginRight: 12 }} />
+        <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: color, marginRight: 12 }} />
         <View style={{ flex: 1 }}>
-          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{title}</Text>
-          <Text style={{ color: MUTED, fontSize: 11 }}>{detail}</Text>
+          <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '600' }}>{title}</Text>
+          <Text style={{ color: theme.textMuted, fontSize: 11 }}>{detail}</Text>
         </View>
-        <Text style={{ color: MUTED, fontSize: 11 }}>{time}</Text>
+        <Text style={{ color: theme.textMuted, fontSize: 11 }}>{time}</Text>
       </Pressable>
     </Animated2.View>
   );
@@ -364,22 +331,52 @@ export default function HomeScreen() {
   const { language, t } = useLocale();
   const locale = localeTag(language);
   const { profile } = useAuth();
-  const { entries, summary, addEntry } = useAppData();
+  const { entries } = useAppData();
+  const { theme, colors } = useTheme();
+
+  // Reactive color constants — all come from the selected theme
+  const BG = theme.bg;
+  const CARD = theme.bgCard;
+  const BORDER = theme.border;
+  const TEXT = theme.textPrimary;
+  const MUTED = theme.textMuted;
+  const GREEN = theme.green;
+  const GOLD = theme.accent;
+  const RED = theme.red;
+  const BLUE = theme.blue;
+  const COLORS = {
+    alert: theme.red,
+    warning: theme.accent,
+    success: theme.green,
+    primary: theme.accent,
+    info: theme.blue,
+    empty: theme.textMuted,
+    gold: theme.accent,
+    green: theme.green,
+    red: theme.red,
+    blue: theme.blue,
+    border: theme.border,
+  };
+
+  // Dynamic modal/menu styles using current theme
+  const styles = {
+    pageContent: staticStyles.pageContent,
+    menuOverlay: staticStyles.menuOverlay,
+    menuContent: [staticStyles.menuContent, { backgroundColor: CARD }],
+    menuTitle: [staticStyles.menuTitle, { color: TEXT }],
+    menuItem: [staticStyles.menuItem, { backgroundColor: `${BORDER}66`, borderColor: BORDER }],
+    menuItemText: [staticStyles.menuItemText, { color: TEXT }],
+  };
+
   const [hydration, setHydration] = useState(0);
   const [babyId, setBabyId] = useState<string | null>(null);
   const [babies, setBabies] = useState<Array<{ id: string; name: string; birthDate: string }>>([]);
   const [visibility, setVisibility] = useState(defaultModuleVisibility);
   const [appSettings, setAppSettingsState] = useState(defaultAppSettings);
-  const [quickTimerMode, setQuickTimerMode] = useState<'bottle' | 'breast' | null>(null);
-  const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
-  const [timerElapsedSeconds, setTimerElapsedSeconds] = useState(0);
-  const [showSaveSheet, setShowSaveSheet] = useState(false);
   const [showBabySwitcher, setShowBabySwitcher] = useState(false);
   const [showSmartSignalsMenu, setShowSmartSignalsMenu] = useState(false);
   const [showHomeCustomizer, setShowHomeCustomizer] = useState(false);
   const [showNextFeedPicker, setShowNextFeedPicker] = useState(false);
-  const [quickAmount, setQuickAmount] = useState(150);
-  const [quickFeedSide, setQuickFeedSide] = useState<BreastSide>('left');
   const [now, setNow] = useState(Date.now());
   const isCompactPhone = width < 390;
   const isLargePhone = width >= 430;
@@ -733,14 +730,6 @@ export default function HomeScreen() {
   }, [refreshData]);
 
   useEffect(() => {
-    if (!quickTimerMode || !timerStartedAt) return;
-    const timer = setInterval(() => {
-      setTimerElapsedSeconds(Math.floor((Date.now() - timerStartedAt) / 1000));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [quickTimerMode, timerStartedAt]);
-
-  useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -800,50 +789,6 @@ export default function HomeScreen() {
     }
   }, [renderedLabels]);
 
-  function startQuickTimer(mode: 'breast' | 'bottle', side: BreastSide = 'left') {
-    const startedAt = Date.now();
-    setQuickTimerMode(mode);
-    setQuickFeedSide(side);
-    setTimerStartedAt(startedAt);
-    setTimerElapsedSeconds(0);
-    setQuickAmount(mode === 'bottle' ? 150 : 90);
-  }
-
-  async function saveQuickTimerEntry() {
-    if (!timerStartedAt) return;
-    await addEntry({
-      type: 'feed',
-      title:
-        quickTimerMode === 'breast'
-          ? quickFeedSide === 'both'
-            ? t('home.breast_both', 'Breast feed both')
-            : quickFeedSide === 'right'
-              ? t('home.breast_right', 'Breast feed right')
-              : t('home.breast_left', 'Breast feed left')
-          : t('home.bottle_feed', 'Bottle feed'),
-      occurredAt: new Date(timerStartedAt).toISOString(),
-      payload:
-        quickTimerMode === 'breast'
-          ? {
-            mode: 'breast',
-            side: quickFeedSide,
-            durationMin: Math.max(1, Math.round(timerElapsedSeconds / 60)),
-            amountMl: quickAmount,
-          }
-          : {
-            mode: 'bottle',
-            amountMl: quickAmount,
-            durationMin: Math.max(1, Math.round(timerElapsedSeconds / 60)),
-          },
-    });
-    setQuickTimerMode(null);
-    setShowSaveSheet(false);
-    setTimerStartedAt(null);
-    setTimerElapsedSeconds(0);
-    setQuickAmount(150);
-    setQuickFeedSide('left');
-  }
-
   async function updateDashboardMetric(key: keyof typeof appSettings.dashboardMetrics, enabled: boolean) {
     const next = await updateAppSettings({
       dashboardMetrics: {
@@ -898,23 +843,6 @@ export default function HomeScreen() {
       { label: 'Behavior', href: '/entry/symptom' },
     ]
     : careStage.homeSuggestions;
-  const activeFeedTitle =
-    quickTimerMode === 'bottle'
-      ? t('home.bottle', 'Bottle')
-      : quickFeedSide === 'both'
-        ? t('home.breast_both', 'Breast both')
-        : quickFeedSide === 'right'
-          ? t('home.breast_right', 'Breast right')
-          : t('home.breast_left', 'Breast left');
-  const activeFeedSubtitlePrefix =
-    quickTimerMode === 'bottle'
-      ? t('home.bottle', 'Bottle')
-      : quickFeedSide === 'both'
-        ? t('home.both', 'Both')
-        : quickFeedSide === 'right'
-          ? t('home.right', 'Right')
-          : t('home.left', 'Left');
-
   async function switchBaby(nextBaby: { id: string }) {
     await setActiveBabyId(nextBaby.id);
     setBabyId(nextBaby.id);
@@ -928,6 +856,11 @@ export default function HomeScreen() {
 
   function closeNextFeedPicker() {
     setShowNextFeedPicker(false);
+  }
+
+  function openFeedComposer(href: string) {
+    closeNextFeedPicker();
+    router.push(href as any);
   }
 
   const orderedSections = appSettings.homeSectionOrder.filter((key): key is HomeSectionKey =>
@@ -960,55 +893,102 @@ export default function HomeScreen() {
           paddingBottom: Math.max(40, Math.round(height * 0.05)),
         }}
       >
-        <Animated2.View entering={FadeIn.duration(300)} style={{ marginBottom: 4 }}>
+        <Animated2.View entering={FadeIn.duration(300)} style={{ marginBottom: 16 }}>
           <View
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: 12,
-              flexWrap: isCompactPhone ? 'wrap' : 'nowrap',
+              gap: 16,
+              paddingHorizontal: 4,
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={sectionEyebrowStyle()}>{t('home.home', 'Home')}</Text>
+              <Text style={{
+                color: MUTED,
+                fontSize: 11,
+                fontWeight: '700',
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                marginBottom: 4
+              }}>
+                👋 Bienvenido
+              </Text>
               <Pressable
                 onPress={() => setShowBabySwitcher(true)}
                 style={({ pressed }) => ({
                   alignSelf: 'flex-start',
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 6,
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 12,
+                  gap: 8,
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  backgroundColor: pressed ? `${theme.accent}20` : `${theme.border}88`,
                   borderWidth: 1,
-                  borderColor: BORDER,
-                  backgroundColor: pressed ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.04)',
+                  borderColor: pressed ? `${theme.accent}44` : BORDER,
                   transform: [{ scale: pressed ? 0.98 : 1 }],
                 })}
               >
-                <Text style={[sectionTitleStyle(), { fontSize: 16 }]}>{activeBabyName}</Text>
-                <Text style={{ color: MUTED, fontSize: 11, fontWeight: '700' }}>▼</Text>
+                <Text style={{
+                  color: TEXT,
+                  fontSize: 18,
+                  fontWeight: '800'
+                }}>
+                  {activeBabyName}
+                </Text>
+                <Text style={{
+                  color: theme.accent,
+                  fontSize: 12,
+                  fontWeight: '700'
+                }}>
+                  ▼
+                </Text>
               </Pressable>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: isCompactPhone ? 'auto' : 0 }}>
-              <HeaderAction label={t('home.new', 'New')} onPress={() => router.push('/entry/feed')} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Pressable
+                onPress={() => router.push('/entry/feed')}
+                style={({ pressed }) => ({
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 20,
+                  backgroundColor: pressed ? `${theme.accent}44` : `${theme.accent}22`,
+                  borderWidth: 1.5,
+                  borderColor: pressed ? `${theme.accent}70` : `${theme.accent}44`,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                })}
+              >
+                <Text style={{
+                  color: theme.accent,
+                  fontSize: 14,
+                  fontWeight: '700'
+                }}>
+                  + Nuevo
+                </Text>
+              </Pressable>
               <Pressable
                 onPress={() => setShowHomeCustomizer(true)}
                 style={({ pressed }) => ({
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
-                  backgroundColor: pressed ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.06)',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 12,
+                  backgroundColor: pressed ? `${BORDER}CC` : `${BORDER}66`,
                   borderWidth: 1,
-                  borderColor: pressed ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                  borderColor: BORDER,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transform: [{ scale: pressed ? 0.95 : 1 }],
+                  transform: [{ scale: pressed ? 0.94 : 1 }],
                 })}
               >
-                <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700', lineHeight: 16 }}>⋮</Text>
+                <Text style={{
+                  color: TEXT,
+                  fontSize: 16,
+                  fontWeight: '700',
+                  lineHeight: 16
+                }}>
+                  ⚙️
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -1035,7 +1015,7 @@ export default function HomeScreen() {
                 onHide={() => void hideHomeSection(sectionKey)}
               >
                 <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
-                  <NextFeedingCard onPress={openNextFeedPicker} />
+                  <NextFeedingCard onPress={() => router.push('/entry/feed?presetMode=bottle&presetAmount=150')} />
                 </Animated2.View>
               </HomeSectionCard>
             );
@@ -1094,35 +1074,170 @@ export default function HomeScreen() {
             return (
               <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
                 <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
-                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 14, backgroundColor: '#172018', borderWidth: 1, borderColor: BORDER, gap: 4 }}>
-                    <View style={{ flexDirection: 'row', gap: 4, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
-                      <View style={{ flex: 1, gap: 2 }}>
-                        <Text style={sectionEyebrowStyle()}>{t('home.milk', 'Milk')}</Text>
-                        <Text style={{ color: TEXT, fontSize: 24, fontWeight: '700' }}>{totalMilkToday} ml</Text>
-                        <Text style={{ color: MUTED, fontSize: 10 }}>{milkStatus}</Text>
+                  <View style={{
+                    paddingHorizontal: sectionPadH,
+                    paddingVertical: sectionPadV,
+                    borderRadius: 20,
+                    backgroundColor: `${theme.green}12`,
+                    borderWidth: 1.5,
+                    borderColor: `${theme.green}30`,
+                    gap: 16,
+                    shadowColor: theme.green,
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    shadowOffset: { width: 0, height: 4 },
+                    elevation: 2
+                  }}>
+                    {/* Header */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: `${theme.green}25`,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        <Text style={{ fontSize: 20 }}>📊</Text>
                       </View>
-                      <View style={{ flex: 1, gap: 2, alignItems: 'flex-end', paddingRight: 80 }}>
-                        <Text style={{ color: GREEN, fontSize: 10, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('home.next_feed_label', 'Next feed')}</Text>
-                        <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700', textAlign: 'right' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
-                        <Animated2.View style={[nextBadgeStyle, { marginTop: 1, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${GREEN}18` : `${GOLD}18` }]}>
-                          <Text style={{ color: nextFeedDueIn && nextFeedDueIn > 0 ? GREEN : GOLD, fontSize: 10, fontWeight: '700' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{
+                          color: MUTED,
+                          fontSize: 10,
+                          fontWeight: '700',
+                          letterSpacing: 1.2,
+                          textTransform: 'uppercase'
+                        }}>
+                          Resumen del Día
+                        </Text>
+                        <Text style={{
+                          color: TEXT,
+                          fontSize: 18,
+                          fontWeight: '800',
+                          marginTop: 2
+                        }}>
+                          Todo va bien ✨
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Main Stats */}
+                    <View style={{ flexDirection: 'row', gap: 12, flexWrap: isCompactPhone ? 'wrap' : 'nowrap' }}>
+                      <View style={{
+                        flex: 1,
+                        backgroundColor: `${BORDER}66`,
+                        borderRadius: 16,
+                        padding: 16,
+                        alignItems: 'center',
+                        borderWidth: 1,
+                        borderColor: BORDER
+                      }}>
+                        <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', marginBottom: 4 }}>🍼 Leche Hoy</Text>
+                        <Text style={{ color: TEXT, fontSize: 28, fontWeight: '900' }}>{totalMilkToday}</Text>
+                        <Text style={{ color: MUTED, fontSize: 12 }}>ml</Text>
+                        <Text style={{
+                          color: totalMilkToday >= milkGoalMin && totalMilkToday <= milkGoalMax ? GREEN : GOLD,
+                          fontSize: 10,
+                          fontWeight: '700',
+                          marginTop: 4,
+                          backgroundColor: totalMilkToday >= milkGoalMin && totalMilkToday <= milkGoalMax ? `${GREEN}22` : `${GOLD}22`,
+                          paddingHorizontal: 8,
+                          paddingVertical: 2,
+                          borderRadius: 8
+                        }}>
+                          {milkStatus}
+                        </Text>
+                      </View>
+                      <View style={{
+                        flex: 1,
+                        backgroundColor: `${BORDER}66`,
+                        borderRadius: 16,
+                        padding: 16,
+                        alignItems: 'center',
+                        borderWidth: 1,
+                        borderColor: BORDER
+                      }}>
+                        <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', marginBottom: 4 }}>⏰ Próxima Toma</Text>
+                        <Text style={{ color: TEXT, fontSize: 24, fontWeight: '900' }}>
+                          {formatCountdown(nextFeedDueIn, language)}
+                        </Text>
+                        <Animated2.View style={[nextBadgeStyle, {
+                          marginTop: 4,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 12,
+                          backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${GREEN}22` : `${GOLD}22`
+                        }]}>
+                          <Text style={{
+                            color: nextFeedDueIn && nextFeedDueIn > 0 ? GREEN : GOLD,
+                            fontSize: 10,
+                            fontWeight: '700'
+                          }}>
                             {lastFeed ? formatRelative(lastFeed.occurredAt, locale) : '--'}
                           </Text>
                         </Animated2.View>
                       </View>
                     </View>
-                    <View style={{ height: 5, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
-                      <Animated2.View style={[{ height: '100%', backgroundColor: GREEN, borderRadius: 999 }, milkBarStyle]} />
+
+                    {/* Progress Bar */}
+                    <View style={{ gap: 8 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600' }}>Progreso Diario</Text>
+                        <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600' }}>{Math.round(milkTargetPercent)}%</Text>
+                      </View>
+                      <View style={{
+                        height: 8,
+                        borderRadius: 999,
+                        backgroundColor: BORDER,
+                        overflow: 'hidden',
+                        borderWidth: 1,
+                        borderColor: `${BORDER}CC`
+                      }}>
+                        <Animated2.View style={[{
+                          height: '100%',
+                          backgroundColor: GREEN,
+                          borderRadius: 999,
+                          shadowColor: GREEN,
+                          shadowOpacity: 0.4,
+                          shadowRadius: 8
+                        }, milkBarStyle]} />
+                      </View>
                     </View>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+
+                    {/* Quick Stats */}
+                    <View style={{
+                      flexDirection: 'row',
+                      flexWrap: 'wrap',
+                      gap: 8,
+                      paddingTop: 8,
+                      borderTopWidth: 1,
+                      borderTopColor: BORDER
+                    }}>
                       {[
-                        { label: t('home.feeds', 'Feeds'), value: String(effectiveSummary.feedCount), icon: 'water-outline' as const },
-                        { label: t('home.bottle', 'Bottle'), value: `${effectiveSummary.bottleMl} ml`, icon: 'water-outline' as const },
-                        { label: t('insights.sleep', 'Sleep'), value: `${effectiveSummary.sleepMinutes}m`, icon: 'moon-outline' as const },
-                        { label: t('home.diapers', 'Diapers'), value: String(effectiveSummary.diaperCount), icon: 'cube-outline' as const },
-                        { label: t('home.food', 'Food'), value: String(effectiveSummary.foodCount), icon: 'restaurant-outline' as const },
+                        { label: 'Tomas', value: String(effectiveSummary.feedCount), icon: '🤱', color: theme.blue },
+                        { label: 'Sueño', value: `${Math.floor(effectiveSummary.sleepMinutes / 60)}h`, icon: '😴', color: theme.accent },
+                        { label: 'Pañales', value: String(effectiveSummary.diaperCount), icon: '🍼', color: GOLD },
+                        { label: 'Comida', value: String(effectiveSummary.foodCount), icon: '🥣', color: theme.green },
                       ].map((item, statIndex) => (
-                        <StatCell key={item.label} label={item.label} value={item.value} icon={item.icon} index={statIndex} highlight={statIndex === 1} />
+                        <PressScale key={item.label} pressedScale={0.96} style={{ flexBasis: '48%', flexGrow: 1, minWidth: 100 }}>
+                          <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 8,
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 12,
+                            backgroundColor: `${item.color}15`,
+                            borderWidth: 1,
+                            borderColor: `${item.color}30`
+                          }}>
+                            <Text style={{ fontSize: 16 }}>{item.icon}</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ color: item.color, fontSize: 14, fontWeight: '700' }}>{item.value}</Text>
+                              <Text style={{ color: MUTED, fontSize: 9, fontWeight: '600' }}>{item.label}</Text>
+                            </View>
+                          </View>
+                        </PressScale>
                       ))}
                     </View>
                   </View>
@@ -1172,16 +1287,16 @@ export default function HomeScreen() {
             return (
               <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
                 <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
-                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 20, backgroundColor: getStateBorderColor(medicationTimeline.lastMedicine ? 'completed' : 'empty') === COLORS.success ? `${COLORS.success}15` : CARD, borderWidth: 1, borderColor: getStateBorderColor(medicationTimeline.lastMedicine ? 'completed' : 'empty'), gap: 6, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 }}>
+                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 20, backgroundColor: medicationTimeline.lastMedicine ? `${GREEN}15` : CARD, borderWidth: 1, borderColor: getStateBorderColor(medicationTimeline.lastMedicine ? 'completed' : 'empty', theme), gap: 6, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ color: COLORS.warning, fontSize: 9, fontWeight: '700', letterSpacing: 1.3, textTransform: 'uppercase' }}>Medication</Text>
+                        <Text style={{ color: GOLD, fontSize: 9, fontWeight: '700', letterSpacing: 1.3, textTransform: 'uppercase' }}>Medication</Text>
                         <Text style={{ color: TEXT, fontSize: 15, fontWeight: '800', marginTop: 1 }}>
                           {medicationTimeline.lastMedicine?.payload?.name ?? 'No medicine logged'}
                         </Text>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                        <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: medicationTimeline.lastMedicine ? COLORS.success : COLORS.empty }} />
+                        <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: medicationTimeline.lastMedicine ? GREEN : MUTED }} />
                       </View>
                     </View>
 
@@ -1319,79 +1434,191 @@ export default function HomeScreen() {
             return (
               <HomeSectionCard key={sectionKey} sectionKey={sectionKey} isMobile={Platform.OS !== 'web'} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMoveUp={() => void moveHomeSection(sectionKey, 'up')} onMoveDown={() => void moveHomeSection(sectionKey, 'down')} onHide={() => void hideHomeSection(sectionKey)}>
                 <Animated2.View entering={FadeIn.duration(300).delay(delay)}>
-                  <View style={{ paddingHorizontal: sectionPadH, paddingVertical: sectionPadV, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
-                    <Text style={sectionEyebrowStyle()}>{t('home.rapid_actions', 'Quick actions')}</Text>
-                    <Text style={sectionTitleStyle()}>{t('home.direct_actions', 'Direct actions')}</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-                      {contextualSuggestions.map((item) => (
-                        <PressScale key={`${item.label}-${item.href}`} onPress={() => router.push(item.href as any)} pressedScale={0.96} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 115 : 125, flexGrow: 1 }}>
-                          <View style={{
-                            minHeight: 36,
-                            paddingHorizontal: 12,
-                            paddingVertical: 8,
-                            borderRadius: 16,
-                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                            borderWidth: 1,
-                            borderColor: 'rgba(255, 255, 255, 0.12)',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 4,
-                            flexDirection: 'row'
-                          }}>
-                            <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
-                          </View>
-                        </PressScale>
-                      ))}
+                  <View style={{
+                    paddingHorizontal: sectionPadH,
+                    paddingVertical: sectionPadV,
+                    borderRadius: 20,
+                    backgroundColor: `${theme.accent}10`,
+                    borderWidth: 1.5,
+                    borderColor: `${theme.accent}28`,
+                    gap: 16,
+                    shadowColor: theme.accent,
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    shadowOffset: { width: 0, height: 4 },
+                    elevation: 2
+                  }}>
+                    {/* Header */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: `${theme.accent}25`,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        <Text style={{ fontSize: 20 }}>⚡</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{
+                          color: MUTED,
+                          fontSize: 10,
+                          fontWeight: '700',
+                          letterSpacing: 1.2,
+                          textTransform: 'uppercase'
+                        }}>
+                          Acciones Rápidas
+                        </Text>
+                        <Text style={{
+                          color: TEXT,
+                          fontSize: 18,
+                          fontWeight: '800',
+                          marginTop: 2
+                        }}>
+                          Registra al instante 🚀
+                        </Text>
+                      </View>
                     </View>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                      {visibleActions.map(([label, href]) => (
+
+                    {/* Main Actions */}
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                      {[
+                        { label: 'Pecho', icon: '🤱', href: 'quick-breast', color: theme.green },
+                        { label: 'Biberón', icon: '🍼', href: 'quick-bottle', color: theme.blue },
+                        { label: 'Pañal', icon: '📦', href: '/entry/diaper', color: GOLD },
+                        { label: 'Sueño', icon: '😴', href: '/entry/sleep', color: theme.accent },
+                      ].map((item) => (
                         <PressScale
-                          key={label}
+                          key={item.label}
                           onPress={() => {
-                            if (href === 'quick-breast') {
+                            if (item.href === 'quick-breast') {
                               openNextFeedPicker();
                               return;
                             }
-                            if (href === 'quick-bottle') {
-                              startQuickTimer('bottle');
+                            if (item.href === 'quick-bottle') {
+                              router.push('/entry/feed?presetMode=bottle&presetAmount=150');
                               return;
                             }
-                            router.push(href as any);
+                            router.push(item.href as any);
                           }}
-                          pressedScale={0.92}
-                          style={{ flexBasis: quickActionBasis, minWidth: isCompactPhone ? 120 : 96, flexGrow: 1 }}
+                          pressedScale={0.94}
+                          style={{ flexBasis: '48%', flexGrow: 1, minWidth: 140 }}
                         >
-                          <View style={{ height: 38, paddingHorizontal: 12, borderRadius: 18, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                            <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
-                              {label}
+                          <View style={{
+                            height: 56,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 12,
+                            paddingHorizontal: 16,
+                            borderRadius: 16,
+                            backgroundColor: `${item.color}15`,
+                            borderWidth: 1.5,
+                            borderColor: `${item.color}30`,
+                            shadowColor: item.color,
+                            shadowOpacity: 0.2,
+                            shadowRadius: 8,
+                            shadowOffset: { width: 0, height: 2 },
+                            elevation: 2
+                          }}>
+                            <Text style={{ fontSize: 24 }}>{item.icon}</Text>
+                            <Text style={{
+                              color: item.color,
+                              fontSize: 16,
+                              fontWeight: '800',
+                              flex: 1
+                            }}>
+                              {item.label}
                             </Text>
                           </View>
                         </PressScale>
                       ))}
                     </View>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                      {[
-                        { label: '+150 ml', href: '/entry/feed?presetMode=bottle&presetAmount=150' },
-                        { label: '+ diaper', href: '/entry/diaper' },
-                        { label: '+ sleep', href: '/entry/sleep' },
-                        { label: '+ food', href: '/entry/food' },
-                      ].map((item) => (
-                        <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.95} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 120 : 130, flexGrow: 1 }}>
-                          <View style={{ height: 38, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                            <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
-                          </View>
-                        </PressScale>
-                      ))}
+
+                    {/* Quick Presets */}
+                    <View style={{ gap: 8 }}>
+                      <Text style={{
+                        color: MUTED,
+                        fontSize: 11,
+                        fontWeight: '600',
+                        letterSpacing: 1.2,
+                        textTransform: 'uppercase'
+                      }}>
+                        Atajos Inteligentes
+                      </Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                        {[
+                          { label: '+150ml', icon: '🍼', href: '/entry/feed?presetMode=bottle&presetAmount=150', color: '#3B82F6' },
+                          { label: '+180ml', icon: '🍼', href: '/entry/feed?presetMode=bottle&presetAmount=180', color: '#3B82F6' },
+                          { label: '+Pecho Izq', icon: '🤱', href: '/entry/feed?presetMode=breast&presetSide=left', color: '#EC4899' },
+                          { label: '+20min Bomba', icon: '💧', href: '/entry/pump', color: '#06B6D4' },
+                        ].map((item) => (
+                          <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.94} style={{ flexBasis: '48%', flexGrow: 1, minWidth: 130 }}>
+                            <View style={{
+                              height: 44,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 8,
+                              paddingHorizontal: 12,
+                              borderRadius: 12,
+                              backgroundColor: `${BORDER}88`,
+                              borderWidth: 1,
+                              borderColor: BORDER
+                            }}>
+                              <Text style={{ fontSize: 16 }}>{item.icon}</Text>
+                              <Text style={{
+                                color: TEXT,
+                                fontSize: 13,
+                                fontWeight: '700',
+                                flex: 1
+                              }}>
+                                {item.label}
+                              </Text>
+                            </View>
+                          </PressScale>
+                        ))}
+                      </View>
                     </View>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-                      {presetActions.map((preset) => (
-                        <PressScale key={preset.label} onPress={() => router.push(preset.href as any)} pressedScale={0.94} style={{ flexBasis: twoColBasis, minWidth: isCompactPhone ? 120 : 132, flexGrow: 1 }}>
-                          <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                            <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{preset.label}</Text>
-                          </View>
-                        </PressScale>
-                      ))}
-                    </View>
+
+                    {/* Contextual Suggestions */}
+                    {contextualSuggestions.length > 0 && (
+                      <View style={{ gap: 8 }}>
+                        <Text style={{
+                          color: MUTED,
+                          fontSize: 11,
+                          fontWeight: '600',
+                          letterSpacing: 1.2,
+                          textTransform: 'uppercase'
+                        }}>
+                          Sugerencias Contextuales
+                        </Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                          {contextualSuggestions.slice(0, 4).map((item) => (
+                            <PressScale key={`${item.label}-${item.href}`} onPress={() => router.push(item.href as any)} pressedScale={0.96} style={{ flexBasis: '48%', flexGrow: 1, minWidth: 130 }}>
+                              <View style={{
+                                height: 40,
+                                paddingHorizontal: 12,
+                                borderRadius: 12,
+                                backgroundColor: `${GOLD}18`,
+                                borderWidth: 1,
+                                borderColor: `${GOLD}35`,
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}>
+                                <Text style={{
+                                  color: GOLD,
+                                  fontSize: 12,
+                                  fontWeight: '700',
+                                  textAlign: 'center'
+                                }}>
+                                  {item.label}
+                                </Text>
+                              </View>
+                            </PressScale>
+                          ))}
+                        </View>
+                      </View>
+                    )}
                   </View>
                 </Animated2.View>
               </HomeSectionCard>
@@ -1578,7 +1805,7 @@ export default function HomeScreen() {
             <View style={{ gap: 12 }}>
               {babies.map((baby) => (
                 <PressScale key={baby.id} onPress={() => switchBaby(baby)} pressedScale={0.98}>
-                  <View style={[styles.menuItem, { backgroundColor: baby.id === babyId ? `${COLORS.primary}15` : 'rgba(255, 255, 255, 0.05)', borderColor: baby.id === babyId ? COLORS.primary : BORDER }]}>
+                  <View style={[styles.menuItem, { backgroundColor: baby.id === babyId ? `${COLORS.primary}18` : `${BORDER}55`, borderColor: baby.id === babyId ? COLORS.primary : BORDER }]}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.menuItemText}>{baby.name}</Text>
                       <Text style={{ color: MUTED, fontSize: 12, marginTop: 2 }}>{new Date(baby.birthDate).toLocaleDateString(locale, { month: 'short', day: 'numeric' })}</Text>
@@ -1597,22 +1824,22 @@ export default function HomeScreen() {
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>{t('home.start_feed', 'Start Feed')}</Text>
             <View style={{ gap: 12 }}>
-              <PressScale onPress={() => { startQuickTimer('breast', 'left'); closeNextFeedPicker(); }} pressedScale={0.98}>
+              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=breast&presetSide=left')} pressedScale={0.98}>
                 <View style={styles.menuItem}>
                   <Text style={styles.menuItemText}>{t('home.left_breast', 'Left breast')}</Text>
                 </View>
               </PressScale>
-              <PressScale onPress={() => { startQuickTimer('breast', 'right'); closeNextFeedPicker(); }} pressedScale={0.98}>
+              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=breast&presetSide=right')} pressedScale={0.98}>
                 <View style={styles.menuItem}>
                   <Text style={styles.menuItemText}>{t('home.right_breast', 'Right breast')}</Text>
                 </View>
               </PressScale>
-              <PressScale onPress={() => { startQuickTimer('breast', 'both'); closeNextFeedPicker(); }} pressedScale={0.98}>
+              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=breast&presetSide=both')} pressedScale={0.98}>
                 <View style={styles.menuItem}>
                   <Text style={styles.menuItemText}>{t('home.both', 'Both')}</Text>
                 </View>
               </PressScale>
-              <PressScale onPress={() => { startQuickTimer('bottle'); closeNextFeedPicker(); }} pressedScale={0.98}>
+              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=bottle&presetAmount=150')} pressedScale={0.98}>
                 <View style={styles.menuItem}>
                   <Text style={styles.menuItemText}>{t('home.bottle', 'Bottle')}</Text>
                 </View>
@@ -1622,63 +1849,12 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showSaveSheet} transparent animationType="slide" onRequestClose={() => setShowSaveSheet(false)}>
-        <View style={styles.menuOverlay}>
-          <View style={styles.menuContent}>
-            <Text style={styles.menuTitle}>{t('home.save_feed', 'Save Feed')}</Text>
-            <View style={{ gap: 12 }}>
-              <View style={{ padding: 16, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
-                <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{activeFeedTitle}</Text>
-                <Text style={{ color: MUTED, fontSize: 14, marginTop: 4 }}>
-                  {activeFeedSubtitlePrefix} • {Math.max(1, Math.round(timerElapsedSeconds / 60))}m
-                </Text>
-              </View>
-              {quickTimerMode === 'bottle' && (
-                <QuantityPicker
-                  value={quickAmount}
-                  onChange={setQuickAmount}
-                  label={t('home.amount', 'Amount')}
-                  presets={[30, 60, 90, 120, 150, 180, 210, 240, 270, 300]}
-                />
-              )}
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <PressScale onPress={() => setShowSaveSheet(false)} pressedScale={0.98} style={{ flex: 1 }}>
-                  <View style={[styles.menuItem, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
-                    <Text style={[styles.menuItemText, { color: COLORS.alert, textAlign: 'center' }]}>{t('home.cancel', 'Cancel')}</Text>
-                  </View>
-                </PressScale>
-                <PressScale onPress={saveQuickTimerEntry} pressedScale={0.98} style={{ flex: 1 }}>
-                  <View style={[styles.menuItem, { backgroundColor: `${COLORS.success}15`, borderColor: COLORS.success }]}>
-                    <Text style={[styles.menuItemText, { color: COLORS.success, textAlign: 'center' }]}>{t('home.save', 'Save')}</Text>
-                  </View>
-                </PressScale>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <FullscreenTimerModal
-        visible={!!quickTimerMode}
-        emoji={quickTimerMode === 'bottle' ? '🍼' : '🤱'}
-        title={activeFeedTitle}
-        subtitlePrefix={activeFeedSubtitlePrefix}
-        startedAt={timerStartedAt || 0}
-        elapsedSeconds={timerElapsedSeconds}
-        animatePulse={true}
-        onStop={() => {
-          setQuickTimerMode(null);
-          setTimerStartedAt(null);
-          setTimerElapsedSeconds(0);
-          setQuickAmount(150);
-          setQuickFeedSide('left');
-        }}
-      />
     </Page>
   );
 }
 
 function HeaderAction({ label, onPress }: { label: string; onPress: () => void }) {
+  const { theme } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -1687,8 +1863,8 @@ function HeaderAction({ label, onPress }: { label: string; onPress: () => void }
         paddingVertical: 10,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
-        backgroundColor: pressed ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+        borderColor: theme.border,
+        backgroundColor: pressed ? `${theme.border}CC` : `${theme.border}66`,
         shadowColor: '#000',
         shadowOpacity: 0.03,
         shadowRadius: 8,
@@ -1696,7 +1872,7 @@ function HeaderAction({ label, onPress }: { label: string; onPress: () => void }
         elevation: 1,
       })}
     >
-      <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700', letterSpacing: 0.2 }}>{label}</Text>
+      <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700', letterSpacing: 0.2 }}>{label}</Text>
     </Pressable>
   );
 }

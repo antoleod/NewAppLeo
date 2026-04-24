@@ -26,7 +26,7 @@ import {
 } from '@/lib/storage';
 import { getCareStagePolicy, getSickChildStatus } from '@/lib/careGuidance';
 import { triggerHaptic } from '@/lib/mobile';
-import { getMedicationTimelineStatus } from '@/utils/entries';
+import { getEntryHistorySubtitle, getEntryTitle, getMedicationTimelineStatus } from '@/utils/entries';
 import * as ImagePicker from 'expo-image-picker';
 
 const typeLabels: Record<EntryType, string> = {
@@ -1006,6 +1006,209 @@ export default function EntryComposerScreen() {
                       : 'Capture qualitative signs or discomfort for later review.',
   };
 
+  if (type === 'feed') {
+    const recentFeedHistory = entries.filter((entry) => entry.type === 'feed').slice(0, 3);
+    const feedOptions = [
+      { id: 'left', label: language === 'fr' ? 'Gauche' : 'Left', icon: '🤱', mode: 'breast' as const, side: 'left' },
+      { id: 'right', label: language === 'fr' ? 'Droite' : 'Right', icon: '🤱', mode: 'breast' as const, side: 'right' },
+      { id: 'both', label: language === 'fr' ? 'Deux' : 'Both', icon: '🤱', mode: 'breast' as const, side: 'both' },
+      { id: 'bottle', label: language === 'fr' ? 'Biberon' : 'Bottle', icon: '🍼', mode: 'bottle' as const, side: 'left' },
+    ];
+    const compactPresets = smartBottlePresets.slice(0, 4);
+    const compactTitle = mode === 'bottle'
+      ? language === 'fr' ? 'Biberon' : 'Bottle'
+      : side === 'both'
+        ? language === 'fr' ? 'Deux seins' : 'Both breasts'
+        : side === 'right'
+          ? language === 'fr' ? 'Sein droit' : 'Right breast'
+          : language === 'fr' ? 'Sein gauche' : 'Left breast';
+    const closeFeedComposer = () => {
+      if (router.canGoBack()) {
+        router.back();
+        return;
+      }
+      router.replace('/(app)/(tabs)/home');
+    };
+
+    return (
+      <Page contentStyle={styles.compactPage}>
+        <Card style={styles.compactFeedCard}>
+          <View style={styles.compactHeader}>
+            <View style={[styles.compactIcon, { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+              <Text style={styles.compactIconText}>{mode === 'bottle' ? '🍼' : '🤱'}</Text>
+            </View>
+            <View style={styles.compactHeaderText}>
+              <Text style={[styles.compactEyebrow, { color: meta.tone }]}>{language === 'fr' ? 'Nouvelle prise' : 'New feed'}</Text>
+              <Text style={styles.compactTitle}>{compactTitle}</Text>
+            </View>
+            <Pressable
+              onPress={closeFeedComposer}
+              style={({ pressed }) => [
+                styles.compactClose,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: pressed ? `${colors.alert}24` : colors.surface,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={copy.close}
+            >
+              <Text style={[styles.compactCloseText, { color: colors.muted }]}>X</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.compactFeedGrid}>
+            {feedOptions.map((opt) => {
+              const active = mode === opt.mode && (opt.mode === 'bottle' || side === opt.side);
+              return (
+                <Pressable
+                  key={opt.id}
+                  onPress={() => {
+                    setMode(opt.mode);
+                    setSide(opt.side);
+                    if (opt.mode === 'bottle' && !editing && !presetAmount) {
+                      setAmountMl(String(smartBottleDefault));
+                    }
+                    void triggerHaptic('light');
+                  }}
+                  style={({ pressed }) => [
+                    styles.compactFeedOption,
+                    {
+                      backgroundColor: active ? meta.tone : pressed ? `${colors.border}90` : colors.surface,
+                      borderColor: active ? meta.tone : colors.border,
+                      opacity: pressed ? 0.86 : 1,
+                    },
+                  ]}
+                >
+                  <Text style={styles.compactFeedOptionIcon}>{opt.icon}</Text>
+                  <Text style={[styles.compactFeedOptionText, { color: active ? colors.surface : colors.text }]} numberOfLines={1}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={[styles.compactPanel, { borderColor: colors.border, backgroundColor: `${colors.border}40` }]}>
+            {mode === 'bottle' ? (
+              <>
+                <Text style={[styles.compactFieldLabel, { color: colors.muted }]}>{language === 'fr' ? 'Quantite' : 'Amount'}</Text>
+                <View style={styles.compactAmountRow}>
+                  <Pressable
+                    onPress={() => setAmountMl(String(Math.max(0, (Number(amountMl) || 0) - 10)))}
+                    style={[styles.compactStepButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  >
+                    <Text style={[styles.compactStepText, { color: colors.text }]}>-</Text>
+                  </Pressable>
+                  <View style={styles.compactAmountValue}>
+                    <Text style={[styles.compactAmountText, { color: colors.text }]}>{Number(amountMl) || 0}</Text>
+                    <Text style={[styles.compactAmountUnit, { color: colors.muted }]}>ml</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => setAmountMl(String((Number(amountMl) || 0) + 10))}
+                    style={[styles.compactStepButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  >
+                    <Text style={[styles.compactStepText, { color: colors.text }]}>+</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.compactPresetRow}>
+                  {compactPresets.map((preset) => {
+                    const selected = Number(amountMl) === preset;
+                    return (
+                      <Pressable
+                        key={preset}
+                        onPress={() => setAmountMl(String(preset))}
+                        style={[
+                          styles.compactPreset,
+                          {
+                            borderColor: selected ? meta.tone : colors.border,
+                            backgroundColor: selected ? meta.toneSoft : colors.surface,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.compactPresetText, { color: selected ? meta.tone : colors.muted }]}>{preset}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.compactFieldLabel, { color: colors.muted }]}>{language === 'fr' ? 'Duree' : 'Duration'}</Text>
+                <View style={styles.compactAmountRow}>
+                  <Pressable
+                    onPress={() => setDurationMin(String(Math.max(1, (Number(durationMin) || 0) - 5)))}
+                    style={[styles.compactStepButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  >
+                    <Text style={[styles.compactStepText, { color: colors.text }]}>-</Text>
+                  </Pressable>
+                  <View style={styles.compactAmountValue}>
+                    <Text style={[styles.compactAmountText, { color: colors.text }]}>{Number(durationMin) || 0}</Text>
+                    <Text style={[styles.compactAmountUnit, { color: colors.muted }]}>min</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => setDurationMin(String((Number(durationMin) || 0) + 5))}
+                    style={[styles.compactStepButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  >
+                    <Text style={[styles.compactStepText, { color: colors.text }]}>+</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+          </View>
+
+          <View style={styles.compactMetaRow}>
+            <Pressable
+              onPress={() => setOccurredAt(new Date())}
+              style={[styles.compactMetaPill, { borderColor: colors.border, backgroundColor: colors.surface }]}
+            >
+              <Text style={[styles.compactMetaText, { color: colors.muted }]}>
+                {language === 'fr' ? 'Maintenant' : 'Now'} · {formatClockTime(occurredAt.toISOString())}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setNotesOpen((current) => !current)}
+              style={[styles.compactMetaPill, { borderColor: colors.border, backgroundColor: colors.surface }]}
+            >
+              <Text style={[styles.compactMetaText, { color: colors.muted }]}>{notesOpen ? 'Hide note' : '+ Note'}</Text>
+            </Pressable>
+          </View>
+
+          {notesOpen ? (
+            <Input label={language === 'fr' ? 'Notes' : 'Notes'} value={notes} onChangeText={setNotes} multiline placeholder={language === 'fr' ? 'Optionnel' : 'Optional'} />
+          ) : null}
+
+          <View style={styles.compactActions}>
+            <Button label={language === 'fr' ? 'Annuler' : 'Cancel'} onPress={closeFeedComposer} variant="ghost" size="sm" style={styles.compactActionButton} />
+            <Button label={editing ? (language === 'fr' ? 'Mettre a jour' : 'Update') : language === 'fr' ? 'Enregistrer' : 'Save'} onPress={handleSave} loading={saving} size="sm" style={styles.compactActionButton} />
+          </View>
+
+          {!notesOpen && recentFeedHistory.length ? (
+            <View style={[styles.compactHistory, { borderColor: colors.border }]}>
+              <Text style={[styles.compactFieldLabel, { color: colors.muted }]}>{language === 'fr' ? 'Historique' : 'History'}</Text>
+              {recentFeedHistory.map((entry) => (
+                <Pressable
+                  key={entry.id}
+                  onPress={() => router.push(`/entry/feed?id=${entry.id}`)}
+                  style={({ pressed }) => [
+                    styles.compactHistoryRow,
+                    {
+                      backgroundColor: pressed ? `${colors.border}70` : colors.surface,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.compactHistoryTitle, { color: colors.text }]} numberOfLines={1}>{getEntryTitle(entry)}</Text>
+                  <Text style={[styles.compactHistorySubtitle, { color: colors.muted }]} numberOfLines={1}>{getEntryHistorySubtitle(entry)}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+        </Card>
+      </Page>
+    );
+  }
+
   return (
     <Page>
       <View style={styles.heroCard}>
@@ -1060,29 +1263,55 @@ export default function EntryComposerScreen() {
           <DateTimeField label={copy.when} value={occurredAt} onChange={setOccurredAt} />
         </View>
 
-        {type === 'feed' ? (
-          <View style={styles.sectionCard}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <View>
-                <Text style={[styles.sectionLabel, { color: meta.tone }]}>{copy.feedFlow}</Text>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Démarrer la tétée' : 'Start Feed'}</Text>
+        {false ? (
+          <View style={[styles.sectionCard, {
+            backgroundColor: `${colors.border}40`,
+            borderRadius: 24,
+            padding: 18,
+            borderWidth: 1,
+            borderColor: `${colors.border}80`,
+            shadowColor: '#000',
+            shadowOpacity: 0.03,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 1,
+            gap: 14,
+          }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 14,
+                  backgroundColor: `${meta.tone}20`,
+                  borderWidth: 1.5,
+                  borderColor: meta.tone,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Text style={{ fontSize: 20 }}>🍼</Text>
+                </View>
+                <View>
+                  <Text style={[styles.sectionLabel, { color: meta.tone }]}>{copy.feedFlow}</Text>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Démarrer la tétée' : 'Start Feed'}</Text>
+                </View>
               </View>
               <Pressable
                 onPress={() => router.back()}
                 style={({ pressed }) => ({
-                  width: 36,
-                  height: 36,
-                  borderRadius: 12,
-                  backgroundColor: pressed ? colors.border : colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 14,
+                  backgroundColor: pressed ? `${colors.alert}30` : `${colors.border}60`,
+                  borderWidth: 1.5,
+                  borderColor: pressed ? colors.alert : colors.border,
                   alignItems: 'center',
                   justifyContent: 'center',
                 })}
                 accessibilityRole="button"
                 accessibilityLabel={copy.close}
               >
-                <Text style={{ color: colors.muted, fontSize: 16, fontWeight: '900' }}>X</Text>
+                <Text style={{ color: colors.muted, fontSize: 18, fontWeight: '900' }}>✕</Text>
               </Pressable>
             </View>
 
@@ -1091,7 +1320,7 @@ export default function EntryComposerScreen() {
                 { id: 'left', label: language === 'fr' ? 'Sein gauche' : 'Left breast', icon: '🤱', mode: 'breast' as const, side: 'left' },
                 { id: 'right', label: language === 'fr' ? 'Sein droit' : 'Right breast', icon: '🤱', mode: 'breast' as const, side: 'right' },
                 { id: 'both', label: language === 'fr' ? 'Les deux' : 'Both', icon: '🤱🤱', mode: 'breast' as const, side: 'both' },
-                { id: 'bottle', label: language === 'fr' ? 'Biberon' : 'Biberon', icon: '🍼', mode: 'bottle' as const, side: 'left' },
+                { id: 'bottle', label: language === 'fr' ? 'Biberon' : 'Bottle', icon: '🍼', mode: 'bottle' as const, side: 'left' },
               ].map((opt) => {
                 const active = mode === opt.mode && (opt.mode === 'bottle' || side === opt.side);
                 return (
@@ -1108,28 +1337,88 @@ export default function EntryComposerScreen() {
                     style={({ pressed }) => ({
                       flexBasis: '48%',
                       flexGrow: 1,
-                      height: 56,
+                      minHeight: 80,
                       borderRadius: 20,
-                      backgroundColor: active ? colors.surface : colors.backgroundAlt,
-                      borderWidth: 1.5,
+                      backgroundColor: active ? meta.tone : pressed ? `${colors.border}90` : colors.surface,
+                      borderWidth: 3,
                       borderColor: active ? meta.tone : colors.border,
-                      paddingHorizontal: 14,
+                      paddingHorizontal: 18,
+                      paddingVertical: 18,
                       flexDirection: 'row',
                       alignItems: 'center',
-                      gap: 10,
-                      opacity: pressed ? 0.7 : 1,
-                      shadowColor: '#000',
-                      shadowOpacity: active ? 0.03 : 0,
-                      shadowRadius: 8,
-                      shadowOffset: { width: 0, height: 3 },
-                      elevation: active ? 1 : 0,
+                      gap: 14,
+                      opacity: pressed ? 0.8 : 1,
+                      shadowColor: active ? meta.tone : '#000',
+                      shadowOpacity: active ? 0.25 : 0.12,
+                      shadowRadius: 16,
+                      shadowOffset: { width: 0, height: 8 },
+                      elevation: active ? 6 : 3,
+                      transform: [{ scale: pressed ? 0.96 : 1 }],
                     })}
                   >
-                    <Text style={{ fontSize: 20 }}>{opt.icon}</Text>
-                    <Text style={{ color: active ? colors.text : colors.muted, fontSize: 14, fontWeight: '800' }}>{opt.label}</Text>
+                    <View style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 14,
+                      backgroundColor: active ? `${colors.text}20` : `${colors.border}40`,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: active ? 2 : 1,
+                      borderColor: active ? colors.surface : 'transparent',
+                    }}>
+                      <Text style={{ fontSize: 24, lineHeight: 28 }}>{opt.icon}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: active ? colors.surface : colors.text, fontSize: 16, fontWeight: '900', letterSpacing: 0.1 }}>{opt.label}</Text>
+                      {active && (
+                        <Text style={{ color: active ? colors.surface : meta.tone, fontSize: 12, fontWeight: '800', marginTop: 3, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                          {language === 'fr' ? 'Sélectionné' : 'Selected'}
+                        </Text>
+                      )}
+                    </View>
+                    {active && (
+                      <View style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: colors.surface,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderWidth: 2,
+                        borderColor: colors.text,
+                      }}>
+                        <Text style={{ color: meta.tone, fontSize: 16, fontWeight: '900' }}>✓</Text>
+                      </View>
+                    )}
                   </Pressable>
                 );
               })}
+            </View>
+
+            {/* Cancel Button */}
+            <View style={{ marginTop: 16 }}>
+              <Pressable
+                onPress={() => router.back()}
+                style={({ pressed }) => ({
+                  minHeight: 48,
+                  borderRadius: 16,
+                  backgroundColor: pressed ? `${colors.alert}20` : 'transparent',
+                  borderWidth: 1.5,
+                  borderColor: colors.alert,
+                  paddingHorizontal: 20,
+                  paddingVertical: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <Text style={{ color: colors.alert, fontSize: 16, fontWeight: '700' }}>
+                  {language === 'fr' ? 'Annuler' : 'Cancel'}
+                </Text>
+                <Text style={{ color: colors.alert, fontSize: 18 }}>✕</Text>
+              </Pressable>
             </View>
 
             <View style={{ marginTop: 20 }}>
@@ -1504,6 +1793,196 @@ export default function EntryComposerScreen() {
 }
 
 const styles = StyleSheet.create({
+  compactPage: {
+    gap: 8,
+  },
+  compactFeedCard: {
+    gap: 10,
+    padding: 12,
+    borderRadius: 18,
+  },
+  compactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  compactIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  compactIconText: {
+    fontSize: 20,
+  },
+  compactHeaderText: {
+    flex: 1,
+    gap: 1,
+  },
+  compactEyebrow: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  compactTitle: {
+    color: '#F0F6FC',
+    fontSize: 21,
+    lineHeight: 24,
+    fontWeight: '900',
+  },
+  compactClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactCloseText: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  compactFeedGrid: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  compactFeedOption: {
+    flex: 1,
+    minHeight: 54,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  compactFeedOptionIcon: {
+    fontSize: 17,
+    lineHeight: 20,
+  },
+  compactFeedOptionText: {
+    fontSize: 11,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  compactPanel: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 10,
+    gap: 8,
+  },
+  compactFieldLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  compactAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  compactStepButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactStepText: {
+    fontSize: 22,
+    fontWeight: '900',
+    lineHeight: 24,
+  },
+  compactAmountValue: {
+    minWidth: 110,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactAmountText: {
+    fontSize: 34,
+    lineHeight: 36,
+    fontWeight: '900',
+  },
+  compactAmountUnit: {
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  compactPresetRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  compactPreset: {
+    flex: 1,
+    height: 34,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactPresetText: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  compactMetaRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  compactMetaPill: {
+    flex: 1,
+    minHeight: 34,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  compactMetaText: {
+    fontSize: 11,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  compactHistory: {
+    borderTopWidth: 1,
+    paddingTop: 8,
+    gap: 6,
+  },
+  compactHistoryRow: {
+    minHeight: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    justifyContent: 'center',
+  },
+  compactHistoryTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  compactHistorySubtitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  compactActions: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 320,
+  },
+  compactActionButton: {
+    flex: 1,
+    minHeight: 46,
+  },
   babyFlowContainer: {
     gap: 20,
     paddingBottom: 40,
@@ -1676,7 +2155,7 @@ const styles = StyleSheet.create({
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 16,
   },
   premiumActionButton: {
     flexBasis: '48%',

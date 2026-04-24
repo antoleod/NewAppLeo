@@ -263,338 +263,312 @@ export default function ProfileScreen() {
 
   return (
     <Page>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 24 }}>
-      <Card>
-        <Heading eyebrow={t('tabs.profile')} title={t('profile.title', 'Family and preferences')} subtitle={t('profile.subtitle', 'Language, themes, effects, photos, and sync.')} />
-        {!profile?.hasCompletedOnboarding && (
-          <View style={{ borderColor: theme.accent, borderWidth: 1.5, backgroundColor: `${theme.accent}12`, borderRadius: 20, padding: 16, gap: 12 }}>
-            <View style={{ gap: 4 }}>
-              <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800' }}>Onboarding Incomplete</Text>
-              <Text style={{ color: colors.muted, fontSize: 13 }}>Complete your baby's profile to unlock all features and better personalization.</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingBottom: 24 }}>
+        <Card style={{ padding: 20, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+            <Pressable onPress={handlePickPhoto} style={{ width: 80, height: 80, borderRadius: 24, overflow: 'hidden', backgroundColor: colors.backgroundAlt, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.border }}>
+              {babyPhotoUri ? <Image source={{ uri: babyPhotoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={{ color: colors.primary, fontWeight: '900', fontSize: 12 }}>📷</Text>}
+            </Pressable>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={{ color: colors.text, fontSize: 24, fontWeight: '800' }}>{babyName || 'Tu Bebé'}</Text>
+              <Text style={{ color: colors.muted, fontSize: 14 }}>{babyBirthDate || 'Fecha de nacimiento'}</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                <View style={{ backgroundColor: `${theme.accent}20`, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                  <Text style={{ color: theme.accent, fontSize: 11, fontWeight: '700' }}>{themeVariantLabel}</Text>
+                </View>
+                <View style={{ backgroundColor: colors.backgroundAlt, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                  <Text style={{ color: colors.muted, fontSize: 11, fontWeight: '700' }}>{language.toUpperCase()}</Text>
+                </View>
+              </View>
             </View>
-            <Button label="Complete Onboarding" onPress={() => router.push('/onboarding')} variant="secondary" />
           </View>
-        )}
-        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.family_profile', 'Family profile')}</Text>
-        <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Pressable onPress={handlePickPhoto} style={{ width: 86, height: 86, borderRadius: 28, overflow: 'hidden', backgroundColor: colors.backgroundAlt, alignItems: 'center', justifyContent: 'center' }}>
-            {babyPhotoUri ? <Image source={{ uri: babyPhotoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={{ color: colors.primary, fontWeight: '900' }}>Photo</Text>}
-          </Pressable>
-          <View style={{ flex: 1, minWidth: 220, gap: 6 }}>
-            <Text style={{ color: colors.muted }}>Mode: {guestMode ? 'Guest' : 'Cloud account'}</Text>
-            <Text style={{ color: colors.muted }}>{t('profile.theme_layout', 'Theme and layout')}: {themeVariantLabel}</Text>
-            <Text style={{ color: colors.muted }}>{t('common.language', 'Language')}: {language.toUpperCase()}</Text>
-            {profile?.hasCompletedOnboarding && <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 12 }}>✓ Onboarding complete</Text>}
-          </View>
-        </View>
-        <Input label="Parent" value={caregiverName} onChangeText={setCaregiverName} />
-        <Input label="Bebe" value={babyName} onChangeText={setBabyName} />
-        <Input label="Date de naissance" value={babyBirthDate} onChangeText={setBabyBirthDate} />
-        <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-          <View style={{ flex: 1, minWidth: 160 }}>
-            <Input label="Poids naissance (kg)" value={birthWeightKg} onChangeText={setBirthWeightKg} keyboardType="decimal-pad" inputMode="decimal" />
-          </View>
-          <View style={{ flex: 1, minWidth: 160 }}>
-            <Input label="Poids actuel (kg)" value={currentWeightKg} onChangeText={setCurrentWeightKg} keyboardType="decimal-pad" inputMode="decimal" />
-          </View>
-        </View>
-        <Input label="Taille (cm)" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" inputMode="decimal" />
-        <Input label={t('common.notes', 'Notes')} value={babyNotes} onChangeText={setBabyNotes} multiline />
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>{t('common.language', 'Language')}</Text>
-        <Segment value={language} onChange={(value) => setLanguage(value as typeof language)} options={languageOptions} />
-        <Button label={t('profile.save_profile', 'Save profile')} onPress={handleSave} />
-      </Card>
 
-      <Card>
-        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.children', 'Children')}</Text>
-        {babies.length ? (
-          <View style={{ gap: 10 }}>
-            {babies.map((baby) => (
-              <View
-                key={baby.id}
-                style={{
-                  borderRadius: 18,
-                  borderWidth: 1,
-                  borderColor: activeBabyId === baby.id ? colors.primary : colors.border,
-                  backgroundColor: activeBabyId === baby.id ? colors.primarySoft : colors.backgroundAlt,
-                  padding: 14,
-                  gap: 10,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: colors.text, fontWeight: '800' }}>
-                      {baby.name} {activeBabyId === baby.id ? '(Active)' : ''}
-                    </Text>
-                    <Text style={{ color: colors.muted }}>{baby.birthDate}</Text>
+          {!profile?.hasCompletedOnboarding && (
+            <View style={{ backgroundColor: `${colors.alert}15`, borderColor: colors.alert, borderWidth: 1, borderRadius: 16, padding: 12, marginBottom: 16 }}>
+              <Text style={{ color: colors.alert, fontSize: 13, fontWeight: '700', textAlign: 'center' }}>⚠️ Completa el perfil para desbloquear todas las funciones</Text>
+            </View>
+          )}
+
+          <View style={{ gap: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Input label="Padre/Madre" value={caregiverName} onChangeText={setCaregiverName} placeholder="Tu nombre" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Input label="Nombre del bebé" value={babyName} onChangeText={setBabyName} placeholder="Nombre" />
+              </View>
+            </View>
+            <Input label="Fecha de nacimiento" value={babyBirthDate} onChangeText={setBabyBirthDate} placeholder="YYYY-MM-DD" />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Input label="P. nacimiento (kg)" value={birthWeightKg} onChangeText={setBirthWeightKg} keyboardType="decimal-pad" inputMode="decimal" placeholder="3.5" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Input label="P. actual (kg)" value={currentWeightKg} onChangeText={setCurrentWeightKg} keyboardType="decimal-pad" inputMode="decimal" placeholder="4.2" />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 2 }}>
+                <Input label="Altura (cm)" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" inputMode="decimal" placeholder="55" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Segment value={language} onChange={(value) => setLanguage(value as typeof language)} options={languageOptions} />
+              </View>
+            </View>
+            <Input label="Notas" value={babyNotes} onChangeText={setBabyNotes} multiline placeholder="Notas sobre el bebé..." />
+            <Button label="Guardar Perfil" onPress={handleSave} />
+          </View>
+        </Card>
+
+        <Card style={{ padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800', marginBottom: 12 }}>👶 Perfiles de Bebés</Text>
+          {babies.length ? (
+            <View style={{ gap: 8 }}>
+              {babies.map((baby) => (
+                <View
+                  key={baby.id}
+                  style={{
+                    borderRadius: 16,
+                    borderWidth: 1.5,
+                    borderColor: activeBabyId === baby.id ? theme.accent : colors.border,
+                    backgroundColor: activeBabyId === baby.id ? `${theme.accent}15` : colors.backgroundAlt,
+                    padding: 12,
+                    gap: 8,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View>
+                      <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800' }}>
+                        {baby.name} {activeBabyId === baby.id ? '✓' : ''}
+                      </Text>
+                      <Text style={{ color: colors.muted, fontSize: 13 }}>{baby.birthDate}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      {activeBabyId !== baby.id && (
+                        <Button
+                          label="Activar"
+                          onPress={async () => {
+                            await setActiveBabyId(baby.id);
+                            setBabyActiveId(baby.id);
+                          }}
+                          variant="ghost"
+                          fullWidth={false}
+                          size="sm"
+                        />
+                      )}
+                      <Button
+                        label="Eliminar"
+                        onPress={() => {
+                          void handleRemoveBaby(baby.id, baby.name);
+                        }}
+                        variant="ghost"
+                        fullWidth={false}
+                        size="sm"
+                      />
+                    </View>
                   </View>
-                  <Button
-                    label="Remove"
-                    onPress={() => {
-                      void handleRemoveBaby(baby.id, baby.name);
-                    }}
-                    variant="ghost"
-                    fullWidth={false}
-                    size="sm"
+                </View>
+              ))}
+              <Button label="+ Agregar Perfil" onPress={handleAddBaby} variant="secondary" />
+            </View>
+          ) : (
+            <View style={{ alignItems: 'center', padding: 20, gap: 12 }}>
+              <Text style={{ fontSize: 32 }}>👶</Text>
+              <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', textAlign: 'center' }}>Sin perfiles aún</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, textAlign: 'center' }}>Crea un perfil para tu bebé para empezar</Text>
+              <Button label="Crear Primer Perfil" onPress={handleAddBaby} />
+            </View>
+          )}
+        </Card>
+
+        <Card style={{ padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800', marginBottom: 12 }}>🎨 Apariencia</Text>
+
+          <View style={{ gap: 12 }}>
+            <Pressable
+              onPress={() => void toggleTheme()}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: colors.backgroundAlt,
+                borderRadius: 12,
+                padding: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <Text style={{ color: colors.text, flex: 1, fontSize: 14, fontWeight: '600' }}>
+                {paletteMode === 'nuit' ? '🌙 Modo Noche' : '☀️ Modo Día'}
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 12 }}>
+                {paletteMode === 'nuit' ? 'Cambiar a Día' : 'Cambiar a Noche'}
+              </Text>
+            </Pressable>
+
+            <View>
+              <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', marginBottom: 6 }}>Paleta de colores</Text>
+              <Segment
+                value={settings.themeVariant}
+                onChange={async (value) => {
+                  await patchSettings({ themeVariant: value as any });
+                  await setThemeVariant(value as any);
+                }}
+                options={[
+                  { label: 'Claro', value: 'light' },
+                  { label: 'Océano', value: 'custom' },
+                  { label: 'Púrpura', value: 'parliament' },
+                  { label: 'Noche', value: 'noir' },
+                ]}
+              />
+            </View>
+
+            <View>
+              <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', marginBottom: 6 }}>Modo de tema</Text>
+              <Segment
+                value={themeMode}
+                onChange={(value) => setThemeMode(value as any)}
+                options={[
+                  { label: 'Auto', value: 'system' },
+                  { label: 'Claro', value: 'light' },
+                  { label: 'Oscuro', value: 'dark' },
+                ]}
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              <Button
+                label={settings.largeTouchMode ? 'Botones grandes ✓' : 'Botones grandes'}
+                onPress={() => patchSettings({ largeTouchMode: !settings.largeTouchMode })}
+                variant={settings.largeTouchMode ? 'secondary' : 'ghost'}
+                fullWidth={false}
+                size="sm"
+              />
+              <Button
+                label={settings.compactHomeCards ? 'Tarjetas compactas ✓' : 'Tarjetas compactas'}
+                onPress={() => patchSettings({ compactHomeCards: !settings.compactHomeCards })}
+                variant={settings.compactHomeCards ? 'secondary' : 'ghost'}
+                fullWidth={false}
+                size="sm"
+              />
+            </View>
+          </View>
+        </Card>
+
+        <Card>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.dashboard', 'Dashboard personalization')}</Text>
+          <Input
+            label="Hydration goal (ml)"
+            value={String(settings.hydrationGoalMl)}
+            onChangeText={(value) => patchSettings({ hydrationGoalMl: Number(value) || defaultAppSettings.hydrationGoalMl })}
+            keyboardType="numeric"
+            inputMode="numeric"
+          />
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {Object.entries(settings.dashboardMetrics).map(([key, enabled]) => (
+              <Button
+                key={key}
+                label={`${enabled ? 'Hide' : 'Show'} ${key}`}
+                onPress={() => patchSettings({ dashboardMetrics: { [key]: !enabled } as any })}
+                variant={enabled ? 'secondary' : 'ghost'}
+                fullWidth={false}
+              />
+            ))}
+          </View>
+        </Card>
+
+        <Card>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.effects', 'Effects')}</Text>
+          <Text style={{ color: colors.muted }}>All motion stays optional and can be switched off here.</Text>
+          <Button
+            label={settings.effects.emojiPulse ? 'Disable emoji pulse' : 'Enable emoji pulse'}
+            onPress={() => patchSettings({ effects: { ...settings.effects, emojiPulse: !settings.effects.emojiPulse } })}
+            variant="ghost"
+          />
+          <Button
+            label={settings.effects.liveCountdown ? 'Disable live countdown' : 'Enable live countdown'}
+            onPress={() => patchSettings({ effects: { ...settings.effects, liveCountdown: !settings.effects.liveCountdown } })}
+            variant="ghost"
+          />
+          <Button
+            label={settings.effects.gradientCards ? 'Disable gradient cards' : 'Enable gradient cards'}
+            onPress={() => patchSettings({ effects: { ...settings.effects, gradientCards: !settings.effects.gradientCards } })}
+            variant="ghost"
+          />
+          <Button
+            label={settings.effects.pressScale ? 'Disable press scale' : 'Enable press scale'}
+            onPress={() => patchSettings({ effects: { ...settings.effects, pressScale: !settings.effects.pressScale } })}
+            variant="ghost"
+          />
+        </Card>
+
+        <Card>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.module_visibility', 'Module visibility')}</Text>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {Object.entries(visibility).map(([key, enabled]) => (
+              <Button
+                key={key}
+                label={`${enabled ? 'Hide' : 'Show'} ${key}`}
+                onPress={async () => {
+                  const next = { ...visibility, [key]: !enabled };
+                  setVisibility(next);
+                  await setModuleVisibility(next);
+                }}
+                variant={enabled ? 'secondary' : 'ghost'}
+                fullWidth={false}
+              />
+            ))}
+          </View>
+        </Card>
+
+        <Card>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.milestones', 'Milestones')}</Text>
+          {milestones.length ? (
+            <View style={{ gap: 10 }}>
+              {milestones.map((entry) => (
+                <View key={entry.id} style={{ gap: 8 }}>
+                  {entry.payload?.photoUri ? (
+                    <Image source={{ uri: entry.payload.photoUri }} style={{ width: '100%', height: 140, borderRadius: 18 }} resizeMode="cover" />
+                  ) : null}
+                  <EntryCard
+                    title={getEntryTitle(entry)}
+                    subtitle={getEntrySubtitle(entry)}
+                    notes={entry.notes ?? (entry.payload?.photoUri ? 'Photo attached' : undefined)}
                   />
                 </View>
-                <Button
-                  label="Set active"
-                  onPress={async () => {
-                    await setActiveBabyId(baby.id);
-                    setBabyActiveId(baby.id);
-                  }}
-                  variant={activeBabyId === baby.id ? 'secondary' : 'ghost'}
-                  fullWidth={false}
-                  size="sm"
-                />
-              </View>
-            ))}
-            <Button label="Add baby profile" onPress={handleAddBaby} variant="ghost" />
-          </View>
-        ) : (
-          <EmptyState title="No baby profiles yet" body="Create the first local baby profile to switch between kids later." action={<Button label="Add baby profile" onPress={handleAddBaby} />} />
-        )}
-      </Card>
-
-      <Card>
-        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.theme_layout', 'Theme and layout')}</Text>
-        <View
-          style={{
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: theme.border,
-            backgroundColor: theme.bgCardAlt,
-            padding: 10,
-            gap: 10,
-          }}
-        >
-          <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>Background photo</Text>
-          <View style={{ borderRadius: 12, overflow: 'hidden', height: 120, borderWidth: 1, borderColor: theme.border }}>
-            {backgroundPhotoUri ? (
-              <Image source={{ uri: backgroundPhotoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            ) : (
-              <View style={{ flex: 1, backgroundColor: theme.bgCard, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: colors.muted }}>No custom background selected</Text>
-              </View>
-            )}
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1 }}>
-              <Button label="Choose photo" onPress={() => void handlePickBackgroundPhoto()} variant="secondary" />
+              ))}
             </View>
-            <View style={{ flex: 1 }}>
-              <Button label="Use default" onPress={() => void handleResetBackgroundPhoto()} variant="ghost" />
-            </View>
-          </View>
-        </View>
-        <Pressable
-          onPress={() => void toggleTheme()}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: theme.bgCard,
-            borderRadius: 12,
-            padding: 14,
-            borderWidth: 1,
-            borderColor: theme.border,
-          }}
-        >
-          <Text style={{ color: theme.textPrimary, flex: 1, fontFamily: 'DMSans_400Regular', fontSize: 14, lineHeight: 20 }}>
-            {paletteMode === 'nuit' ? '🌙 Mode Nuit' : '☀️ Mode Jour'}
+          ) : (
+            <EmptyState title="No milestones yet" body="Add a milestone to build a simple development journal." action={<Button label="Log milestone" onPress={() => router.push('/entry/milestone')} />} />
+          )}
+        </Card>
+
+        <Card>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.session', 'Session')}</Text>
+          <Text style={{ color: colors.muted }}>Signed in as {profile?.authEmail}</Text>
+          <Text style={{ color: colors.muted }}>Username: {profile?.username}</Text>
+          <Text style={{ color: colors.muted }}>Pairing: {pairingCode ?? 'none'}</Text>
+          <Text style={{ color: colors.muted }}>Queued sync items: {queuedSyncCount}</Text>
+          <Input
+            label="Daily summary time"
+            value={settings.dailySummaryTime}
+            onChangeText={(value) => patchSettings({ dailySummaryTime: value })}
+            placeholder="22:00"
+          />
+          <Button label="Sync now" onPress={handleSyncNow} variant="ghost" />
+          <Button label="Schedule daily summary" onPress={handleScheduleSummary} variant="ghost" />
+          <Button label="Pair with partner" onPress={() => router.push('/pair')} variant="ghost" />
+          <Button label="Remove demo imported data" onPress={handleClearDemoData} variant="ghost" />
+          <Button label="Log out" onPress={signOut} variant="danger" />
+        </Card>
+
+        <Card>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.voice_bridge', 'Voice bridge')}</Text>
+          <Text style={{ color: colors.muted, lineHeight: 20 }}>
+            Try a browser-only speech capture path that converts a short transcript into a parsed intent.
           </Text>
-          <Text style={{ color: theme.accent, fontFamily: 'DMSans_400Regular', fontSize: 11 }}>
-            {paletteMode === 'nuit' ? 'Passer en Jour' : 'Passer en Nuit'}
-          </Text>
-        </Pressable>
-        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>Themes</Text>
-        <Segment
-          value={themeStyle}
-          onChange={async (value) => {
-            await updateAppSettings({ themeStyle: value as any });
-            await setThemeStyle(value as any);
-          }}
-          options={[
-            { label: 'Default AppLeo', value: 'default' },
-            { label: 'Transparent Photo', value: 'photo' },
-            { label: 'Dark Classic', value: 'classic' },
-          ]}
-        />
-        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>Theme mode</Text>
-        <Segment
-          value={themeMode}
-          onChange={(value) => setThemeMode(value as any)}
-          options={[
-            { label: 'System', value: 'system' },
-            { label: 'Light', value: 'light' },
-            { label: 'Dark', value: 'dark' },
-          ]}
-        />
-        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>Accent palette</Text>
-        <Segment
-          value={settings.themeVariant}
-          onChange={async (value) => {
-            await patchSettings({ themeVariant: value as any });
-            await setThemeVariant(value as any);
-          }}
-          options={[
-            { label: 'Light', value: 'light' },
-            { label: 'Custom', value: 'custom' },
-            { label: 'Parliament', value: 'parliament' },
-            { label: 'Noir', value: 'noir' },
-          ]}
-        />
-        <Button
-          label={settings.largeTouchMode ? 'Disable large touch mode' : 'Enable large touch mode'}
-          onPress={() => patchSettings({ largeTouchMode: !settings.largeTouchMode })}
-          variant="ghost"
-        />
-        <Button
-          label={settings.compactHomeCards ? 'Disable compact home cards' : 'Enable compact home cards'}
-          onPress={() => patchSettings({ compactHomeCards: !settings.compactHomeCards })}
-          variant="ghost"
-        />
-        <Button
-          label={settings.redNightMode ? 'Disable red night mode' : 'Enable red night mode'}
-          onPress={() => patchSettings({ redNightMode: !settings.redNightMode })}
-          variant="ghost"
-        />
-        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>Custom theme builder</Text>
-        <Input label="Primary hex" value={customPrimary} onChangeText={setCustomPrimary} placeholder="#4d7c6b" />
-        <Input label="Secondary hex" value={customSecondary} onChangeText={setCustomSecondary} placeholder="#c18f54" />
-        <Input label="Background alt hex" value={customBackgroundAlt} onChangeText={setCustomBackgroundAlt} placeholder="#eef4ef" />
-        <Button
-          label={settings.customTheme.enabled ? 'Disable custom theme' : 'Apply custom theme'}
-          onPress={async () => {
-            const enabled = !settings.customTheme.enabled;
-            const nextCustom = {
-              enabled,
-              primary: customPrimary.trim() || defaultAppSettings.customTheme.primary,
-              secondary: customSecondary.trim() || defaultAppSettings.customTheme.secondary,
-              backgroundAlt: customBackgroundAlt.trim() || defaultAppSettings.customTheme.backgroundAlt,
-            };
-            await patchSettings({ customTheme: nextCustom });
-            await setCustomTheme(nextCustom);
-          }}
-          variant="secondary"
-        />
-      </Card>
-
-      <Card>
-        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.dashboard', 'Dashboard personalization')}</Text>
-        <Input
-          label="Hydration goal (ml)"
-          value={String(settings.hydrationGoalMl)}
-          onChangeText={(value) => patchSettings({ hydrationGoalMl: Number(value) || defaultAppSettings.hydrationGoalMl })}
-          keyboardType="numeric"
-          inputMode="numeric"
-        />
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          {Object.entries(settings.dashboardMetrics).map(([key, enabled]) => (
-            <Button
-              key={key}
-              label={`${enabled ? 'Hide' : 'Show'} ${key}`}
-              onPress={() => patchSettings({ dashboardMetrics: { [key]: !enabled } as any })}
-              variant={enabled ? 'secondary' : 'ghost'}
-              fullWidth={false}
-            />
-          ))}
-        </View>
-      </Card>
-
-      <Card>
-        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.effects', 'Effects')}</Text>
-        <Text style={{ color: colors.muted }}>All motion stays optional and can be switched off here.</Text>
-        <Button
-          label={settings.effects.emojiPulse ? 'Disable emoji pulse' : 'Enable emoji pulse'}
-          onPress={() => patchSettings({ effects: { ...settings.effects, emojiPulse: !settings.effects.emojiPulse } })}
-          variant="ghost"
-        />
-        <Button
-          label={settings.effects.liveCountdown ? 'Disable live countdown' : 'Enable live countdown'}
-          onPress={() => patchSettings({ effects: { ...settings.effects, liveCountdown: !settings.effects.liveCountdown } })}
-          variant="ghost"
-        />
-        <Button
-          label={settings.effects.gradientCards ? 'Disable gradient cards' : 'Enable gradient cards'}
-          onPress={() => patchSettings({ effects: { ...settings.effects, gradientCards: !settings.effects.gradientCards } })}
-          variant="ghost"
-        />
-        <Button
-          label={settings.effects.pressScale ? 'Disable press scale' : 'Enable press scale'}
-          onPress={() => patchSettings({ effects: { ...settings.effects, pressScale: !settings.effects.pressScale } })}
-          variant="ghost"
-        />
-      </Card>
-
-      <Card>
-        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.module_visibility', 'Module visibility')}</Text>
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          {Object.entries(visibility).map(([key, enabled]) => (
-            <Button
-              key={key}
-              label={`${enabled ? 'Hide' : 'Show'} ${key}`}
-              onPress={async () => {
-                const next = { ...visibility, [key]: !enabled };
-                setVisibility(next);
-                await setModuleVisibility(next);
-              }}
-              variant={enabled ? 'secondary' : 'ghost'}
-              fullWidth={false}
-            />
-          ))}
-        </View>
-      </Card>
-
-      <Card>
-        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.milestones', 'Milestones')}</Text>
-        {milestones.length ? (
-          <View style={{ gap: 10 }}>
-            {milestones.map((entry) => (
-              <View key={entry.id} style={{ gap: 8 }}>
-                {entry.payload?.photoUri ? (
-                  <Image source={{ uri: entry.payload.photoUri }} style={{ width: '100%', height: 140, borderRadius: 18 }} resizeMode="cover" />
-                ) : null}
-                <EntryCard
-                  title={getEntryTitle(entry)}
-                  subtitle={getEntrySubtitle(entry)}
-                  notes={entry.notes ?? (entry.payload?.photoUri ? 'Photo attached' : undefined)}
-                />
-              </View>
-            ))}
-          </View>
-        ) : (
-          <EmptyState title="No milestones yet" body="Add a milestone to build a simple development journal." action={<Button label="Log milestone" onPress={() => router.push('/entry/milestone')} />} />
-        )}
-      </Card>
-
-      <Card>
-        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.session', 'Session')}</Text>
-        <Text style={{ color: colors.muted }}>Signed in as {profile?.authEmail}</Text>
-        <Text style={{ color: colors.muted }}>Username: {profile?.username}</Text>
-        <Text style={{ color: colors.muted }}>Pairing: {pairingCode ?? 'none'}</Text>
-        <Text style={{ color: colors.muted }}>Queued sync items: {queuedSyncCount}</Text>
-        <Input
-          label="Daily summary time"
-          value={settings.dailySummaryTime}
-          onChangeText={(value) => patchSettings({ dailySummaryTime: value })}
-          placeholder="22:00"
-        />
-        <Button label="Sync now" onPress={handleSyncNow} variant="ghost" />
-        <Button label="Schedule daily summary" onPress={handleScheduleSummary} variant="ghost" />
-        <Button label="Pair with partner" onPress={() => router.push('/pair')} variant="ghost" />
-        <Button label="Remove demo imported data" onPress={handleClearDemoData} variant="ghost" />
-        <Button label="Log out" onPress={signOut} variant="danger" />
-      </Card>
-
-      <Card>
-        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.voice_bridge', 'Voice bridge')}</Text>
-        <Text style={{ color: colors.muted, lineHeight: 20 }}>
-          Try a browser-only speech capture path that converts a short transcript into a parsed intent.
-        </Text>
-        <Text style={{ color: colors.muted }}>Status: {voiceStatus}</Text>
-        <Button label="Test voice capture" onPress={handleVoiceBridge} variant="ghost" />
-      </Card>
+          <Text style={{ color: colors.muted }}>Status: {voiceStatus}</Text>
+          <Button label="Test voice capture" onPress={handleVoiceBridge} variant="ghost" />
+        </Card>
       </ScrollView>
     </Page>
   );

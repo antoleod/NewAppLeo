@@ -1,9 +1,12 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { useAuth } from './AuthContext';
 import { getThemeTokens, type Theme, type ThemePaletteMode, type ThemeStyle, type ThemeVariant } from '@/theme';
 import { ThemeMode } from '@/types';
-import { defaultAppSettings, getAppSettings, setAppSettings } from '@/lib/storage';
+import { defaultAppSettings, getAppSettings, setAppSettings, appSettingsCacheKey, profileSettingsRef } from '@/lib/storage';
 
 interface ThemeContextValue {
   mode: 'light' | 'dark';
@@ -66,15 +69,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const tokens = getThemeTokens(resolvedMode, themeVariant, customTheme, themeStyle);
   const themeWithContrast = highContrastMode
     ? {
-        ...tokens.theme,
-        bg: resolvedMode === 'dark' ? '#081019' : '#FFFFFF',
-        bgCard: resolvedMode === 'dark' ? '#101A26' : '#FFFFFF',
-        bgCardAlt: resolvedMode === 'dark' ? '#162131' : '#F4F7F8',
-        textPrimary: resolvedMode === 'dark' ? '#FFFFFF' : '#101418',
-        textSecondary: resolvedMode === 'dark' ? '#EAF1F5' : '#20262C',
-        textMuted: resolvedMode === 'dark' ? '#C7D3DA' : '#47515A',
-        border: resolvedMode === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.10)',
-      }
+      ...tokens.theme,
+      bg: resolvedMode === 'dark' ? '#081019' : '#FFFFFF',
+      bgCard: resolvedMode === 'dark' ? '#101A26' : '#FFFFFF',
+      bgCardAlt: resolvedMode === 'dark' ? '#162131' : '#F4F7F8',
+      textPrimary: resolvedMode === 'dark' ? '#FFFFFF' : '#101418',
+      textSecondary: resolvedMode === 'dark' ? '#EAF1F5' : '#20262C',
+      textMuted: resolvedMode === 'dark' ? '#C7D3DA' : '#47515A',
+      border: resolvedMode === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.10)',
+    }
     : tokens.theme;
 
   const value = useMemo<ThemeContextValue>(
@@ -90,47 +93,130 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setThemeVariant: async (variant) => {
         setThemeVariantState(variant);
         try {
-          await setAppSettings({ ...(await getAppSettings()), themeVariant: variant });
-          setThemeSyncError(null);
+          // Guardar localmente primero
+          const currentSettings = await getAppSettings();
+          const updatedSettings = { ...currentSettings, themeVariant: variant };
+
+          // Guardar en AsyncStorage siempre
+          await AsyncStorage.setItem(appSettingsCacheKey(), JSON.stringify(updatedSettings));
+
+          // Intentar sincronizar con Firebase
+          const uid = auth.currentUser?.uid;
+          if (uid) {
+            try {
+              await setDoc(profileSettingsRef(uid), updatedSettings, { merge: true });
+              setThemeSyncError(null);
+            } catch (firebaseError: any) {
+              console.warn('Firebase sync failed, but theme saved locally:', firebaseError);
+              setThemeSyncError('sync-failed');
+            }
+          } else {
+            setThemeSyncError(null);
+          }
         } catch (error: any) {
-          setThemeSyncError(error?.code === 'permission-denied' ? 'no-permission' : 'sync-failed');
+          console.error('Failed to save theme variant:', error);
+          setThemeSyncError('sync-failed');
         }
       },
       setThemeStyle: async (style) => {
         setThemeStyleState(style);
         try {
-          await setAppSettings({ ...(await getAppSettings()), themeStyle: style });
-          setThemeSyncError(null);
+          const currentSettings = await getAppSettings();
+          const updatedSettings = { ...currentSettings, themeStyle: style };
+
+          await AsyncStorage.setItem(appSettingsCacheKey(), JSON.stringify(updatedSettings));
+
+          const uid = auth.currentUser?.uid;
+          if (uid) {
+            try {
+              await setDoc(profileSettingsRef(uid), updatedSettings, { merge: true });
+              setThemeSyncError(null);
+            } catch (firebaseError: any) {
+              console.warn('Firebase sync failed, but theme style saved locally:', firebaseError);
+              setThemeSyncError('sync-failed');
+            }
+          } else {
+            setThemeSyncError(null);
+          }
         } catch (error: any) {
-          setThemeSyncError(error?.code === 'permission-denied' ? 'no-permission' : 'sync-failed');
+          console.error('Failed to save theme style:', error);
+          setThemeSyncError('sync-failed');
         }
       },
       setBackgroundPhotoUri: async (uri) => {
         setBackgroundPhotoUriState(uri);
         try {
-          await setAppSettings({ ...(await getAppSettings()), backgroundPhotoUri: uri });
-          setThemeSyncError(null);
+          const currentSettings = await getAppSettings();
+          const updatedSettings = { ...currentSettings, backgroundPhotoUri: uri };
+
+          await AsyncStorage.setItem(appSettingsCacheKey(), JSON.stringify(updatedSettings));
+
+          const uid = auth.currentUser?.uid;
+          if (uid) {
+            try {
+              await setDoc(profileSettingsRef(uid), updatedSettings, { merge: true });
+              setThemeSyncError(null);
+            } catch (firebaseError: any) {
+              console.warn('Firebase sync failed, but background photo saved locally:', firebaseError);
+              setThemeSyncError('sync-failed');
+            }
+          } else {
+            setThemeSyncError(null);
+          }
         } catch (error: any) {
-          setThemeSyncError(error?.code === 'permission-denied' ? 'no-permission' : 'sync-failed');
+          console.error('Failed to save background photo:', error);
+          setThemeSyncError('sync-failed');
         }
       },
       setCustomTheme: async (nextCustomTheme) => {
         const next = { ...customTheme, ...nextCustomTheme };
         setCustomThemeState(next);
         try {
-          await setAppSettings({ ...(await getAppSettings()), customTheme: next });
-          setThemeSyncError(null);
+          const currentSettings = await getAppSettings();
+          const updatedSettings = { ...currentSettings, customTheme: next };
+
+          await AsyncStorage.setItem(appSettingsCacheKey(), JSON.stringify(updatedSettings));
+
+          const uid = auth.currentUser?.uid;
+          if (uid) {
+            try {
+              await setDoc(profileSettingsRef(uid), updatedSettings, { merge: true });
+              setThemeSyncError(null);
+            } catch (firebaseError: any) {
+              console.warn('Firebase sync failed, but custom theme saved locally:', firebaseError);
+              setThemeSyncError('sync-failed');
+            }
+          } else {
+            setThemeSyncError(null);
+          }
         } catch (error: any) {
-          setThemeSyncError(error?.code === 'permission-denied' ? 'no-permission' : 'sync-failed');
+          console.error('Failed to save custom theme:', error);
+          setThemeSyncError('sync-failed');
         }
       },
       setHighContrastMode: async (enabled) => {
         setHighContrastModeState(enabled);
         try {
-          await setAppSettings({ ...(await getAppSettings()), highContrastMode: enabled });
-          setThemeSyncError(null);
+          const currentSettings = await getAppSettings();
+          const updatedSettings = { ...currentSettings, highContrastMode: enabled };
+
+          await AsyncStorage.setItem(appSettingsCacheKey(), JSON.stringify(updatedSettings));
+
+          const uid = auth.currentUser?.uid;
+          if (uid) {
+            try {
+              await setDoc(profileSettingsRef(uid), updatedSettings, { merge: true });
+              setThemeSyncError(null);
+            } catch (firebaseError: any) {
+              console.warn('Firebase sync failed, but contrast mode saved locally:', firebaseError);
+              setThemeSyncError('sync-failed');
+            }
+          } else {
+            setThemeSyncError(null);
+          }
         } catch (error: any) {
-          setThemeSyncError(error?.code === 'permission-denied' ? 'no-permission' : 'sync-failed');
+          console.error('Failed to save contrast mode:', error);
+          setThemeSyncError('sync-failed');
         }
       },
       toggleTheme: async () => {
