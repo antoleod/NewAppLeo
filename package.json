@@ -9,7 +9,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "lint": "tsc --noEmit",
-    "build": "expo export --platform web",
+    "build": "node scripts/clean-dist.mjs && expo export --platform web && node scripts/fix-web-export.mjs",
     "typecheck": "tsc --noEmit",
     "smoke": "node scripts/live-smoke.mjs"
   },
