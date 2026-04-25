@@ -8,7 +8,7 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(rootDir, '..');
 const distDir = path.join(projectRoot, 'dist');
 const port = 4173;
-const appBasePath = '/BabyFlow';
+const appBasePath = '/NewAppLeo';
 
 function mimeType(filePath) {
   const ext = path.extname(filePath).toLowerCase();
@@ -147,7 +147,7 @@ try {
   console.log('Session persisted after reload');
 
   await page.goto(`${baseUrl}/profile`, { waitUntil: 'load' });
-  await page.getByText(/Family and preferences|Famille et préférences|Familia y preferencias|Familie en voorkeuren/).first().waitFor({ timeout: 20000 });
+  await page.getByText(/Leo|Tu Beb|Baby Name|Parent\/Caregiver/).first().waitFor({ timeout: 20000 });
   await page.getByText('Log out', { exact: true }).click();
   await page.waitForURL(/\/login$/, { timeout: 20000 });
   await page.getByText('Welcome back').waitFor({ timeout: 20000 });

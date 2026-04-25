@@ -2,20 +2,20 @@
   "name": "BabyFlow",
   "short_name": "BabyFlow",
   "description": "Track baby feeding, sleep, diapers, and milestones.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/NewAppLeo/",
+  "scope": "/NewAppLeo/",
   "display": "standalone",
   "background_color": "#0f131a",
   "theme_color": "#0f131a",
   "lang": "en",
   "icons": [
     {
-      "src": "/logo192.png",
+      "src": "/NewAppLeo/logo192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/logo512.png",
+      "src": "/NewAppLeo/logo512.png",
       "sizes": "512x512",
       "type": "image/png"
     }

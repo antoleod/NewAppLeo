@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const distDir = join(process.cwd(), 'dist');
-const basePath = process.env.EXPO_BASE_PATH || '/AppLeo';
+const basePath = process.env.EXPO_BASE_PATH || '/NewAppLeo';
 
 function walk(dir) {
   const files = [];
@@ -15,6 +15,9 @@ function walk(dir) {
 }
 
 function withBase(path) {
+  if (path?.startsWith(`${basePath}/`) || path === basePath) {
+    return path;
+  }
   return `${basePath}${path}`;
 }
 
@@ -26,9 +29,12 @@ for (const file of walk(distDir).filter((path) => path.endsWith('.html'))) {
   let html = readFileSync(file, 'utf8');
   html = html
     .replaceAll('/BabyFlow/', `${basePath}/`)
+    .replaceAll('/AppLeo/', `${basePath}/`)
     .replaceAll('href="/manifest.json"', `href="${withBase('/manifest.json')}"`)
     .replaceAll('href="/logo192.png"', `href="${withBase('/logo192.png')}"`)
-    .replaceAll('href="/logo512.png"', `href="${withBase('/logo512.png')}"`);
+    .replaceAll('href="/logo512.png"', `href="${withBase('/logo512.png')}"`)
+    .replaceAll('src="/logo192.png"', `src="${withBase('/logo192.png')}"`)
+    .replaceAll('src="/logo512.png"', `src="${withBase('/logo512.png')}"`);
   writeFileSync(file, html);
 }
 
