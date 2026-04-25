@@ -450,7 +450,6 @@ export default function ProfileScreen() {
               label={t('profile.complete_onboarding', '⚠️ Complete el perfil para desbloquear todas las funciones')}
               onPress={() => Alert.alert(t('profile.complete_profile_tip', 'Complete el Perfil'), t('profile.complete_profile_body', 'Por favor, rellene todos los campos obligatorios para desbloquear todas las funciones de la aplicación.'))}
               style={[styles.onboardingButton, { backgroundColor: `${colors.alert}15`, borderColor: colors.alert }]}
-              textStyle={[styles.onboardingButtonText, { color: colors.alert }]}
               fullWidth
             />
           )}
@@ -470,7 +469,7 @@ export default function ProfileScreen() {
               setShowDatePicker(true);
             }}>
               <View style={{ pointerEvents: 'none' }}>
-                <Input label={t('profile.birth_date', 'Birth Date')} value={babyBirthDate} placeholder="YYYY-MM-DD" />
+                <Input label={t('profile.birth_date', 'Birth Date')} value={babyBirthDate} onChangeText={setBabyBirthDate} placeholder="YYYY-MM-DD" />
               </View>
             </Pressable>
 
@@ -534,7 +533,7 @@ export default function ProfileScreen() {
             <Pressable 
               onPress={handleSave}
               onPressIn={() => {
-                void triggerHaptic('impactLight');
+                void triggerHaptic('light');
                 buttonScale.value = withSpring(0.97, { damping: 15 });
               }}
               onPressOut={() => {

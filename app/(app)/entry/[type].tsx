@@ -12,6 +12,7 @@ import { BreastSide, EntryPayload, EntryRecord, EntryType } from '@/types';
 import { TimerWidget } from '@/components/TimerWidget';
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { DateTimeField } from '@/components/DateTimeField';
+import { FloatingGlassFooter, LevelPicker, LiveTimerPill, QuickActionCard, QuickNoteToggle } from '@/components/quickLog';
 import {
   getAppSettings,
   getMedicationPresetsBySymptom,
@@ -490,6 +491,7 @@ export default function EntryComposerScreen() {
   const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string; symptom?: string }>();
   const { addEntry, updateEntry, deleteEntry, entryById, entries } = useAppData();
   const type = (params.type as EntryType) || 'feed';
+  const activeType = type as EntryType;
   const editing = params.id ? entryById(String(params.id)) : undefined;
   const presetAmount = typeof params.presetAmount === 'string' ? Number(params.presetAmount) : undefined;
   const presetMode = typeof params.presetMode === 'string' ? (params.presetMode as 'breast' | 'bottle') : undefined;
@@ -521,6 +523,10 @@ export default function EntryComposerScreen() {
   const [saving, setSaving] = useState(false);
   const [sleepStartedAt, setSleepStartedAt] = useState<Date | null>(null);
   const [sleepNow, setSleepNow] = useState(new Date());
+  const [quickStartedAt, setQuickStartedAt] = useState<Date | null>(null);
+  const [quickNow, setQuickNow] = useState(new Date());
+  const [feedPath, setFeedPath] = useState<'breast' | 'bottle-timer' | 'bottle-now'>('bottle-now');
+  const [stoppedOnce, setStoppedOnce] = useState(false);
   const [largeTouchMode, setLargeTouchMode] = useState(false);
   const [savedMedicines, setSavedMedicines] = useState<SavedMedicine[]>([]);
   const [medicationSearch, setMedicationSearch] = useState('');
@@ -709,6 +715,12 @@ export default function EntryComposerScreen() {
     const timer = setInterval(() => setSleepNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, [sleepStartedAt]);
+
+  useEffect(() => {
+    if (!quickStartedAt) return;
+    const timer = setInterval(() => setQuickNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, [quickStartedAt]);
 
   useEffect(() => {
     if (type !== 'medication') return;
@@ -989,6 +1001,34 @@ export default function EntryComposerScreen() {
     router.back();
   }
 
+  const quickTimerMinutes = quickStartedAt ? Math.max(0, Math.floor((quickNow.getTime() - quickStartedAt.getTime()) / 60000)) : Number(durationMin) || 0;
+  const startQuickTimer = () => {
+    const started = new Date();
+    setQuickStartedAt(started);
+    setQuickNow(started);
+    setDurationMin('0');
+    setStoppedOnce(false);
+    setOccurredAt(started);
+    void triggerHaptic('light');
+  };
+  const stopQuickTimer = () => {
+    if (!quickStartedAt) return 0;
+    const stopped = new Date();
+    const minutes = Math.max(1, Math.round((stopped.getTime() - quickStartedAt.getTime()) / 60000));
+    setQuickStartedAt(null);
+    setQuickNow(stopped);
+    setDurationMin(String(minutes));
+    setOccurredAt(stopped);
+    setStoppedOnce(true);
+    void triggerHaptic('success');
+    return minutes;
+  };
+  const adjustDuration = (delta: number) => {
+    setDurationMin((current) => String(Math.max(0, (Number(current) || 0) + delta)));
+    void triggerHaptic('light');
+  };
+  const saveQuick = (payload?: EntryPayload, occurred?: Date) => handleSave({ payload: payload ?? buildPayload(), occurredAt: occurred, notes });
+
   const sleepLiveMinutes = sleepStartedAt ? Math.max(0, Math.floor((sleepNow.getTime() - sleepStartedAt.getTime()) / 60000)) : Number(durationMin) || 0;
   const sleepDisplay = formatCompactDuration(sleepLiveMinutes);
   const closeComposer = () => {
@@ -1035,7 +1075,138 @@ export default function EntryComposerScreen() {
     });
   };
 
-  if (type === 'sleep') {
+  if (activeType === 'feed') {
+    const isBreast = feedPath === 'breast';
+    const isBottleTimer = feedPath === 'bottle-timer';
+    const isRunning = Boolean(quickStartedAt);
+    const amount = Number(amountMl) || 0;
+    const primaryLabel = isBreast
+      ? isRunning
+        ? 'Stop & Save'
+        : editing
+          ? 'Update Feed'
+          : 'Start Breastfeeding'
+      : isBottleTimer
+        ? isRunning
+          ? 'Stop & Save'
+          : stoppedOnce || editing
+            ? 'Save Bottle'
+            : 'Start Bottle Timer'
+        : editing
+          ? 'Update Bottle'
+          : 'Save Bottle';
+    const saveBreast = async () => {
+      if (!isRunning && !editing && !stoppedOnce) {
+        setMode('breast');
+        startQuickTimer();
+        return;
+      }
+      const stoppedMinutes = isRunning ? stopQuickTimer() : Number(durationMin) || 0;
+      await saveQuick({
+        mode: 'breast',
+        side: side as BreastSide,
+        durationMin: Math.max(1, stoppedMinutes || Number(durationMin) || 1),
+        amountMl: amount,
+        notes,
+      }, new Date());
+    };
+    const saveBottleTimer = async () => {
+      if (!isRunning && !editing && !stoppedOnce) {
+        setMode('bottle');
+        startQuickTimer();
+        return;
+      }
+      const stoppedMinutes = isRunning ? stopQuickTimer() : Number(durationMin) || 0;
+      await saveQuick({
+        mode: 'bottle',
+        durationMin: Math.max(0, stoppedMinutes || Number(durationMin) || 0),
+        amountMl: amount,
+        notes,
+      }, new Date());
+    };
+    const saveBottleNow = () => saveQuick({ mode: 'bottle', amountMl: amount, durationMin: 0, notes });
+    const handleFeedPrimary = () => {
+      if (isBreast) return void saveBreast();
+      if (isBottleTimer) return void saveBottleTimer();
+      return void saveBottleNow();
+    };
+
+    return (
+      <Page scroll={false} contentStyle={styles.sleepPage}>
+        <View style={styles.sleepShell}>
+          <View style={styles.sleepHeader}>
+            <View style={styles.sleepHeaderLeft}>
+              <View style={styles.sleepIcon}><Text style={styles.sleepIconText}>{isBreast ? '🤱' : '🍼'}</Text></View>
+              <View style={styles.sleepHeaderCopy}>
+                <Text style={styles.sleepTitle}>{isBreast ? 'Breastfeeding' : 'Bottle'}</Text>
+                <Text style={styles.sleepSubtitle}>Quick log</Text>
+              </View>
+            </View>
+            <Pressable onPress={closeComposer} hitSlop={10} style={({ pressed }) => [styles.sleepClose, pressed && styles.sleepPressed]}>
+              <Text style={styles.sleepCloseText}>X</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.sleepTimeRow}>
+            <View style={styles.sleepTimePill}><DateTimeField label="Time" value={occurredAt} onChange={setOccurredAt} /></View>
+            <Pressable onPress={() => setOccurredAt(new Date())} style={({ pressed }) => [styles.sleepTinyChip, pressed && styles.sleepPressed]}>
+              <Text style={styles.sleepTinyChipText}>Now</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.quickEntryGrid}>
+            <QuickActionCard label="Breastfeeding" detail="Timer + side" icon="body-outline" color="#5ECCA0" active={isBreast} onPress={() => { setFeedPath('breast'); setMode('breast'); }} />
+            <QuickActionCard label="Bottle timer" detail="Timer + ml" icon="timer-outline" color="#6BA3FF" active={isBottleTimer} onPress={() => { setFeedPath('bottle-timer'); setMode('bottle'); }} />
+            <QuickActionCard label="Log amount" detail="No timer" icon="water-outline" color="#879DFF" active={feedPath === 'bottle-now'} onPress={() => { setFeedPath('bottle-now'); setMode('bottle'); }} />
+          </View>
+
+          {isBreast || isBottleTimer ? <LiveTimerPill label={isBreast ? 'Breastfeeding' : 'Bottle'} minutes={quickTimerMinutes} running={isRunning} /> : null}
+
+          {isBreast ? (
+            <View style={styles.quickEntryPanel}>
+              <View style={styles.sleepPresetRow}>
+                {(['left', 'right', 'both'] as const).map((nextSide) => (
+                  <Pressable key={nextSide} onPress={() => setSide(nextSide)} style={({ pressed }) => [styles.sleepPresetButton, side === nextSide && styles.sleepPresetActive, pressed && styles.sleepPressed]}>
+                    <Text style={[styles.sleepPresetText, side === nextSide && styles.sleepPresetTextActive]}>{nextSide === 'left' ? 'Left' : nextSide === 'right' ? 'Right' : 'Both'}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              {(stoppedOnce || editing) && !isRunning ? (
+                <View style={styles.sleepAdjustRow}>
+                  <Pressable onPress={() => adjustDuration(-5)} style={({ pressed }) => [styles.sleepAdjustButton, pressed && styles.sleepPressed]}><Text style={styles.sleepAdjustText}>-5 min</Text></Pressable>
+                  <Pressable onPress={() => adjustDuration(5)} style={({ pressed }) => [styles.sleepAdjustButton, pressed && styles.sleepPressed]}><Text style={styles.sleepAdjustText}>+5 min</Text></Pressable>
+                </View>
+              ) : null}
+              <Pressable onPress={() => setNotesOpen((current) => !current)} style={({ pressed }) => [styles.sleepNoteButton, pressed && styles.sleepPressed]}>
+                <Text style={styles.sleepNoteText}>{notesOpen ? '- Estimated ml' : '+ Estimated ml'}</Text>
+              </Pressable>
+              {notesOpen ? <QuantityPicker label="Estimated ml" value={amount} onChange={(value) => setAmountMl(String(value))} presets={[30, 60, 90, 120]} /> : null}
+            </View>
+          ) : null}
+
+          {!isBreast ? (
+            <View style={styles.quickEntryPanel}>
+              <QuantityPicker label="Amount" value={amount} onChange={(value) => setAmountMl(String(value))} presets={[90, 120, 150, 180]} />
+            </View>
+          ) : null}
+
+          <QuickNoteToggle open={notesOpen && !isBreast} onPress={() => setNotesOpen((current) => !current)} />
+          {notesOpen && !isBreast ? <Input label="Note" value={notes} onChangeText={setNotes} multiline placeholder="Optional" /> : null}
+
+          <FloatingGlassFooter
+            primaryLabel={primaryLabel}
+            onPrimary={handleFeedPrimary}
+            loading={saving}
+            onSecondary={closeComposer}
+            dangerLabel={editing ? 'Delete' : undefined}
+            onDanger={editing ? handleDelete : undefined}
+          />
+        </View>
+      </Page>
+    );
+  }
+
+  if (activeType === 'sleep') {
     const isRunning = Boolean(sleepStartedAt);
     const sleepPrimaryLabel = editing && !isRunning ? 'Update Sleep' : isRunning ? 'Stop & Save' : 'Start Sleep';
 
@@ -1128,48 +1299,76 @@ export default function EntryComposerScreen() {
             <Input label="Note" value={notes} onChangeText={setNotes} multiline placeholder="Optional" />
           ) : null}
 
-          <View style={styles.sleepBottomBar}>
-            <Pressable
-              onPress={handleSleepPrimary}
-              disabled={saving}
-              accessibilityRole="button"
-              accessibilityLabel={sleepPrimaryLabel}
-              style={({ pressed }) => [styles.sleepPrimaryButton, (pressed || saving) && styles.sleepPrimaryPressed]}
-            >
-              <Text style={styles.sleepPrimaryText}>{saving ? 'Saving...' : sleepPrimaryLabel}</Text>
-            </Pressable>
-            <View style={styles.sleepSecondaryRow}>
-              <Pressable onPress={closeComposer} style={({ pressed }) => [styles.sleepSecondaryButton, pressed && styles.sleepPressed]}>
-                <Text style={styles.sleepSecondaryText}>Cancel</Text>
-              </Pressable>
-              {editing ? (
-                <Pressable onPress={handleDelete} style={({ pressed }) => [styles.sleepSecondaryButton, pressed && styles.sleepPressed]}>
-                  <Text style={styles.sleepDeleteText}>Delete</Text>
-                </Pressable>
-              ) : null}
-            </View>
-          </View>
+          <FloatingGlassFooter
+            primaryLabel={sleepPrimaryLabel}
+            onPrimary={handleSleepPrimary}
+            loading={saving}
+            onSecondary={closeComposer}
+            dangerLabel={editing ? 'Delete' : undefined}
+            onDanger={editing ? handleDelete : undefined}
+          />
         </View>
       </Page>
     );
   }
 
-  if (type === 'diaper' || type === 'food' || type === 'medication') {
-    const quickTitle = type === 'diaper' ? 'Pañal' : type === 'food' ? 'Comida' : 'Medicamento';
-    const quickIcon = type === 'diaper' ? '🧷' : type === 'food' ? '🍲' : '💊';
+  if (activeType === 'pump') {
+    const isRunning = Boolean(quickStartedAt);
+    const amount = Number(amountMl) || 0;
+    const primaryLabel = editing && !isRunning ? 'Update Pump' : isRunning ? 'Stop & Save' : stoppedOnce ? 'Save Pump' : 'Start Pump';
+    const handlePumpPrimary = async () => {
+      if (!isRunning && !editing && !stoppedOnce) {
+        startQuickTimer();
+        return;
+      }
+      const stoppedMinutes = isRunning ? stopQuickTimer() : Number(durationMin) || 0;
+      await saveQuick({ durationMin: Math.max(1, stoppedMinutes || Number(durationMin) || 1), amountMl: amount, notes }, new Date());
+    };
+
+    return (
+      <Page scroll={false} contentStyle={styles.sleepPage}>
+        <View style={styles.sleepShell}>
+          <View style={styles.sleepHeader}>
+            <View style={styles.sleepHeaderLeft}>
+              <View style={styles.sleepIcon}><Text style={styles.sleepIconText}>🍼</Text></View>
+              <View style={styles.sleepHeaderCopy}>
+                <Text style={styles.sleepTitle}>Pump</Text>
+                <Text style={styles.sleepSubtitle}>Timer + milk</Text>
+              </View>
+            </View>
+            <Pressable onPress={closeComposer} hitSlop={10} style={({ pressed }) => [styles.sleepClose, pressed && styles.sleepPressed]}><Text style={styles.sleepCloseText}>X</Text></Pressable>
+          </View>
+          <View style={styles.sleepTimeRow}>
+            <View style={styles.sleepTimePill}><DateTimeField label="Time" value={occurredAt} onChange={setOccurredAt} /></View>
+            <Pressable onPress={() => setOccurredAt(new Date())} style={({ pressed }) => [styles.sleepTinyChip, pressed && styles.sleepPressed]}><Text style={styles.sleepTinyChipText}>Now</Text></Pressable>
+          </View>
+          <LiveTimerPill label="Pump" minutes={quickTimerMinutes} running={isRunning} />
+          <QuantityPicker label="Amount" value={amount} onChange={(value) => setAmountMl(String(value))} presets={[30, 60, 90, 120]} />
+          <QuickNoteToggle open={notesOpen} onPress={() => setNotesOpen((current) => !current)} />
+          {notesOpen ? <Input label="Note" value={notes} onChangeText={setNotes} multiline placeholder="Optional" /> : null}
+          <FloatingGlassFooter primaryLabel={primaryLabel} onPrimary={handlePumpPrimary} loading={saving} onSecondary={closeComposer} dangerLabel={editing ? 'Delete' : undefined} onDanger={editing ? handleDelete : undefined} />
+        </View>
+      </Page>
+    );
+  }
+
+  if (activeType === 'diaper' || activeType === 'food' || activeType === 'medication') {
+    const quickTitle = activeType === 'diaper' ? 'Pañal' : activeType === 'food' ? 'Comida' : 'Medicamento';
+    const quickIcon = activeType === 'diaper' ? '🧷' : activeType === 'food' ? '🍲' : '💊';
     const quickPrimary = editing ? 'Update' : 'Save';
     const diaperOptions = [
-      { key: 'pee', label: 'Pipi', active: Number(pee) > 0, onPress: () => setPee((current) => (Number(current) > 0 ? '0' : '1')) },
-      { key: 'poop', label: 'Caca', active: Number(poop) > 0, onPress: () => setPoop((current) => (Number(current) > 0 ? '0' : '1')) },
-      { key: 'vomit', label: 'Vomi', active: Number(vomit) > 0, onPress: () => setVomit((current) => (Number(current) > 0 ? '0' : '1')) },
+      { key: 'pee', label: 'Pipi', value: Number(pee) || 0, onChange: (value: number) => setPee(String(value)), color: '#6BA3FF' },
+      { key: 'poop', label: 'Caca', value: Number(poop) || 0, onChange: (value: number) => setPoop(String(value)), color: '#D9A441' },
+      { key: 'vomit', label: 'Vomi', value: Number(vomit) || 0, onChange: (value: number) => setVomit(String(value)), color: '#F08A9A' },
     ];
     const foodPresets = ['Puré', 'Fruit', 'Céréales', 'Yaourt', 'Légumes', 'Eau'];
     const medicationPresets = [
+      ...rankedSavedMedicines.slice(0, 4).map((medicine) => ({ name: medicine.name, dose: medicine.dosage ?? '' })),
       { name: 'Amoxicilline', dose: '' },
-      { name: 'Nurofen', dose: '2.5 ml' },
-      { name: 'Dafalgan', dose: '2.5 ml' },
+      { name: 'Nurofen', dose: '' },
+      { name: 'Dafalgan', dose: '' },
       { name: 'Autre', dose: '' },
-    ];
+    ].filter((item, index, list) => item.name && list.findIndex((candidate) => candidate.name.toLowerCase() === item.name.toLowerCase()) === index).slice(0, 6);
 
     return (
       <Page scroll={false} contentStyle={styles.sleepPage}>
@@ -1198,25 +1397,24 @@ export default function EntryComposerScreen() {
             </Pressable>
           </View>
 
-          {type === 'diaper' ? (
-            <View style={styles.quickEntryGrid}>
+          {activeType === 'diaper' ? (
+            <View style={styles.quickEntryPanel}>
               {diaperOptions.map((item) => (
-                <Pressable
+                <LevelPicker
                   key={item.key}
-                  onPress={() => {
-                    item.onPress();
+                  label={item.label}
+                  value={item.value}
+                  onChange={(value) => {
+                    item.onChange(value);
                     void triggerHaptic('light');
                   }}
-                  style={({ pressed }) => [styles.quickEntryTile, item.active && styles.quickEntryTileActive, pressed && styles.sleepPressed]}
-                >
-                  <Text style={[styles.quickEntryTileText, item.active && styles.quickEntryTileTextActive]}>{item.label}</Text>
-                  <Text style={styles.quickEntryTileHint}>{item.active ? 'On' : 'Tap'}</Text>
-                </Pressable>
+                  color={item.color}
+                />
               ))}
             </View>
           ) : null}
 
-          {type === 'food' ? (
+          {activeType === 'food' ? (
             <View style={styles.quickEntryPanel}>
               <Text style={styles.quickEntryLabel}>Choose food</Text>
               <View style={styles.quickEntryChipGrid}>
@@ -1235,7 +1433,7 @@ export default function EntryComposerScreen() {
             </View>
           ) : null}
 
-          {type === 'medication' ? (
+          {activeType === 'medication' ? (
             <View style={styles.quickEntryPanel}>
               <Text style={styles.quickEntryLabel}>Choose medicine</Text>
               <View style={styles.quickEntryChipGrid}>
@@ -1266,25 +1464,100 @@ export default function EntryComposerScreen() {
 
           {notesOpen ? <Input label="Note" value={notes} onChangeText={setNotes} multiline placeholder="Optional" /> : null}
 
-          <View style={styles.sleepBottomBar}>
-            <Pressable
-              onPress={() => void handleSave()}
-              disabled={saving || (type === 'medication' && !name.trim())}
-              style={({ pressed }) => [styles.sleepPrimaryButton, (pressed || saving) && styles.sleepPrimaryPressed, type === 'medication' && !name.trim() && { opacity: 0.45 }]}
-            >
-              <Text style={styles.sleepPrimaryText}>{saving ? 'Saving...' : quickPrimary}</Text>
-            </Pressable>
-            <View style={styles.sleepSecondaryRow}>
-              <Pressable onPress={closeComposer} style={({ pressed }) => [styles.sleepSecondaryButton, pressed && styles.sleepPressed]}>
-                <Text style={styles.sleepSecondaryText}>Cancel</Text>
-              </Pressable>
-              {editing ? (
-                <Pressable onPress={handleDelete} style={({ pressed }) => [styles.sleepSecondaryButton, pressed && styles.sleepPressed]}>
-                  <Text style={styles.sleepDeleteText}>Delete</Text>
-                </Pressable>
-              ) : null}
+          <FloatingGlassFooter
+            primaryLabel={quickPrimary}
+            onPrimary={() => void handleSave()}
+            loading={saving}
+            disabled={activeType === 'medication' && !name.trim()}
+            onSecondary={closeComposer}
+            dangerLabel={editing ? 'Delete' : undefined}
+            onDanger={editing ? handleDelete : undefined}
+          />
+        </View>
+      </Page>
+    );
+  }
+
+  if (activeType === 'measurement') {
+    return (
+      <Page scroll={false} contentStyle={styles.sleepPage}>
+        <View style={styles.sleepShell}>
+          <View style={styles.sleepHeader}>
+            <View style={styles.sleepHeaderLeft}>
+              <View style={styles.sleepIcon}><Text style={styles.sleepIconText}>📏</Text></View>
+              <View style={styles.sleepHeaderCopy}>
+                <Text style={styles.sleepTitle}>Measurement</Text>
+                <Text style={styles.sleepSubtitle}>Compact log</Text>
+              </View>
             </View>
+            <Pressable onPress={closeComposer} hitSlop={10} style={({ pressed }) => [styles.sleepClose, pressed && styles.sleepPressed]}><Text style={styles.sleepCloseText}>X</Text></Pressable>
           </View>
+          <View style={styles.sleepTimeRow}>
+            <View style={styles.sleepTimePill}><DateTimeField label="Time" value={occurredAt} onChange={setOccurredAt} /></View>
+            <Pressable onPress={() => setOccurredAt(new Date())} style={({ pressed }) => [styles.sleepTinyChip, pressed && styles.sleepPressed]}><Text style={styles.sleepTinyChipText}>Now</Text></Pressable>
+          </View>
+          <View style={styles.quickTwoCol}>
+            <View style={styles.quickHalf}><Input label="Weight" value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" inputMode="decimal" placeholder="kg" /></View>
+            <View style={styles.quickHalf}><Input label="Height" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" inputMode="decimal" placeholder="cm" /></View>
+            <View style={styles.quickHalf}><Input label="Temp" value={tempC} onChangeText={setTempC} keyboardType="decimal-pad" inputMode="decimal" placeholder="C" /></View>
+            <View style={styles.quickHalf}><Input label="Head" value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" inputMode="decimal" placeholder="cm" /></View>
+          </View>
+          <QuickNoteToggle open={notesOpen} onPress={() => setNotesOpen((current) => !current)} />
+          {notesOpen ? <Input label="Note" value={notes} onChangeText={setNotes} multiline placeholder="Optional" /> : null}
+          <FloatingGlassFooter primaryLabel={editing ? 'Update' : 'Save'} onPrimary={() => void handleSave()} loading={saving} onSecondary={closeComposer} dangerLabel={editing ? 'Delete' : undefined} onDanger={editing ? handleDelete : undefined} />
+        </View>
+      </Page>
+    );
+  }
+
+  if (activeType === 'milestone' || activeType === 'symptom') {
+    const isMilestone = activeType === 'milestone';
+    const symptomOptions = ['Fever', 'Cough', 'Pain', 'Tired', 'Rash', 'Other'];
+    return (
+      <Page scroll={false} contentStyle={styles.sleepPage}>
+        <View style={styles.sleepShell}>
+          <View style={styles.sleepHeader}>
+            <View style={styles.sleepHeaderLeft}>
+              <View style={styles.sleepIcon}><Text style={styles.sleepIconText}>{isMilestone ? '✨' : '🌡️'}</Text></View>
+              <View style={styles.sleepHeaderCopy}>
+                <Text style={styles.sleepTitle}>{isMilestone ? 'Milestone' : 'Symptom'}</Text>
+                <Text style={styles.sleepSubtitle}>Optional details</Text>
+              </View>
+            </View>
+            <Pressable onPress={closeComposer} hitSlop={10} style={({ pressed }) => [styles.sleepClose, pressed && styles.sleepPressed]}><Text style={styles.sleepCloseText}>X</Text></Pressable>
+          </View>
+          <View style={styles.sleepTimeRow}>
+            <View style={styles.sleepTimePill}><DateTimeField label="Time" value={occurredAt} onChange={setOccurredAt} /></View>
+            <Pressable onPress={() => setOccurredAt(new Date())} style={({ pressed }) => [styles.sleepTinyChip, pressed && styles.sleepPressed]}><Text style={styles.sleepTinyChipText}>Now</Text></Pressable>
+          </View>
+          {isMilestone ? (
+            <View style={styles.quickEntryPanel}>
+              <Input label="Title" value={title} onChangeText={setTitle} placeholder="First smile" />
+              <Pressable
+                onPress={async () => {
+                  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+                  if (!result.canceled && result.assets[0]?.uri) setPhotoUri(result.assets[0].uri);
+                }}
+                style={({ pressed }) => [styles.sleepAdjustButton, pressed && styles.sleepPressed]}
+              >
+                <Text style={styles.sleepAdjustText}>{photoUri ? 'Replace photo' : 'Add photo'}</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.quickEntryChipGrid}>
+              {symptomOptions.map((item) => {
+                const selected = symptoms.includes(item.toLowerCase());
+                return (
+                  <Pressable key={item} onPress={() => setSymptoms((current) => toggleListItem(current, item.toLowerCase()))} style={({ pressed }) => [styles.quickEntryChip, selected && styles.quickEntryChipActive, pressed && styles.sleepPressed]}>
+                    <Text style={[styles.quickEntryChipText, selected && styles.quickEntryChipTextActive]}>{item}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+          <QuickNoteToggle open={notesOpen} onPress={() => setNotesOpen((current) => !current)} />
+          {notesOpen ? <Input label="Note" value={notes} onChangeText={setNotes} multiline placeholder="Optional" /> : null}
+          <FloatingGlassFooter primaryLabel={editing ? 'Update' : 'Save'} onPrimary={() => void handleSave()} loading={saving} onSecondary={closeComposer} dangerLabel={editing ? 'Delete' : undefined} onDanger={editing ? handleDelete : undefined} />
         </View>
       </Page>
     );
@@ -2588,6 +2861,15 @@ const styles = StyleSheet.create({
   },
   quickEntryPanel: {
     gap: 10,
+  },
+  quickTwoCol: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickHalf: {
+    flexBasis: '47%',
+    flexGrow: 1,
   },
   quickEntryLabel: {
     color: '#AAB8DF',

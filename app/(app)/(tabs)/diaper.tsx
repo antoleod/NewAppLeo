@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { ComponentProps, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,14 +17,14 @@ interface LevelSelectorProps {
   value: number;
   onChange: (val: number) => void;
   activeColor: string;
-  icon: keyof typeof Ionicons.prototype.props.name;
+  icon: ComponentProps<typeof Ionicons>['name'];
 }
 
 function LevelSelector({ label, value, onChange, activeColor, icon }: LevelSelectorProps) {
   const { theme } = useTheme();
 
   const handlePress = (v: number) => {
-    void triggerHaptic('impactLight');
+    void triggerHaptic('light');
     onChange(v);
   };
 
@@ -86,7 +86,7 @@ export default function DiaperEntryScreen() {
   const [occurredAt] = useState(existingEntry ? new Date(existingEntry.occurredAt) : new Date());
 
   const handleSave = async () => {
-    void triggerHaptic('notificationSuccess');
+    void triggerHaptic('success');
     const payload = { pee, poop, vomit };
     if (id) {
       await updateEntry(String(id), { payload, notes, occurredAt: occurredAt.toISOString() });
@@ -168,11 +168,11 @@ export default function DiaperEntryScreen() {
         {showNotes && (
           <Animated.View entering={FadeInDown}>
             <Input
+              label="Notes"
               value={notes}
               onChangeText={setNotes}
               placeholder="Notes..."
               multiline
-              style={{ height: 60 }}
             />
           </Animated.View>
         )}
