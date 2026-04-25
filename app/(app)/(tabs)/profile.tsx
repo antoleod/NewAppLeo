@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, AppState, Image, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { Alert, AppState, Image, Pressable, StyleSheet, Text, View, useWindowDimensions, Platform, Modal } from 'react-native';
+import Animated, { useAnimatedStyle, withSpring, useSharedValue, useAnimatedProps, withTiming } from 'react-native-reanimated';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Button, Card, EmptyState, EntryCard, Heading, Input, Page, Segment } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -26,13 +30,88 @@ import { getEntrySubtitle, getEntryTitle } from '@/utils/entries';
 import { buildDailySummary } from '@/lib/notifications';
 import { getLocalPairingSession } from '@/services/pairingService';
 import { isVoiceCaptureAvailable, startVoiceCapture } from '@/lib/voiceCapture';
+import { triggerHaptic } from '@/lib/mobile';
+
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 const languageOptions = [
-  { label: 'FR', value: 'fr' },
-  { label: 'ES', value: 'es' },
-  { label: 'EN', value: 'en' },
-  { label: 'NL', value: 'nl' },
+  { label: 'FR', value: 'fr', flag: '🇫🇷' },
+  { label: 'ES', value: 'es', flag: '🇪🇸' },
+  { label: 'EN', value: 'en', flag: '🇬🇧' },
+  { label: 'NL', value: 'nl', flag: '🇳🇱' },
 ];
+
+function LanguageSelector({ value, onChange, options }: { value: string, onChange: (v: string) => void, options: typeof languageOptions }) {
+  const { theme, colors } = useTheme();
+  const selectedIndex = options.findIndex(o => o.value === value);
+  const translateX = useSharedValue(0);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    if (width > 0) {
+      const segmentWidth = width / options.length;
+      translateX.value = withSpring(selectedIndex * segmentWidth, { damping: 20, stiffness: 140 });
+    }
+  }, [selectedIndex, width, options.length]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+    width: width ? width / options.length : '25%',
+  }));
+
+  return (
+    <View 
+      style={[styles.langContainer, { backgroundColor: `${colors.border}33`, borderColor: colors.border }]}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+    >
+      {width > 0 && (
+        <Animated.View style={[styles.langIndicator, { backgroundColor: theme.accent }, animatedStyle]} />
+      )}
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <Pressable
+            key={opt.value}
+            onPress={() => {
+              void triggerHaptic('selection');
+              onChange(opt.value);
+            }}
+            style={styles.langOption}
+          >
+            <Text style={[styles.langText, { color: active ? '#FFFFFF' : colors.muted, fontWeight: active ? '800' : '600', fontSize: 18 }]}>
+              {opt.flag}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function AgeBadge({ birthDate, accentColor }: { birthDate: string, accentColor: string }) {
+  const age = useMemo(() => {
+    if (!birthDate) return null;
+    const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return null;
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return null;
+
+    if (diffDays < 30) return `${diffDays}d`;
+    const months = Math.floor(diffDays / 30.4375);
+    if (months < 12) return `${months}m`;
+    const years = Math.floor(months / 12);
+    const remMonths = months % 12;
+    return remMonths > 0 ? `${years}y ${remMonths}m` : `${years}y`;
+  }, [birthDate]);
+
+  if (!age) return null;
+  return (
+    <View style={[styles.ageBadge, { backgroundColor: `${accentColor}20`, borderColor: `${accentColor}40` }]}>
+      <Text style={[styles.ageBadgeText, { color: accentColor }]}>👶 {age}</Text>
+    </View>
+  );
+}
 
 export default function ProfileScreen() {
   const { width } = useWindowDimensions();
@@ -53,6 +132,8 @@ export default function ProfileScreen() {
   const [activeBabyId, setBabyActiveId] = useState<string | null>(null);
   const [visibility, setVisibility] = useState(defaultModuleVisibility);
   const [settings, setSettings] = useState(defaultAppSettings);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDate, setTempDate] = useState(new Date());
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [queuedSyncCount, setQueuedSyncCount] = useState(0);
   const [voiceStatus, setVoiceStatus] = useState('Idle');
@@ -62,6 +143,14 @@ export default function ProfileScreen() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const milestones = useMemo(() => entries.filter((entry) => entry.type === 'milestone').slice(0, 5), [entries]);
   const themeVariantLabel = themeVariantDescriptions[themeVariant]?.label ?? themeVariant;
+
+  // Shared value para el efecto de pulsación suave
+  const buttonScale = useSharedValue(1);
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+  }));
+
   const isPhone = width < 768;
 
   useEffect(() => {
@@ -78,18 +167,23 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     const refresh = async () => {
-      const items = await getBabies();
-      setBabies(items);
-      const active = await getActiveBaby();
-      setBabyActiveId(active?.id ?? null);
-      setVisibility(await getModuleVisibility());
-      const nextSettings = await getAppSettings();
-      setSettings(nextSettings);
-      setCustomPrimary(nextSettings.customTheme.primary);
-      setCustomSecondary(nextSettings.customTheme.secondary);
-      setCustomBackgroundAlt(nextSettings.customTheme.backgroundAlt);
-      setPairingCode((await getLocalPairingSession())?.code ?? null);
-      setQueuedSyncCount(0);
+      try {
+        const items = await getBabies();
+        setBabies(items);
+        const active = await getActiveBaby();
+        setBabyActiveId(active?.id ?? null);
+        setVisibility(await getModuleVisibility());
+        const nextSettings = await getAppSettings();
+        setSettings(nextSettings);
+        setCustomPrimary(nextSettings.customTheme.primary);
+        setCustomSecondary(nextSettings.customTheme.secondary);
+        setCustomBackgroundAlt(nextSettings.customTheme.backgroundAlt);
+        setPairingCode((await getLocalPairingSession())?.code ?? null);
+        setQueuedSyncCount(0);
+      } catch (error) {
+        console.error("Error refreshing profile data:", error);
+        Alert.alert(t('common.error', 'Error'), t('profile.load_data_failed', 'Could not load profile data. Please check your internet connection.'));
+      }
     };
 
     void refresh();
@@ -102,16 +196,80 @@ export default function ProfileScreen() {
     return () => subscription.remove();
   }, []);
 
+  const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      if (selectedDate) {
+        confirmDate(selectedDate);
+      }
+    } else {
+      // En iOS, solo actualizamos la fecha temporal mientras el modal está abierto
+      if (selectedDate) {
+        setTempDate(selectedDate);
+      }
+    }
+  };
+
+  const confirmDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    setBabyBirthDate(`${y}-${m}-${d}`);
+    setShowDatePicker(false);
+  };
+
+  const dateValueForPicker = useMemo(() => {
+    if (!babyBirthDate) return new Date();
+    const parts = babyBirthDate.split('-').map(Number);
+    if (parts.length === 3 && !isNaN(parts[0])) {
+      return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+    return new Date();
+  }, [babyBirthDate]);
+
   async function handleSave() {
     try {
+      // 1. Validación de campos de texto obligatorios
+      if (!caregiverName.trim() || !babyName.trim()) {
+        Alert.alert(t('common.error', 'Error'), t('profile.error_name_required', 'Names are required.'));
+        return;
+      }
+
+      // 2. Validación de formato de fecha (YYYY-MM-DD) para babyBirthDate
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!babyBirthDate.trim().match(dateRegex)) {
+        Alert.alert(t('common.error', 'Error'), t('profile.error_invalid_birth_date_format', 'Invalid birth date format. Please use YYYY-MM-DD.'));
+        return;
+      }
+      const parsedDate = new Date(babyBirthDate.trim());
+      if (isNaN(parsedDate.getTime())) {
+        Alert.alert(t('common.error', 'Error'), t('profile.error_invalid_birth_date', 'Invalid birth date.'));
+        return;
+      }
+
+      // 3. Validación numérica para peso y altura
+      const parseAndValidateNumber = (value: string, fieldName: string) => {
+        const num = Number(value);
+        if (isNaN(num) || num <= 0) {
+          Alert.alert(t('common.error', 'Error'), t('profile.error_invalid_number', `Invalid ${fieldName}. Please enter a positive number.`));
+          return null;
+        }
+        return num;
+      };
+
+      const parsedBirthWeightKg = parseAndValidateNumber(birthWeightKg, t('profile.birth_weight_field', 'Birth Weight'));
+      const parsedCurrentWeightKg = parseAndValidateNumber(currentWeightKg, t('profile.current_weight_field', 'Current Weight'));
+      const parsedHeightCm = parseAndValidateNumber(heightCm, t('profile.height_field', 'Height'));
+      if (parsedBirthWeightKg === null || parsedCurrentWeightKg === null || parsedHeightCm === null) return;
+
       const nextPhoto = babyPhotoUri || undefined;
       await saveProfile({
         caregiverName: caregiverName.trim(),
         babyName: babyName.trim(),
         babyBirthDate: babyBirthDate.trim(),
-        birthWeightKg: Number(birthWeightKg) || undefined,
-        currentWeightKg: Number(currentWeightKg) || undefined,
-        heightCm: Number(heightCm) || undefined,
+        birthWeightKg: parsedBirthWeightKg,
+        currentWeightKg: parsedCurrentWeightKg,
+        heightCm: parsedHeightCm,
         babyNotes: babyNotes.trim() || undefined,
         babyPhotoUri: nextPhoto,
         language: language as any,
@@ -178,9 +336,8 @@ export default function ProfileScreen() {
 
   async function handleSyncNow() {
     try {
-      if (!profile) throw new Error('You must be signed in.');
+      if (!profile) throw new Error(t('auth.error_signed_in', 'You must be signed in.'));
       setQueuedSyncCount(0);
-      Alert.alert('Sync complete', 'No local sync queue is used anymore.');
     } catch (error: any) {
       Alert.alert('Sync failed', error?.message ?? 'Could not sync queued changes.');
     }
@@ -266,13 +423,16 @@ export default function ProfileScreen() {
 
   return (
     <Page contentStyle={{ gap: isPhone ? 12 : 16, paddingBottom: 24 }}>
-        <Card style={{ padding: isPhone ? 16 : 20, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-            <Pressable onPress={handlePickPhoto} style={{ width: 80, height: 80, borderRadius: 24, overflow: 'hidden', backgroundColor: colors.backgroundAlt, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.border }}>
+        <Card style={[styles.mainCard, { borderColor: colors.border, backgroundColor: colors.surface, padding: isPhone ? 16 : 20 }]}>
+          <View style={styles.profileHeader}>
+            <Pressable onPress={handlePickPhoto} style={[styles.photoButton, { backgroundColor: colors.backgroundAlt, borderColor: colors.border }]}>
               {babyPhotoUri ? <Image source={{ uri: babyPhotoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={{ color: colors.primary, fontWeight: '900', fontSize: 12 }}>📷</Text>}
             </Pressable>
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={{ color: colors.text, fontSize: 24, fontWeight: '800' }}>{babyName || 'Tu Bebé'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ color: colors.text, fontSize: 24, fontWeight: '800' }}>{babyName || 'Tu Bebé'}</Text>
+                <AgeBadge birthDate={babyBirthDate} accentColor={theme.accent} />
+              </View>
               <Text style={{ color: colors.muted, fontSize: 14 }}>{babyBirthDate || 'Fecha de nacimiento'}</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
                 <View style={{ backgroundColor: `${theme.accent}20`, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
@@ -285,40 +445,115 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {!profile?.hasCompletedOnboarding && (
-            <View style={{ backgroundColor: `${colors.alert}15`, borderColor: colors.alert, borderWidth: 1, borderRadius: 16, padding: 12, marginBottom: 16 }}>
-              <Text style={{ color: colors.alert, fontSize: 13, fontWeight: '700', textAlign: 'center' }}>⚠️ Completa el perfil para desbloquear todas las funciones</Text>
-            </View>
+          {!profile?.hasCompletedOnboarding && ( // Este chequeo asegura que el botón solo se muestre si el onboarding no está completo
+            <Button
+              label={t('profile.complete_onboarding', '⚠️ Complete el perfil para desbloquear todas las funciones')}
+              onPress={() => Alert.alert(t('profile.complete_profile_tip', 'Complete el Perfil'), t('profile.complete_profile_body', 'Por favor, rellene todos los campos obligatorios para desbloquear todas las funciones de la aplicación.'))}
+              style={[styles.onboardingButton, { backgroundColor: `${colors.alert}15`, borderColor: colors.alert }]}
+              textStyle={[styles.onboardingButtonText, { color: colors.alert }]}
+              fullWidth
+            />
           )}
 
           <View style={{ gap: 12 }}>
             <View style={{ flexDirection: isPhone ? 'column' : 'row', gap: 8 }}>
               <View style={{ flex: 1 }}>
-                <Input label="Padre/Madre" value={caregiverName} onChangeText={setCaregiverName} placeholder="Tu nombre" />
+                <Input label={t('profile.caregiver', 'Parent/Caregiver')} value={caregiverName} onChangeText={setCaregiverName} placeholder="Tu nombre" />
               </View>
               <View style={{ flex: 1 }}>
-                <Input label="Nombre del bebé" value={babyName} onChangeText={setBabyName} placeholder="Nombre" />
+                <Input label={t('profile.baby_name', 'Baby Name')} value={babyName} onChangeText={setBabyName} placeholder="Nombre" />
               </View>
             </View>
-            <Input label="Fecha de nacimiento" value={babyBirthDate} onChangeText={setBabyBirthDate} placeholder="YYYY-MM-DD" />
-            <View style={{ flexDirection: isPhone ? 'column' : 'row', gap: 8 }}>
+            
+            <Pressable onPress={() => {
+              setTempDate(dateValueForPicker);
+              setShowDatePicker(true);
+            }}>
+              <View style={{ pointerEvents: 'none' }}>
+                <Input label={t('profile.birth_date', 'Birth Date')} value={babyBirthDate} placeholder="YYYY-MM-DD" />
+              </View>
+            </Pressable>
+
+            {showDatePicker && Platform.OS === 'ios' && (
+              <Modal transparent animationType="slide" visible={showDatePicker}>
+                <BlurView 
+                  intensity={paletteMode === 'nuit' ? 30 : 50} 
+                  tint={paletteMode === 'nuit' ? 'dark' : 'light'} 
+                  style={styles.modalOverlay}
+                >
+                  <Pressable style={styles.modalDismiss} onPress={() => setShowDatePicker(false)} />
+                  <Card style={[styles.bottomSheetCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800', marginBottom: 16, textAlign: 'center' }}>
+                      {t('profile.select_date', 'Select Birth Date')}
+                    </Text>
+                    <DateTimePicker
+                      value={tempDate}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'} // Mantener spinner en iOS para mejor UX
+                      onChange={handleDateChange}
+                      maximumDate={new Date()}
+                      textColor={colors.text}
+                    />
+                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                      <Button label={t('common.cancel', 'Cancel')} variant="ghost" onPress={() => setShowDatePicker(false)} />
+                      <Button label={t('common.confirm', 'Confirm')} onPress={() => confirmDate(tempDate)} />
+                    </View>
+                  </Card>
+                </BlurView>
+              </Modal>
+            )}
+
+            {showDatePicker && Platform.OS === 'android' && (
+              <DateTimePicker
+                value={dateValueForPicker}
+                mode="date"
+                display="default"
+                onChange={handleDateChange}
+                maximumDate={new Date()}
+              />
+            )}
+
+            <View style={{ flexDirection: isPhone ? 'column' : 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <Input label="P. nacimiento (kg)" value={birthWeightKg} onChangeText={setBirthWeightKg} keyboardType="decimal-pad" inputMode="decimal" placeholder="3.5" />
+                <Input label={t('profile.birth_weight', 'Birth Weight (kg)')} value={birthWeightKg} onChangeText={setBirthWeightKg} keyboardType="decimal-pad" inputMode="decimal" placeholder="3.5" />
               </View>
               <View style={{ flex: 1 }}>
-                <Input label="P. actual (kg)" value={currentWeightKg} onChangeText={setCurrentWeightKg} keyboardType="decimal-pad" inputMode="decimal" placeholder="4.2" />
+                <Input label={t('profile.current_weight', 'Current Weight (kg)')} value={currentWeightKg} onChangeText={setCurrentWeightKg} keyboardType="decimal-pad" inputMode="decimal" placeholder="4.2" />
               </View>
             </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 2 }}>
-                <Input label="Altura (cm)" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" inputMode="decimal" placeholder="55" />
+            <View style={{ flexDirection: isPhone ? 'column' : 'row', gap: 12, alignItems: isPhone ? 'stretch' : 'flex-end' }}>
+              <View style={{ flex: 1 }}>
+                <Input label={t('profile.height', 'Height (cm)')} value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" inputMode="decimal" placeholder="55" />
               </View>
               <View style={{ flex: 1 }}>
-                <Segment value={language} onChange={(value) => setLanguage(value as typeof language)} options={languageOptions} />
+                <LanguageSelector value={language} onChange={(val) => setLanguage(val as any)} options={languageOptions} />
               </View>
             </View>
-            <Input label="Notas" value={babyNotes} onChangeText={setBabyNotes} multiline placeholder="Notas sobre el bebé..." />
-            <Button label="Guardar Perfil" onPress={handleSave} />
+            <Input label={t('profile.notes', 'Notes')} value={babyNotes} onChangeText={setBabyNotes} multiline placeholder="Notas sobre el bebé..." />
+            
+            <Pressable 
+              onPress={handleSave}
+              onPressIn={() => {
+                void triggerHaptic('impactLight');
+                buttonScale.value = withSpring(0.97, { damping: 15 });
+              }}
+              onPressOut={() => {
+                buttonScale.value = withSpring(1);
+              }}
+            >
+              <Animated.View style={buttonAnimatedStyle}>
+                <LinearGradient
+                  colors={[theme.accent, `${theme.accent}CC`]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.saveButtonGradient}
+                >
+                  <Text style={styles.saveButtonText}>
+                    {t('profile.save_button', 'Save Profile')}
+                  </Text>
+                </LinearGradient>
+              </Animated.View>
+            </Pressable>
           </View>
         </Card>
 
@@ -590,3 +825,122 @@ export default function ProfileScreen() {
   );
 }
 
+const styles = StyleSheet.create({
+  mainCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 16
+  },
+  photoButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2
+  },
+  // Se reemplaza el estilo de la alerta por el del botón
+  // onboardingAlert: {
+  //   borderWidth: 1,
+  //   borderRadius: 16,
+  //   padding: 12,
+  //   marginBottom: 16
+  // },
+  // alertText: {
+  //   fontSize: 13,
+  //   fontWeight: '700',
+  //   textAlign: 'center'
+  // },
+  onboardingButton: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 12, // Ajustado para que coincida con la altura visual de la alerta original
+    marginBottom: 16
+  },
+  onboardingButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center'
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end', // Alinea el contenido en la parte inferior
+    alignItems: 'stretch', // Estira el contenido horizontalmente
+    // No padding aquí, el padding va en la tarjeta
+  },
+  modalDismiss: {
+    ...StyleSheet.absoluteFillObject
+  },
+  bottomSheetCard: {
+    width: '100%',
+    padding: 20, // Padding interno de la tarjeta
+    borderTopLeftRadius: 24, // Solo bordes superiores redondeados
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    elevation: 5
+  },
+  langContainer: {
+    flexDirection: 'row',
+    height: 62,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 4,
+    position: 'relative',
+    overflow: 'hidden'
+  },
+  langIndicator: {
+    position: 'absolute',
+    top: 4,
+    bottom: 4,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 0 },
+      },
+      android: { elevation: 2 },
+      web: { boxShadow: '0px 0px 4px rgba(0, 0, 0, 0.1)' },
+    }),
+  },
+  langOption: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1
+  },
+  langText: {
+    fontSize: 13,
+    letterSpacing: 0.5
+  },
+  ageBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  ageBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
+  saveButtonGradient: {
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  }
+});

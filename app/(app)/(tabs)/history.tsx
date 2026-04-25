@@ -927,11 +927,16 @@ export default function HistoryScreen() {
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 12,
-              shadowColor: GOLD,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-              elevation: 3,
+              ...Platform.select({
+                ios: {
+                  shadowColor: GOLD,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                },
+                android: { elevation: 3 },
+                web: { boxShadow: '0px 0px 4px rgba(201, 176, 122, 0.3)' },
+              }),
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

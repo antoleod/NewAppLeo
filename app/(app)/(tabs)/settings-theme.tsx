@@ -425,11 +425,16 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderRadius: 22,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.08,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 6 },
+      },
+      android: { elevation: 2 },
+      web: { boxShadow: '0px 6px 14px rgba(0, 0, 0, 0.08)' },
+    }),
   },
   headerTop: {
     flexDirection: 'row',

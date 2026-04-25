@@ -1,536 +1,689 @@
 {
   "feeds": [
     {
-      "dateISO": "2026-04-23T17:00:01.000Z",
+      "durationSec": 2,
       "source": "bottle",
-      "amountMl": 30,
-      "id": "1776963653680",
-      "bottleStartISO": "2026-04-23T17:00:00.000Z",
-      "bottleEndISO": "2026-04-23T17:00:01.000Z",
+      "id": "1777102833735",
+      "amountMl": 100,
+      "dateISO": "2026-04-25T07:40:02.000Z",
+      "bottleEndISO": "2026-04-25T07:40:02.000Z",
+      "bottleStartISO": "2026-04-25T07:40:00.000Z"
+    },
+    {
+      "id": "1777084757477",
+      "source": "bottle",
+      "durationSec": 2,
+      "bottleEndISO": "2026-04-25T02:39:02.000Z",
+      "bottleStartISO": "2026-04-25T02:39:00.000Z",
+      "dateISO": "2026-04-25T02:39:02.000Z",
+      "amountMl": 40
+    },
+    {
+      "amountMl": 60,
+      "bottleEndISO": "2026-04-25T01:54:03.000Z",
+      "bottleStartISO": "2026-04-25T01:54:00.000Z",
+      "dateISO": "2026-04-25T01:54:03.000Z",
+      "id": "1777082060518",
+      "source": "bottle",
+      "durationSec": 3
+    },
+    {
+      "source": "bottle",
+      "durationSec": 1,
+      "id": "1777063349158",
+      "dateISO": "2026-04-24T20:42:01.000Z",
+      "bottleEndISO": "2026-04-24T20:42:01.000Z",
+      "bottleStartISO": "2026-04-24T20:42:00.000Z",
+      "amountMl": 120
+    },
+    {
+      "bottleStartISO": "2026-04-24T18:54:00.000Z",
+      "bottleEndISO": "2026-04-24T18:54:01.000Z",
+      "dateISO": "2026-04-24T18:54:01.000Z",
+      "amountMl": 70,
+      "id": "1777056866519",
+      "source": "bottle",
       "durationSec": 1
     },
     {
+      "durationSec": 1,
       "source": "bottle",
-      "dateISO": "2026-04-23T13:11:00.000Z",
+      "id": "1777052290434",
+      "dateISO": "2026-04-24T17:38:01.000Z",
+      "bottleStartISO": "2026-04-24T17:38:00.000Z",
+      "bottleEndISO": "2026-04-24T17:38:01.000Z",
+      "amountMl": 80
+    },
+    {
+      "amountMl": 170,
+      "bottleStartISO": "2026-04-24T13:53:00.000Z",
+      "bottleEndISO": "2026-04-24T13:53:01.000Z",
+      "dateISO": "2026-04-24T13:53:01.000Z",
+      "id": "1777038825303",
+      "source": "bottle",
+      "durationSec": 1
+    },
+    {
+      "dateISO": "2026-04-24T08:10:00.000Z",
+      "bottleStartISO": "2026-04-24T08:07:00.000Z",
+      "bottleEndISO": "2026-04-24T08:10:00.000Z",
       "amountMl": 150,
-      "id": "1776952265930",
-      "bottleEndISO": "2026-04-23T13:11:00.000Z",
+      "durationSec": 180,
+      "source": "bottle",
+      "id": "1777018249218"
+    },
+    {
+      "bottleStartISO": "2026-04-24T05:04:00.000Z",
+      "bottleEndISO": "2026-04-24T05:05:00.000Z",
+      "dateISO": "2026-04-24T05:05:00.000Z",
+      "amountMl": 120,
+      "id": "1777007109458",
+      "source": "bottle",
+      "durationSec": 60
+    },
+    {
+      "durationSec": 1,
+      "source": "bottle",
+      "id": "1776992018047",
+      "amountMl": 100,
+      "dateISO": "2026-04-24T00:53:01.000Z",
+      "bottleEndISO": "2026-04-24T00:53:01.000Z",
+      "bottleStartISO": "2026-04-24T00:53:00.000Z"
+    },
+    {
+      "dateISO": "2026-04-24T00:09:00.000Z",
+      "bottleStartISO": "2026-04-24T00:07:00.000Z",
+      "bottleEndISO": "2026-04-24T00:09:00.000Z",
+      "amountMl": 70,
+      "source": "bottle",
+      "durationSec": 120,
+      "id": "1776991060669"
+    },
+    {
+      "id": "1776963653680",
+      "source": "bottle",
+      "durationSec": 1,
+      "bottleEndISO": "2026-04-23T17:00:01.000Z",
+      "bottleStartISO": "2026-04-23T17:00:00.000Z",
+      "dateISO": "2026-04-23T17:00:01.000Z",
+      "amountMl": 30
+    },
+    {
       "durationSec": 360,
+      "source": "bottle",
+      "id": "1776952265930",
+      "amountMl": 150,
+      "dateISO": "2026-04-23T13:11:00.000Z",
+      "bottleEndISO": "2026-04-23T13:11:00.000Z",
       "bottleStartISO": "2026-04-23T13:05:00.000Z"
     },
     {
-      "id": "1776935113056",
-      "bottleStartISO": "2026-04-23T08:05:00.000Z",
-      "durationSec": 0,
-      "bottleEndISO": "2026-04-23T08:05:00.000Z",
       "dateISO": "2026-04-23T08:05:00.000Z",
+      "bottleStartISO": "2026-04-23T08:05:00.000Z",
+      "bottleEndISO": "2026-04-23T08:05:00.000Z",
+      "amountMl": 150,
       "source": "bottle",
-      "amountMl": 150
+      "durationSec": 0,
+      "id": "1776935113056"
     },
     {
-      "source": "bottle",
+      "bottleStartISO": "2026-04-23T02:36:00.000Z",
+      "bottleEndISO": "2026-04-23T02:36:01.000Z",
       "dateISO": "2026-04-23T02:36:01.000Z",
       "amountMl": 110,
       "id": "1776911774412",
-      "durationSec": 1,
-      "bottleEndISO": "2026-04-23T02:36:01.000Z",
-      "bottleStartISO": "2026-04-23T02:36:00.000Z"
+      "source": "bottle",
+      "durationSec": 1
     },
     {
       "amountMl": 80,
-      "source": "bottle",
       "dateISO": "2026-04-23T00:33:02.000Z",
-      "bottleEndISO": "2026-04-23T00:33:02.000Z",
-      "durationSec": 2,
       "bottleStartISO": "2026-04-23T00:33:00.000Z",
+      "bottleEndISO": "2026-04-23T00:33:02.000Z",
+      "source": "bottle",
+      "durationSec": 2,
       "id": "1776904401538"
     },
     {
       "source": "bottle",
-      "dateISO": "2026-04-23T00:04:00.000Z",
-      "amountMl": 110,
-      "id": "1776904388077",
       "durationSec": 180,
+      "id": "1776904388077",
+      "dateISO": "2026-04-23T00:04:00.000Z",
+      "bottleStartISO": "2026-04-23T00:01:00.000Z",
       "bottleEndISO": "2026-04-23T00:04:00.000Z",
-      "bottleStartISO": "2026-04-23T00:01:00.000Z"
+      "amountMl": 110
     },
     {
+      "source": "bottle",
       "durationSec": 300,
-      "bottleEndISO": "2026-04-22T17:42:00.000Z",
-      "bottleStartISO": "2026-04-22T17:37:00.000Z",
       "id": "1776880067313",
       "amountMl": 100,
-      "source": "bottle",
-      "dateISO": "2026-04-22T17:42:00.000Z"
+      "dateISO": "2026-04-22T17:42:00.000Z",
+      "bottleStartISO": "2026-04-22T17:37:00.000Z",
+      "bottleEndISO": "2026-04-22T17:42:00.000Z"
     },
     {
       "id": "1776873726810",
-      "bottleStartISO": "2026-04-22T16:01:00.000Z",
       "durationSec": 60,
-      "bottleEndISO": "2026-04-22T16:02:00.000Z",
-      "dateISO": "2026-04-22T16:02:00.000Z",
       "source": "bottle",
+      "bottleEndISO": "2026-04-22T16:02:00.000Z",
+      "bottleStartISO": "2026-04-22T16:01:00.000Z",
+      "dateISO": "2026-04-22T16:02:00.000Z",
       "amountMl": 80
     },
     {
-      "source": "bottle",
-      "dateISO": "2026-04-22T09:57:00.000Z",
-      "amountMl": 120,
       "id": "1776854069059",
-      "bottleEndISO": "2026-04-22T09:57:00.000Z",
+      "source": "bottle",
       "durationSec": 600,
-      "bottleStartISO": "2026-04-22T09:47:00.000Z"
+      "amountMl": 120,
+      "bottleEndISO": "2026-04-22T09:57:00.000Z",
+      "bottleStartISO": "2026-04-22T09:47:00.000Z",
+      "dateISO": "2026-04-22T09:57:00.000Z"
     },
     {
-      "bottleEndISO": "2026-04-22T06:22:02.000Z",
-      "durationSec": 2,
       "bottleStartISO": "2026-04-22T06:22:00.000Z",
-      "id": "1776838950909",
+      "bottleEndISO": "2026-04-22T06:22:02.000Z",
+      "dateISO": "2026-04-22T06:22:02.000Z",
       "amountMl": 40,
+      "id": "1776838950909",
       "source": "bottle",
-      "dateISO": "2026-04-22T06:22:02.000Z"
+      "durationSec": 2
     },
     {
-      "id": "1776833531654",
-      "bottleEndISO": "2026-04-22T04:52:00.000Z",
-      "durationSec": 0,
-      "bottleStartISO": "2026-04-22T04:52:00.000Z",
-      "source": "bottle",
+      "amountMl": 90,
       "dateISO": "2026-04-22T04:52:00.000Z",
-      "amountMl": 90
+      "bottleEndISO": "2026-04-22T04:52:00.000Z",
+      "bottleStartISO": "2026-04-22T04:52:00.000Z",
+      "durationSec": 0,
+      "source": "bottle",
+      "id": "1776833531654"
     },
     {
-      "amountMl": 70,
-      "source": "bottle",
-      "dateISO": "2026-04-22T00:43:00.000Z",
+      "id": "1776818635531",
       "durationSec": 0,
-      "bottleEndISO": "2026-04-22T00:43:00.000Z",
+      "source": "bottle",
       "bottleStartISO": "2026-04-22T00:43:00.000Z",
-      "id": "1776818635531"
+      "bottleEndISO": "2026-04-22T00:43:00.000Z",
+      "dateISO": "2026-04-22T00:43:00.000Z",
+      "amountMl": 70
     },
     {
       "dateISO": "2026-04-21T21:34:02.000Z",
-      "source": "bottle",
-      "amountMl": 110,
-      "id": "1776807298911",
       "bottleStartISO": "2026-04-21T21:34:00.000Z",
       "bottleEndISO": "2026-04-21T21:34:02.000Z",
-      "durationSec": 2
+      "amountMl": 110,
+      "source": "bottle",
+      "durationSec": 2,
+      "id": "1776807298911"
     },
     {
-      "bottleStartISO": "2026-04-21T16:10:00.000Z",
-      "durationSec": 240,
-      "bottleEndISO": "2026-04-21T16:14:00.000Z",
-      "id": "1776799204956",
       "amountMl": 120,
       "dateISO": "2026-04-21T16:14:00.000Z",
-      "source": "bottle"
+      "bottleEndISO": "2026-04-21T16:14:00.000Z",
+      "bottleStartISO": "2026-04-21T16:10:00.000Z",
+      "source": "bottle",
+      "durationSec": 240,
+      "id": "1776799204956"
     },
     {
-      "bottleStartISO": "2026-04-21T12:26:00.000Z",
-      "durationSec": 1,
-      "bottleEndISO": "2026-04-21T12:26:01.000Z",
-      "id": "1776774411794",
-      "amountMl": 120,
       "dateISO": "2026-04-21T12:26:01.000Z",
-      "source": "bottle"
+      "bottleStartISO": "2026-04-21T12:26:00.000Z",
+      "bottleEndISO": "2026-04-21T12:26:01.000Z",
+      "amountMl": 120,
+      "source": "bottle",
+      "durationSec": 1,
+      "id": "1776774411794"
     },
     {
+      "dateISO": "2026-04-21T05:43:00.000Z",
       "bottleStartISO": "2026-04-21T05:40:00.000Z",
       "bottleEndISO": "2026-04-21T05:43:00.000Z",
-      "durationSec": 180,
-      "id": "1776774425098",
       "amountMl": 120,
-      "dateISO": "2026-04-21T05:43:00.000Z",
-      "source": "bottle"
+      "durationSec": 180,
+      "source": "bottle",
+      "id": "1776774425098"
     },
     {
-      "source": "bottle",
-      "dateISO": "2026-04-21T04:15:01.000Z",
-      "amountMl": 30,
       "id": "1776744915020",
+      "source": "bottle",
       "durationSec": 1,
+      "amountMl": 30,
       "bottleEndISO": "2026-04-21T04:15:01.000Z",
-      "bottleStartISO": "2026-04-21T04:15:00.000Z"
+      "bottleStartISO": "2026-04-21T04:15:00.000Z",
+      "dateISO": "2026-04-21T04:15:01.000Z"
     },
     {
       "amountMl": 30,
-      "source": "bottle",
       "dateISO": "2026-04-21T02:16:00.000Z",
       "bottleEndISO": "2026-04-21T02:16:00.000Z",
-      "durationSec": 60,
       "bottleStartISO": "2026-04-21T02:15:00.000Z",
+      "durationSec": 60,
+      "source": "bottle",
       "id": "1776744933283"
     },
     {
-      "amountMl": 150,
-      "dateISO": "2026-04-20T23:51:03.000Z",
+      "id": "1776729081666",
+      "durationSec": 3,
       "source": "bottle",
       "bottleStartISO": "2026-04-20T23:51:00.000Z",
-      "durationSec": 3,
       "bottleEndISO": "2026-04-20T23:51:03.000Z",
-      "id": "1776729081666"
+      "dateISO": "2026-04-20T23:51:03.000Z",
+      "amountMl": 150
     },
     {
-      "dateISO": "2026-04-20T19:54:02.000Z",
-      "source": "bottle",
-      "amountMl": 90,
       "id": "1776714864067",
-      "bottleStartISO": "2026-04-20T19:54:00.000Z",
+      "durationSec": 2,
+      "source": "bottle",
       "bottleEndISO": "2026-04-20T19:54:02.000Z",
-      "durationSec": 2
+      "bottleStartISO": "2026-04-20T19:54:00.000Z",
+      "dateISO": "2026-04-20T19:54:02.000Z",
+      "amountMl": 90
     },
     {
-      "id": "1776705215828",
-      "bottleStartISO": "2026-04-20T17:13:00.000Z",
+      "amountMl": 120,
       "bottleEndISO": "2026-04-20T17:13:01.000Z",
-      "durationSec": 1,
+      "bottleStartISO": "2026-04-20T17:13:00.000Z",
       "dateISO": "2026-04-20T17:13:01.000Z",
-      "source": "bottle",
-      "amountMl": 120
+      "id": "1776705215828",
+      "durationSec": 1,
+      "source": "bottle"
     },
     {
-      "source": "bottle",
+      "bottleStartISO": "2026-04-20T04:27:00.000Z",
+      "bottleEndISO": "2026-04-20T04:27:01.000Z",
       "dateISO": "2026-04-20T04:27:01.000Z",
       "amountMl": 60,
       "id": "1776659258728",
-      "bottleEndISO": "2026-04-20T04:27:01.000Z",
       "durationSec": 1,
-      "bottleStartISO": "2026-04-20T04:27:00.000Z"
+      "source": "bottle"
     },
     {
       "bottleEndISO": "2026-04-20T00:04:03.000Z",
-      "durationSec": 3,
       "bottleStartISO": "2026-04-20T00:04:00.000Z",
-      "id": "1776643471548",
+      "dateISO": "2026-04-20T00:04:03.000Z",
       "amountMl": 150,
+      "id": "1776643471548",
       "source": "bottle",
-      "dateISO": "2026-04-20T00:04:03.000Z"
+      "durationSec": 3
     },
     {
-      "amountMl": 140,
       "source": "bottle",
+      "durationSec": 2,
+      "id": "1776622162132",
       "dateISO": "2026-04-19T18:09:02.000Z",
       "bottleEndISO": "2026-04-19T18:09:02.000Z",
-      "durationSec": 2,
       "bottleStartISO": "2026-04-19T18:09:00.000Z",
-      "id": "1776622162132"
+      "amountMl": 140
     },
     {
-      "dateISO": "2026-04-19T14:55:01.000Z",
-      "source": "bottle",
-      "amountMl": 170,
       "id": "1776610507421",
-      "bottleStartISO": "2026-04-19T14:55:00.000Z",
+      "source": "bottle",
       "durationSec": 1,
-      "bottleEndISO": "2026-04-19T14:55:01.000Z"
+      "bottleStartISO": "2026-04-19T14:55:00.000Z",
+      "bottleEndISO": "2026-04-19T14:55:01.000Z",
+      "dateISO": "2026-04-19T14:55:01.000Z",
+      "amountMl": 170
     },
     {
       "id": "1776581012846",
-      "bottleStartISO": "2026-04-19T06:43:00.000Z",
+      "source": "bottle",
       "durationSec": 1,
       "bottleEndISO": "2026-04-19T06:43:01.000Z",
+      "bottleStartISO": "2026-04-19T06:43:00.000Z",
       "dateISO": "2026-04-19T06:43:01.000Z",
-      "source": "bottle",
       "amountMl": 90
     },
     {
       "id": "1776564395455",
-      "bottleStartISO": "2026-04-19T02:06:00.000Z",
-      "bottleEndISO": "2026-04-19T02:06:03.000Z",
       "durationSec": 3,
-      "dateISO": "2026-04-19T02:06:03.000Z",
       "source": "bottle",
-      "amountMl": 150
+      "amountMl": 150,
+      "bottleEndISO": "2026-04-19T02:06:03.000Z",
+      "bottleStartISO": "2026-04-19T02:06:00.000Z",
+      "dateISO": "2026-04-19T02:06:03.000Z"
     },
     {
-      "amountMl": 160,
-      "dateISO": "2026-04-18T23:03:00.000Z",
-      "source": "bottle",
-      "bottleStartISO": "2026-04-18T23:03:00.000Z",
+      "id": "1776553413770",
       "durationSec": 0,
-      "bottleEndISO": "2026-04-18T23:03:00.000Z",
-      "id": "1776553413770"
-    },
-    {
-      "amountMl": 120,
       "source": "bottle",
-      "dateISO": "2026-04-18T13:36:00.000Z",
-      "bottleEndISO": "2026-04-18T13:36:00.000Z",
-      "durationSec": 240,
-      "bottleStartISO": "2026-04-18T13:32:00.000Z",
-      "id": "1776519579259"
+      "bottleEndISO": "2026-04-18T23:03:00.000Z",
+      "bottleStartISO": "2026-04-18T23:03:00.000Z",
+      "dateISO": "2026-04-18T23:03:00.000Z",
+      "amountMl": 160
     },
     {
+      "bottleStartISO": "2026-04-18T13:32:00.000Z",
+      "bottleEndISO": "2026-04-18T13:36:00.000Z",
+      "dateISO": "2026-04-18T13:36:00.000Z",
+      "amountMl": 120,
+      "id": "1776519579259",
+      "source": "bottle",
+      "durationSec": 240
+    },
+    {
+      "dateISO": "2026-04-18T12:01:01.000Z",
       "bottleStartISO": "2026-04-18T12:01:00.000Z",
       "bottleEndISO": "2026-04-18T12:01:01.000Z",
-      "durationSec": 1,
-      "id": "1776513683334",
       "amountMl": 60,
-      "dateISO": "2026-04-18T12:01:01.000Z",
-      "source": "bottle"
-    },
-    {
-      "dateISO": "2026-04-18T09:54:02.000Z",
+      "durationSec": 1,
       "source": "bottle",
-      "amountMl": 140,
-      "id": "1776506091496",
-      "bottleStartISO": "2026-04-18T09:54:00.000Z",
-      "durationSec": 2,
-      "bottleEndISO": "2026-04-18T09:54:02.000Z"
+      "id": "1776513683334"
     },
     {
+      "amountMl": 140,
+      "dateISO": "2026-04-18T09:54:02.000Z",
+      "bottleEndISO": "2026-04-18T09:54:02.000Z",
+      "bottleStartISO": "2026-04-18T09:54:00.000Z",
+      "source": "bottle",
+      "durationSec": 2,
+      "id": "1776506091496"
+    },
+    {
+      "source": "bottle",
+      "durationSec": 1,
+      "id": "1776493351095",
       "amountMl": 140,
       "dateISO": "2026-04-18T06:22:01.000Z",
-      "source": "bottle",
-      "bottleStartISO": "2026-04-18T06:22:00.000Z",
-      "durationSec": 1,
       "bottleEndISO": "2026-04-18T06:22:01.000Z",
-      "id": "1776493351095"
+      "bottleStartISO": "2026-04-18T06:22:00.000Z"
     },
     {
       "amountMl": 160,
       "dateISO": "2026-04-18T02:37:02.000Z",
-      "source": "bottle",
       "bottleStartISO": "2026-04-18T02:37:00.000Z",
-      "durationSec": 2,
       "bottleEndISO": "2026-04-18T02:37:02.000Z",
+      "durationSec": 2,
+      "source": "bottle",
       "id": "1776479862186"
     },
     {
-      "id": "1776465813092",
-      "bottleEndISO": "2026-04-17T22:43:03.000Z",
-      "durationSec": 3,
-      "bottleStartISO": "2026-04-17T22:43:00.000Z",
       "source": "bottle",
+      "durationSec": 3,
+      "id": "1776465813092",
+      "amountMl": 70,
       "dateISO": "2026-04-17T22:43:03.000Z",
-      "amountMl": 70
+      "bottleEndISO": "2026-04-17T22:43:03.000Z",
+      "bottleStartISO": "2026-04-17T22:43:00.000Z"
     },
     {
       "amountMl": 120,
-      "dateISO": "2026-04-17T19:54:02.000Z",
-      "source": "bottle",
-      "bottleStartISO": "2026-04-17T19:54:00.000Z",
-      "durationSec": 2,
       "bottleEndISO": "2026-04-17T19:54:02.000Z",
-      "id": "1776455650582"
+      "bottleStartISO": "2026-04-17T19:54:00.000Z",
+      "dateISO": "2026-04-17T19:54:02.000Z",
+      "id": "1776455650582",
+      "durationSec": 2,
+      "source": "bottle"
     },
     {
       "amountMl": 150,
-      "source": "bottle",
       "dateISO": "2026-04-17T17:52:01.000Z",
-      "durationSec": 1,
       "bottleEndISO": "2026-04-17T17:52:01.000Z",
       "bottleStartISO": "2026-04-17T17:52:00.000Z",
+      "source": "bottle",
+      "durationSec": 1,
       "id": "1776448346803"
     },
     {
-      "amountMl": 160,
       "source": "bottle",
-      "dateISO": "2026-04-17T15:19:00.000Z",
       "durationSec": 120,
+      "id": "1776440740933",
+      "dateISO": "2026-04-17T15:19:00.000Z",
       "bottleEndISO": "2026-04-17T15:19:00.000Z",
       "bottleStartISO": "2026-04-17T15:17:00.000Z",
-      "id": "1776440740933"
+      "amountMl": 160
     },
     {
-      "bottleEndISO": "2026-04-17T02:06:01.000Z",
       "durationSec": 1,
-      "bottleStartISO": "2026-04-17T02:06:00.000Z",
+      "source": "bottle",
       "id": "1776391630081",
       "amountMl": 80,
-      "source": "bottle",
-      "dateISO": "2026-04-17T02:06:01.000Z"
+      "dateISO": "2026-04-17T02:06:01.000Z",
+      "bottleStartISO": "2026-04-17T02:06:00.000Z",
+      "bottleEndISO": "2026-04-17T02:06:01.000Z"
     },
     {
-      "bottleEndISO": "2026-04-16T20:35:02.000Z",
       "durationSec": 2,
-      "bottleStartISO": "2026-04-16T20:35:00.000Z",
+      "source": "bottle",
       "id": "1776371726507",
       "amountMl": 100,
-      "source": "bottle",
-      "dateISO": "2026-04-16T20:35:02.000Z"
+      "dateISO": "2026-04-16T20:35:02.000Z",
+      "bottleEndISO": "2026-04-16T20:35:02.000Z",
+      "bottleStartISO": "2026-04-16T20:35:00.000Z"
     },
     {
-      "amountMl": 130,
-      "dateISO": "2026-04-16T19:22:03.000Z",
-      "source": "bottle",
-      "bottleStartISO": "2026-04-16T19:22:00.000Z",
       "bottleEndISO": "2026-04-16T19:22:03.000Z",
-      "durationSec": 3,
-      "id": "1776367380579"
-    },
-    {
-      "bottleEndISO": "2026-04-16T15:18:03.000Z",
-      "durationSec": 3,
-      "bottleStartISO": "2026-04-16T15:18:00.000Z",
-      "id": "1776352745411",
-      "amountMl": 150,
-      "source": "bottle",
-      "dateISO": "2026-04-16T15:18:03.000Z"
-    },
-    {
-      "bottleStartISO": "2026-04-16T05:56:00.000Z",
-      "bottleEndISO": "2026-04-16T05:56:02.000Z",
-      "durationSec": 2,
-      "id": "1776318997734",
+      "bottleStartISO": "2026-04-16T19:22:00.000Z",
+      "dateISO": "2026-04-16T19:22:03.000Z",
       "amountMl": 130,
-      "dateISO": "2026-04-16T05:56:02.000Z",
-      "source": "bottle"
-    },
-    {
-      "bottleStartISO": "2026-04-16T00:58:00.000Z",
-      "bottleEndISO": "2026-04-16T00:58:02.000Z",
-      "durationSec": 2,
-      "id": "1776301131748",
-      "amountMl": 140,
-      "dateISO": "2026-04-16T00:58:02.000Z",
-      "source": "bottle"
-    },
-    {
+      "id": "1776367380579",
       "source": "bottle",
-      "dateISO": "2026-04-15T20:31:01.000Z",
-      "amountMl": 160,
-      "id": "1776285076671",
-      "bottleEndISO": "2026-04-15T20:31:01.000Z",
-      "durationSec": 1,
-      "bottleStartISO": "2026-04-15T20:31:00.000Z"
+      "durationSec": 3
     },
     {
-      "amountMl": 150,
+      "id": "1776352745411",
+      "durationSec": 3,
       "source": "bottle",
-      "dateISO": "2026-04-15T13:45:02.000Z",
-      "durationSec": 2,
-      "bottleEndISO": "2026-04-15T13:45:02.000Z",
-      "bottleStartISO": "2026-04-15T13:45:00.000Z",
-      "id": "1776260751438"
-    },
-    {
-      "amountMl": 170,
-      "dateISO": "2026-04-15T10:09:00.000Z",
-      "source": "bottle",
-      "bottleStartISO": "2026-04-15T10:07:00.000Z",
-      "durationSec": 120,
-      "bottleEndISO": "2026-04-15T10:09:00.000Z",
-      "id": "1776255991591"
-    },
-    {
-      "amountMl": 90,
-      "source": "bottle",
-      "dateISO": "2026-04-15T06:40:02.000Z",
-      "bottleEndISO": "2026-04-15T06:40:02.000Z",
-      "durationSec": 2,
-      "bottleStartISO": "2026-04-15T06:40:00.000Z",
-      "id": "1776235237235"
-    },
-    {
-      "dateISO": "2026-04-15T01:03:00.000Z",
-      "source": "bottle",
-      "amountMl": 120,
-      "id": "1776216004786",
-      "bottleStartISO": "2026-04-15T01:02:00.000Z",
-      "bottleEndISO": "2026-04-15T01:03:00.000Z",
-      "durationSec": 60
-    },
-    {
-      "id": "1776194829630",
-      "bottleStartISO": "2026-04-14T19:27:00.000Z",
-      "durationSec": 2,
-      "bottleEndISO": "2026-04-14T19:27:02.000Z",
-      "dateISO": "2026-04-14T19:27:02.000Z",
-      "source": "bottle",
+      "bottleStartISO": "2026-04-16T15:18:00.000Z",
+      "bottleEndISO": "2026-04-16T15:18:03.000Z",
+      "dateISO": "2026-04-16T15:18:03.000Z",
       "amountMl": 150
     },
     {
-      "amountMl": 120,
+      "amountMl": 130,
+      "dateISO": "2026-04-16T05:56:02.000Z",
+      "bottleEndISO": "2026-04-16T05:56:02.000Z",
+      "bottleStartISO": "2026-04-16T05:56:00.000Z",
+      "durationSec": 2,
       "source": "bottle",
-      "dateISO": "2026-04-14T17:52:03.000Z",
+      "id": "1776318997734"
+    },
+    {
+      "dateISO": "2026-04-16T00:58:02.000Z",
+      "bottleStartISO": "2026-04-16T00:58:00.000Z",
+      "bottleEndISO": "2026-04-16T00:58:02.000Z",
+      "amountMl": 140,
+      "durationSec": 2,
+      "source": "bottle",
+      "id": "1776301131748"
+    },
+    {
+      "id": "1776285076671",
+      "durationSec": 1,
+      "source": "bottle",
+      "amountMl": 160,
+      "bottleStartISO": "2026-04-15T20:31:00.000Z",
+      "bottleEndISO": "2026-04-15T20:31:01.000Z",
+      "dateISO": "2026-04-15T20:31:01.000Z"
+    },
+    {
+      "amountMl": 150,
+      "dateISO": "2026-04-15T13:45:02.000Z",
+      "bottleEndISO": "2026-04-15T13:45:02.000Z",
+      "bottleStartISO": "2026-04-15T13:45:00.000Z",
+      "durationSec": 2,
+      "source": "bottle",
+      "id": "1776260751438"
+    },
+    {
+      "id": "1776255991591",
+      "source": "bottle",
+      "durationSec": 120,
+      "bottleEndISO": "2026-04-15T10:09:00.000Z",
+      "bottleStartISO": "2026-04-15T10:07:00.000Z",
+      "dateISO": "2026-04-15T10:09:00.000Z",
+      "amountMl": 170
+    },
+    {
+      "amountMl": 90,
+      "dateISO": "2026-04-15T06:40:02.000Z",
+      "bottleStartISO": "2026-04-15T06:40:00.000Z",
+      "bottleEndISO": "2026-04-15T06:40:02.000Z",
+      "source": "bottle",
+      "durationSec": 2,
+      "id": "1776235237235"
+    },
+    {
+      "id": "1776216004786",
+      "source": "bottle",
+      "durationSec": 60,
+      "amountMl": 120,
+      "bottleStartISO": "2026-04-15T01:02:00.000Z",
+      "bottleEndISO": "2026-04-15T01:03:00.000Z",
+      "dateISO": "2026-04-15T01:03:00.000Z"
+    },
+    {
+      "source": "bottle",
+      "durationSec": 2,
+      "id": "1776194829630",
+      "dateISO": "2026-04-14T19:27:02.000Z",
+      "bottleEndISO": "2026-04-14T19:27:02.000Z",
+      "bottleStartISO": "2026-04-14T19:27:00.000Z",
+      "amountMl": 150
+    },
+    {
       "durationSec": 3,
-      "bottleEndISO": "2026-04-14T17:52:03.000Z",
+      "source": "bottle",
+      "id": "1776189165039",
+      "dateISO": "2026-04-14T17:52:03.000Z",
       "bottleStartISO": "2026-04-14T17:52:00.000Z",
-      "id": "1776189165039"
+      "bottleEndISO": "2026-04-14T17:52:03.000Z",
+      "amountMl": 120
     },
     {
       "amountMl": 60,
       "dateISO": "2026-04-14T15:14:01.000Z",
-      "source": "bottle",
       "bottleStartISO": "2026-04-14T15:14:00.000Z",
       "bottleEndISO": "2026-04-14T15:14:01.000Z",
+      "source": "bottle",
       "durationSec": 1,
       "id": "1776179682271"
     },
     {
-      "source": "bottle",
-      "dateISO": "2026-04-14T03:01:03.000Z",
-      "amountMl": 120,
       "id": "1776135720612",
+      "source": "bottle",
+      "durationSec": 3,
+      "bottleStartISO": "2026-04-14T03:01:00.000Z",
       "bottleEndISO": "2026-04-14T03:01:03.000Z",
-      "durationSec": 3,
-      "bottleStartISO": "2026-04-14T03:01:00.000Z"
+      "dateISO": "2026-04-14T03:01:03.000Z",
+      "amountMl": 120
     },
     {
-      "id": "1776128440437",
-      "bottleStartISO": "2026-04-14T01:00:00.000Z",
-      "durationSec": 3,
-      "bottleEndISO": "2026-04-14T01:00:03.000Z",
       "dateISO": "2026-04-14T01:00:03.000Z",
+      "bottleEndISO": "2026-04-14T01:00:03.000Z",
+      "bottleStartISO": "2026-04-14T01:00:00.000Z",
+      "amountMl": 90,
+      "durationSec": 3,
       "source": "bottle",
-      "amountMl": 90
+      "id": "1776128440437"
     },
     {
-      "source": "bottle",
-      "dateISO": "2026-04-13T18:58:01.000Z",
-      "amountMl": 120,
       "id": "1776106716539",
-      "bottleEndISO": "2026-04-13T18:58:01.000Z",
+      "source": "bottle",
       "durationSec": 1,
-      "bottleStartISO": "2026-04-13T18:58:00.000Z"
+      "amountMl": 120,
+      "bottleStartISO": "2026-04-13T18:58:00.000Z",
+      "bottleEndISO": "2026-04-13T18:58:01.000Z",
+      "dateISO": "2026-04-13T18:58:01.000Z"
     },
     {
+      "amountMl": 60,
+      "bottleStartISO": "2026-04-13T05:33:00.000Z",
+      "bottleEndISO": "2026-04-13T05:37:00.000Z",
+      "dateISO": "2026-04-13T05:37:00.000Z",
       "id": "1776058658409",
       "durationSec": 240,
-      "bottleEndISO": "2026-04-13T05:37:00.000Z",
-      "bottleStartISO": "2026-04-13T05:33:00.000Z",
-      "source": "bottle",
-      "dateISO": "2026-04-13T05:37:00.000Z",
-      "amountMl": 60
+      "source": "bottle"
     },
     {
       "bottleEndISO": "2026-04-13T02:39:03.000Z",
-      "durationSec": 3,
       "bottleStartISO": "2026-04-13T02:39:00.000Z",
-      "id": "1776047971457",
+      "dateISO": "2026-04-13T02:39:03.000Z",
       "amountMl": 80,
-      "source": "bottle",
-      "dateISO": "2026-04-13T02:39:03.000Z"
+      "id": "1776047971457",
+      "durationSec": 3,
+      "source": "bottle"
     },
     {
-      "amountMl": 160,
-      "source": "bottle",
-      "dateISO": "2026-04-12T23:24:07.000Z",
-      "durationSec": 7,
-      "bottleEndISO": "2026-04-12T23:24:07.000Z",
       "bottleStartISO": "2026-04-12T23:24:00.000Z",
-      "id": "1776036274881"
+      "bottleEndISO": "2026-04-12T23:24:07.000Z",
+      "dateISO": "2026-04-12T23:24:07.000Z",
+      "amountMl": 160,
+      "id": "1776036274881",
+      "durationSec": 7,
+      "source": "bottle"
     }
   ],
   "elims": [],
   "meds": [
     {
-      "name": "Amoxicilline",
-      "dateISO": "2026-04-23T17:42:12.023Z",
-      "id": "1776966132023",
-      "medKey": "other"
+      "name": "Dalfalgan",
+      "id": "1777082889651",
+      "medKey": "Dalfalgan",
+      "dateISO": "2026-04-25T02:08:09.651Z"
     },
     {
       "name": "Nurofen",
-      "id": "1776961805193",
       "medKey": "Nurofen",
-      "dateISO": "2026-04-23T16:30:05.193Z"
+      "dateISO": "2026-04-24T22:40:52.963Z",
+      "id": "1777070452963"
     },
     {
-      "dateISO": "2026-04-23T13:01:00.000Z",
+      "id": "1777059737023",
+      "dateISO": "2026-04-24T19:42:17.023Z",
+      "medKey": "Amoxicilline",
+      "name": "Amoxicilline"
+    },
+    {
+      "id": "1777052595157",
+      "dateISO": "2026-04-24T17:43:15.157Z",
+      "medKey": "Perdolan",
+      "name": "Perdolan"
+    },
+    {
+      "name": "Amoxicilline",
       "medKey": "other",
+      "dateISO": "2026-04-24T16:26:00.000Z",
+      "id": "1777052620835"
+    },
+    {
+      "id": "1777037206210",
+      "medKey": "Nurofen",
+      "dateISO": "2026-04-24T13:26:46.210Z",
+      "name": "Nurofen"
+    },
+    {
+      "id": "1777014835682",
+      "medKey": "Gouttes",
+      "dateISO": "2026-04-24T07:13:55.683Z",
+      "name": "Gouttes"
+    },
+    {
+      "name": "Nurofen",
+      "dateISO": "2026-04-24T04:15:25.729Z",
+      "medKey": "Nurofen",
+      "id": "1777004125729"
+    },
+    {
+      "name": "Perdolan",
+      "id": "1776991099974",
+      "dateISO": "2026-04-24T00:19:00.000Z",
+      "medKey": "Perdolan"
+    },
+    {
+      "medKey": "other",
+      "dateISO": "2026-04-23T17:42:12.023Z",
+      "id": "1776966132023",
+      "name": "Amoxicilline"
+    },
+    {
+      "name": "Nurofen",
+      "dateISO": "2026-04-23T16:30:05.193Z",
+      "medKey": "Nurofen",
+      "id": "1776961805193"
+    },
+    {
+      "medKey": "other",
+      "dateISO": "2026-04-23T13:01:00.000Z",
       "id": "1776952347746",
       "name": "Pardolan"
     },
@@ -541,16 +694,16 @@
       "id": "1776952327384"
     },
     {
+      "name": "Balso toux",
       "id": "1776952321161",
-      "dateISO": "2026-04-23T13:01:00.000Z",
       "medKey": "Balso toux",
-      "name": "Balso toux"
+      "dateISO": "2026-04-23T13:01:00.000Z"
     },
     {
-      "name": "Nurofen",
       "id": "1776945312362",
       "dateISO": "2026-04-23T09:20:00.000Z",
-      "medKey": "other"
+      "medKey": "other",
+      "name": "Nurofen"
     },
     {
       "name": "Balso toux",
@@ -561,30 +714,30 @@
     {
       "name": "Gouttes",
       "id": "1776933113177",
-      "medKey": "other",
-      "dateISO": "2026-04-23T08:31:53.177Z"
+      "dateISO": "2026-04-23T08:31:53.177Z",
+      "medKey": "other"
     },
     {
       "name": "Amoxicilline",
-      "medKey": "other",
+      "id": "1776932773577",
       "dateISO": "2026-04-23T08:26:13.577Z",
-      "id": "1776932773577"
+      "medKey": "other"
     }
   ],
   "measurements": [
     {
-      "dateISO": "2026-04-23T09:03:09.042Z",
+      "temp": 38.6,
       "id": "1776934989042",
-      "temp": 38.6
+      "dateISO": "2026-04-23T09:03:09.042Z"
     },
     {
-      "id": "1776850558877",
       "dateISO": "2026-04-22T09:35:58.877Z",
+      "id": "1776850558877",
       "height": 67.5,
       "weight": 8.9
     }
   ],
   "sleepSessions": [],
   "pumpSessions": [],
-  "exportedAt": "2026-04-23T21:56:27.154Z"
+  "exportedAt": "2026-04-25T10:09:59.487Z"
 }

@@ -106,6 +106,14 @@ const formatCountdown = (ms: number | null, language: string) => {
   return `${mins}m`;
 };
 
+const formatSleepTotal = (minutes: number) => {
+  const safeMinutes = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const mins = safeMinutes % 60;
+  if (!hours) return `${mins}m`;
+  return mins ? `${hours}h ${mins}m` : `${hours}h`;
+};
+
 const formatAvailability = (date: string | null, locale: string, language: string) => {
   if (!date) return '--';
   const d = new Date(date);
@@ -213,6 +221,12 @@ function StatCell({ label, value, icon, index, highlight }: any) {
         borderColor: highlight ? `${color}40` : theme.border,
         alignItems: 'center'
       }}>
+                  {Platform.OS === 'web' && (
+                    <style dangerouslySetInnerHTML={{ __html: `
+                      .shadow-web-style-${index} { box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.02); }
+                    `}} />
+                  )}
+
         <Text style={{ color: color, fontSize: 15, fontWeight: '700' }}>{value}</Text>
         <Text style={{ color: theme.textMuted, fontSize: 9, marginTop: 1, fontWeight: '500' }}>{label}</Text>
       </View>
@@ -900,6 +914,205 @@ export default function HomeScreen() {
     marginTop: 2,
   });
 
+  const nightPrimaryActions = [
+    { label: 'Bottle', detail: '150 ml', icon: 'water-outline' as const, href: '/entry/feed?presetMode=bottle&presetAmount=150', color: BLUE },
+    { label: 'Breast', detail: 'Quick', icon: 'body-outline' as const, href: 'quick-breast', color: GREEN },
+    { label: 'Diaper', detail: 'Pipi / caca', icon: 'cube-outline' as const, href: '/entry/diaper', color: GOLD },
+    { label: 'Medicine', detail: 'Dose', icon: 'medical-outline' as const, href: '/entry/medication', color: RED },
+    { label: 'Food', detail: 'Meal', icon: 'restaurant-outline' as const, href: '/entry/food', color: GREEN },
+    { label: 'Sleep', detail: 'Timer', icon: 'moon-outline' as const, href: '/entry/sleep', color: '#879DFF' },
+    { label: 'Pump', detail: 'Milk', icon: 'timer-outline' as const, href: '/entry/pump', color: '#6BA3FF' },
+    { label: 'Measure', detail: 'Temp', icon: 'analytics-outline' as const, href: '/entry/measurement', color: '#A78BFA' },
+  ];
+  const nextFeedText = lastFeed
+    ? nextFeedDueIn && nextFeedDueIn > 0
+      ? `In ${formatCountdown(nextFeedDueIn, language)}`
+      : 'Possible now'
+    : 'Start first feed';
+  const nextFeedDetail = lastFeed ? `Last ${formatClock(lastFeed.occurredAt, locale)} · ${formatRelative(lastFeed.occurredAt, locale)}` : 'No feed yet';
+  const nightStats = [
+    { label: 'Feeds', value: String(effectiveSummary.feedCount), color: BLUE },
+    { label: 'Milk', value: `${effectiveSummary.bottleMl}ml`, color: GREEN },
+    { label: 'Sleep', value: formatSleepTotal(effectiveSummary.sleepMinutes), color: '#879DFF' },
+    { label: 'Diapers', value: String(effectiveSummary.diaperCount), color: GOLD },
+  ];
+
+  return (
+    <Page contentStyle={nightHomeStyles.page}>
+      <View style={nightHomeStyles.shell}>
+        <View style={nightHomeStyles.header}>
+          <View style={nightHomeStyles.headerLeft}>
+            <View style={nightHomeStyles.avatar}>
+              <Text style={nightHomeStyles.avatarText}>👶</Text>
+            </View>
+            <View style={nightHomeStyles.headerCopy}>
+              <Text style={nightHomeStyles.kicker}>BabyFlow</Text>
+              <Pressable onPress={() => setShowBabySwitcher(true)} hitSlop={8} style={({ pressed }) => [nightHomeStyles.babyButton, pressed && nightHomeStyles.pressed]}>
+                <Text style={nightHomeStyles.title} numberOfLines={1}>{activeBabyName}</Text>
+                <Ionicons name="chevron-down" size={16} color="#93A4C8" />
+              </Pressable>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => router.push('/settings-theme')}
+            hitSlop={8}
+            style={({ pressed }) => [nightHomeStyles.iconButton, pressed && nightHomeStyles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+          >
+            <Ionicons name="options-outline" size={20} color="#DCE6FF" />
+          </Pressable>
+        </View>
+
+        <View style={nightHomeStyles.focusCard}>
+          <View style={nightHomeStyles.focusTop}>
+            <View>
+              <Text style={nightHomeStyles.focusLabel}>Next feed</Text>
+              <Text style={nightHomeStyles.focusValue}>{nextFeedText}</Text>
+            </View>
+            <View style={nightHomeStyles.focusIcon}>
+              <Ionicons name="time-outline" size={22} color="#071026" />
+            </View>
+          </View>
+          <Text style={nightHomeStyles.focusDetail}>{nextFeedDetail}</Text>
+          <Pressable
+            onPress={openNextFeedPicker}
+            style={({ pressed }) => [nightHomeStyles.focusCta, pressed && nightHomeStyles.primaryPressed]}
+          >
+            <Text style={nightHomeStyles.focusCtaText}>Start Feed</Text>
+          </Pressable>
+        </View>
+
+        {smartAlerts.length ? (
+          <Pressable
+            onPress={() => setShowSmartSignalsMenu(true)}
+            style={({ pressed }) => [nightHomeStyles.alertCard, pressed && nightHomeStyles.pressed]}
+          >
+            <Ionicons name="alert-circle-outline" size={20} color="#F08A9A" />
+            <View style={nightHomeStyles.alertCopy}>
+              <Text style={nightHomeStyles.alertTitle}>{smartAlerts[0].title}</Text>
+              <Text style={nightHomeStyles.alertText}>{smartAlerts.length > 1 ? `${smartAlerts.length} signals` : 'Needs attention'}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#8290B8" />
+          </Pressable>
+        ) : null}
+
+        <View style={nightHomeStyles.actionsGrid}>
+          {nightPrimaryActions.map((action) => (
+            <Pressable
+              key={action.label}
+              onPress={() => {
+                if (action.href === 'quick-breast') {
+                  openNextFeedPicker();
+                  return;
+                }
+                router.push(action.href as any);
+              }}
+              style={({ pressed }) => [nightHomeStyles.quickButton, { borderColor: `${action.color}55`, backgroundColor: `${action.color}16` }, pressed && nightHomeStyles.pressed]}
+            >
+              <View style={[nightHomeStyles.quickIcon, { backgroundColor: action.color }]}>
+                <Ionicons name={action.icon} size={22} color="#071026" />
+              </View>
+              <Text style={nightHomeStyles.quickLabel}>{action.label}</Text>
+              <Text style={nightHomeStyles.quickDetail}>{action.detail}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={nightHomeStyles.statsRow}>
+          {nightStats.map((item) => (
+            <View key={item.label} style={nightHomeStyles.statPill}>
+              <Text style={[nightHomeStyles.statValue, { color: item.color }]} numberOfLines={1}>{item.value}</Text>
+              <Text style={nightHomeStyles.statLabel} numberOfLines={1}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={nightHomeStyles.recentCard}>
+          <View style={nightHomeStyles.sectionHead}>
+            <Text style={nightHomeStyles.sectionTitle}>Recent</Text>
+            <Pressable onPress={() => router.push('/history')} hitSlop={8}>
+              <Text style={nightHomeStyles.sectionLink}>All</Text>
+            </Pressable>
+          </View>
+          {recentEntries.length ? (
+            recentEntries.slice(0, 4).map((entry) => (
+              <Pressable
+                key={entry.id}
+                onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
+                style={({ pressed }) => [nightHomeStyles.recentRow, pressed && nightHomeStyles.pressed]}
+              >
+                <View style={[nightHomeStyles.recentDot, { backgroundColor: entry.type === 'sleep' ? '#879DFF' : entry.type === 'feed' ? BLUE : entry.type === 'diaper' ? GOLD : RED }]} />
+                <View style={nightHomeStyles.recentCopy}>
+                  <Text style={nightHomeStyles.recentTitle} numberOfLines={1}>{entry.title}</Text>
+                  <Text style={nightHomeStyles.recentMeta} numberOfLines={1}>
+                    {entry.type === 'sleep' ? `${entry.payload?.durationMin || 0}m` : entry.type} · {formatClock(entry.occurredAt, locale)}
+                  </Text>
+                </View>
+              </Pressable>
+            ))
+          ) : (
+            <Text style={nightHomeStyles.emptyText}>No activity yet.</Text>
+          )}
+        </View>
+      </View>
+
+      <Modal visible={showBabySwitcher} transparent animationType="fade" onRequestClose={() => setShowBabySwitcher(false)}>
+        <View style={styles.menuOverlay}>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>Switch baby</Text>
+            {babies.length ? babies.map((baby) => (
+              <PressScale key={baby.id} onPress={() => void switchBaby(baby)} pressedScale={0.98}>
+                <View style={styles.menuItem}>
+                  <Text style={styles.menuItemText}>{baby.name}</Text>
+                </View>
+              </PressScale>
+            )) : (
+              <Text style={{ color: MUTED }}>No saved babies yet.</Text>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showSmartSignalsMenu} transparent animationType="fade" onRequestClose={() => setShowSmartSignalsMenu(false)}>
+        <View style={styles.menuOverlay}>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>Smart signals</Text>
+            <View style={{ gap: 10 }}>
+              {smartAlerts.slice(0, 5).map((alert) => (
+                <View key={alert.id} style={styles.menuItem}>
+                  <Text style={styles.menuItemText}>{alert.title}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showNextFeedPicker} transparent animationType="fade" onRequestClose={closeNextFeedPicker}>
+        <View style={styles.menuOverlay}>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>{t('home.start_feed', 'Start Feed')}</Text>
+            <View style={{ gap: 12 }}>
+              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=breast&presetSide=left')} pressedScale={0.98}>
+                <View style={styles.menuItem}><Text style={styles.menuItemText}>{t('home.left_breast', 'Left breast')}</Text></View>
+              </PressScale>
+              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=breast&presetSide=right')} pressedScale={0.98}>
+                <View style={styles.menuItem}><Text style={styles.menuItemText}>{t('home.right_breast', 'Right breast')}</Text></View>
+              </PressScale>
+              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=breast&presetSide=both')} pressedScale={0.98}>
+                <View style={styles.menuItem}><Text style={styles.menuItemText}>{t('home.both', 'Both')}</Text></View>
+              </PressScale>
+              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=bottle&presetAmount=150')} pressedScale={0.98}>
+                <View style={styles.menuItem}><Text style={styles.menuItemText}>{t('home.bottle', 'Bottle')}</Text></View>
+              </PressScale>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </Page>
+  );
+
   return (
     <Page contentStyle={[styles.pageContent, { maxWidth: isLargePhone ? 760 : 680 }]}>
       <View
@@ -1017,7 +1230,18 @@ export default function HomeScreen() {
             <Animated2.View entering={FadeIn.duration(260)}>
               <View style={{ borderRadius: 22, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, padding: 12, gap: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1,
+                    ...Platform.select({
+                      ios: {
+                        shadowColor: '#000',
+                        shadowOpacity: 0.02,
+                        shadowRadius: 8,
+                        shadowOffset: { width: 0, height: 2 },
+                      },
+                      android: { elevation: 1 },
+                      web: { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.02)' },
+                    }),
+                  }}>
                     <Text style={sectionEyebrowStyle()}>Quick log</Text>
                     <Text style={[sectionTitleStyle(), { fontSize: 20 }]}>What happened?</Text>
                   </View>
@@ -1071,6 +1295,12 @@ export default function HomeScreen() {
                   {mobileUtilityActions.map((item) => (
                     <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.96} style={{ flex: 1 }}>
                       <View style={{ height: 42, borderRadius: 14, backgroundColor: `${BORDER}66`, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}>
+                        {Platform.OS === 'web' && (
+                          <style dangerouslySetInnerHTML={{ __html: `
+                            .shadow-web-utility-${item.label.replace(/\s/g, '')} { box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.02); }
+                          `}} />
+                        )}
+
                         <Ionicons name={item.icon} size={15} color={item.color} />
                         <Text style={{ color: TEXT, fontSize: 11, fontWeight: '800' }} numberOfLines={1}>{item.label}</Text>
                       </View>
@@ -1092,6 +1322,16 @@ export default function HomeScreen() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 12,
+                  ...Platform.select({
+                    ios: {
+                      shadowColor: '#000',
+                      shadowOpacity: 0.02,
+                      shadowRadius: 8,
+                      shadowOffset: { width: 0, height: 2 },
+                    },
+                    android: { elevation: 1 },
+                    web: { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.02)' },
+                  }),
                 })}
               >
                 <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: `${GREEN}18`, alignItems: 'center', justifyContent: 'center' }}>
@@ -1100,7 +1340,7 @@ export default function HomeScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={sectionEyebrowStyle()}>Next feed</Text>
                   <Text style={{ color: TEXT, fontSize: 18, fontWeight: '900', marginTop: 2 }}>
-                    {lastFeed ? (nextFeedDueIn && nextFeedDueIn > 0 ? `In ${formatCountdown(nextFeedDueIn, language)}` : 'Possible now') : 'Start first feed'}
+                    {lastFeed ? ((nextFeedDueIn ?? 0) > 0 ? `In ${formatCountdown(nextFeedDueIn ?? 0, language)}` : 'Possible now') : 'Start first feed'}
                   </Text>
                   <Text style={{ color: MUTED, fontSize: 12, fontWeight: '600', marginTop: 3 }}>
                     {lastFeed ? `Last at ${formatClock(lastFeed.occurredAt, locale)} - ${formatRelative(lastFeed.occurredAt, locale)} ago` : 'No feed logged yet'}
@@ -1112,7 +1352,18 @@ export default function HomeScreen() {
 
             <Animated2.View entering={FadeIn.duration(260).delay(80)}>
               <View style={{ borderRadius: 18, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, padding: 12, gap: 10 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                  ...Platform.select({
+                    ios: {
+                      shadowColor: '#000',
+                      shadowOpacity: 0.02,
+                      shadowRadius: 8,
+                      shadowOffset: { width: 0, height: 2 },
+                    },
+                    android: { elevation: 1 },
+                    web: { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.02)' },
+                  }),
+                }}>
                   <View>
                     <Text style={sectionEyebrowStyle()}>Today</Text>
                     <Text style={sectionTitleStyle()}>Daily status</Text>
@@ -1127,6 +1378,11 @@ export default function HomeScreen() {
                     <View key={item.label} style={{ flex: 1, minHeight: 52, borderRadius: 13, backgroundColor: `${item.color}12`, borderWidth: 1, borderColor: `${item.color}28`, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
                       <Text style={{ color: item.color, fontSize: 15, fontWeight: '900' }} numberOfLines={1}>{item.value}</Text>
                       <Text style={{ color: MUTED, fontSize: 9, fontWeight: '800', marginTop: 2 }} numberOfLines={1}>{item.label}</Text>
+                      {Platform.OS === 'web' && (
+                        <style dangerouslySetInnerHTML={{ __html: `
+                          .shadow-web-stat-${item.label.replace(/\s/g, '')} { box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.02); }
+                        `}} />
+                      )}
                     </View>
                   ))}
                 </View>
@@ -2030,6 +2286,283 @@ export default function HomeScreen() {
     </Page>
   );
 }
+
+const nightHomeStyles = StyleSheet.create({
+  page: {
+    flex: 1,
+    gap: 0,
+    maxWidth: 680,
+  },
+  shell: {
+    flex: 1,
+    gap: 12,
+    padding: 12,
+    paddingBottom: 20,
+    borderRadius: 22,
+    backgroundColor: '#070B18',
+    borderWidth: 1,
+    borderColor: 'rgba(132, 160, 255, 0.18)',
+  },
+  header: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  headerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(116, 150, 255, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(137, 171, 255, 0.44)',
+  },
+  avatarText: {
+    fontSize: 22,
+  },
+  headerCopy: {
+    flex: 1,
+    gap: 1,
+  },
+  kicker: {
+    color: '#93A4C8',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  babyButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  title: {
+    color: '#F7FAFF',
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '900',
+  },
+  iconButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  focusCard: {
+    borderRadius: 24,
+    padding: 16,
+    gap: 10,
+    backgroundColor: 'rgba(124, 101, 255, 0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(174, 158, 255, 0.56)',
+  },
+  focusTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  focusLabel: {
+    color: '#AAB8DF',
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  focusValue: {
+    color: '#FFFFFF',
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '900',
+  },
+  focusIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#879DFF',
+  },
+  focusDetail: {
+    color: '#C1CBEA',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  focusCta: {
+    minHeight: 56,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#879DFF',
+  },
+  focusCtaText: {
+    color: '#071026',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  alertCard: {
+    minHeight: 54,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(240, 138, 154, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(240, 138, 154, 0.28)',
+  },
+  alertCopy: {
+    flex: 1,
+    gap: 1,
+  },
+  alertTitle: {
+    color: '#F7FAFF',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  alertText: {
+    color: '#AAB8DF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickButton: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    minHeight: 112,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 12,
+    justifyContent: 'center',
+    gap: 5,
+  },
+  quickIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  quickLabel: {
+    color: '#F7FAFF',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  quickDetail: {
+    color: '#AAB8DF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 7,
+  },
+  statPill: {
+    flex: 1,
+    minHeight: 58,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  statValue: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  statLabel: {
+    color: '#93A4C8',
+    fontSize: 10,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  recentCard: {
+    flex: 1,
+    minHeight: 120,
+    borderRadius: 20,
+    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  sectionTitle: {
+    color: '#F7FAFF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  sectionLink: {
+    color: '#879DFF',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  recentRow: {
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    borderRadius: 13,
+    paddingHorizontal: 6,
+  },
+  recentDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 999,
+  },
+  recentCopy: {
+    flex: 1,
+  },
+  recentTitle: {
+    color: '#F7FAFF',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  recentMeta: {
+    color: '#93A4C8',
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 1,
+  },
+  emptyText: {
+    color: '#93A4C8',
+    fontSize: 13,
+    fontWeight: '800',
+    paddingVertical: 12,
+  },
+  pressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.98 }],
+  },
+  primaryPressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.99 }],
+  },
+});
 
 function HeaderAction({ label, onPress }: { label: string; onPress: () => void }) {
   const { theme } = useTheme();

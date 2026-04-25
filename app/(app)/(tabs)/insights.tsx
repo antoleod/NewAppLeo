@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Share, Text, View } from 'react-native';
+import { Platform, Share, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Button, EmptyState, Heading, Page } from '@/components/ui';
@@ -148,11 +148,16 @@ export default function InsightsScreen() {
                 borderWidth: 1,
                 borderColor: theme.border,
                 gap: 6,
-                shadowColor: '#000',
-                shadowOpacity: 0.02,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 1,
+                ...Platform.select({
+                  ios: {
+                    shadowColor: '#000',
+                    shadowOpacity: 0.02,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 2 },
+                  },
+                  android: { elevation: 1 },
+                  web: { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.02)' },
+                }),
               }}
             >
               <Text style={{ color: theme.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.2 }}>{card.label.toUpperCase()}</Text>
@@ -185,7 +190,18 @@ export default function InsightsScreen() {
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           <Animated.View entering={FadeIn.duration(280).delay(240)} style={{ flex: 1, minWidth: responsive.isPhone ? '100%' : 260, marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 20, backgroundColor: theme.bgCard, borderWidth: 1, borderColor: theme.border, gap: 12, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 }}>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 20, backgroundColor: theme.bgCard, borderWidth: 1, borderColor: theme.border, gap: 12,
+              ...Platform.select({
+                ios: {
+                  shadowColor: '#000',
+                  shadowOpacity: 0.02,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 2 },
+                },
+                android: { elevation: 1 },
+                web: { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.02)' },
+              }),
+            }}>
               <Text style={eyebrowStyle()}>{t('insights.growth')}</Text>
               <Text style={titleStyle()}>{language === 'fr' ? 'Croissance' : 'Growth'}</Text>
               <View style={{ gap: 8 }}>
@@ -204,7 +220,18 @@ export default function InsightsScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeIn.duration(280).delay(320)} style={{ flex: 1, minWidth: responsive.isPhone ? '100%' : 260, marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 20, backgroundColor: theme.bgCard, borderWidth: 1, borderColor: theme.border, gap: 12, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 }}>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 20, backgroundColor: theme.bgCard, borderWidth: 1, borderColor: theme.border, gap: 12,
+              ...Platform.select({
+                ios: {
+                  shadowColor: '#000',
+                  shadowOpacity: 0.02,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 2 },
+                },
+                android: { elevation: 1 },
+                web: { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.02)' },
+              }),
+            }}>
               <Text style={eyebrowStyle()}>{t('insights.sleepAnalysis')}</Text>
               <Text style={titleStyle()}>{language === 'fr' ? 'Sommeil' : 'Sleep'}</Text>
               <Text style={{ color: theme.textMuted, fontSize: 12, fontWeight: '500' }}>

@@ -173,17 +173,19 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, [profile?.uid]);
 
   useEffect(() => {
-    if (!user || loading || entries.length) return;
+    if (!user || loading) return;
 
     let cancelled = false;
 
     const bootstrapLeoData = async () => {
       const settings = await getAppSettings();
-      if (settings.hasImportedLeoData || cancelled) return;
       const importedEntries = importLeoEntries();
       if (!importedEntries.length) return;
+      const existingSlugs = new Set(entriesRefState.current.map((entry) => entry.slug).filter(Boolean));
+      const missingEntries = importedEntries.filter((entry) => !entry.slug || !existingSlugs.has(entry.slug));
+      if (!missingEntries.length || cancelled) return;
       await importEntries(
-        importedEntries.map((entry) => ({
+        missingEntries.map((entry) => ({
           type: entry.type,
           title: entry.title,
           payload: entry.payload,
@@ -300,15 +302,18 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         const existingKeys = new Set(
           existingSnapshot.docs.map((docItem) => {
             const data = docItem.data();
-            return JSON.stringify({
-              type: data.type,
-              occurredAt: data.occurredAt,
-              payload: data.payload ?? {},
-            });
+            return data.slug
+              ? `slug:${data.slug}`
+              : JSON.stringify({
+                type: data.type,
+                occurredAt: data.occurredAt,
+                payload: data.payload ?? {},
+              });
           }),
         );
 
         const toCreate = normalized.filter((item) => {
+          if (item.slug && existingKeys.has(`slug:${item.slug}`)) return false;
           const key = JSON.stringify({ type: item.type, occurredAt: item.occurredAt, payload: item.payload ?? {} });
           return !existingKeys.has(key);
         });

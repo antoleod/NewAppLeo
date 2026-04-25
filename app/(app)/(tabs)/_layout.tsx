@@ -1,8 +1,7 @@
 import { Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Platform, Pressable, useWindowDimensions } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocale } from '@/context/LocaleContext';
-import { useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { triggerHaptic } from '@/lib/mobile';
 import { BabyFlowIcon } from '@/components/BabyFlowIcon';
@@ -20,12 +19,12 @@ export default function TabsLayout() {
   const tabHeight = (isCompactPhone ? 56 : isLargePhone ? 64 : 60) + bottomInset;
 
   const tabBarBackground = isPhoto
-    ? (isDark ? 'rgba(10, 14, 20, 0.72)' : 'rgba(255, 255, 255, 0.76)')
+    ? (isDark ? 'rgba(7, 11, 18, 0.36)' : 'rgba(255, 255, 255, 0.34)')
     : isDark
-      ? 'rgba(18, 23, 31, 0.96)'
-      : 'rgba(255, 255, 255, 0.97)';
+      ? 'rgba(7, 11, 18, 0.52)'
+      : 'rgba(255, 255, 255, 0.42)';
 
-  const tabBarBorder = isPhoto ? `${theme.border}CC` : theme.border;
+  const tabBarBorder = isDark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.42)';
   const activeTint = theme.accent;
   const inactiveTint = isDark ? theme.textMuted : '#5F6772';
 
@@ -44,14 +43,28 @@ export default function TabsLayout() {
           marginHorizontal: isCompactPhone ? 12 : 16,
           marginBottom: Math.max(10, insets.bottom ? insets.bottom : 10),
           borderRadius: isCompactPhone ? 24 : 28,
-          borderTopWidth: 0,
-          borderWidth: 1,
+          ...Platform.select({
+            ios: {
+              borderTopWidth: 0,
+              borderWidth: 1,
+              shadowColor: '#000',
+              shadowOpacity: 0.12,
+              shadowRadius: 22,
+              shadowOffset: { width: 0, height: -4 },
+            },
+            android: {
+              borderTopWidth: 0,
+              borderWidth: 1,
+              elevation: 4,
+            },
+            web: {
+              borderWidth: 1,
+              backdropFilter: 'blur(22px) saturate(140%)',
+              WebkitBackdropFilter: 'blur(22px) saturate(140%)',
+              boxShadow: '0px -8px 28px rgba(0, 0, 0, 0.16)',
+            },
+          }),
           overflow: 'hidden',
-          elevation: 4,
-          shadowColor: '#000',
-          shadowOpacity: 0.06,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: -4 },
           position: 'absolute',
           left: isCompactPhone ? 12 : 16,
           right: isCompactPhone ? 12 : 16,
@@ -95,6 +108,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="history" options={{ title: t('tabs.history') }} />
       <Tabs.Screen name="insights" options={{ title: t('tabs.insights') }} />
       <Tabs.Screen name="profile" options={{ title: 'Config' }} />
+      <Tabs.Screen name="diaper" options={{ href: null }} />
+      <Tabs.Screen name="settings-theme" options={{ href: null }} />
     </Tabs>
   );
 }

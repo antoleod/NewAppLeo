@@ -446,6 +446,14 @@ function formatClockTime(value?: string | null) {
   return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }
 
+function formatCompactDuration(minutes: number) {
+  const safeMinutes = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const mins = safeMinutes % 60;
+  if (!hours) return `${mins}m`;
+  return mins ? `${hours}h ${mins}m` : `${hours}h`;
+}
+
 function formatRelativeDose(value?: string | null) {
   if (!value) return '';
   const diffMs = Date.now() - new Date(value).getTime();
@@ -511,6 +519,8 @@ export default function EntryComposerScreen() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [occurredAt, setOccurredAt] = useState(new Date());
   const [saving, setSaving] = useState(false);
+  const [sleepStartedAt, setSleepStartedAt] = useState<Date | null>(null);
+  const [sleepNow, setSleepNow] = useState(new Date());
   const [largeTouchMode, setLargeTouchMode] = useState(false);
   const [savedMedicines, setSavedMedicines] = useState<SavedMedicine[]>([]);
   const [medicationSearch, setMedicationSearch] = useState('');
@@ -681,6 +691,10 @@ export default function EntryComposerScreen() {
 
   useEffect(() => {
     if (editing) return;
+    if (type === 'sleep') {
+      setDurationMin('0');
+      return;
+    }
     if (presetAmount && Number.isFinite(presetAmount)) {
       setAmountMl(String(presetAmount));
     } else if (type === 'feed' && !presetAmount) {
@@ -689,6 +703,12 @@ export default function EntryComposerScreen() {
     if (presetMode) setMode(presetMode);
     if (presetSide) setSide(presetSide);
   }, [editing, presetAmount, presetMode, presetSide, type, smartBottleDefault]);
+
+  useEffect(() => {
+    if (!sleepStartedAt) return;
+    const timer = setInterval(() => setSleepNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, [sleepStartedAt]);
 
   useEffect(() => {
     if (type !== 'medication') return;
@@ -911,15 +931,16 @@ export default function EntryComposerScreen() {
     }
   }
 
-  async function handleSave() {
+  async function handleSave(overrides?: { occurredAt?: Date; payload?: EntryPayload; notes?: string }) {
     setSaving(true);
     try {
       if (type === 'food' && careStage.foodEntryLocked) {
         Alert.alert('Food locked', careStage.foodEntryReason ?? 'Food logging is not available yet for this age.');
         return;
       }
-      const timestamp = occurredAt.toISOString();
-      const payload = buildPayload();
+      const notesValue = overrides?.notes ?? notes;
+      const timestamp = (overrides?.occurredAt ?? occurredAt).toISOString();
+      const payload = overrides?.payload ?? buildPayload();
       const titleValue = buildTitle();
       const alternatingMedicines = [
         alternatingMedicineA.trim() && alternatingMedicineAInterval ? { name: alternatingMedicineA.trim(), intervalHours: Number(alternatingMedicineAInterval) || 0 } : null,
@@ -927,9 +948,9 @@ export default function EntryComposerScreen() {
       ].filter((item): item is { name: string; intervalHours: number } => Boolean(item && item.intervalHours > 0));
 
       if (editing) {
-        await updateEntry(editing.id, { type, title: titleValue, notes, occurredAt: timestamp, payload } as any);
+        await updateEntry(editing.id, { type, title: titleValue, notes: notesValue, occurredAt: timestamp, payload } as any);
       } else {
-        await addEntry({ type, title: titleValue, notes, occurredAt: timestamp, payload });
+        await addEntry({ type, title: titleValue, notes: notesValue, occurredAt: timestamp, payload });
       }
       if (type === 'medication' && name.trim()) {
         await updateAppSettings({
@@ -949,7 +970,7 @@ export default function EntryComposerScreen() {
             symptomTags: selectedMedicationSymptoms,
             commonFor: (selectedMedicationMeta.commonFor as string[] | undefined) ?? [],
             minAgeMonths: selectedMedicationMeta.minAgeMonths ?? null,
-            notes: selectedMedicationMeta.notes ?? notes,
+            notes: selectedMedicationMeta.notes ?? notesValue,
             isCustom: selectedMedicationMeta.isCustom ?? true,
           }),
         );
@@ -968,6 +989,307 @@ export default function EntryComposerScreen() {
     router.back();
   }
 
+  const sleepLiveMinutes = sleepStartedAt ? Math.max(0, Math.floor((sleepNow.getTime() - sleepStartedAt.getTime()) / 60000)) : Number(durationMin) || 0;
+  const sleepDisplay = formatCompactDuration(sleepLiveMinutes);
+  const closeComposer = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/(app)/(tabs)/home');
+  };
+  const adjustSleepMinutes = (delta: number) => {
+    setDurationMin((current) => String(Math.max(0, (Number(current) || 0) + delta)));
+    void triggerHaptic('light');
+  };
+  const setSleepPreset = (minutes: number) => {
+    setDurationMin(String(minutes));
+    void triggerHaptic('light');
+  };
+  const handleSleepPrimary = async () => {
+    if (editing && !sleepStartedAt) {
+      await handleSave();
+      return;
+    }
+    if (!sleepStartedAt) {
+      const start = new Date();
+      setSleepStartedAt(start);
+      setSleepNow(start);
+      setDurationMin('0');
+      setOccurredAt(start);
+      void triggerHaptic('light');
+      return;
+    }
+
+    const stoppedAt = new Date();
+    const calculatedMinutes = Math.max(1, Math.round((stoppedAt.getTime() - sleepStartedAt.getTime()) / 60000));
+    setSleepStartedAt(null);
+    setSleepNow(stoppedAt);
+    setDurationMin(String(calculatedMinutes));
+    setOccurredAt(stoppedAt);
+    void triggerHaptic('success');
+    await handleSave({
+      occurredAt: stoppedAt,
+      payload: { durationMin: calculatedMinutes, notes },
+      notes,
+    });
+  };
+
+  if (type === 'sleep') {
+    const isRunning = Boolean(sleepStartedAt);
+    const sleepPrimaryLabel = editing && !isRunning ? 'Update Sleep' : isRunning ? 'Stop & Save' : 'Start Sleep';
+
+    return (
+      <Page scroll={false} contentStyle={styles.sleepPage}>
+        <View style={styles.sleepShell}>
+          <View style={styles.sleepHeader}>
+            <View style={styles.sleepHeaderLeft}>
+              <View style={styles.sleepIcon}>
+                <Text style={styles.sleepIconText}>😴</Text>
+              </View>
+              <View style={styles.sleepHeaderCopy}>
+                <Text style={styles.sleepTitle}>Nouvelle Sleep</Text>
+                <Text style={styles.sleepSubtitle}>{isRunning ? 'Running' : 'Quick log'}</Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={closeComposer}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={copy.close}
+              style={({ pressed }) => [styles.sleepClose, pressed && styles.sleepPressed]}
+            >
+              <Text style={styles.sleepCloseText}>X</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.sleepTimeRow}>
+            <View style={styles.sleepTimePill}>
+              <DateTimeField label="Time" value={occurredAt} onChange={setOccurredAt} />
+            </View>
+            <Pressable
+              onPress={() => setOccurredAt(new Date())}
+              style={({ pressed }) => [styles.sleepTinyChip, pressed && styles.sleepPressed]}
+            >
+              <Text style={styles.sleepTinyChipText}>Now</Text>
+            </Pressable>
+          </View>
+
+          <View style={[styles.sleepDurationCard, isRunning && styles.sleepDurationCardActive]}>
+            <Text style={styles.sleepDurationLabel}>{isRunning ? 'Sleeping now' : 'Duration'}</Text>
+            <Text style={styles.sleepDurationValue}>{sleepDisplay}</Text>
+            <Text style={styles.sleepDurationMeta}>
+              {isRunning && sleepStartedAt ? `Started ${formatClockTime(sleepStartedAt.toISOString())}` : 'Tap once to start'}
+            </Text>
+          </View>
+
+          {!isRunning && (editing || sleepLiveMinutes > 0) ? (
+            <View style={styles.sleepAdjustPanel}>
+              <View style={styles.sleepAdjustRow}>
+                <Pressable onPress={() => adjustSleepMinutes(-5)} style={({ pressed }) => [styles.sleepAdjustButton, pressed && styles.sleepPressed]}>
+                  <Text style={styles.sleepAdjustText}>-5 min</Text>
+                </Pressable>
+                <Pressable onPress={() => adjustSleepMinutes(5)} style={({ pressed }) => [styles.sleepAdjustButton, pressed && styles.sleepPressed]}>
+                  <Text style={styles.sleepAdjustText}>+5 min</Text>
+                </Pressable>
+              </View>
+              <View style={styles.sleepPresetRow}>
+                {[
+                  { label: '15m', value: 15 },
+                  { label: '30m', value: 30 },
+                  { label: '1h', value: 60 },
+                  { label: '2h', value: 120 },
+                ].map((preset) => (
+                  <Pressable
+                    key={preset.label}
+                    onPress={() => setSleepPreset(preset.value)}
+                    style={({ pressed }) => [styles.sleepPresetButton, Number(durationMin) === preset.value && styles.sleepPresetActive, pressed && styles.sleepPressed]}
+                  >
+                    <Text style={[styles.sleepPresetText, Number(durationMin) === preset.value && styles.sleepPresetTextActive]}>{preset.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.sleepOptionalRow}>
+            <Pressable
+              onPress={() => setNotesOpen((current) => !current)}
+              style={({ pressed }) => [styles.sleepNoteButton, pressed && styles.sleepPressed]}
+            >
+              <Text style={styles.sleepNoteText}>{notesOpen ? '- Note' : '+ Note'}</Text>
+            </Pressable>
+            <View style={styles.sleepInfoChip}>
+              <Text style={styles.sleepInfoText}>BE info</Text>
+            </View>
+          </View>
+
+          {notesOpen ? (
+            <Input label="Note" value={notes} onChangeText={setNotes} multiline placeholder="Optional" />
+          ) : null}
+
+          <View style={styles.sleepBottomBar}>
+            <Pressable
+              onPress={handleSleepPrimary}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel={sleepPrimaryLabel}
+              style={({ pressed }) => [styles.sleepPrimaryButton, (pressed || saving) && styles.sleepPrimaryPressed]}
+            >
+              <Text style={styles.sleepPrimaryText}>{saving ? 'Saving...' : sleepPrimaryLabel}</Text>
+            </Pressable>
+            <View style={styles.sleepSecondaryRow}>
+              <Pressable onPress={closeComposer} style={({ pressed }) => [styles.sleepSecondaryButton, pressed && styles.sleepPressed]}>
+                <Text style={styles.sleepSecondaryText}>Cancel</Text>
+              </Pressable>
+              {editing ? (
+                <Pressable onPress={handleDelete} style={({ pressed }) => [styles.sleepSecondaryButton, pressed && styles.sleepPressed]}>
+                  <Text style={styles.sleepDeleteText}>Delete</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        </View>
+      </Page>
+    );
+  }
+
+  if (type === 'diaper' || type === 'food' || type === 'medication') {
+    const quickTitle = type === 'diaper' ? 'Pañal' : type === 'food' ? 'Comida' : 'Medicamento';
+    const quickIcon = type === 'diaper' ? '🧷' : type === 'food' ? '🍲' : '💊';
+    const quickPrimary = editing ? 'Update' : 'Save';
+    const diaperOptions = [
+      { key: 'pee', label: 'Pipi', active: Number(pee) > 0, onPress: () => setPee((current) => (Number(current) > 0 ? '0' : '1')) },
+      { key: 'poop', label: 'Caca', active: Number(poop) > 0, onPress: () => setPoop((current) => (Number(current) > 0 ? '0' : '1')) },
+      { key: 'vomit', label: 'Vomi', active: Number(vomit) > 0, onPress: () => setVomit((current) => (Number(current) > 0 ? '0' : '1')) },
+    ];
+    const foodPresets = ['Puré', 'Fruit', 'Céréales', 'Yaourt', 'Légumes', 'Eau'];
+    const medicationPresets = [
+      { name: 'Amoxicilline', dose: '' },
+      { name: 'Nurofen', dose: '2.5 ml' },
+      { name: 'Dafalgan', dose: '2.5 ml' },
+      { name: 'Autre', dose: '' },
+    ];
+
+    return (
+      <Page scroll={false} contentStyle={styles.sleepPage}>
+        <View style={styles.sleepShell}>
+          <View style={styles.sleepHeader}>
+            <View style={styles.sleepHeaderLeft}>
+              <View style={styles.sleepIcon}>
+                <Text style={styles.sleepIconText}>{quickIcon}</Text>
+              </View>
+              <View style={styles.sleepHeaderCopy}>
+                <Text style={styles.sleepTitle}>{quickTitle}</Text>
+                <Text style={styles.sleepSubtitle}>Quick log</Text>
+              </View>
+            </View>
+            <Pressable onPress={closeComposer} hitSlop={10} style={({ pressed }) => [styles.sleepClose, pressed && styles.sleepPressed]}>
+              <Text style={styles.sleepCloseText}>X</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.sleepTimeRow}>
+            <View style={styles.sleepTimePill}>
+              <DateTimeField label="Time" value={occurredAt} onChange={setOccurredAt} />
+            </View>
+            <Pressable onPress={() => setOccurredAt(new Date())} style={({ pressed }) => [styles.sleepTinyChip, pressed && styles.sleepPressed]}>
+              <Text style={styles.sleepTinyChipText}>Now</Text>
+            </Pressable>
+          </View>
+
+          {type === 'diaper' ? (
+            <View style={styles.quickEntryGrid}>
+              {diaperOptions.map((item) => (
+                <Pressable
+                  key={item.key}
+                  onPress={() => {
+                    item.onPress();
+                    void triggerHaptic('light');
+                  }}
+                  style={({ pressed }) => [styles.quickEntryTile, item.active && styles.quickEntryTileActive, pressed && styles.sleepPressed]}
+                >
+                  <Text style={[styles.quickEntryTileText, item.active && styles.quickEntryTileTextActive]}>{item.label}</Text>
+                  <Text style={styles.quickEntryTileHint}>{item.active ? 'On' : 'Tap'}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+
+          {type === 'food' ? (
+            <View style={styles.quickEntryPanel}>
+              <Text style={styles.quickEntryLabel}>Choose food</Text>
+              <View style={styles.quickEntryChipGrid}>
+                {foodPresets.map((item) => (
+                  <Pressable
+                    key={item}
+                    onPress={() => setFoodName(item)}
+                    style={({ pressed }) => [styles.quickEntryChip, foodName === item && styles.quickEntryChipActive, pressed && styles.sleepPressed]}
+                  >
+                    <Text style={[styles.quickEntryChipText, foodName === item && styles.quickEntryChipTextActive]}>{item}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Input label="Food" value={foodName} onChangeText={setFoodName} placeholder="Optional custom food" />
+              <Input label="Quantity" value={quantity} onChangeText={setQuantity} placeholder="Small / 120g / few spoons" />
+            </View>
+          ) : null}
+
+          {type === 'medication' ? (
+            <View style={styles.quickEntryPanel}>
+              <Text style={styles.quickEntryLabel}>Choose medicine</Text>
+              <View style={styles.quickEntryChipGrid}>
+                {medicationPresets.map((item) => (
+                  <Pressable
+                    key={item.name}
+                    onPress={() => {
+                      setName(item.name === 'Autre' ? '' : item.name);
+                      setDosage(item.dose);
+                      if (item.name === 'Autre') setNotesOpen(true);
+                    }}
+                    style={({ pressed }) => [styles.quickEntryChip, name === item.name && styles.quickEntryChipActive, pressed && styles.sleepPressed]}
+                  >
+                    <Text style={[styles.quickEntryChipText, name === item.name && styles.quickEntryChipTextActive]}>{item.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Input label="Name" value={name} onChangeText={setName} placeholder="Medicine name" />
+              <Input label="Dose" value={dosage} onChangeText={setDosage} placeholder="2.5 ml" />
+            </View>
+          ) : null}
+
+          <View style={styles.sleepOptionalRow}>
+            <Pressable onPress={() => setNotesOpen((current) => !current)} style={({ pressed }) => [styles.sleepNoteButton, pressed && styles.sleepPressed]}>
+              <Text style={styles.sleepNoteText}>{notesOpen ? '- Note' : '+ Note'}</Text>
+            </Pressable>
+          </View>
+
+          {notesOpen ? <Input label="Note" value={notes} onChangeText={setNotes} multiline placeholder="Optional" /> : null}
+
+          <View style={styles.sleepBottomBar}>
+            <Pressable
+              onPress={() => void handleSave()}
+              disabled={saving || (type === 'medication' && !name.trim())}
+              style={({ pressed }) => [styles.sleepPrimaryButton, (pressed || saving) && styles.sleepPrimaryPressed, type === 'medication' && !name.trim() && { opacity: 0.45 }]}
+            >
+              <Text style={styles.sleepPrimaryText}>{saving ? 'Saving...' : quickPrimary}</Text>
+            </Pressable>
+            <View style={styles.sleepSecondaryRow}>
+              <Pressable onPress={closeComposer} style={({ pressed }) => [styles.sleepSecondaryButton, pressed && styles.sleepPressed]}>
+                <Text style={styles.sleepSecondaryText}>Cancel</Text>
+              </Pressable>
+              {editing ? (
+                <Pressable onPress={handleDelete} style={({ pressed }) => [styles.sleepSecondaryButton, pressed && styles.sleepPressed]}>
+                  <Text style={styles.sleepDeleteText}>Delete</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        </View>
+      </Page>
+    );
+  }
+
   const screenCopy = {
     title: editing
       ? `${copy.edit} ${typeLabels[editing.type]}`
@@ -977,15 +1299,7 @@ export default function EntryComposerScreen() {
         ? language === 'fr'
           ? 'Suivez sein ou biberon avec minuteur ou quantite rapide.'
           : 'Track breast or bottle sessions with a timer or quick amount picker.'
-        : type === 'sleep'
-          ? language === 'fr'
-            ? 'Capturez une sieste ou une nuit avec une duree simple.'
-            : 'Capture a nap or overnight block with a simple duration.'
-          : type === 'diaper'
-            ? language === 'fr'
-              ? 'Enregistrez pipi, caca et vomi avec une note courte.'
-              : 'Log pee, poop, and vomit together with a short note.'
-            : type === 'pump'
+        : type === 'pump'
               ? language === 'fr'
                 ? 'Enregistrez tire-lait et quantite.'
                 : 'Record a pumping session and the extracted amount.'
@@ -993,11 +1307,7 @@ export default function EntryComposerScreen() {
                 ? language === 'fr'
                   ? 'Ajoutez poids, taille, perimetre cranien et temperature.'
                   : 'Add weight, height, head circumference, or temperature.'
-                : type === 'medication'
-                  ? language === 'fr'
-                    ? 'Nom, dose, heure et contexte de securite.'
-                    : 'Save the medication name, timing rule, and safety context.'
-                  : type === 'milestone'
+                : type === 'milestone'
                     ? language === 'fr'
                       ? 'Ajoutez une etape avec photo si besoin.'
                       : 'Mark a new milestone and optionally attach a photo.'
@@ -1448,7 +1758,7 @@ export default function EntryComposerScreen() {
           </View>
         ) : null}
 
-        {type === 'food' ? (
+        {false ? (
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'FOOD FLOW' : 'FOOD FLOW'}</Text>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Repas et portions' : 'Meals and portions'}</Text>
@@ -1481,7 +1791,7 @@ export default function EntryComposerScreen() {
           </View>
         ) : null}
 
-        {type === 'sleep' ? (
+        {false ? (
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'SLEEP FLOW' : 'SLEEP FLOW'}</Text>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Duree et repos' : 'Duration and rest'}</Text>
@@ -1495,7 +1805,7 @@ export default function EntryComposerScreen() {
           </View>
         ) : null}
 
-        {type === 'diaper' ? (
+        {false ? (
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'DIAPER FLOW' : 'DIAPER FLOW'}</Text>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Compteurs rapides' : 'Quick counts'}</Text>
@@ -1537,7 +1847,7 @@ export default function EntryComposerScreen() {
           </View>
         ) : null}
 
-        {type === 'medication' ? (
+        {false ? (
           <View style={styles.babyFlowContainer}>
             {/* Header: BabyFlow Brand & Profile */}
             <View style={styles.babyFlowHeader}>
@@ -1565,7 +1875,7 @@ export default function EntryComposerScreen() {
                     <Text style={styles.focusLabel}>LAST ADMINISTERED</Text>
                     <Text style={styles.focusValue}>{payloadOf(medicationTimeline.lastMedicine).name}</Text>
                     <Text style={styles.focusMeta}>
-                      {payloadOf(medicationTimeline.lastMedicine).dosage} • {formatClockTime(medicationTimeline.lastMedicine.occurredAt)}
+                      {payloadOf(medicationTimeline.lastMedicine).dosage} - {formatClockTime(medicationTimeline.lastMedicine?.occurredAt)}
                     </Text>
                   </View>
                 ) : (
@@ -1780,7 +2090,7 @@ export default function EntryComposerScreen() {
         </View>
         {notesOpen ? <Input label={language === 'fr' ? 'Notes' : 'Notes'} value={notes} onChangeText={setNotes} multiline placeholder={language === 'fr' ? 'Details optionnels' : 'Optional details'} /> : null}
 
-        {type !== 'medication' ? (
+        {true ? (
           <View style={styles.actions}>
             <Button label={editing ? (language === 'fr' ? 'Mettre a jour' : 'Update entry') : language === 'fr' ? 'Enregistrer' : 'Save entry'} onPress={handleSave} loading={saving} />
             <Button label={language === 'fr' ? 'Annuler' : 'Cancel'} onPress={() => router.back()} variant="ghost" />
@@ -1982,6 +2292,338 @@ const styles = StyleSheet.create({
   compactActionButton: {
     flex: 1,
     minHeight: 46,
+  },
+  sleepPage: {
+    flex: 1,
+    gap: 0,
+  },
+  sleepShell: {
+    flex: 1,
+    gap: 10,
+    padding: 12,
+    borderRadius: 22,
+    backgroundColor: '#070B18',
+    borderWidth: 1,
+    borderColor: 'rgba(132, 160, 255, 0.18)',
+  },
+  sleepHeader: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  sleepHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sleepIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(116, 150, 255, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(137, 171, 255, 0.48)',
+  },
+  sleepIconText: {
+    fontSize: 21,
+  },
+  sleepHeaderCopy: {
+    flex: 1,
+    gap: 1,
+  },
+  sleepTitle: {
+    color: '#F7FAFF',
+    fontSize: 21,
+    lineHeight: 24,
+    fontWeight: '900',
+  },
+  sleepSubtitle: {
+    color: '#93A4C8',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+  },
+  sleepClose: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  sleepCloseText: {
+    color: '#B8C3E6',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  sleepTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 8,
+  },
+  sleepTimePill: {
+    flex: 1,
+    overflow: 'hidden',
+    borderRadius: 16,
+  },
+  sleepTinyChip: {
+    minWidth: 66,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  sleepTinyChipText: {
+    color: '#DCE6FF',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  sleepDurationCard: {
+    minHeight: 150,
+    borderRadius: 22,
+    padding: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(96, 125, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(137, 171, 255, 0.26)',
+  },
+  sleepDurationCardActive: {
+    backgroundColor: 'rgba(124, 101, 255, 0.22)',
+    borderColor: 'rgba(174, 158, 255, 0.56)',
+  },
+  sleepDurationLabel: {
+    color: '#AAB8DF',
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  sleepDurationValue: {
+    color: '#FFFFFF',
+    fontSize: 58,
+    lineHeight: 64,
+    fontWeight: '900',
+  },
+  sleepDurationMeta: {
+    color: '#9EADD4',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  sleepAdjustPanel: {
+    gap: 8,
+  },
+  sleepAdjustRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sleepAdjustButton: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  sleepAdjustText: {
+    color: '#F7FAFF',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  sleepPresetRow: {
+    flexDirection: 'row',
+    gap: 7,
+  },
+  sleepPresetButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  sleepPresetActive: {
+    backgroundColor: 'rgba(118, 151, 255, 0.20)',
+    borderColor: 'rgba(137, 171, 255, 0.70)',
+  },
+  sleepPresetText: {
+    color: '#AAB8DF',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  sleepPresetTextActive: {
+    color: '#FFFFFF',
+  },
+  sleepOptionalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  sleepNoteButton: {
+    minHeight: 38,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  sleepNoteText: {
+    color: '#DCE6FF',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  sleepInfoChip: {
+    minHeight: 28,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(116, 150, 255, 0.10)',
+  },
+  sleepInfoText: {
+    color: '#8397D0',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  sleepBottomBar: {
+    marginTop: 'auto',
+    gap: 6,
+    paddingTop: 6,
+  },
+  sleepPrimaryButton: {
+    minHeight: 66,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#879DFF',
+    shadowColor: '#879DFF',
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
+  },
+  sleepPrimaryPressed: {
+    opacity: 0.84,
+    transform: [{ scale: 0.99 }],
+  },
+  sleepPrimaryText: {
+    color: '#071026',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  sleepSecondaryRow: {
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+  },
+  sleepSecondaryButton: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sleepSecondaryText: {
+    color: '#8290B8',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  sleepDeleteText: {
+    color: '#F08A9A',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  sleepPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.98 }],
+  },
+  quickEntryGrid: {
+    flexDirection: 'row',
+    gap: 9,
+  },
+  quickEntryTile: {
+    flex: 1,
+    minHeight: 118,
+    borderRadius: 20,
+    padding: 12,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  quickEntryTileActive: {
+    backgroundColor: 'rgba(135, 157, 255, 0.22)',
+    borderColor: 'rgba(135, 157, 255, 0.70)',
+  },
+  quickEntryTileText: {
+    color: '#F7FAFF',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  quickEntryTileTextActive: {
+    color: '#FFFFFF',
+  },
+  quickEntryTileHint: {
+    color: '#93A4C8',
+    fontSize: 12,
+    fontWeight: '900',
+    marginTop: 5,
+  },
+  quickEntryPanel: {
+    gap: 10,
+  },
+  quickEntryLabel: {
+    color: '#AAB8DF',
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  quickEntryChipGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  quickEntryChip: {
+    flexBasis: '31%',
+    flexGrow: 1,
+    minHeight: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  quickEntryChipActive: {
+    backgroundColor: 'rgba(135, 157, 255, 0.22)',
+    borderColor: 'rgba(135, 157, 255, 0.70)',
+  },
+  quickEntryChipText: {
+    color: '#DCE6FF',
+    fontSize: 13,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  quickEntryChipTextActive: {
+    color: '#FFFFFF',
   },
   babyFlowContainer: {
     gap: 20,
