@@ -147,14 +147,17 @@ const staticStyles = StyleSheet.create({
   },
   menuOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.34)',
     justifyContent: 'flex-end',
+    paddingHorizontal: 12,
+    paddingBottom: 92,
   },
   menuContent: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    paddingBottom: 44,
+    borderRadius: 26,
+    padding: 14,
+    paddingBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 24,
@@ -162,9 +165,9 @@ const staticStyles = StyleSheet.create({
     elevation: 8,
   },
   menuTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
-    marginBottom: 20,
+    marginBottom: 12,
     letterSpacing: -0.3,
   },
   menuItem: {
@@ -181,6 +184,29 @@ const staticStyles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 12,
     letterSpacing: 0.2,
+  },
+  feedSheetGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  feedSheetCard: {
+    minHeight: 86,
+    borderRadius: 18,
+    padding: 12,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  feedSheetIcon: {
+    fontSize: 23,
+    marginBottom: 7,
+  },
+  feedSheetLabel: {
+    color: '#F7FAFF',
+    fontSize: 15,
+    fontWeight: '900',
   },
 });
 
@@ -376,10 +402,14 @@ export default function HomeScreen() {
   const styles = {
     pageContent: staticStyles.pageContent,
     menuOverlay: staticStyles.menuOverlay,
-    menuContent: [staticStyles.menuContent, { backgroundColor: CARD }],
+    menuContent: [staticStyles.menuContent, { backgroundColor: 'rgba(7, 11, 18, 0.94)' }],
     menuTitle: [staticStyles.menuTitle, { color: TEXT }],
     menuItem: [staticStyles.menuItem, { backgroundColor: `${BORDER}66`, borderColor: BORDER }],
     menuItemText: [staticStyles.menuItemText, { color: TEXT }],
+    feedSheetGrid: staticStyles.feedSheetGrid,
+    feedSheetCard: staticStyles.feedSheetCard,
+    feedSheetIcon: staticStyles.feedSheetIcon,
+    feedSheetLabel: staticStyles.feedSheetLabel,
   };
 
   const [hydration, setHydration] = useState(0);
@@ -1090,25 +1120,26 @@ export default function HomeScreen() {
       </Modal>
 
       <Modal visible={showNextFeedPicker} transparent animationType="fade" onRequestClose={closeNextFeedPicker}>
-        <View style={styles.menuOverlay}>
-          <View style={styles.menuContent}>
+        <Pressable style={styles.menuOverlay} onPress={closeNextFeedPicker}>
+          <Pressable style={styles.menuContent}>
             <Text style={styles.menuTitle}>{t('home.start_feed', 'Start Feed')}</Text>
-            <View style={{ gap: 12 }}>
-              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=breast&presetSide=left')} pressedScale={0.98}>
-                <View style={styles.menuItem}><Text style={styles.menuItemText}>{t('home.left_breast', 'Left breast')}</Text></View>
-              </PressScale>
-              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=breast&presetSide=right')} pressedScale={0.98}>
-                <View style={styles.menuItem}><Text style={styles.menuItemText}>{t('home.right_breast', 'Right breast')}</Text></View>
-              </PressScale>
-              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=breast&presetSide=both')} pressedScale={0.98}>
-                <View style={styles.menuItem}><Text style={styles.menuItemText}>{t('home.both', 'Both')}</Text></View>
-              </PressScale>
-              <PressScale onPress={() => openFeedComposer('/entry/feed?presetMode=bottle&presetAmount=150')} pressedScale={0.98}>
-                <View style={styles.menuItem}><Text style={styles.menuItemText}>{t('home.bottle', 'Bottle')}</Text></View>
-              </PressScale>
+            <View style={styles.feedSheetGrid}>
+              {[
+                { label: 'Bottle', icon: '🍼', href: '/entry/feed?presetMode=bottle&presetAmount=150' },
+                { label: 'Breastfeeding', icon: '🤱', href: '/entry/feed?presetMode=breast&presetSide=left' },
+                { label: 'Diaper', icon: '🧷', href: '/entry/diaper' },
+                { label: 'Sleep', icon: '😴', href: '/entry/sleep' },
+              ].map((item) => (
+                <PressScale key={item.label} onPress={() => openFeedComposer(item.href)} pressedScale={0.98} style={{ flexBasis: '47%', flexGrow: 1, minWidth: 0 }}>
+                  <View style={styles.feedSheetCard}>
+                    <Text style={styles.feedSheetIcon}>{item.icon}</Text>
+                    <Text style={styles.feedSheetLabel}>{item.label}</Text>
+                  </View>
+                </PressScale>
+              ))}
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </Page>
   );

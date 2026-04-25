@@ -19,10 +19,10 @@ export default function TabsLayout() {
   const tabHeight = (isCompactPhone ? 56 : isLargePhone ? 64 : 60) + bottomInset;
 
   const tabBarBackground = isPhoto
-    ? (isDark ? 'rgba(7, 11, 18, 0.36)' : 'rgba(255, 255, 255, 0.34)')
+    ? (isDark ? 'rgba(7, 11, 18, 0.74)' : 'rgba(245, 248, 255, 0.72)')
     : isDark
-      ? 'rgba(7, 11, 18, 0.52)'
-      : 'rgba(255, 255, 255, 0.42)';
+      ? 'rgba(7, 11, 18, 0.78)'
+      : 'rgba(255, 255, 255, 0.76)';
 
   const tabBarBorder = isDark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.42)';
   const activeTint = theme.accent;
@@ -40,7 +40,7 @@ export default function TabsLayout() {
           height: tabHeight,
           paddingTop: isCompactPhone ? 6 : 8,
           paddingBottom: bottomInset,
-          marginHorizontal: isCompactPhone ? 12 : 16,
+          marginHorizontal: 0,
           marginBottom: Math.max(10, insets.bottom ? insets.bottom : 10),
           borderRadius: isCompactPhone ? 24 : 28,
           ...Platform.select({
@@ -66,8 +66,8 @@ export default function TabsLayout() {
           }),
           overflow: 'hidden',
           position: 'absolute',
-          left: isCompactPhone ? 12 : 16,
-          right: isCompactPhone ? 12 : 16,
+          left: isCompactPhone ? 10 : 16,
+          right: isCompactPhone ? 10 : 16,
           bottom: Math.max(8, insets.bottom ? insets.bottom - 4 : 8),
         },
         tabBarItemStyle: {

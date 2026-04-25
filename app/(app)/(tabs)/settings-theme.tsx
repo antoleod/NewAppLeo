@@ -67,7 +67,7 @@ export default function ThemeSettings() {
   const previewAccentText = isDarkHex(theme.accent) ? '#FFFFFF' : '#101418';
   const activeVariantLabel = themeVariantDescriptions[themeVariant]?.label ?? themeVariant;
   const isPhone = width < 768;
-  const carouselCardWidth = Math.min(width - 56, 320);
+  const carouselCardWidth = Math.max(240, Math.min(width - 56, 320));
   const carouselGap = 14;
   const carouselStride = carouselCardWidth + carouselGap;
 
@@ -110,8 +110,8 @@ export default function ThemeSettings() {
   };
 
   return (
-    <Page>
-      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={isPhone ? undefined : [0]} contentContainerStyle={{ paddingBottom: isPhone ? 48 : 140 }}>
+    <Page scroll={false} contentStyle={{ width: '100%' }}>
+      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={isPhone ? undefined : [0]} contentContainerStyle={{ paddingBottom: isPhone ? 140 : 160 }}>
         <View style={[styles.stickyHeader, { backgroundColor: colors.background }]}>
           <Card style={[styles.headerCard, solidCardStyle]}>
             <View style={styles.headerTop}>

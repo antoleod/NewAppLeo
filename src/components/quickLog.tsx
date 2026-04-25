@@ -159,12 +159,15 @@ const quickStyles = StyleSheet.create({
   footerWrap: {
     marginTop: 'auto',
     paddingTop: 10,
+    paddingBottom: 2,
+    width: '100%',
+    maxWidth: '100%',
   },
   footerGlass: {
     borderRadius: 24,
     padding: 10,
     gap: 5,
-    backgroundColor: 'rgba(7, 11, 18, 0.62)',
+    backgroundColor: 'rgba(7, 11, 18, 0.84)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)',
     ...Platform.select({
@@ -230,8 +233,9 @@ const quickStyles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   actionCard: {
-    flexBasis: '47%',
+    flexBasis: '46%',
     flexGrow: 1,
+    minWidth: 0,
     minHeight: 106,
     borderRadius: 20,
     borderWidth: 1,
@@ -268,6 +272,7 @@ const quickStyles = StyleSheet.create({
   levelRow: {
     flexDirection: 'row',
     gap: 6,
+    width: '100%',
   },
   levelSegment: {
     flex: 1,

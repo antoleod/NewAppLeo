@@ -607,7 +607,7 @@ export default function HistoryScreen() {
     <Page contentStyle={{ width: '100%' }}>
       <View style={{ gap: responsive.verticalGap + 1 }}>
         {/* Header Card - Minimalist */}
-        <Card style={{ backgroundColor: CARD, borderColor: BORDER, padding: 18, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 }}>
+        <Card style={{ backgroundColor: CARD, borderColor: BORDER, padding: 14, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <View>
               <Text style={{ color: GOLD, fontSize: 12, fontWeight: '700', letterSpacing: 1 }}>{t('report', 'REPORT')}</Text>
@@ -631,7 +631,7 @@ export default function HistoryScreen() {
             </View>
           </View>
 
-          <Text style={{ color: TEXT, fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 12 }}>
+          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600', textAlign: 'center', marginBottom: 10 }}>
             {new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).format(selectedDate)}
           </Text>
 
@@ -667,7 +667,7 @@ export default function HistoryScreen() {
         {/* Key Metrics Grid - 2 Column Layout */}
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           {/* Feedings Card */}
-          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 18, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
+          <View style={{ flexGrow: 1, flexBasis: width < 380 ? '100%' : '46%', minWidth: 0, backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 14, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: GOLD }} />
               <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('feedings', 'Feedings')}</Text>
@@ -679,7 +679,7 @@ export default function HistoryScreen() {
           </View>
 
           {/* Total Milk Card */}
-          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 18, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
+          <View style={{ flexGrow: 1, flexBasis: width < 380 ? '100%' : '46%', minWidth: 0, backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 14, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: '#F0B85A' }} />
               <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('totalMilk', 'Total Milk')}</Text>
@@ -689,7 +689,7 @@ export default function HistoryScreen() {
           </View>
 
           {/* Sleep Card */}
-          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 18, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
+          <View style={{ flexGrow: 1, flexBasis: width < 380 ? '100%' : '46%', minWidth: 0, backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 14, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: BLUE }} />
               <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('sleep', 'Sleep')}</Text>
@@ -699,7 +699,7 @@ export default function HistoryScreen() {
           </View>
 
           {/* Diapers Card */}
-          <View style={{ flex: 1, minWidth: width < 380 ? '100%' : '48%', backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 18, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
+          <View style={{ flexGrow: 1, flexBasis: width < 380 ? '100%' : '46%', minWidth: 0, backgroundColor: CARD, borderColor: BORDER, borderWidth: 1, borderRadius: 20, padding: 14, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: RED }} />
               <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('diapers', 'Diapers')}</Text>

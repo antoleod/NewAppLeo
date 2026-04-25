@@ -15,6 +15,7 @@ export default function RootHtml({ children }: { children: React.ReactNode }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="manifest" href="/NewAppLeo/manifest.json" />
         <link rel="apple-touch-icon" href="/NewAppLeo/logo192.png" />
+        <style dangerouslySetInnerHTML={{ __html: 'html,body,#root{width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none;}body{touch-action:pan-y;background:#060912;}' }} />
         <ScrollViewStyleReset />
       </head>
       <body>{children}</body>

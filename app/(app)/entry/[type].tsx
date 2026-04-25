@@ -706,7 +706,10 @@ export default function EntryComposerScreen() {
     } else if (type === 'feed' && !presetAmount) {
       setAmountMl(String(smartBottleDefault));
     }
-    if (presetMode) setMode(presetMode);
+    if (presetMode) {
+      setMode(presetMode);
+      setFeedPath(presetMode === 'breast' ? 'breast' : 'bottle-now');
+    }
     if (presetSide) setSide(presetSide);
   }, [editing, presetAmount, presetMode, presetSide, type, smartBottleDefault]);
 
@@ -1088,7 +1091,7 @@ export default function EntryComposerScreen() {
           : 'Start Breastfeeding'
       : isBottleTimer
         ? isRunning
-          ? 'Stop & Save'
+          ? 'Stop Timer'
           : stoppedOnce || editing
             ? 'Save Bottle'
             : 'Start Bottle Timer'
@@ -1116,7 +1119,11 @@ export default function EntryComposerScreen() {
         startQuickTimer();
         return;
       }
-      const stoppedMinutes = isRunning ? stopQuickTimer() : Number(durationMin) || 0;
+      if (isRunning) {
+        stopQuickTimer();
+        return;
+      }
+      const stoppedMinutes = Number(durationMin) || 0;
       await saveQuick({
         mode: 'bottle',
         durationMin: Math.max(0, stoppedMinutes || Number(durationMin) || 0),
@@ -1132,7 +1139,7 @@ export default function EntryComposerScreen() {
     };
 
     return (
-      <Page scroll={false} contentStyle={styles.sleepPage}>
+      <Page contentStyle={styles.sleepPage}>
         <View style={styles.sleepShell}>
           <View style={styles.sleepHeader}>
             <View style={styles.sleepHeaderLeft}>
@@ -1184,7 +1191,7 @@ export default function EntryComposerScreen() {
             </View>
           ) : null}
 
-          {!isBreast ? (
+          {!isBreast && (!isBottleTimer || stoppedOnce || editing) && !isRunning ? (
             <View style={styles.quickEntryPanel}>
               <QuantityPicker label="Amount" value={amount} onChange={(value) => setAmountMl(String(value))} presets={[90, 120, 150, 180]} />
             </View>
@@ -1211,7 +1218,7 @@ export default function EntryComposerScreen() {
     const sleepPrimaryLabel = editing && !isRunning ? 'Update Sleep' : isRunning ? 'Stop & Save' : 'Start Sleep';
 
     return (
-      <Page scroll={false} contentStyle={styles.sleepPage}>
+      <Page contentStyle={styles.sleepPage}>
         <View style={styles.sleepShell}>
           <View style={styles.sleepHeader}>
             <View style={styles.sleepHeaderLeft}>
@@ -1315,18 +1322,22 @@ export default function EntryComposerScreen() {
   if (activeType === 'pump') {
     const isRunning = Boolean(quickStartedAt);
     const amount = Number(amountMl) || 0;
-    const primaryLabel = editing && !isRunning ? 'Update Pump' : isRunning ? 'Stop & Save' : stoppedOnce ? 'Save Pump' : 'Start Pump';
+    const primaryLabel = editing && !isRunning ? 'Update Pump' : isRunning ? 'Stop' : stoppedOnce ? 'Save Pump' : 'Start Pump';
     const handlePumpPrimary = async () => {
       if (!isRunning && !editing && !stoppedOnce) {
         startQuickTimer();
         return;
       }
-      const stoppedMinutes = isRunning ? stopQuickTimer() : Number(durationMin) || 0;
+      if (isRunning) {
+        stopQuickTimer();
+        return;
+      }
+      const stoppedMinutes = Number(durationMin) || 0;
       await saveQuick({ durationMin: Math.max(1, stoppedMinutes || Number(durationMin) || 1), amountMl: amount, notes }, new Date());
     };
 
     return (
-      <Page scroll={false} contentStyle={styles.sleepPage}>
+      <Page contentStyle={styles.sleepPage}>
         <View style={styles.sleepShell}>
           <View style={styles.sleepHeader}>
             <View style={styles.sleepHeaderLeft}>
@@ -1343,7 +1354,7 @@ export default function EntryComposerScreen() {
             <Pressable onPress={() => setOccurredAt(new Date())} style={({ pressed }) => [styles.sleepTinyChip, pressed && styles.sleepPressed]}><Text style={styles.sleepTinyChipText}>Now</Text></Pressable>
           </View>
           <LiveTimerPill label="Pump" minutes={quickTimerMinutes} running={isRunning} />
-          <QuantityPicker label="Amount" value={amount} onChange={(value) => setAmountMl(String(value))} presets={[30, 60, 90, 120]} />
+          {(stoppedOnce || editing) && !isRunning ? <QuantityPicker label="Amount" value={amount} onChange={(value) => setAmountMl(String(value))} presets={[30, 60, 90, 120]} /> : null}
           <QuickNoteToggle open={notesOpen} onPress={() => setNotesOpen((current) => !current)} />
           {notesOpen ? <Input label="Note" value={notes} onChangeText={setNotes} multiline placeholder="Optional" /> : null}
           <FloatingGlassFooter primaryLabel={primaryLabel} onPrimary={handlePumpPrimary} loading={saving} onSecondary={closeComposer} dangerLabel={editing ? 'Delete' : undefined} onDanger={editing ? handleDelete : undefined} />
@@ -1371,7 +1382,7 @@ export default function EntryComposerScreen() {
     ].filter((item, index, list) => item.name && list.findIndex((candidate) => candidate.name.toLowerCase() === item.name.toLowerCase()) === index).slice(0, 6);
 
     return (
-      <Page scroll={false} contentStyle={styles.sleepPage}>
+      <Page contentStyle={styles.sleepPage}>
         <View style={styles.sleepShell}>
           <View style={styles.sleepHeader}>
             <View style={styles.sleepHeaderLeft}>
@@ -1480,7 +1491,7 @@ export default function EntryComposerScreen() {
 
   if (activeType === 'measurement') {
     return (
-      <Page scroll={false} contentStyle={styles.sleepPage}>
+      <Page contentStyle={styles.sleepPage}>
         <View style={styles.sleepShell}>
           <View style={styles.sleepHeader}>
             <View style={styles.sleepHeaderLeft}>
@@ -1514,7 +1525,7 @@ export default function EntryComposerScreen() {
     const isMilestone = activeType === 'milestone';
     const symptomOptions = ['Fever', 'Cough', 'Pain', 'Tired', 'Rash', 'Other'];
     return (
-      <Page scroll={false} contentStyle={styles.sleepPage}>
+      <Page contentStyle={styles.sleepPage}>
         <View style={styles.sleepShell}>
           <View style={styles.sleepHeader}>
             <View style={styles.sleepHeaderLeft}>
@@ -2567,12 +2578,15 @@ const styles = StyleSheet.create({
     minHeight: 46,
   },
   sleepPage: {
-    flex: 1,
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
     gap: 0,
   },
   sleepShell: {
-    flex: 1,
-    gap: 10,
+    width: '100%',
+    maxWidth: '100%',
+    gap: 9,
     padding: 12,
     borderRadius: 22,
     backgroundColor: '#070B18',
@@ -2829,7 +2843,9 @@ const styles = StyleSheet.create({
   },
   quickEntryGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 9,
+    width: '100%',
   },
   quickEntryTile: {
     flex: 1,
@@ -2860,7 +2876,9 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   quickEntryPanel: {
-    gap: 10,
+    gap: 8,
+    width: '100%',
+    maxWidth: '100%',
   },
   quickTwoCol: {
     flexDirection: 'row',
@@ -2868,8 +2886,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   quickHalf: {
-    flexBasis: '47%',
+    flexBasis: '46%',
     flexGrow: 1,
+    minWidth: 0,
   },
   quickEntryLabel: {
     color: '#AAB8DF',
@@ -2883,8 +2902,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   quickEntryChip: {
-    flexBasis: '31%',
+    flexBasis: '30%',
     flexGrow: 1,
+    minWidth: 0,
     minHeight: 48,
     borderRadius: 16,
     alignItems: 'center',

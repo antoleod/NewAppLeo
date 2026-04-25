@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { triggerHaptic } from '@/lib/mobile';
 import { useResponsiveMetrics } from '@/lib/responsive';
 import { spacing, radii } from '@/theme';
@@ -30,6 +31,7 @@ export function Page({
 }) {
   const { colors, gradients, themeStyle, backgroundPhotoUri } = useTheme();
   const responsive = useResponsiveMetrics();
+  const insets = useSafeAreaInsets();
   const usePhotoBackdrop = themeStyle !== 'classic';
   const backdropSource = backgroundPhotoUri
     ? ({ uri: backgroundPhotoUri } as const)
@@ -81,6 +83,7 @@ export function Page({
               {
                 paddingHorizontal: responsive.horizontalPadding,
                 paddingTop: responsive.isPhone ? 8 : 12,
+                paddingBottom: Math.max(118, insets.bottom + 108),
               },
             ]}
             showsVerticalScrollIndicator={false}
@@ -91,9 +94,11 @@ export function Page({
           <View
             style={[
               styles.scroll,
+              { flex: 1 },
               {
                 paddingHorizontal: responsive.horizontalPadding,
                 paddingTop: responsive.isPhone ? 8 : 12,
+                paddingBottom: Math.max(118, insets.bottom + 108),
               },
             ]}
           >
@@ -548,7 +553,12 @@ export function ButtonGroup({
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1 },
+  page: {
+    flex: 1,
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: '100%',
+  },
   photoBackdrop: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
@@ -563,11 +573,13 @@ const styles = StyleSheet.create({
   photoBackdropImageMuted: {
     opacity: 0.9,
   },
-  safe: { flex: 1, zIndex: 1 },
+  safe: { flex: 1, zIndex: 1, width: '100%', maxWidth: '100%', overflow: 'hidden' },
   scroll: {
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xxl,
     flexGrow: 1,
+    width: '100%',
+    maxWidth: '100%',
   },
   pageInner: {
     width: '100%',
@@ -576,6 +588,8 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   card: {
+    width: '100%',
+    maxWidth: '100%',
     borderWidth: 0,
     borderRadius: radii.xl,
     padding: spacing.xl,
@@ -695,7 +709,7 @@ const styles = StyleSheet.create({
   },
   stat: {
     flexBasis: '48%',
-    minWidth: 170,
+    minWidth: 0,
     borderWidth: 1,
     borderRadius: radii.md,
     padding: spacing.md,
