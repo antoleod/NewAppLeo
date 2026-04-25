@@ -58,10 +58,15 @@ export default function ThemeSettings() {
 
   const solidCardStyle = useMemo(
     () => ({
-      backgroundColor: colors.surface,
-      borderColor: paletteMode === 'nuit' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+      backgroundColor: paletteMode === 'nuit' ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.50)',
+      borderColor: paletteMode === 'nuit' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)',
+      shadowColor: paletteMode === 'nuit' ? theme.accent : '#000',
+      shadowOpacity: paletteMode === 'nuit' ? 0.4 : 0.08,
+      shadowRadius: paletteMode === 'nuit' ? 20 : 14,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: paletteMode === 'nuit' ? 10 : 2,
     }),
-    [colors.surface, paletteMode],
+    [colors.surface, paletteMode, theme.accent],
   );
 
   const previewAccentText = isDarkHex(theme.accent) ? '#FFFFFF' : '#101418';
@@ -112,7 +117,7 @@ export default function ThemeSettings() {
   return (
     <Page scroll={false} contentStyle={{ width: '100%' }}>
       <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={isPhone ? undefined : [0]} contentContainerStyle={{ paddingBottom: isPhone ? 140 : 160 }}>
-        <View style={[styles.stickyHeader, { backgroundColor: colors.background }]}>
+        <View style={[styles.stickyHeader, { backgroundColor: paletteMode === 'nuit' ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.50)' }]}>
           <Card style={[styles.headerCard, solidCardStyle]}>
             <View style={styles.headerTop}>
               <View style={{ flex: 1, gap: 6 }}>

@@ -421,9 +421,23 @@ export default function ProfileScreen() {
     }
   }
 
+  const transparentCardStyle = useMemo(
+    () => ({
+      backgroundColor: paletteMode === 'nuit' ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.50)',
+      borderColor: paletteMode === 'nuit' ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.10)',
+      borderWidth: 1,
+      shadowColor: paletteMode === 'nuit' ? theme.accent : 'transparent',
+      shadowOpacity: 0.35,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: paletteMode === 'nuit' ? 8 : 0,
+    }),
+    [paletteMode, theme.accent]
+  );
+
   return (
     <Page contentStyle={{ gap: isPhone ? 12 : 16, paddingBottom: 24 }}>
-        <Card style={[styles.mainCard, { borderColor: colors.border, backgroundColor: colors.surface, padding: isPhone ? 16 : 20 }]}>
+        <Card style={[styles.mainCard, transparentCardStyle, { borderColor: colors.border, padding: isPhone ? 16 : 20 }]}>
           <View style={styles.profileHeader}>
             <Pressable onPress={handlePickPhoto} style={[styles.photoButton, { backgroundColor: colors.backgroundAlt, borderColor: colors.border }]}>
               {babyPhotoUri ? <Image source={{ uri: babyPhotoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={{ color: colors.primary, fontWeight: '900', fontSize: 12 }}>📷</Text>}
@@ -556,7 +570,7 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
-        <Card style={{ padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+        <Card style={[{ padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border }, transparentCardStyle]}>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800', marginBottom: 12 }}>👶 Perfiles de Bebés</Text>
           {babies.length ? (
             <View style={{ gap: 8 }}>
@@ -617,7 +631,7 @@ export default function ProfileScreen() {
           )}
         </Card>
 
-        <Card style={{ padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+        <Card style={[{ padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border }, transparentCardStyle]}>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800', marginBottom: 12 }}>🎨 Apariencia</Text>
 
           <View style={{ gap: 12 }}>
@@ -691,7 +705,7 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
-        <Card>
+        <Card style={transparentCardStyle}>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>Advanced</Text>
           <Text style={{ color: colors.muted, lineHeight: 20 }}>Dashboard, effects, sync and voice tools are grouped here so the mobile profile stays focused.</Text>
           <Button label={advancedOpen ? 'Hide advanced settings' : 'Show advanced settings'} onPress={() => setAdvancedOpen((current) => !current)} variant="ghost" />
@@ -699,7 +713,7 @@ export default function ProfileScreen() {
 
         {advancedOpen ? (
           <>
-        <Card>
+        <Card style={transparentCardStyle}>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.dashboard', 'Dashboard personalization')}</Text>
           <Input
             label="Hydration goal (ml)"
@@ -721,7 +735,7 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
-        <Card>
+        <Card style={transparentCardStyle}>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.effects', 'Effects')}</Text>
           <Text style={{ color: colors.muted }}>All motion stays optional and can be switched off here.</Text>
           <Button
@@ -746,7 +760,7 @@ export default function ProfileScreen() {
           />
         </Card>
 
-        <Card>
+        <Card style={transparentCardStyle}>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.module_visibility', 'Module visibility')}</Text>
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             {Object.entries(visibility).map(([key, enabled]) => (
@@ -767,7 +781,7 @@ export default function ProfileScreen() {
           </>
         ) : null}
 
-        <Card>
+        <Card style={transparentCardStyle}>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.milestones', 'Milestones')}</Text>
           {milestones.length ? (
             <View style={{ gap: 10 }}>
@@ -791,7 +805,7 @@ export default function ProfileScreen() {
 
         {advancedOpen ? (
           <>
-        <Card>
+        <Card style={transparentCardStyle}>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.session', 'Session')}</Text>
           <Text style={{ color: colors.muted }}>Signed in as {profile?.authEmail}</Text>
           <Text style={{ color: colors.muted }}>Username: {profile?.username}</Text>
@@ -810,7 +824,7 @@ export default function ProfileScreen() {
           <Button label="Log out" onPress={signOut} variant="danger" />
         </Card>
 
-        <Card>
+        <Card style={transparentCardStyle}>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.voice_bridge', 'Voice bridge')}</Text>
           <Text style={{ color: colors.muted, lineHeight: 20 }}>
             Try a browser-only speech capture path that converts a short transcript into a parsed intent.

@@ -104,7 +104,7 @@ export default function DiaperEntryScreen() {
 
   return (
     <Page contentStyle={styles.page}>
-      <Animated.View entering={FadeIn} style={styles.container}>
+      <Animated.View entering={FadeIn} style={[styles.container, { backgroundColor: 'rgba(7, 11, 18, 0.50)', borderRadius: 24, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }]}>
         {/* Compact Header */}
         <View style={styles.header}>
           <View style={styles.headerTitleRow}>

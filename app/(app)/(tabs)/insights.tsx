@@ -84,7 +84,7 @@ export default function InsightsScreen() {
   if (!entries.length) {
     return (
       <Page contentStyle={{ width: '100%' }}>
-        <View style={{ backgroundColor: 'rgba(7, 11, 18, 0.90)', borderRadius: 24, paddingTop: responsive.isPhone ? 12 : 16, paddingHorizontal: responsive.isCompactPhone ? 12 : 18, paddingBottom: 140 }}>
+        <View style={{ backgroundColor: 'rgba(7, 11, 18, 0.50)', borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.15)', paddingTop: responsive.isPhone ? 12 : 16, paddingHorizontal: responsive.isCompactPhone ? 12 : 18, paddingBottom: 140 }}>
           <Heading eyebrow={t('insights.eyebrow')} title={t('insights.title')} subtitle={t('insights.subtitle.none')} />
           <EmptyState
             title={t('insights.noDataTitle')}
@@ -100,8 +100,10 @@ export default function InsightsScreen() {
     <Page contentStyle={{ width: '100%' }}>
       <View
         style={{
-          backgroundColor: 'rgba(7, 11, 18, 0.90)',
+          backgroundColor: 'rgba(7, 11, 18, 0.50)',
           borderRadius: 24,
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.15)',
           paddingTop: responsive.isPhone ? 12 : 16,
           paddingHorizontal: responsive.isCompactPhone ? 12 : 18,
           paddingBottom: 140,

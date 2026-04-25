@@ -11,9 +11,9 @@ import { useResponsiveMetrics } from '@/lib/responsive';
 import { dateKey, formatLongDate, formatTime, isSameDay, startOfDay, subtractDays, toDate } from '@/utils/date';
 import { getOmsRow, interpolatePercentileBand, omsBySex, type OmsSex } from '@/lib/omsData';
 
-const BG = '#0D0F12';
-const CARD = '#16181D';
-const BORDER = 'rgba(255,255,255,0.06)';
+const BG = 'rgba(13, 15, 18, 0.50)';
+const CARD = 'rgba(22, 24, 29, 0.50)';
+const BORDER = 'rgba(255,255,255,0.20)';
 const GOLD = '#C9B07A';
 const GREEN = '#5ECCA0';
 const BLUE = '#6BA3E0';

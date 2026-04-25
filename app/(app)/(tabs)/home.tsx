@@ -402,7 +402,7 @@ export default function HomeScreen() {
   const styles = {
     pageContent: staticStyles.pageContent,
     menuOverlay: staticStyles.menuOverlay,
-    menuContent: [staticStyles.menuContent, { backgroundColor: 'rgba(7, 11, 18, 0.94)' }],
+    menuContent: [staticStyles.menuContent, { backgroundColor: 'rgba(7, 11, 18, 0.50)' }],
     menuTitle: [staticStyles.menuTitle, { color: TEXT }],
     menuItem: [staticStyles.menuItem, { backgroundColor: `${BORDER}66`, borderColor: BORDER }],
     menuItemText: [staticStyles.menuItemText, { color: TEXT }],
@@ -2330,9 +2330,9 @@ const nightHomeStyles = StyleSheet.create({
     padding: 12,
     paddingBottom: 20,
     borderRadius: 22,
-    backgroundColor: '#070B18',
+    backgroundColor: 'rgba(7, 11, 18, 0.50)',
     borderWidth: 1,
-    borderColor: 'rgba(132, 160, 255, 0.18)',
+    borderColor: 'rgba(132, 160, 255, 0.40)',
   },
   header: {
     minHeight: 48,
