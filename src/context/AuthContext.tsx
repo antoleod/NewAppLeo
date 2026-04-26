@@ -278,8 +278,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(nextProfile);
           return;
         }
+        const optimisticProfile = { ...(profile ?? createGuestProfile()), ...partial } as UserProfile;
+        setProfile(optimisticProfile);
+        await setCachedAuthProfile(optimisticProfile);
         await updateProfile(user.uid, partial);
-        const nextProfile = (await loadProfile(user.uid)) ?? profile;
+        const nextProfile = (await loadProfile(user.uid)) ?? optimisticProfile;
         setProfile(nextProfile);
         if (nextProfile) {
           await setCachedAuthProfile(nextProfile);

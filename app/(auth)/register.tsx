@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Input, Page } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext';
 import { isValidPin, normalizeEmail, normalizeUsername } from '@/utils/crypto';
 
 const PASSWORD_PARTS_A = ['Sun', 'Leaf', 'Calm', 'Milk', 'Soft', 'River', 'Golden', 'Quiet', 'Little', 'Silver', 'Warm', 'Ocean'];
@@ -41,6 +42,7 @@ function buildFallbackIdentity(email: string) {
 
 export default function RegisterScreen() {
   const { colors } = useTheme();
+  const { t } = useLocale();
   const { register, signInGoogle, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [authSecret, setAuthSecret] = useState('');
@@ -53,15 +55,15 @@ export default function RegisterScreen() {
   const isPinMode = /^\d{0,6}$/.test(authSecret) && authSecret.length > 0;
   const isValidPinMode = /^\d{6}$/.test(authSecret);
   const isPasswordMode = !isPinMode;
-  const secretMismatch = confirmSecret.length > 0 && authSecret !== confirmSecret ? (isPinMode ? 'PINs do not match.' : 'Passwords do not match.') : '';
+  const secretMismatch = confirmSecret.length > 0 && authSecret !== confirmSecret ? (isPinMode ? t('auth.pin_mismatch', 'PINs do not match.') : t('auth.password_mismatch', 'Passwords do not match.')) : '';
   const secretFormatError =
     authSecret.length > 0
       ? isPinMode
         ? !isValidPinMode
-          ? 'PIN must be exactly 6 digits.'
+          ? t('auth.pin_exact', 'PIN must be exactly 6 digits.')
           : ''
         : authSecret.trim().length < 6
-          ? 'Use at least 6 characters.'
+          ? t('auth.password_min', 'Use at least 6 characters.')
           : ''
       : '';
   const canSubmit =
@@ -74,27 +76,27 @@ export default function RegisterScreen() {
     if (code === 'auth/email-already-in-use') {
       return {
         title: 'Email already in use',
-        message: 'This email already has an account. Sign in instead.',
+        message: t('auth.email_in_use_body', 'This email already has an account. Sign in instead.'),
         emailInUse: true,
       };
     }
     if (code === 'auth/invalid-email') {
       return {
-        title: 'Invalid email',
-        message: 'Please enter a valid email address.',
+        title: t('auth.invalid_email_title', 'Invalid email'),
+        message: t('auth.invalid_email', 'Please enter a valid email address.'),
         emailInUse: false,
       };
     }
     if (code === 'auth/weak-password') {
       return {
-        title: 'Weak password',
-        message: 'Use a stronger password with at least 6 characters.',
+        title: t('auth.weak_password_title', 'Weak password'),
+        message: t('auth.weak_password_body', 'Use a stronger password with at least 6 characters.'),
         emailInUse: false,
       };
     }
     return {
-      title: 'Registration failed',
-      message: err?.message ?? 'Unable to create your account.',
+      title: t('auth.register_failed', 'Registration failed'),
+      message: err?.message ?? t('auth.register_failed_body', 'Unable to create your account.'),
       emailInUse: false,
     };
   }
@@ -117,7 +119,7 @@ export default function RegisterScreen() {
       await signInGoogle();
       router.replace('/onboarding');
     } catch (err: any) {
-      setError(err?.message ?? 'Google sign-in is not available right now.');
+      setError(err?.message ?? t('auth.google_unavailable', 'Google sign-in is not available right now.'));
     } finally {
       setLoading(false);
     }
@@ -145,19 +147,19 @@ export default function RegisterScreen() {
       setError(mapped.message);
       if (mapped.emailInUse) {
         Alert.alert(mapped.title, mapped.message, [
-          { text: 'Sign in', onPress: () => router.replace('/login') },
+          { text: t('auth.sign_in', 'Sign in'), onPress: () => router.replace('/login') },
           {
-            text: 'Forgot password',
+            text: t('auth.forgot_password', 'Forgot password?'),
             onPress: async () => {
               try {
                 await resetPassword(normalizedEmail);
-                Alert.alert('Reset email sent', 'Check your inbox to reset your password.');
+                Alert.alert(t('auth.reset_sent_title', 'Reset email sent'), t('auth.reset_sent_body', 'Check your inbox to reset your password.'));
               } catch (resetError: any) {
-                Alert.alert('Reset failed', resetError?.message ?? 'Could not send the reset email.');
+                Alert.alert(t('auth.reset_failed_title', 'Reset failed'), resetError?.message ?? t('auth.recovery_failed', 'Could not send the recovery email.'));
               }
             },
           },
-          { text: 'Close', style: 'cancel' },
+          { text: t('common.close', 'Close'), style: 'cancel' },
         ]);
       } else {
         Alert.alert(mapped.title, mapped.message);
@@ -174,16 +176,16 @@ export default function RegisterScreen() {
           <Card style={styles.card}>
             <View style={styles.headerBlock}>
               <Text style={[styles.brand, { color: colors.accent }]}>BABYFLOW</Text>
-              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Create your account in one step</Text>
-              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>Secure, simple and designed for parents</Text>
-              <Text style={[styles.cardNote, { color: colors.textMuted }]}>Your data stays private on your device</Text>
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t('auth.register_title', 'Create your account in one step')}</Text>
+              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>{t('auth.register_subtitle', 'Secure, simple and designed for parents')}</Text>
+              <Text style={[styles.cardNote, { color: colors.textMuted }]}>{t('auth.register_note', 'Your data stays private on your device')}</Text>
             </View>
 
             <Input
-              label="Email"
+              label={t('auth.email', 'Email')}
               value={email}
               onChangeText={setEmail}
-              placeholder="you@example.com"
+              placeholder={t('auth.email_register_placeholder', 'you@example.com')}
               keyboardType="email-address"
               textContentType="emailAddress"
             />
@@ -191,17 +193,17 @@ export default function RegisterScreen() {
             <View style={[styles.authBlock, { borderColor: colors.border, backgroundColor: colors.bgCardAlt }]}>
               <View style={styles.authBlockHeader}>
                 <View style={styles.authTitleWrap}>
-                  <Text style={[styles.authBlockLabel, { color: colors.textMuted }]}>ACCESS KEY</Text>
-                  <Text style={[styles.authBlockTitle, { color: colors.textPrimary }]}>Use a password or enter a 6-digit PIN</Text>
+                  <Text style={[styles.authBlockLabel, { color: colors.textMuted }]}>{t('auth.access_key', 'ACCESS KEY')}</Text>
+                  <Text style={[styles.authBlockTitle, { color: colors.textPrimary }]}>{t('auth.access_key_body', 'Use a password or enter a 6-digit PIN')}</Text>
                 </View>
               </View>
 
               <Animated.View layout={Layout.springify()} style={{ gap: 10 }}>
                 <Input
-                  label="Password or 6-digit PIN"
+                  label={t('auth.password_or_pin_register', 'Password or 6-digit PIN')}
                   value={authSecret}
                   onChangeText={(value) => setAuthSecret(value)}
-                  placeholder="Type a password or 123456"
+                  placeholder={t('auth.password_or_pin_placeholder', 'Type a password or 123456')}
                   secureTextEntry={!showSecret}
                   textContentType="newPassword"
                   keyboardType={isPinMode ? 'number-pad' : 'default'}
@@ -214,10 +216,10 @@ export default function RegisterScreen() {
                   }
                 />
                 <Input
-                  label={isPinMode ? 'Confirm PIN' : 'Confirm password'}
+                  label={isPinMode ? t('auth.confirm_pin', 'Confirm PIN') : t('auth.confirm_password', 'Confirm password')}
                   value={confirmSecret}
                   onChangeText={(value) => setConfirmSecret(value)}
-                  placeholder={isPinMode ? 'Repeat your PIN' : 'Repeat your password'}
+                  placeholder={isPinMode ? t('auth.repeat_pin', 'Repeat your PIN') : t('auth.repeat_password', 'Repeat your password')}
                   secureTextEntry={!showSecret}
                   textContentType="password"
                   keyboardType={isPinMode ? 'number-pad' : 'default'}
@@ -233,7 +235,7 @@ export default function RegisterScreen() {
                   {!isPinMode ? (
                     <Pressable onPress={generateEasyPassword} style={styles.inlineAction}>
                       <Ionicons name="sparkles-outline" size={15} color={colors.accent} />
-                      <Text style={[styles.inlineText, { color: colors.accent }]}>Generate easy password</Text>
+                      <Text style={[styles.inlineText, { color: colors.accent }]}>{t('auth.generate_password', 'Generate easy password')}</Text>
                     </Pressable>
                   ) : null}
                 </View>
@@ -243,7 +245,7 @@ export default function RegisterScreen() {
             {error ? <Text style={{ color: colors.danger, fontSize: 12, textAlign: 'center' }}>{error}</Text> : null}
 
             <Button
-              label="Create account"
+              label={t('auth.create_account', 'Create account')}
               onPress={handleSubmit}
               loading={loading}
               disabled={!canSubmit || loading}
@@ -253,11 +255,11 @@ export default function RegisterScreen() {
 
             <View style={styles.dividerRow}>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
-              <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '700' }}>or</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '700' }}>{t('common.or', 'or')}</Text>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
             </View>
 
-            <Button label="Continue with Google" onPress={handleGoogle} variant="ghost" size="sm" style={styles.googleButton} />
+            <Button label={t('auth.continue_google', 'Continue with Google')} onPress={handleGoogle} variant="ghost" size="sm" style={styles.googleButton} />
             <Button label="Back to sign in" onPress={() => router.replace('/login')} variant="ghost" size="sm" style={styles.secondaryButton} />
           </Card>
         </View>

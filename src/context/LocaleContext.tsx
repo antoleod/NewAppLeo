@@ -13,15 +13,19 @@ interface LocaleContextValue {
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const { user, profile, guestMode, saveProfile } = useAuth();
-  const [localLanguage, setLocalLanguage] = useState<AppLanguage>('fr');
+  const [localLanguage, setLocalLanguage] = useState<AppLanguage>('en');
+
+  const normalizeLanguage = (candidate: string | undefined | null): AppLanguage => (
+    candidate === 'fr' || candidate === 'es' || candidate === 'en' || candidate === 'nl' ? candidate : 'en'
+  );
 
   useEffect(() => {
     let mounted = true;
     const loadLanguage = async () => {
       const settings = await getAppSettings();
-      const candidate = (profile?.language ?? settings.language ?? 'en') as AppLanguage;
+      const candidate = normalizeLanguage((profile?.language ?? settings.language ?? 'en') as AppLanguage);
       if (!mounted) return;
-      setLocalLanguage(candidate === 'fr' || candidate === 'es' || candidate === 'en' || candidate === 'nl' ? candidate : 'en');
+      setLocalLanguage(candidate);
     };
     void loadLanguage();
     return () => {
@@ -29,17 +33,31 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     };
   }, [profile?.language]);
 
-  const language = (profile?.language ?? localLanguage ?? 'fr') as AppLanguage;
+  useEffect(() => {
+    const nextLanguage = normalizeLanguage(profile?.language);
+    if (profile?.language && nextLanguage !== localLanguage) {
+      setLocalLanguage(nextLanguage);
+    }
+  }, [localLanguage, profile?.language]);
+
+  const language = localLanguage;
 
   const value = useMemo<LocaleContextValue>(
     () => ({
       language,
       setLanguage: async (nextLanguage) => {
-        if (nextLanguage === language) return;
-        await updateAppSettings({ language: nextLanguage });
-        setLocalLanguage(nextLanguage);
-        if (user || guestMode) {
-          await saveProfile({ language: nextLanguage });
+        const normalizedLanguage = normalizeLanguage(nextLanguage);
+        if (normalizedLanguage === language) return;
+
+        setLocalLanguage(normalizedLanguage);
+
+        try {
+          await updateAppSettings({ language: normalizedLanguage });
+          if (user || guestMode) {
+            await saveProfile({ language: normalizedLanguage });
+          }
+        } catch (error) {
+          console.warn('Failed to persist selected language:', error);
         }
       },
       t: (key, fallback) => translate(language, key, fallback),

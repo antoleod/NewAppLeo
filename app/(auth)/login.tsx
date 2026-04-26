@@ -21,24 +21,6 @@ const LANGS: Array<{ code: AppLanguage; label: string }> = [
   { code: 'nl', label: 'Nederlands' },
 ];
 
-const FEATURE_ITEMS = [
-  {
-    icon: 'time-outline',
-    title: 'Track daily routines',
-    body: 'Sleep, feeding and care events stay in one calm timeline.',
-  },
-  {
-    icon: 'analytics-outline',
-    title: 'Understand patterns',
-    body: 'Spot rhythms and changes before the day starts feeling noisy.',
-  },
-  {
-    icon: 'shield-checkmark-outline',
-    title: 'Safe & private',
-    body: 'Designed to feel secure, quiet, and family-first by default.',
-  },
-];
-
 export default function LoginScreen() {
   const { colors, theme } = useTheme();
   const { language, setLanguage, t } = useLocale();
@@ -57,6 +39,23 @@ export default function LoginScreen() {
   const [passwordError, setPasswordError] = useState('');
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
+  const featureItems = [
+    {
+      icon: 'time-outline',
+      title: t('auth.feature_track_title', 'Track daily routines'),
+      body: t('auth.feature_track_body', 'Sleep, feeding and care events stay in one calm timeline.'),
+    },
+    {
+      icon: 'analytics-outline',
+      title: t('auth.feature_patterns_title', 'Understand patterns'),
+      body: t('auth.feature_patterns_body', 'Spot rhythms and changes before the day starts feeling noisy.'),
+    },
+    {
+      icon: 'shield-checkmark-outline',
+      title: t('auth.feature_safe_title', 'Safe & private'),
+      body: t('auth.feature_safe_body', 'Designed to feel secure, quiet, and family-first by default.'),
+    },
+  ];
 
   useEffect(() => {
     setSelectedLanguage(language);
@@ -83,12 +82,12 @@ export default function LoginScreen() {
 
   const validatePassword = (value: string): { isValid: boolean; message?: string } => {
     if (isPinMode) {
-      if (value.length !== 6) return { isValid: false, message: 'PIN must be exactly 6 digits.' };
-      if (!/^\d{6}$/.test(value)) return { isValid: false, message: 'PIN must contain only numbers.' };
+      if (value.length !== 6) return { isValid: false, message: t('auth.pin_exact', 'PIN must be exactly 6 digits.') };
+      if (!/^\d{6}$/.test(value)) return { isValid: false, message: t('auth.pin_numbers', 'PIN must contain only numbers.') };
       return { isValid: true };
     }
 
-    if (value.length < 6) return { isValid: false, message: 'Password must be at least 6 characters long.' };
+    if (value.length < 6) return { isValid: false, message: t('auth.password_short', 'Password must be at least 6 characters long.') };
     return { isValid: true };
   };
 
@@ -158,13 +157,13 @@ export default function LoginScreen() {
     setErrorMessage('');
 
     if (!validateEmail(email)) {
-      setEmailError('Please enter a valid email address.');
+      setEmailError(t('auth.invalid_email', 'Please enter a valid email address.'));
       return;
     }
 
     const passwordValidation = validatePassword(authSecret);
     if (!passwordValidation.isValid) {
-      setPasswordError(passwordValidation.message ?? 'Please enter a valid password.');
+      setPasswordError(passwordValidation.message ?? t('auth.invalid_password', 'Please enter a valid password.'));
       return;
     }
 
@@ -191,7 +190,7 @@ export default function LoginScreen() {
       await signInGoogle();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
-      setErrorMessage(error?.message ?? 'Google sign-in is not available right now.');
+      setErrorMessage(error?.message ?? t('auth.google_unavailable', 'Google sign-in is not available right now.'));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setBusy(false);
@@ -200,7 +199,7 @@ export default function LoginScreen() {
 
   async function handleForgotPassword() {
     if (!email.trim()) {
-      setEmailError('Enter your email first to recover access.');
+      setEmailError(t('auth.enter_email_recovery', 'Enter your email first to recover access.'));
       return;
     }
 
@@ -208,10 +207,10 @@ export default function LoginScreen() {
     setErrorMessage('');
     try {
       await resetPassword(email.trim());
-      Alert.alert('Recovery request received', 'If this email is registered, a recovery email has been sent.');
+      Alert.alert(t('auth.recovery_title', 'Recovery request received'), t('auth.recovery_body', 'If this email is registered, a recovery email has been sent.'));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
-      setErrorMessage(error?.message ?? 'Could not send the recovery email.');
+      setErrorMessage(error?.message ?? t('auth.recovery_failed', 'Could not send the recovery email.'));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setBusy(false);
@@ -263,16 +262,16 @@ export default function LoginScreen() {
                     </View>
                     <View style={{ gap: 2 }}>
                       <Text style={styles.brand}>BabyFlow</Text>
-                      <Text style={styles.brandSubline}>Because every moment flows into a memory.</Text>
+                      <Text style={styles.brandSubline}>{t('auth.brand_subline', 'Because every moment flows into a memory.')}</Text>
                     </View>
                   </View>
 
                   <View style={{ gap: 12, maxWidth: 560 }}>
                     <Text style={[styles.heroTitle, { fontSize: isDesktop ? 44 : 38, lineHeight: isDesktop ? 50 : 44 }]}>
-                      Calm tracking for sleep, feeding, and every soft in-between.
+                      {t('auth.hero_title', 'Calm tracking for sleep, feeding, and every soft in-between.')}
                     </Text>
                     <Text style={styles.heroDescription}>
-                      BabyFlow helps you follow routines, understand growth patterns, and keep each day feeling organized, private, and gentle.
+                      {t('auth.hero_body', 'BabyFlow helps you follow routines, understand growth patterns, and keep each day feeling organized, private, and gentle.')}
                     </Text>
                   </View>
                 </View>
@@ -318,7 +317,7 @@ export default function LoginScreen() {
                 </View>
 
                 <View style={styles.featureRow}>
-                  {FEATURE_ITEMS.map((item) => (
+                  {featureItems.map((item) => (
                     <View key={item.title} style={styles.featureCard}>
                       <View style={styles.featureIcon}>
                         <LinearGradient colors={['rgba(136, 214, 198, 0.32)', 'rgba(87, 138, 159, 0.18)']} style={StyleSheet.absoluteFill} />
@@ -352,16 +351,16 @@ export default function LoginScreen() {
                 <View style={styles.loginCardGlow} />
 
                 <View style={{ gap: 8 }}>
-                  <Text style={styles.loginTitle}>Welcome back</Text>
-                  <Text style={styles.loginSubtitle}>Sign in to continue your BabyFlow journey</Text>
+                  <Text style={styles.loginTitle}>{t('auth.welcome_back', 'Welcome back')}</Text>
+                  <Text style={styles.loginSubtitle}>{t('auth.login_subtitle', 'Sign in to continue your BabyFlow journey')}</Text>
                 </View>
 
                 <View style={styles.loginSection}>
                   <Input
-                    label="Email"
+                    label={t('auth.email', 'Email')}
                     value={email}
                     onChangeText={handleEmailChange}
-                    placeholder="name@email.com"
+                    placeholder={t('auth.email_placeholder', 'name@email.com')}
                     autoCapitalize="none"
                     keyboardType="email-address"
                     error={emailError}
@@ -370,10 +369,10 @@ export default function LoginScreen() {
                   />
 
                   <Input
-                    label={isPinMode ? 'Password or PIN' : 'Password'}
+                    label={isPinMode ? t('auth.password_or_pin_label', 'Password or PIN') : t('auth.password', 'Password')}
                     value={authSecret}
                     onChangeText={handlePasswordChange}
-                    placeholder={isPinMode ? '123456' : 'Enter password'}
+                    placeholder={isPinMode ? '123456' : t('auth.password_placeholder', 'Enter password')}
                     secureTextEntry={!showSecret}
                     autoCapitalize="none"
                     keyboardType={isPinMode ? 'number-pad' : 'default'}
@@ -397,33 +396,33 @@ export default function LoginScreen() {
                     end={{ x: 1, y: 1 }}
                     style={styles.ctaGlow}
                   />
-                  <Button label="Sign in" onPress={() => void handleLogin()} disabled={busy || !canSubmit} loading={busy} style={styles.primaryButton} />
+                  <Button label={t('auth.sign_in', 'Sign in')} onPress={() => void handleLogin()} disabled={busy || !canSubmit} loading={busy} style={styles.primaryButton} />
                 </View>
 
                 <View style={styles.secondaryActions}>
                   <Pressable onPress={() => void handleForgotPassword()} disabled={busy}>
-                    <Text style={styles.linkText}>Forgot password?</Text>
+                    <Text style={styles.linkText}>{t('auth.forgot_password', 'Forgot password?')}</Text>
                   </Pressable>
                   <Pressable onPress={() => void handleGuest()} disabled={busy}>
-                    <Text style={styles.linkText}>Continue as guest</Text>
+                    <Text style={styles.linkText}>{t('auth.guest', 'Continue as guest')}</Text>
                   </Pressable>
                 </View>
 
                 <View style={styles.divider}>
                   <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>or</Text>
+                  <Text style={styles.dividerText}>{t('common.or', 'or')}</Text>
                   <View style={styles.dividerLine} />
                 </View>
 
                 <Pressable onPress={() => void handleGoogle()} disabled={busy} style={({ pressed }) => [styles.googleButton, pressed && !busy ? { opacity: 0.88 } : null]}>
                   <BabyFlowGoogleGlyph />
-                  <Text style={styles.googleText}>Continue with Google</Text>
+                  <Text style={styles.googleText}>{t('auth.continue_google', 'Continue with Google')}</Text>
                 </Pressable>
 
                 <View style={styles.signupPrompt}>
-                  <Text style={styles.signupText}>New to BabyFlow?</Text>
+                  <Text style={styles.signupText}>{t('auth.new_to_babyflow', 'New to BabyFlow?')}</Text>
                   <Pressable onPress={() => router.push('/register')} disabled={busy}>
-                    <Text style={styles.signupLink}>Create account</Text>
+                    <Text style={styles.signupLink}>{t('auth.create_account', 'Create account')}</Text>
                   </Pressable>
                 </View>
 
