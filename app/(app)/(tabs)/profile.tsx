@@ -31,6 +31,7 @@ import { buildDailySummary } from '@/lib/notifications';
 import { getLocalPairingSession } from '@/services/pairingService';
 import { isVoiceCaptureAvailable, startVoiceCapture } from '@/lib/voiceCapture';
 import { triggerHaptic } from '@/lib/mobile';
+import { blurActiveElementOnWeb } from '@/lib/web';
 
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
@@ -198,6 +199,7 @@ export default function ProfileScreen() {
 
   const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
+      blurActiveElementOnWeb();
       setShowDatePicker(false);
       if (selectedDate) {
         confirmDate(selectedDate);
@@ -215,6 +217,7 @@ export default function ProfileScreen() {
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     setBabyBirthDate(`${y}-${m}-${d}`);
+    blurActiveElementOnWeb();
     setShowDatePicker(false);
   };
 
@@ -494,7 +497,10 @@ export default function ProfileScreen() {
                   tint={paletteMode === 'nuit' ? 'dark' : 'light'} 
                   style={styles.modalOverlay}
                 >
-                  <Pressable style={styles.modalDismiss} onPress={() => setShowDatePicker(false)} />
+                  <Pressable style={styles.modalDismiss} onPress={() => {
+                    blurActiveElementOnWeb();
+                    setShowDatePicker(false);
+                  }} />
                   <Card style={[styles.bottomSheetCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800', marginBottom: 16, textAlign: 'center' }}>
                       {t('profile.select_date', 'Select Birth Date')}
@@ -508,7 +514,10 @@ export default function ProfileScreen() {
                       textColor={colors.text}
                     />
                     <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-                      <Button label={t('common.cancel', 'Cancel')} variant="ghost" onPress={() => setShowDatePicker(false)} />
+                      <Button label={t('common.cancel', 'Cancel')} variant="ghost" onPress={() => {
+                        blurActiveElementOnWeb();
+                        setShowDatePicker(false);
+                      }} />
                       <Button label={t('common.confirm', 'Confirm')} onPress={() => confirmDate(tempDate)} />
                     </View>
                   </Card>

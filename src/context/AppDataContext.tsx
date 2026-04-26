@@ -15,6 +15,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { isWebOnline, logFirebaseDevDiagnostics, shouldUseFirestoreFallback } from '@/lib/firebaseErrors';
 import { EntryPayload, EntryRecord, EntryType } from '@/types';
 import { useAuth } from './AuthContext';
 import { getTodaySummary } from '@/utils/entries';
@@ -41,10 +42,6 @@ const AppDataContext = createContext<AppDataContextValue | null>(null);
 
 function entriesRef(uid: string) {
   return collection(db, 'users', uid, 'entries');
-}
-
-function isPermissionDenied(error: unknown) {
-  return Boolean((error as any)?.code === 'permission-denied' || /permission/i.test((error as any)?.message ?? ''));
 }
 
 function createLocalId() {
@@ -116,6 +113,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [entries, setEntries] = useState<EntryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [remoteAvailable, setRemoteAvailable] = useState(true);
+  const [isOnline, setIsOnline] = useState(isWebOnline());
   const [syncScope, setSyncScope] = useState<string | null>(null);
   const entriesRefState = useRef<EntryRecord[]>([]);
 
@@ -204,6 +202,26 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, [entries.length, importEntries, loading, user]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      setRemoteAvailable(true);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setRemoteAvailable(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!user || guestMode) {
       setEntries([]);
       setLoading(false);
@@ -212,8 +230,17 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
 
     setLoading(true);
-    setRemoteAvailable(true);
     const scopeId = syncScope ?? user.uid;
+    if (!isOnline) {
+      setRemoteAvailable(false);
+      void readEntriesCache(scopeId).then((cached) => {
+        commitEntries(scopeId, cached);
+        setLoading(false);
+      });
+      return;
+    }
+
+    setRemoteAvailable(true);
     const q = query(entriesRef(scopeId), orderBy('occurredAt', 'desc'));
     return onSnapshot(
       q,
@@ -223,7 +250,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       },
       (error) => {
-        if (isPermissionDenied(error)) {
+        if (shouldUseFirestoreFallback(error)) {
+          logFirebaseDevDiagnostics('entries-listener', error);
           setRemoteAvailable(false);
           setLoading(false);
           void readEntriesCache(scopeId).then((cached) => {
@@ -235,7 +263,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       },
     );
-  }, [guestMode, syncScope, user]);
+  }, [guestMode, isOnline, syncScope, user]);
 
   const summary = useMemo(() => getTodaySummary(entries, profile), [entries, profile]);
 
@@ -270,9 +298,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         });
         nextEntry.id = ref.id;
       } catch (error) {
-        if (!isPermissionDenied(error)) {
+        if (!shouldUseFirestoreFallback(error)) {
           throw error;
         }
+        logFirebaseDevDiagnostics('entries-update', error);
         setRemoteAvailable(false);
       }
     }
@@ -349,7 +378,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
         return { imported: toCreate.length };
       } catch (error) {
-        if (!isPermissionDenied(error)) throw error;
+        if (!shouldUseFirestoreFallback(error)) throw error;
+        logFirebaseDevDiagnostics('entries-import', error);
         setRemoteAvailable(false);
       }
     }
@@ -376,9 +406,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           updatedAt: serverTimestamp(),
         });
       } catch (error) {
-        if (!isPermissionDenied(error)) {
+        if (!shouldUseFirestoreFallback(error)) {
           throw error;
         }
+        logFirebaseDevDiagnostics('entries-delete', error);
         setRemoteAvailable(false);
       }
     }
@@ -401,9 +432,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       try {
         await deleteDoc(doc(entriesRef(scopeId), id));
       } catch (error) {
-        if (!isPermissionDenied(error)) {
+        if (!shouldUseFirestoreFallback(error)) {
           throw error;
         }
+        logFirebaseDevDiagnostics('entries-add', error);
         setRemoteAvailable(false);
       }
     }
@@ -433,9 +465,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } catch (error) {
-        if (!isPermissionDenied(error)) {
+        if (!shouldUseFirestoreFallback(error)) {
           throw error;
         }
+        logFirebaseDevDiagnostics('entries-seed-demo', error);
         setRemoteAvailable(false);
       }
     }
@@ -459,7 +492,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           await batch.commit();
         }
       } catch (error) {
-        if (!isPermissionDenied(error)) throw error;
+        if (!shouldUseFirestoreFallback(error)) throw error;
+        logFirebaseDevDiagnostics('entries-clear-demo', error);
         setRemoteAvailable(false);
       }
     }

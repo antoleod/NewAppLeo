@@ -42,6 +42,7 @@ import {
 } from '@/lib/storage';
 import { NextFeedingCard } from '@/components/NextFeedingCard';
 import { BabyFlowIcon } from '@/components/BabyFlowIcon';
+import { blurActiveElementOnWeb } from '@/lib/web';
 
 // Colors are now derived from ThemeContext inside components
 
@@ -872,6 +873,7 @@ export default function HomeScreen() {
       homeSectionOrder: [...defaultHomeSectionOrder],
     });
     setAppSettingsState(next);
+    blurActiveElementOnWeb();
     setShowHomeCustomizer(false);
     setShowSmartSignalsMenu(false);
   }
@@ -891,6 +893,7 @@ export default function HomeScreen() {
     await setActiveBabyId(nextBaby.id);
     setBabyId(nextBaby.id);
     setHydration(await getMomHydration(nextBaby.id));
+    blurActiveElementOnWeb();
     setShowBabySwitcher(false);
   }
 
@@ -898,7 +901,19 @@ export default function HomeScreen() {
     setShowNextFeedPicker(true);
   }
 
+  const handleBottleTimer = () => {
+    if (Platform.OS === 'web') {
+      const el = Array.from(document.querySelectorAll('div')).find(e => e.textContent?.includes('Bottle timer'));
+      if (el) {
+        (el as HTMLElement).click();
+        return;
+      }
+    }
+    openNextFeedPicker();
+  };
+
   function closeNextFeedPicker() {
+    blurActiveElementOnWeb();
     setShowNextFeedPicker(false);
   }
 
@@ -1006,7 +1021,7 @@ export default function HomeScreen() {
           </View>
           <Text style={nightHomeStyles.focusDetail}>{nextFeedDetail}</Text>
           <Pressable
-            onPress={openNextFeedPicker}
+            onPress={handleBottleTimer}
             style={({ pressed }) => [nightHomeStyles.focusCta, pressed && nightHomeStyles.primaryPressed]}
           >
             <Text style={nightHomeStyles.focusCtaText}>Start Feed</Text>
@@ -1087,7 +1102,10 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <Modal visible={showBabySwitcher} transparent animationType="fade" onRequestClose={() => setShowBabySwitcher(false)}>
+      <Modal visible={showBabySwitcher} transparent animationType="fade" onRequestClose={() => {
+        blurActiveElementOnWeb();
+        setShowBabySwitcher(false);
+      }}>
         <View style={styles.menuOverlay}>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Switch baby</Text>
@@ -1104,7 +1122,10 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showSmartSignalsMenu} transparent animationType="fade" onRequestClose={() => setShowSmartSignalsMenu(false)}>
+      <Modal visible={showSmartSignalsMenu} transparent animationType="fade" onRequestClose={() => {
+        blurActiveElementOnWeb();
+        setShowSmartSignalsMenu(false);
+      }}>
         <View style={styles.menuOverlay}>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Smart signals</Text>
@@ -2193,7 +2214,10 @@ export default function HomeScreen() {
         })}
       </View>
 
-      <Modal visible={showSmartSignalsMenu} transparent animationType="fade" onRequestClose={() => setShowSmartSignalsMenu(false)}>
+      <Modal visible={showSmartSignalsMenu} transparent animationType="fade" onRequestClose={() => {
+        blurActiveElementOnWeb();
+        setShowSmartSignalsMenu(false);
+      }}>
         <View style={styles.menuOverlay}>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>{t('home.smart_signals_settings', 'Smart Signals Settings')}</Text>
@@ -2223,7 +2247,10 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showHomeCustomizer} transparent animationType="fade" onRequestClose={() => setShowHomeCustomizer(false)}>
+      <Modal visible={showHomeCustomizer} transparent animationType="fade" onRequestClose={() => {
+        blurActiveElementOnWeb();
+        setShowHomeCustomizer(false);
+      }}>
         <View style={styles.menuOverlay}>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>{t('home.customize_home', 'Customize Home')}</Text>
@@ -2263,7 +2290,10 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showBabySwitcher} transparent animationType="fade" onRequestClose={() => setShowBabySwitcher(false)}>
+      <Modal visible={showBabySwitcher} transparent animationType="fade" onRequestClose={() => {
+        blurActiveElementOnWeb();
+        setShowBabySwitcher(false);
+      }}>
         <View style={styles.menuOverlay}>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>{t('home.switch_baby', 'Switch Baby')}</Text>

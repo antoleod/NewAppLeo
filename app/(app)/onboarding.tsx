@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, Animated } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, Animated, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated2, { FadeInRight, useAnimatedStyle } from 'react-native-reanimated';
@@ -86,12 +86,12 @@ export default function OnboardingScreen() {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
   }, [step]);

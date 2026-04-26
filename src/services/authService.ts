@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { isPermissionDenied, logFirebaseDevDiagnostics, shouldUseFirestoreFallback } from '@/lib/firebaseErrors';
 import { RegisterPayload } from '@/types';
 import { getCachedAuthProfile } from '@/lib/storage';
 import {
@@ -19,10 +20,6 @@ import {
 } from './userProfileService';
 import { decryptWithPin, encryptWithPin, generateSalt, hashPin, normalizeEmail, normalizeUsername } from '@/utils/crypto';
 import { Platform } from 'react-native';
-
-function isPermissionDenied(error: unknown) {
-  return Boolean((error as any)?.code === 'permission-denied' || /permission/i.test((error as any)?.message ?? ''));
-}
 
 export async function registerAccount(payload: RegisterPayload) {
   const email = normalizeEmail(payload.email);
@@ -148,7 +145,8 @@ export async function signInWithEmailPin(payload: { email: string; pin: string }
   try {
     lookup = await getDoc(doc(db, 'emails', email));
   } catch (error) {
-    if (isPermissionDenied(error)) {
+    if (shouldUseFirestoreFallback(error)) {
+      logFirebaseDevDiagnostics('lookup-email-for-pin', error);
       throw new Error('This PIN could not be verified. Use your password or reset your access key.');
     }
     throw error;
@@ -166,7 +164,8 @@ export async function signInWithEmailPin(payload: { email: string; pin: string }
   try {
     profile = await loadProfile(data.uid);
   } catch (error) {
-    if (isPermissionDenied(error)) {
+    if (shouldUseFirestoreFallback(error)) {
+      logFirebaseDevDiagnostics('load-profile-for-pin', error);
       throw new Error('This PIN could not be verified. Use your password or reset your access key.');
     }
     throw error;

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { OnboardingPayload, RegisterPayload, ThemeMode, UserProfile } from '@/types';
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [guestMode, setGuestMode] = useState(false);
   const [loading, setLoading] = useState(true);
-  const pendingPinRecovery = React.useRef<{ email: string; pin: string } | null>(null);
+  const pendingPinRecovery = useRef<{ email: string; pin: string } | null>(null);
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | undefined;
@@ -238,7 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         try {
           await completeOnboarding(user.uid, payload);
-          const nextProfile = await loadProfile(user.uid);
+          const nextProfile = (await loadProfile(user.uid)) ?? profile;
           setProfile(nextProfile);
           if (nextProfile) {
             await setCachedAuthProfile(nextProfile);
@@ -279,7 +279,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         await updateProfile(user.uid, partial);
-        const nextProfile = await loadProfile(user.uid);
+        const nextProfile = (await loadProfile(user.uid)) ?? profile;
         setProfile(nextProfile);
         if (nextProfile) {
           await setCachedAuthProfile(nextProfile);
@@ -294,7 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         await updateThemeMode(user.uid, mode);
-        const nextProfile = await loadProfile(user.uid);
+        const nextProfile = (await loadProfile(user.uid)) ?? profile;
         setProfile(nextProfile);
         if (nextProfile) {
           await setCachedAuthProfile(nextProfile);

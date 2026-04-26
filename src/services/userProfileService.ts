@@ -8,6 +8,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { isPermissionDenied, logFirebaseDevDiagnostics, shouldUseFirestoreFallback } from '@/lib/firebaseErrors';
 import { OnboardingPayload, ThemeMode, UserProfile } from '@/types';
 import { encryptWithPin, generateSalt, hashPin, normalizeUsername } from '@/utils/crypto';
 
@@ -16,10 +17,6 @@ const USERNAMES = 'usernames';
 
 function stripUndefined<T extends Record<string, any>>(input: T): Partial<T> {
   return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)) as Partial<T>;
-}
-
-function isPermissionDenied(error: unknown) {
-  return Boolean((error as any)?.code === 'permission-denied' || /permission/i.test((error as any)?.message ?? ''));
 }
 
 export function userProfileRef(uid: string) {
@@ -60,8 +57,16 @@ export function defaultProfile(uid: string, authEmail: string, username = '', di
 }
 
 export async function loadProfile(uid: string) {
-  const snap = await getDoc(userProfileRef(uid));
-  return snap.exists() ? (snap.data() as UserProfile) : null;
+  try {
+    const snap = await getDoc(userProfileRef(uid));
+    return snap.exists() ? (snap.data() as UserProfile) : null;
+  } catch (error) {
+    if (shouldUseFirestoreFallback(error)) {
+      logFirebaseDevDiagnostics('load-profile', error);
+      return null;
+    }
+    throw error;
+  }
 }
 
 export function watchProfile(uid: string, onChange: (profile: UserProfile | null) => void, onError?: (error: unknown) => void) {
@@ -73,7 +78,8 @@ export function watchProfile(uid: string, onChange: (profile: UserProfile | null
         onChange(profile);
       },
       (error) => {
-        if (isPermissionDenied(error)) {
+        if (shouldUseFirestoreFallback(error)) {
+          logFirebaseDevDiagnostics('watch-profile', error);
           onChange(null);
           return;
         }
