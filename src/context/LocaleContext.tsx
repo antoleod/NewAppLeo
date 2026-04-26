@@ -27,7 +27,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [profile?.language]);
 
   const language = (profile?.language ?? localLanguage ?? 'fr') as AppLanguage;
 

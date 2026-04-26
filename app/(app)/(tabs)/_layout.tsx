@@ -107,7 +107,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="home" options={{ title: t('tabs.home') }} />
       <Tabs.Screen name="history" options={{ title: t('tabs.history') }} />
       <Tabs.Screen name="insights" options={{ title: t('tabs.insights') }} />
-      <Tabs.Screen name="profile" options={{ title: 'Config' }} />
+      <Tabs.Screen name="profile" options={{ title: t('tabs.profile', 'Profile') }} />
       <Tabs.Screen name="diaper" options={{ href: null }} />
       <Tabs.Screen name="settings-theme" options={{ href: null }} />
     </Tabs>

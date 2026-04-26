@@ -3,6 +3,7 @@ import { Platform, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View,
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext';
 import { Button, Card, Page, Segment } from '@/components/ui';
 import { BackgroundPhotoSelector } from '@/components/BackgroundPhotoSelector';
 import { DataImporter } from '@/components/DataImporter';
@@ -29,6 +30,7 @@ function isDarkHex(hex: string) {
 
 export default function ThemeSettings() {
   const { width } = useWindowDimensions();
+  const { t } = useLocale();
   const {
     colors,
     theme,
@@ -46,6 +48,24 @@ export default function ThemeSettings() {
     toggleTheme,
   } = useTheme();
   const { setThemeMode } = useAuth();
+  const localizedVariantMeta = {
+    light: {
+      label: t('settings.theme.light_label', 'Bright Light'),
+      description: t('settings.theme.light_desc', 'Perfect for daytime with strong readability on a light background.'),
+    },
+    custom: {
+      label: t('settings.theme.custom_label', 'Custom Ocean'),
+      description: t('settings.theme.custom_desc', 'Deep marine tones with bright accents.'),
+    },
+    parliament: {
+      label: t('settings.theme.parliament_label', 'Elegant Purple'),
+      description: t('settings.theme.parliament_desc', 'Golden accents over violet for a premium look.'),
+    },
+    noir: {
+      label: t('settings.theme.noir_label', 'Sophisticated Night'),
+      description: t('settings.theme.noir_desc', 'Elegant dark mode with warm highlights.'),
+    },
+  } as const;
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [savingVariant, setSavingVariant] = useState<ThemeVariant | null>(null);
@@ -96,7 +116,7 @@ export default function ThemeSettings() {
       await updateAppSettings({ backgroundPhotoUri: uri });
       await setBackgroundPhotoUri(uri);
     } catch (error: any) {
-      Alert.alert('Theme saved locally', error?.message ?? 'Photo could not sync right now. The screen will keep working with local settings.');
+      Alert.alert(t('settings.theme.local_saved_title', 'Theme saved locally'), error?.message ?? t('settings.theme.photo_sync_failed', 'Photo could not sync right now. The screen will keep working with local settings.'));
     } finally {
       setUploadingPhoto(false);
     }
@@ -108,22 +128,29 @@ export default function ThemeSettings() {
       await updateAppSettings({ backgroundPhotoUri: '' });
       await setBackgroundPhotoUri('');
     } catch (error: any) {
-      Alert.alert('Theme saved locally', error?.message ?? 'Background removal could not sync right now.');
+      Alert.alert(t('settings.theme.local_saved_title', 'Theme saved locally'), error?.message ?? t('settings.theme.photo_remove_sync_failed', 'Background removal could not sync right now.'));
     } finally {
       setUploadingPhoto(false);
     }
   };
 
   return (
-    <Page scroll={false} contentStyle={{ width: '100%' }}>
-      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={isPhone ? undefined : [0]} contentContainerStyle={{ paddingBottom: isPhone ? 140 : 160 }}>
+    <Page scroll={false} contentStyle={{ width: '100%', flex: 1 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentInsetAdjustmentBehavior="automatic"
+        nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={isPhone ? undefined : [0]}
+        contentContainerStyle={{ paddingBottom: isPhone ? 140 : 160, flexGrow: 1 }}
+      >
         <View style={[styles.stickyHeader, { backgroundColor: paletteMode === 'nuit' ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.50)' }]}>
           <Card style={[styles.headerCard, solidCardStyle]}>
             <View style={styles.headerTop}>
               <View style={{ flex: 1, gap: 6 }}>
-                <Text style={[styles.eyebrow, { color: theme.accent }]}>Personalization</Text>
-                <Text style={[styles.headerTitle, { color: colors.text, fontSize: isPhone ? 23 : 28 }]}>Theme & Design</Text>
-                {!isPhone ? <Text style={[styles.headerSubtitle, { color: colors.muted }]}>Mobile-first presets with readable colors, clear hierarchy, and safe local fallback.</Text> : null}
+                <Text style={[styles.eyebrow, { color: theme.accent }]}>{t('settings.theme.eyebrow', 'Personalization')}</Text>
+                <Text style={[styles.headerTitle, { color: colors.text, fontSize: isPhone ? 23 : 28 }]}>{t('settings.theme.title', 'Theme & Design')}</Text>
+                {!isPhone ? <Text style={[styles.headerSubtitle, { color: colors.muted }]}>{t('settings.theme.subtitle', 'Mobile-first presets with readable colors, clear hierarchy, and safe local fallback.')}</Text> : null}
               </View>
               <View style={[styles.previewMini, { backgroundColor: theme.bgCardAlt, borderColor: solidCardStyle.borderColor }]}>
                 <View style={[styles.previewMiniAccent, { backgroundColor: theme.accent }]} />
@@ -133,8 +160,8 @@ export default function ThemeSettings() {
             </View>
             {themeSyncError ? (
               <View style={[styles.toast, { backgroundColor: `${theme.accent}15` }]}>
-                <Text style={[styles.toastTitle, { color: theme.accent }]}>{themeSyncError === 'no-permission' ? 'No Firebase permission' : 'Sync unavailable'}</Text>
-                <Text style={[styles.toastBody, { color: colors.text }]}>Using local theme settings. The screen stays fully usable.</Text>
+                <Text style={[styles.toastTitle, { color: theme.accent }]}>{themeSyncError === 'no-permission' ? t('settings.theme.no_permission', 'No Firebase permission') : t('settings.theme.sync_unavailable', 'Sync unavailable')}</Text>
+                <Text style={[styles.toastBody, { color: colors.text }]}>{t('settings.theme.local_only', 'Using local theme settings. The screen stays fully usable.')}</Text>
               </View>
             ) : null}
           </Card>
@@ -143,22 +170,22 @@ export default function ThemeSettings() {
         <View style={styles.content}>
           <Animated.View entering={FadeInDown.duration(220)}>
             <Card style={[styles.sectionCard, solidCardStyle]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Mode</Text>
-              <Text style={[styles.sectionBody, { color: colors.muted }]}>Choose the reading mode first. Active options stay clearly filled.</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.theme.mode_title', 'Mode')}</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>{t('settings.theme.mode_body', 'Choose the reading mode first. Active options stay clearly filled.')}</Text>
               <Segment
                 value={themeMode}
                 onChange={(value) => setThemeMode(value as any)}
                 options={[
-                  { label: 'System', value: 'system' },
-                  { label: 'Light', value: 'light' },
-                  { label: 'Dark', value: 'dark' },
+                  { label: t('settings.theme.system', 'System'), value: 'system' },
+                  { label: t('settings.theme.light', 'Light'), value: 'light' },
+                  { label: t('settings.theme.dark', 'Dark'), value: 'dark' },
                 ]}
               />
-              <Button label={paletteMode === 'nuit' ? 'Switch to Light Now' : 'Switch to Dark Now'} onPress={() => void toggleTheme()} variant="secondary" />
+              <Button label={paletteMode === 'nuit' ? t('settings.theme.switch_light', 'Switch to Light Now') : t('settings.theme.switch_dark', 'Switch to Dark Now')} onPress={() => void toggleTheme()} variant="secondary" />
               <View style={styles.switchRow}>
                 <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={[styles.switchTitle, { color: colors.text }]}>High Contrast Mode</Text>
-                  <Text style={[styles.switchBody, { color: colors.muted }]}>Boost readability and keep contrast strong on every surface.</Text>
+                  <Text style={[styles.switchTitle, { color: colors.text }]}>{t('settings.theme.contrast_title', 'High Contrast Mode')}</Text>
+                  <Text style={[styles.switchBody, { color: colors.muted }]}>{t('settings.theme.contrast_body', 'Boost readability and keep contrast strong on every surface.')}</Text>
                 </View>
                 <Switch value={highContrastMode} onValueChange={(value) => void setHighContrastMode(value)} />
               </View>
@@ -167,8 +194,8 @@ export default function ThemeSettings() {
 
           <Animated.View entering={FadeInDown.duration(220).delay(50)}>
             <Card style={[styles.sectionCard, solidCardStyle]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Paletas de Colores</Text>
-              <Text style={[styles.sectionBody, { color: colors.muted }]}>Explora diferentes estilos visuales. Desliza para ver cómo cada tema cambia los colores de toda la app.</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.theme.palette_title', 'Color Palettes')}</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>{t('settings.theme.palette_body', 'Explore visual styles. Swipe to see how each theme changes the app colors.')}</Text>
               <ScrollView
                 ref={carouselRef}
                 horizontal
@@ -213,12 +240,12 @@ export default function ThemeSettings() {
                     >
                       <View style={styles.carouselHeader}>
                         <View style={{ flex: 1, gap: 6 }}>
-                          <Text style={[styles.carouselTitle, { color: isDarkHex(item.swatches[0]) ? '#FFFFFF' : '#111111' }]}>{item.label}</Text>
-                          <Text style={[styles.carouselBody, { color: isDarkHex(item.swatches[0]) ? 'rgba(255,255,255,0.78)' : 'rgba(17,17,17,0.72)' }]}>{item.description}</Text>
+                          <Text style={[styles.carouselTitle, { color: isDarkHex(item.swatches[0]) ? '#FFFFFF' : '#111111' }]}>{localizedVariantMeta[item.value].label}</Text>
+                          <Text style={[styles.carouselBody, { color: isDarkHex(item.swatches[0]) ? 'rgba(255,255,255,0.78)' : 'rgba(17,17,17,0.72)' }]}>{localizedVariantMeta[item.value].description}</Text>
                         </View>
                         {selected ? (
                           <View style={[styles.carouselBadge, { backgroundColor: item.swatches[1] }]}>
-                            <Text style={[styles.carouselBadgeText, { color: isDarkHex(item.swatches[1]) ? '#FFFFFF' : '#101418' }]}>Active</Text>
+                            <Text style={[styles.carouselBadgeText, { color: isDarkHex(item.swatches[1]) ? '#FFFFFF' : '#101418' }]}>{t('settings.theme.active', 'Active')}</Text>
                           </View>
                         ) : null}
                       </View>
@@ -236,7 +263,7 @@ export default function ThemeSettings() {
                       </View>
                       <View style={styles.carouselFooter}>
                         <Text style={[styles.carouselMeta, { color: isDarkHex(item.swatches[0]) ? 'rgba(255,255,255,0.72)' : 'rgba(17,17,17,0.7)' }]}>
-                          {selected ? 'Selected now' : 'Tap to apply'}
+                          {selected ? t('settings.theme.selected_now', 'Selected now') : t('settings.theme.tap_apply', 'Tap to apply')}
                         </Text>
                         <View style={styles.carouselDots}>
                           {themeVariants.map((dotItem) => (
@@ -259,8 +286,8 @@ export default function ThemeSettings() {
 
               {!isPhone ? <View style={{ gap: 10 }}>
                 {themeVariants.map((item) => {
-                  const active = item.value === themeVariant;
-                  return (
+                          const active = item.value === themeVariant;
+                          return (
                     <View
                       key={item.value}
                       style={[
@@ -275,8 +302,8 @@ export default function ThemeSettings() {
                     >
                       <View style={styles.themePresetTop}>
                         <View style={{ flex: 1, gap: 4 }}>
-                          <Text style={[styles.themePresetTitle, { color: colors.text }]}>{item.label}</Text>
-                          <Text style={[styles.themePresetBody, { color: colors.muted }]}>{item.description}</Text>
+                          <Text style={[styles.themePresetTitle, { color: colors.text }]}>{localizedVariantMeta[item.value].label}</Text>
+                          <Text style={[styles.themePresetBody, { color: colors.muted }]}>{localizedVariantMeta[item.value].description}</Text>
                         </View>
                         <View style={styles.themePresetSwatches}>
                           {item.swatches.map((color) => (
@@ -285,7 +312,7 @@ export default function ThemeSettings() {
                         </View>
                       </View>
                       <Button
-                        label={savingVariant === item.value ? `Aplicando ${item.label}...` : active ? `${item.label} Activo` : `Usar ${item.label}`}
+                        label={savingVariant === item.value ? `${t('settings.theme.applying', 'Applying')} ${localizedVariantMeta[item.value].label}...` : active ? `${localizedVariantMeta[item.value].label} ${t('settings.theme.active', 'Active')}` : `${t('settings.theme.use', 'Use')} ${localizedVariantMeta[item.value].label}`}
                         onPress={async () => {
                           setSavingVariant(item.value);
                           try {
@@ -328,7 +355,7 @@ export default function ThemeSettings() {
                       fontWeight: '800',
                       marginBottom: 4
                     }}>
-                      {themeSyncError === 'no-permission' ? 'Error de Permisos' : 'Error de Sincronización'}
+                      {themeSyncError === 'no-permission' ? t('settings.theme.permission_error', 'Permission Error') : t('settings.theme.sync_error', 'Sync Error')}
                     </Text>
                     <Text style={{
                       color: colors.muted,
@@ -336,8 +363,8 @@ export default function ThemeSettings() {
                       lineHeight: 16
                     }}>
                       {themeSyncError === 'no-permission'
-                        ? 'Los cambios se guardan localmente pero no se sincronizan con la nube. Revisa tus permisos de Firebase.'
-                        : 'Los cambios se guardaron localmente. Hay problemas con la sincronización en la nube.'}
+                        ? t('settings.theme.permission_error_body', 'Changes are saved locally but do not sync to the cloud. Check your Firebase permissions.')
+                        : t('settings.theme.sync_error_body', 'Changes were saved locally. Cloud sync is currently unavailable.')}
                     </Text>
                   </View>
                 </View>
@@ -353,14 +380,14 @@ export default function ThemeSettings() {
                     fontWeight: '600',
                     marginBottom: 4
                   }}>
-                    ✅ Tus temas están activos localmente
+                    {t('settings.theme.local_active', 'Your themes are active locally')}
                   </Text>
                   <Text style={{
                     color: colors.muted,
                     fontSize: 10,
                     lineHeight: 14
                   }}>
-                    Los cambios se aplican inmediatamente en esta app. La sincronización con otros dispositivos se reintentará automáticamente.
+                    {t('settings.theme.local_active_body', 'Changes apply immediately in this app. Sync with other devices will retry automatically.')}
                   </Text>
                 </View>
               </Card>
@@ -369,15 +396,15 @@ export default function ThemeSettings() {
 
           <Animated.View entering={FadeInDown.duration(220).delay(90)}>
             <Card style={[styles.sectionCard, solidCardStyle]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Visual Style</Text>
-              <Text style={[styles.sectionBody, { color: colors.muted }]}>Classic keeps the preset pure. Default and photo add extra presentation layers when needed.</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.theme.style_title', 'Visual Style')}</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>{t('settings.theme.style_body', 'Classic keeps the preset pure. Default and photo add extra presentation layers when needed.')}</Text>
               <Segment
                 value={themeStyle}
                 onChange={(value) => void setThemeStyle(value as any)}
                 options={[
-                  { label: 'Classic', value: 'classic' },
-                  { label: 'Default', value: 'default' },
-                  { label: 'Photo', value: 'photo' },
+                  { label: t('settings.theme.classic', 'Classic'), value: 'classic' },
+                  { label: t('settings.theme.default', 'Default'), value: 'default' },
+                  { label: t('settings.theme.photo', 'Photo'), value: 'photo' },
                 ]}
               />
             </Card>
@@ -385,20 +412,20 @@ export default function ThemeSettings() {
 
           <Animated.View entering={FadeInDown.duration(220).delay(120)}>
             <Card style={[styles.sectionCard, solidCardStyle]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Live Preview</Text>
-              <Text style={[styles.sectionBody, { color: colors.muted }]}>Previewing {activeVariantLabel}. The title, supporting text, primary button, and secondary card update together.</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.theme.preview_title', 'Live Preview')}</Text>
+              <Text style={[styles.sectionBody, { color: colors.muted }]}>{t('settings.theme.preview_body', 'Previewing')} {activeVariantLabel}. {t('settings.theme.preview_body_end', 'The title, supporting text, primary button, and secondary card update together.')}</Text>
               <View style={[styles.previewBlock, { backgroundColor: theme.bgCardAlt, borderColor: solidCardStyle.borderColor }]}>
-                <Text style={[styles.previewTitle, { color: colors.text }]}>Tonight routine</Text>
-                <Text style={[styles.previewCopy, { color: colors.muted }]}>Everything remains readable even if cloud sync fails or high contrast mode is enabled.</Text>
+                <Text style={[styles.previewTitle, { color: colors.text }]}>{t('settings.theme.preview_card_title', 'Tonight routine')}</Text>
+                <Text style={[styles.previewCopy, { color: colors.muted }]}>{t('settings.theme.preview_card_body', 'Everything remains readable even if cloud sync fails or high contrast mode is enabled.')}</Text>
                 <View style={[styles.previewButton, { backgroundColor: theme.accent }]}>
-                  <Text style={[styles.previewButtonText, { color: previewAccentText }]}>Primary action</Text>
+                  <Text style={[styles.previewButtonText, { color: previewAccentText }]}>{t('settings.theme.preview_primary', 'Primary action')}</Text>
                 </View>
                 <View style={[styles.previewInnerCard, { backgroundColor: colors.surface, borderColor: solidCardStyle.borderColor }]}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <BabyFlowIcon name="insights" active bare />
                     <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={[styles.previewInnerTitle, { color: colors.text }]}>Secondary card</Text>
-                      <Text style={[styles.previewInnerBody, { color: colors.muted }]}>Readable text, solid card, safe border.</Text>
+                      <Text style={[styles.previewInnerTitle, { color: colors.text }]}>{t('settings.theme.preview_secondary_title', 'Secondary card')}</Text>
+                      <Text style={[styles.previewInnerBody, { color: colors.muted }]}>{t('settings.theme.preview_secondary_body', 'Readable text, solid card, safe border.')}</Text>
                     </View>
                   </View>
                 </View>

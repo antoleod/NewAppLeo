@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert, Platform, Text, TextInput, View } from 'react-native';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useLocale } from '@/context/LocaleContext';
 import { typography } from '@/typography';
 import { Button, Card, SectionHeader } from '@/components/ui';
 import { parseImportData, importJsonData, ImportValidator } from '@/lib/importExport';
@@ -9,6 +10,7 @@ import { useAppData } from '@/context/AppDataContext';
 
 export function DataImporter() {
   const { theme, colors } = useTheme();
+  const { t } = useLocale();
   const { importEntries } = useAppData();
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -33,9 +35,9 @@ export function DataImporter() {
         return;
       }
 
-      Alert.alert('Unavailable', 'Direct JSON file upload is currently supported on web. On native, paste the JSON manually for now.');
+      Alert.alert(t('settings.import.unavailable_title', 'Unavailable'), t('settings.import.unavailable_body', 'Direct JSON file upload is currently supported on web. On native, paste the JSON manually for now.'));
     } catch (error: any) {
-      Alert.alert('Error', error?.message ?? 'Failed to load file');
+      Alert.alert(t('settings.import.error_title', 'Error'), error?.message ?? t('settings.import.load_failed', 'Failed to load file'));
     }
   };
 
@@ -43,13 +45,13 @@ export function DataImporter() {
     try {
       setImporting(true);
       const result = await importEntries(entries);
-      Alert.alert('Import Success', `${result.imported} entries imported and synced to Firebase.`);
+      Alert.alert(t('settings.import.success_title', 'Import Success'), `${result.imported} ${t('settings.import.success_body', 'entries imported and synced to Firebase.')}`);
       setImportedData([]);
       setPreview(null);
       setJsonInput('');
       setShowInput(false);
     } catch (error: any) {
-      Alert.alert('Import Error', error?.message ?? 'Import failed');
+      Alert.alert(t('settings.import.failed_title', 'Import Error'), error?.message ?? t('settings.import.failed_body', 'Import failed'));
     } finally {
       setImporting(false);
     }
@@ -58,7 +60,7 @@ export function DataImporter() {
   const handleParseJson = async () => {
     try {
       if (!jsonInput.trim()) {
-        Alert.alert('Error', 'Please add JSON data');
+        Alert.alert(t('settings.import.error_title', 'Error'), t('settings.import.add_json', 'Please add JSON data'));
         return;
       }
 
@@ -73,12 +75,12 @@ export function DataImporter() {
           `Medications: ${summary.medications} · Milestones: ${summary.milestones} · Symptoms: ${summary.symptoms}`,
       );
 
-      Alert.alert('Import preview', `Found ${summary.total} entries ready to import to your current BabyFlow account and sync scope. Continue?`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Import', onPress: async () => handleConfirmImport(entries) },
+      Alert.alert(t('settings.import.preview_title', 'Import preview'), `${t('settings.import.preview_body', 'Found')} ${summary.total} ${t('settings.import.preview_body_end', 'entries ready to import to your current BabyFlow account and sync scope. Continue?')}`, [
+        { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+        { text: t('settings.import.import_now', 'Import'), onPress: async () => handleConfirmImport(entries) },
       ]);
     } catch (error: any) {
-      Alert.alert('Error parsing JSON', error?.message ?? 'Invalid JSON');
+      Alert.alert(t('settings.import.parse_title', 'Error parsing JSON'), error?.message ?? t('settings.import.invalid_json', 'Invalid JSON'));
     }
   };
 
@@ -91,14 +93,14 @@ export function DataImporter() {
 
   return (
     <Card>
-      <SectionHeader title="Import Data" />
+      <SectionHeader title={t('settings.import.title', 'Import Data')} />
       <Text style={[typography.body, { color: colors.muted, marginBottom: spacing.md, fontSize: 12, lineHeight: 17 }]}>
-        Import JSON from Leo or BabyFlow exports. Imported entries are written to the active account and synced to Firebase.
+        {t('settings.import.body', 'Import JSON from Leo or BabyFlow exports. Imported entries are written to the active account and synced to Firebase.')}
       </Text>
 
       <View style={{ gap: spacing.sm }}>
-        <Button label="Upload JSON file" onPress={handlePickFile} variant="secondary" />
-        <Button label="Paste JSON Data" onPress={() => setShowInput(true)} variant="ghost" />
+        <Button label={t('settings.import.upload', 'Upload JSON file')} onPress={handlePickFile} variant="secondary" />
+        <Button label={t('settings.import.paste', 'Paste JSON Data')} onPress={() => setShowInput(true)} variant="ghost" />
       </View>
 
       {preview ? (
@@ -106,8 +108,8 @@ export function DataImporter() {
           <View style={{ backgroundColor: `${theme.accent}11`, borderColor: theme.accent, borderWidth: 1, borderRadius: radii.lg, padding: spacing.md }}>
             <Text style={[typography.body, { color: theme.textPrimary, fontWeight: '600', lineHeight: 20 }]}>{preview}</Text>
           </View>
-          <Button label={importing ? 'Importing...' : 'Confirm Import'} onPress={() => handleConfirmImport(importedData)} loading={importing} disabled={importing} />
-          <Button label="Cancel" onPress={handleClearPreview} variant="ghost" disabled={importing} />
+          <Button label={importing ? t('settings.import.importing', 'Importing...') : t('settings.import.confirm', 'Confirm Import')} onPress={() => handleConfirmImport(importedData)} loading={importing} disabled={importing} />
+          <Button label={t('common.cancel', 'Cancel')} onPress={handleClearPreview} variant="ghost" disabled={importing} />
         </View>
       ) : showInput ? (
         <View style={{ gap: spacing.md, marginTop: spacing.md }}>
@@ -122,20 +124,20 @@ export function DataImporter() {
               backgroundColor: theme.bgCardAlt,
               fontSize: 12,
             }}
-            placeholder="Paste JSON here..."
+            placeholder={t('settings.import.placeholder', 'Paste JSON here...')}
             placeholderTextColor={theme.textMuted}
             value={jsonInput}
             onChangeText={setJsonInput}
             multiline
             editable={!importing}
           />
-          <Button label="Parse JSON" onPress={handleParseJson} disabled={importing || !jsonInput.trim()} />
-          <Button label="Cancel" onPress={handleClearPreview} variant="ghost" disabled={importing} />
+          <Button label={t('settings.import.parse', 'Parse JSON')} onPress={handleParseJson} disabled={importing || !jsonInput.trim()} />
+          <Button label={t('common.cancel', 'Cancel')} onPress={handleClearPreview} variant="ghost" disabled={importing} />
         </View>
       ) : null}
 
       <View style={{ backgroundColor: theme.bgCardAlt, borderRadius: radii.md, padding: spacing.md, marginTop: spacing.md, gap: spacing.xs }}>
-        <Text style={[typography.detail, { color: theme.textPrimary, fontWeight: '600' }]}>Supported formats:</Text>
+        <Text style={[typography.detail, { color: theme.textPrimary, fontWeight: '600' }]}>{t('settings.import.supported', 'Supported formats:')}</Text>
         <Text style={[typography.detail, { color: theme.textMuted, fontSize: 10, lineHeight: 15 }]}>
           {'• Feeds\n• Diapers / elims\n• Sleeps / sleepSessions\n• Pumps\n• Measurements\n• Medications\n• Milestones\n• Symptoms'}
         </Text>
