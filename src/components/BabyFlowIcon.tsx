@@ -88,10 +88,8 @@ const styles = StyleSheet.create({
   },
   shellActive: {
     borderColor: 'rgba(167,227,213,0.44)',
-    shadowColor: '#83D4C2',
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    borderWidth: 6,
+    boxShadow: '0px 4px 10px rgba(131, 212, 194, 0.18)',
     elevation: 2,
   },
   googleShell: {

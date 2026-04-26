@@ -1,6 +1,10 @@
 import { EntryRecord } from '@/types';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+
+let Notifications: any;
+if (Platform.OS !== 'web') {
+  Notifications = require('expo-notifications');
+}
 import { getMeanFeedingInterval } from './patterns';
 
 export function buildDailySummary(entries: EntryRecord[]) {

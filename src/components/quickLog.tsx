@@ -23,7 +23,7 @@ export function FloatingGlassFooter({
   onDanger?: () => void | Promise<void>;
 }) {
   return (
-    <View style={quickStyles.footerWrap} pointerEvents="box-none">
+    <View style={[quickStyles.footerWrap, { pointerEvents: 'box-none' as any }]} >
       <View style={quickStyles.footerGlass}>
         <Pressable
           onPress={disabled || loading ? undefined : onPrimary}

@@ -48,10 +48,7 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
           overflow: 'hidden',
           backgroundColor: theme.bgCard,
           borderColor: theme.border,
-          shadowColor: '#000',
-          shadowOpacity: 0.12,
-          shadowRadius: 14,
-          shadowOffset: { width: 0, height: 8 },
+          boxShadow: '0px 8px 14px rgba(0,0,0,0.12)',
           elevation: 2,
         }}
       >
@@ -117,14 +114,11 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
               height: 50,
               borderRadius: 999,
               borderWidth: 1,
-              borderColor: `${statusColor}55`,
+              borderColor: theme.green,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: `${statusColor}18`,
-              shadowColor: theme.green,
-              shadowOpacity: 0.24,
-              shadowRadius: 10,
-              shadowOffset: { width: 0, height: 6 },
+              backgroundColor: theme.bgCard,
+              boxShadow: `0px 6px 10px ${theme.green}3D`,
               elevation: 4,
             }}
           >

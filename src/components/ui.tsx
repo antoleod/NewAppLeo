@@ -121,7 +121,6 @@ export function Card({ children, style }: { children: React.ReactNode; style?: a
           padding: responsive.cardPadding,
           backgroundColor: theme.bgCard,
           borderColor: theme.border,
-          shadowColor: theme.textPrimary,
         },
         style,
       ]}
@@ -211,10 +210,7 @@ export function Button({
           backgroundColor: background,
           borderColor,
           opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
-          shadowColor: variant === 'ghost' ? 'transparent' : theme.textPrimary,
-          shadowOpacity: variant === 'ghost' ? 0 : 0.08,
-          shadowRadius: 14,
-          shadowOffset: { width: 0, height: 8 },
+          boxShadow: variant === 'ghost' ? 'none' : `0px 8px 14px ${theme.textPrimary}14`,
           elevation: variant === 'ghost' ? 0 : 2,
         },
         style,
@@ -497,7 +493,6 @@ export function ColorSwatch({
           {
             backgroundColor: color,
             borderColor: theme.border,
-            shadowColor: color,
           },
         ]}
       />
@@ -594,9 +589,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.xl,
     padding: spacing.xl,
     gap: spacing.md,
-    shadowOpacity: 0.03,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
+    boxShadow: '0px 8px 16px rgba(0,0,0,0.03)',
     elevation: 1,
   },
   headingRow: {
@@ -627,9 +620,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    boxShadow: '0px 4px 12px rgba(0,0,0,0.04)',
     elevation: 2,
   },
   buttonLabel: {
@@ -746,9 +737,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     flexDirection: 'row',
     gap: spacing.md,
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    boxShadow: '0px 4px 8px rgba(0,0,0,0.02)',
     elevation: 1,
   },
   entryTitle: {
@@ -792,9 +781,7 @@ const styles = StyleSheet.create({
     height: 58,
     borderRadius: radii.md,
     borderWidth: 1,
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    boxShadow: '0px 3px 6px rgba(0,0,0,0.20)',
     elevation: 2,
   },
   swatchLabel: {
