@@ -543,8 +543,6 @@ export default function EntryComposerScreen() {
 
         {type === 'temperature' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Température' : 'Temperature'}</Text>
-
             <View style={styles.tempPresets}>
               <Pressable onPress={() => setVaccineTemp('36.5')} style={[styles.tempPreset, vaccineTemp === '36.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
                 <Text style={[styles.tempPresetText, vaccineTemp === '36.5' && { color: meta.tone, fontWeight: '900' }]}>36.5</Text>
@@ -568,9 +566,20 @@ export default function EntryComposerScreen() {
                 <Text style={styles.tempButtonText}>−</Text>
               </Pressable>
 
-              <View style={styles.tempDisplay}>
-                <Text style={[styles.tempDisplayValue, { color: meta.tone }]}>{vaccineTemp || '37.5'}</Text>
-                <Text style={[styles.tempDisplayUnit, { color: colors.muted }]}>°C</Text>
+              <View style={{ flex: 1 }}>
+                <Input
+                  label="°C"
+                  value={vaccineTemp}
+                  onChangeText={(text) => {
+                    const cleanText = text.replace(/[^0-9.]/g, '');
+                    if (cleanText === '' || /^\d*\.?\d{0,2}$/.test(cleanText)) {
+                      setVaccineTemp(cleanText);
+                    }
+                  }}
+                  placeholder="37.5"
+                  keyboardType="decimal-pad"
+                  inputMode="decimal"
+                />
               </View>
 
               <Pressable
@@ -583,20 +592,6 @@ export default function EntryComposerScreen() {
                 <Text style={styles.tempButtonText}>+</Text>
               </Pressable>
             </View>
-
-            <Input
-              label={language === 'fr' ? 'Ou entrez une valeur' : 'Or enter a value'}
-              value={vaccineTemp}
-              onChangeText={(text) => {
-                const cleanText = text.replace(/[^0-9.]/g, '');
-                if (cleanText === '' || /^\d*\.?\d{0,1}$/.test(cleanText)) {
-                  setVaccineTemp(cleanText);
-                }
-              }}
-              placeholder="37.5"
-              keyboardType="decimal-pad"
-              inputMode="decimal"
-            />
 
             {vaccineTemp && (
               <View style={styles.tempStatusContainer}>
@@ -794,13 +789,13 @@ const styles = StyleSheet.create({
   tempInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     marginBottom: 12,
   },
   tempButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     backgroundColor: '#1C2128',
     borderWidth: 1,
     borderColor: '#21262D',
@@ -809,28 +804,7 @@ const styles = StyleSheet.create({
   },
   tempButtonText: {
     color: '#F0F6FC',
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  tempDisplay: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#1C2128',
-    borderWidth: 1,
-    borderColor: '#21262D',
-  },
-  tempDisplayValue: {
-    fontSize: 36,
-    fontWeight: '900',
-  },
-  tempDisplayUnit: {
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '700',
   },
   tempStatusContainer: {
