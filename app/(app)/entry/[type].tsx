@@ -352,14 +352,17 @@ export default function EntryComposerScreen() {
     <Page>
       <View style={styles.heroCard}>
         <View style={styles.heroTopRow}>
-          <View style={[styles.heroIcon, { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-            <Text style={styles.heroIconText}>{meta.icon}</Text>
+          <View style={styles.heroLeftContent}>
+            <View style={[styles.heroIcon, { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+              <Text style={styles.heroIconText}>{meta.icon}</Text>
+            </View>
+            <Text style={styles.heroEyebrow}>Composer</Text>
+            <Text style={styles.heroTitle}>{typeLabels[type]}</Text>
           </View>
           <Pressable onPress={() => router.back()} style={styles.closeButton}>
             <Text style={styles.closeButtonLabel}>✕</Text>
           </Pressable>
         </View>
-        <Text style={styles.heroTitle}>{typeLabels[type]}</Text>
       </View>
 
       <Card>
@@ -652,9 +655,8 @@ export default function EntryComposerScreen() {
 
 const styles = StyleSheet.create({
   heroCard: {
-    gap: 12,
-    padding: 14,
-    borderRadius: 16,
+    padding: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#21262D',
     backgroundColor: '#161B22',
@@ -663,32 +665,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
+  },
+  heroLeftContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
   },
   heroIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+    flexShrink: 0,
   },
   heroIconText: {
-    fontSize: 20,
+    fontSize: 18,
+  },
+  heroEyebrow: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: '#8B949E',
+    flexShrink: 0,
   },
   heroTitle: {
     color: '#F0F6FC',
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '900',
+    flexShrink: 1,
   },
   closeButton: {
     width: 32,
     height: 32,
-    borderRadius: 999,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#1C2128',
     borderWidth: 1,
     borderColor: '#21262D',
+    flexShrink: 0,
   },
   closeButtonLabel: {
     color: '#F0F6FC',
