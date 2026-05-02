@@ -584,6 +584,20 @@ export default function EntryComposerScreen() {
               </Pressable>
             </View>
 
+            <Input
+              label={language === 'fr' ? 'Ou entrez une valeur' : 'Or enter a value'}
+              value={vaccineTemp}
+              onChangeText={(text) => {
+                const cleanText = text.replace(/[^0-9.]/g, '');
+                if (cleanText === '' || /^\d*\.?\d{0,1}$/.test(cleanText)) {
+                  setVaccineTemp(cleanText);
+                }
+              }}
+              placeholder="37.5"
+              keyboardType="decimal-pad"
+              inputMode="decimal"
+            />
+
             {vaccineTemp && (
               <View style={styles.tempStatusContainer}>
                 {Number(vaccineTemp) < 37.5 ? (
