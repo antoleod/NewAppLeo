@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Alert, AppState, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,7 +20,6 @@ import {
   updateAppSettings,
 } from '@/lib/storage';
 import { scheduleDailySummary } from '@/lib/notifications';
-import { useWideWeb } from '@/hooks/useWideWeb';
 import { useAppData } from '@/context/AppDataContext';
 import { getEntrySubtitle, getEntryTitle } from '@/utils/entries';
 import { buildDailySummary } from '@/lib/notifications';
@@ -36,7 +35,6 @@ const languageOptions = [
 ];
 
 export default function ProfileScreen() {
-  const { isWideWeb } = useWideWeb();
   const { colors, theme, paletteMode, themeMode, themeVariant, themeStyle, backgroundPhotoUri, setBackgroundPhotoUri, setThemeVariant, setThemeStyle, setCustomTheme, toggleTheme } = useTheme();
   const { t } = useLocale();
   const { profile, guestMode, saveProfile, setThemeMode, signOut } = useAuth();
@@ -248,16 +246,11 @@ export default function ProfileScreen() {
     setSettings(next);
   }
 
-  const wideCardStyle = isWideWeb
-    ? ({ flexBasis: '48%', flexGrow: 1, minWidth: 280, maxWidth: '100%' } as const)
-    : undefined;
-
   return (
-    <Page scroll={!isWideWeb} contentStyle={isWideWeb ? [{ width: '100%' }, { flex: 1 }] : undefined}>
+    <Page>
       <Heading eyebrow={t('tabs.profile')} title="Famille et preferences" subtitle="Langue, themes, effets, photo, dashboard et synchronisation locale." />
 
-      <View style={isWideWeb ? { flexDirection: 'row', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' } : { gap: 16 }}>
-      <Card style={wideCardStyle}>
+      <Card>
         <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Family profile</Text>
         <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
           <Pressable onPress={handlePickPhoto} style={{ width: 86, height: 86, borderRadius: 28, overflow: 'hidden', backgroundColor: colors.backgroundAlt, alignItems: 'center', justifyContent: 'center' }}>
@@ -287,7 +280,7 @@ export default function ProfileScreen() {
         <Button label="Save profile" onPress={handleSave} />
       </Card>
 
-      <Card style={wideCardStyle}>
+      <Card>
         <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Children</Text>
         {babies.length ? (
           <View style={{ gap: 10 }}>
@@ -339,7 +332,7 @@ export default function ProfileScreen() {
         )}
       </Card>
 
-      <Card style={wideCardStyle}>
+      <Card>
         <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Theme and layout</Text>
         <View
           style={{
@@ -462,7 +455,7 @@ export default function ProfileScreen() {
         />
       </Card>
 
-      <Card style={wideCardStyle}>
+      <Card>
         <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Dashboard personalization</Text>
         <Input
           label="Hydration goal (ml)"
@@ -484,7 +477,7 @@ export default function ProfileScreen() {
         </View>
       </Card>
 
-      <Card style={wideCardStyle}>
+      <Card>
         <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Effects</Text>
         <Text style={{ color: colors.muted }}>All motion stays optional and can be switched off here.</Text>
         <Button
@@ -509,7 +502,7 @@ export default function ProfileScreen() {
         />
       </Card>
 
-      <Card style={wideCardStyle}>
+      <Card>
         <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Module visibility</Text>
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           {Object.entries(visibility).map(([key, enabled]) => (
@@ -528,7 +521,7 @@ export default function ProfileScreen() {
         </View>
       </Card>
 
-      <Card style={wideCardStyle}>
+      <Card>
         <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Milestones</Text>
         {milestones.length ? (
           <View style={{ gap: 10 }}>
@@ -550,7 +543,7 @@ export default function ProfileScreen() {
         )}
       </Card>
 
-      <Card style={wideCardStyle}>
+      <Card>
         <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Session</Text>
         <Text style={{ color: colors.muted }}>Signed in as {profile?.authEmail}</Text>
         <Text style={{ color: colors.muted }}>Username: {profile?.username}</Text>
@@ -568,7 +561,7 @@ export default function ProfileScreen() {
         <Button label="Log out" onPress={signOut} variant="danger" />
       </Card>
 
-      <Card style={wideCardStyle}>
+      <Card>
         <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>Voice bridge</Text>
         <Text style={{ color: colors.muted, lineHeight: 20 }}>
           Try a browser-only speech capture path that converts a short transcript into a parsed intent.
@@ -576,7 +569,6 @@ export default function ProfileScreen() {
         <Text style={{ color: colors.muted }}>Status: {voiceStatus}</Text>
         <Button label="Test voice capture" onPress={handleVoiceBridge} variant="ghost" />
       </Card>
-      </View>
     </Page>
   );
 }
