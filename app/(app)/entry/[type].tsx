@@ -618,21 +618,53 @@ export default function EntryComposerScreen() {
 
         {type === 'vaccine' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Vaccin' : 'Vaccine'}</Text>
-            <View style={styles.chipRow}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Nom du vaccin' : 'Vaccine name'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 8 }]}>{language === 'fr' ? 'Selectionnez un preset ou entrez un nom personnalise' : 'Select a preset or enter a custom name'}</Text>
+
+            <View style={styles.vaccinePresetsGrid}>
               {vaccinePresets.map((preset) => (
                 <Pressable
                   key={preset}
                   onPress={() => setVaccineName(preset)}
-                  style={[styles.vaccineChip, vaccineName === preset && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                  style={[styles.vaccinePresetBtn, vaccineName === preset && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
                 >
-                  <Text style={[styles.vaccineChipText, vaccineName === preset && { color: meta.tone, fontWeight: '900' }]}>{preset}</Text>
+                  <Text style={[styles.vaccinePresetText, vaccineName === preset && { color: meta.tone, fontWeight: '900' }]}>{preset}</Text>
                 </Pressable>
               ))}
             </View>
-            <Input label={language === 'fr' ? 'Nom' : 'Name'} value={vaccineName} onChangeText={setVaccineName} />
-            <Input label={language === 'fr' ? 'Dose' : 'Dose'} value={vaccineDose} onChangeText={setVaccineDose} keyboardType="number-pad" placeholder="1" />
-            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 12 }]}>{language === 'fr' ? 'Prochaine dose' : 'Next dose'}</Text>
+
+            <Input
+              label={language === 'fr' ? 'Ou entrez' : 'Or enter'}
+              value={vaccineName}
+              onChangeText={setVaccineName}
+              placeholder={language === 'fr' ? 'Nom personnalise...' : 'Custom name...'}
+            />
+
+            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Numero de dose' : 'Dose number'}</Text>
+            <View style={styles.vaccineInputRow}>
+              <Pressable
+                onPress={() => setVaccineDose(String(Math.max(1, Number(vaccineDose) - 1)))}
+                style={styles.vaccineDoseButton}
+              >
+                <Text style={styles.vaccineDoseButtonText}>−</Text>
+              </Pressable>
+
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={[styles.vaccineDoseDisplay, { color: meta.tone }]}>
+                  {language === 'fr' ? 'Dose ' : 'Dose '}{vaccineDose}
+                </Text>
+              </View>
+
+              <Pressable
+                onPress={() => setVaccineDose(String(Math.min(5, Number(vaccineDose) + 1)))}
+                style={styles.vaccineDoseButton}
+              >
+                <Text style={styles.vaccineDoseButtonText}>+</Text>
+              </Pressable>
+            </View>
+
+            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Prochaine dose' : 'Next dose scheduled'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 8 }]}>{language === 'fr' ? 'Date prevue pour la prochaine dose' : 'When is the next dose scheduled'}</Text>
             <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={vaccineNextDueDate} onChange={setVaccineNextDueDate} />
           </View>
         )}
@@ -758,18 +790,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  vaccineChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 999,
+  vaccinePresetsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  vaccinePresetBtn: {
+    flex: 1,
+    minWidth: '30%',
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#21262D',
     backgroundColor: '#1C2128',
+    alignItems: 'center',
   },
-  vaccineChipText: {
+  vaccinePresetText: {
     color: '#F0F6FC',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
+  },
+  vaccineInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  vaccineDoseButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#1C2128',
+    borderWidth: 1,
+    borderColor: '#21262D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vaccineDoseButtonText: {
+    color: '#F0F6FC',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  vaccineDoseDisplay: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  sectionBody: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   infoStrip: {
     flexDirection: 'row',
