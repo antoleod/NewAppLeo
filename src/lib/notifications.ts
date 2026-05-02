@@ -88,6 +88,7 @@ export async function scheduleNextFeedingReminder(
           sound: true,
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: new Date(nextFeedTime),
         },
       });
@@ -111,6 +112,7 @@ export async function scheduleMedicationReminder(entry: EntryRecord, babyName: s
         sound: true,
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: new Date(nextDoseTime),
       },
     });
@@ -134,6 +136,7 @@ export async function scheduleVaccineReminder(vaccineName: string, nextDueDate: 
           sound: true,
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: reminderDate,
         },
       });

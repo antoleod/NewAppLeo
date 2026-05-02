@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View, GestureResponderEvent } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Button, Card, Input, Page, Segment } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
@@ -34,128 +34,98 @@ const symptomOptions = [
   { label: 'Colic', value: 'colic' },
 ];
 
+const vaccinePresets = ['BCG', 'Hepatitis B', 'DTP', 'Polio', 'MMR', 'Varicella', 'Rotavirus', 'PCV'];
+
 const typeMeta: Record<
   EntryType,
   {
     icon: string;
-    eyebrow: string;
     tone: string;
     toneSoft: string;
-    details: string[];
-    badges: string[];
   }
 > = {
   feed: {
     icon: '🍼',
-    eyebrow: 'Feeding session',
     tone: '#C9A227',
     toneSoft: 'rgba(201,162,39,0.16)',
-    details: ['Timer', 'Quick amount', 'Breast or bottle'],
-    badges: ['🍼 Feed', '⏱ Timer', '⚡ Fast log'],
   },
   food: {
     icon: '🍲',
-    eyebrow: 'Food tracking',
     tone: '#F0B85A',
     toneSoft: 'rgba(240,184,90,0.16)',
-    details: ['Food name', 'Quantity', 'Optional notes'],
-    badges: ['🍲 Meal', '🥄 Quantity', '📝 Notes'],
   },
   sleep: {
     icon: '😴',
-    eyebrow: 'Sleep session',
     tone: '#58A6FF',
     toneSoft: 'rgba(88,166,255,0.16)',
-    details: ['Duration first', 'Calm layout', 'Minimal taps'],
-    badges: ['😴 Sleep', '⏱ Duration', '🌙 Quiet flow'],
   },
   diaper: {
     icon: '🧷',
-    eyebrow: 'Diaper log',
     tone: '#E74C3C',
     toneSoft: 'rgba(231,76,60,0.16)',
-    details: ['Pee, poop, vomit', 'Quick count', 'Short note'],
-    badges: ['🧷 Diaper', '💧 Count', '📝 Note'],
   },
   pump: {
     icon: '🍼',
-    eyebrow: 'Pump session',
     tone: '#3FB950',
     toneSoft: 'rgba(63,185,80,0.16)',
-    details: ['Timer + output', 'Milk amount', 'Focused save flow'],
-    badges: ['🍼 Pump', '⏱ Timer', '📦 ml output'],
   },
   measurement: {
-    icon: '📏',
-    eyebrow: 'Measurement',
+    icon: '⚖️',
     tone: '#A371F7',
     toneSoft: 'rgba(163,113,247,0.16)',
-    details: ['Weight, height, temp', 'Growth friendly', 'Fast entry'],
-    badges: ['📏 Measure', '⚖️ Weight', '🌡 Temp'],
   },
   medication: {
     icon: '💊',
-    eyebrow: 'Medication',
     tone: '#7CC2FF',
     toneSoft: 'rgba(124,194,255,0.16)',
-    details: ['Name + dosage', 'Clean text input', 'Add context'],
-    badges: ['💊 Med', '🧾 Dose', '🕒 Time'],
   },
   milestone: {
     icon: '✨',
-    eyebrow: 'Milestone',
     tone: '#D9B97D',
     toneSoft: 'rgba(217,185,125,0.16)',
-    details: ['Title + icon', 'Optional photo', 'Memory log'],
-    badges: ['✨ Milestone', '🖼 Photo', '📝 Memory'],
   },
   symptom: {
     icon: '💬',
-    eyebrow: 'Symptom log',
     tone: '#8EB5EA',
     toneSoft: 'rgba(142,181,234,0.16)',
-    details: ['Tags + note', 'Observations first', 'Review later'],
-    badges: ['💬 Symptom', '🏷 Tags', '📝 Context'],
   },
   temperature: {
     icon: '🌡️',
-    eyebrow: 'Temperature log',
     tone: '#E74C3C',
     toneSoft: 'rgba(231,76,60,0.16)',
-    details: ['Body temperature', 'Fast entry', 'Auto alerts'],
-    badges: ['🌡️ Temp', '📊 Status', '⚡ Alert'],
   },
   vaccine: {
     icon: '💉',
-    eyebrow: 'Vaccine record',
     tone: '#3FB950',
     toneSoft: 'rgba(63,185,80,0.16)',
-    details: ['Vaccine name + dose', 'Schedule next dose', 'Track program'],
-    badges: ['💉 Vaccine', '📅 Schedule', '✓ Record'],
   },
 };
 
-function typeSubtitle(type: EntryType) {
-  switch (type) {
-    case 'feed':
-      return 'Track breast or bottle sessions with a timer or quick amount picker.';
-    case 'food':
-      return 'Log meals with a name, quantity, and optional notes.';
-    case 'sleep':
-      return 'Capture a nap or overnight block with a simple duration.';
-    case 'diaper':
-      return 'Log pee, poop, and vomit together with a short note.';
-    case 'pump':
-      return 'Record a pumping session and the extracted amount.';
-    case 'measurement':
-      return 'Add weight, height, or temperature in one pass.';
-    case 'medication':
-      return 'Save the medication name, dosage, and any context.';
-    case 'milestone':
-      return 'Mark a new milestone and optionally attach a photo.';
-    case 'symptom':
-      return 'Capture qualitative signs or discomfort for later review.';
+interface DiaperVolumeSliderProps {
+  emoji: string;
+  value: number;
+  onChange: (value: number) => void;
+  color: string;
+}
+
+function DiaperVolumeSlider({ emoji, value, onChange, color }: DiaperVolumeSliderProps) {
+  function handleSlide(e: GestureResponderEvent) {
+    const x = e.nativeEvent.locationX;
+    const containerWidth = 280;
+    const percentage = Math.max(0, Math.min(1, x / containerWidth));
+    const newValue = Math.round(percentage * 9);
+    onChange(newValue);
   }
+
+  return (
+    <View style={styles.diaperMinimal}>
+      <Text style={styles.diaperMinimalEmoji}>{emoji}</Text>
+      <Pressable onPress={handleSlide} style={[styles.diaperMinimalBar, { backgroundColor: color + '15', borderColor: color }]}>
+        <View style={[styles.diaperMinimalFill, { width: `${(value / 9) * 100}%`, backgroundColor: color }]} />
+      </Pressable>
+      <Text style={[styles.diaperMinimalValue, { color }]}>{value}</Text>
+    </View>
+  );
 }
 
 export default function EntryComposerScreen() {
@@ -376,47 +346,7 @@ export default function EntryComposerScreen() {
     router.back();
   }
 
-  const copy = {
-    title: editing
-      ? language === 'fr'
-        ? `Modifier ${typeLabels[editing.type]}`
-        : `Edit ${typeLabels[editing.type]}`
-      : language === 'fr'
-        ? `Nouvelle entree ${typeLabels[type]}`
-        : `New ${typeLabels[type]}`,
-    subtitle:
-      type === 'feed'
-        ? language === 'fr'
-          ? 'Suivez sein ou biberon avec minuteur ou quantite rapide.'
-          : 'Track breast or bottle sessions with a timer or quick amount picker.'
-        : type === 'sleep'
-          ? language === 'fr'
-            ? 'Capturez une sieste ou une nuit avec une duree simple.'
-            : 'Capture a nap or overnight block with a simple duration.'
-          : type === 'diaper'
-            ? language === 'fr'
-              ? 'Enregistrez pipi, caca et vomi avec une note courte.'
-              : 'Log pee, poop, and vomit together with a short note.'
-            : type === 'pump'
-              ? language === 'fr'
-                ? 'Enregistrez tire-lait et quantite.'
-                : 'Record a pumping session and the extracted amount.'
-              : type === 'measurement'
-                ? language === 'fr'
-                  ? 'Ajoutez poids, taille, perimetre cranien et temperature.'
-                  : 'Add weight, height, head circumference, or temperature.'
-                : type === 'medication'
-                  ? language === 'fr'
-                    ? 'Nom, dosage et contexte.'
-                    : 'Save the medication name, dosage, and any context.'
-                  : type === 'milestone'
-                    ? language === 'fr'
-                      ? 'Ajoutez une etape avec photo si besoin.'
-                      : 'Mark a new milestone and optionally attach a photo.'
-                    : language === 'fr'
-                      ? 'Capturez des signes qualitatifs pour revue plus tard.'
-                      : 'Capture qualitative signs or discomfort for later review.',
-  };
+  const showDateTime = type !== 'diaper';
 
   return (
     <Page>
@@ -425,62 +355,57 @@ export default function EntryComposerScreen() {
           <View style={[styles.heroIcon, { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
             <Text style={styles.heroIconText}>{meta.icon}</Text>
           </View>
-          <Pressable onPress={() => router.back()} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={language === 'fr' ? 'Fermer' : 'Close'}>
-            <Text style={styles.closeButtonLabel}>X</Text>
+          <Pressable onPress={() => router.back()} style={styles.closeButton}>
+            <Text style={styles.closeButtonLabel}>✕</Text>
           </Pressable>
         </View>
-
-        <View style={styles.heroCopy}>
-          <Text style={[styles.heroEyebrow, { color: meta.tone }]}>{language === 'fr' ? 'Composer' : 'Composer'}</Text>
-          <Text style={styles.heroTitle}>{copy.title}</Text>
-          <Text style={styles.heroSubtitle}>{copy.subtitle}</Text>
-        </View>
-        <View style={styles.badgeRow}>
-          {meta.badges.map((badge) => (
-            <View key={badge} style={[styles.badge, { borderColor: meta.tone, backgroundColor: meta.toneSoft }]}>
-              <Text style={[styles.badgeText, { color: meta.tone }]}>{badge}</Text>
-            </View>
-          ))}
-        </View>
+        <Text style={styles.heroTitle}>{typeLabels[type]}</Text>
       </View>
-      <Card>
-        <View style={styles.sectionCard}>
-          <Text style={[styles.sectionLabel, { color: meta.tone }]}>{meta.eyebrow}</Text>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Quand cela a eu lieu' : 'When it happened'}</Text>
-          <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-          <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={occurredAt} onChange={setOccurredAt} />
-        </View>
 
-        {type === 'feed' ? (
+      <Card>
+        {showDateTime && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'FEED FLOW' : 'FEED FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Sein ou biberon' : 'Breast or bottle'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[1]}</Text>
+            <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={occurredAt} onChange={setOccurredAt} />
+          </View>
+        )}
+        {type === 'diaper' && (
+          <View style={styles.sectionCard}>
+            <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={occurredAt} onChange={setOccurredAt} />
+          </View>
+        )}
+
+        {type === 'feed' && (
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Type' : 'Type'}</Text>
             <Segment
               value={mode}
               onChange={(value) => setMode(value as 'breast' | 'bottle')}
               options={[
-                { label: 'Bottle', value: 'bottle' },
-                { label: 'Breast', value: 'breast' },
+                { label: language === 'fr' ? 'Sein' : 'Breast', value: 'breast' },
+                { label: language === 'fr' ? 'Biberon' : 'Bottle', value: 'bottle' },
               ]}
             />
-            <View style={styles.chipRow}>
-              <Pressable onPress={() => router.push('/entry/feed?presetMode=bottle&presetAmount=150')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>+150 ml</Text>
-              </Pressable>
-              <Pressable onPress={() => setMode('breast')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>Timer</Text>
-              </Pressable>
-              <Pressable onPress={() => setMode('bottle')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>Feed</Text>
-              </Pressable>
-            </View>
             {mode === 'bottle' ? (
-              <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
+              <>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Quantité' : 'Amount'}</Text>
+                <View style={styles.chipRow}>
+                  <Pressable onPress={() => setAmountMl('150')} style={[styles.quickChip, amountMl === '150' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                    <Text style={[styles.quickChipText, amountMl === '150' && { color: meta.tone, fontWeight: '900' }]}>150</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setAmountMl('180')} style={[styles.quickChip, amountMl === '180' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                    <Text style={[styles.quickChipText, amountMl === '180' && { color: meta.tone, fontWeight: '900' }]}>180</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setAmountMl('240')} style={[styles.quickChip, amountMl === '240' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                    <Text style={[styles.quickChipText, amountMl === '240' && { color: meta.tone, fontWeight: '900' }]}>240</Text>
+                  </Pressable>
+                </View>
+                <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
+              </>
             ) : (
-              <View style={styles.stack}>
+              <>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Durée' : 'Duration'}</Text>
                 <TimerWidget
-                  label={language === 'fr' ? 'Session sein' : 'Breast session'}
+                  label={language === 'fr' ? 'Durée (min)' : 'Duration (min)'}
                   valueMinutes={Number(durationMin) || 0}
                   onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
                   allowSides
@@ -488,144 +413,97 @@ export default function EntryComposerScreen() {
                   onSideChange={(nextSide) => setSide(nextSide)}
                   largeTouchMode={largeTouchMode}
                 />
-                <QuantityPicker label={language === 'fr' ? 'Ml estimes' : 'Estimated ml'} value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
+                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Montant estimé' : 'Estimated amount'}</Text>
+                <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
+              </>
+            )}
+          </View>
+        )}
+
+        {type === 'food' && (
+          <View style={styles.sectionCard}>
+            <Input label={language === 'fr' ? 'Aliment' : 'Food'} value={foodName} onChangeText={setFoodName} placeholder={language === 'fr' ? 'Pomme, riz...' : 'Apple, rice...'} />
+            <Input label={language === 'fr' ? 'Quantité' : 'Quantity'} value={quantity} onChangeText={setQuantity} placeholder="250ml, 100g..." />
+          </View>
+        )}
+
+        {type === 'sleep' && (
+          <View style={styles.sectionCard}>
+            <TimerWidget label={language === 'fr' ? 'Durée (min)' : 'Duration (min)'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
+            {durationMin && (
+              <View style={[styles.infoStrip, { marginTop: 12 }]}>
+                <Text style={styles.infoStripText}>😴 {Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
               </View>
             )}
           </View>
-        ) : null}
+        )}
 
-        {type === 'food' ? (
+        {type === 'diaper' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'FOOD FLOW' : 'FOOD FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Repas et portions' : 'Meals and portions'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-            <Input label={language === 'fr' ? 'Nom de l aliment' : 'Food name'} value={foodName} onChangeText={setFoodName} placeholder={language === 'fr' ? 'Pomme, riz, puree...' : 'Apple, rice, puree...'} />
-            <Input label={language === 'fr' ? 'Quantite' : 'Quantity'} value={quantity} onChangeText={setQuantity} placeholder="250 ml / 120 g / 1 portion" />
-          </View>
-        ) : null}
-
-        {type === 'sleep' ? (
-          <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'SLEEP FLOW' : 'SLEEP FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Duree et repos' : 'Duration and rest'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[1]}</Text>
-            <View style={styles.infoStrip}>
-              <Text style={styles.infoStripText}>😴 {language === 'fr' ? 'Sommeil' : 'Sleep'}</Text>
-              <Text style={styles.infoStripText}>⏱ {language === 'fr' ? 'Durée' : 'Duration'}</Text>
-              <Text style={styles.infoStripText}>🌙 {language === 'fr' ? 'Nuit / sieste' : 'Night / nap'}</Text>
-            </View>
-            <TimerWidget label={language === 'fr' ? 'Duree (min)' : 'Duration (min)'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
-          </View>
-        ) : null}
-
-        {type === 'diaper' ? (
-          <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'DIAPER FLOW' : 'DIAPER FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Compteurs rapides' : 'Quick counts'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-            <View style={styles.stack}>
-              <Input label={language === 'fr' ? 'Pipi' : 'Pee'} value={pee} onChangeText={setPee} keyboardType="numeric" inputMode="numeric" />
-              <Input label={language === 'fr' ? 'Caca' : 'Poop'} value={poop} onChangeText={setPoop} keyboardType="numeric" inputMode="numeric" />
-              <Input label={language === 'fr' ? 'Vomi' : 'Vomit'} value={vomit} onChangeText={setVomit} keyboardType="numeric" inputMode="numeric" />
+            <View style={styles.diaperMinimalStack}>
+              <DiaperVolumeSlider emoji="💧" value={Number(pee)} onChange={(val) => setPee(String(val))} color="#58A6FF" />
+              <DiaperVolumeSlider emoji="💩" value={Number(poop)} onChange={(val) => setPoop(String(val))} color="#A371F7" />
+              <DiaperVolumeSlider emoji="🤢" value={Number(vomit)} onChange={(val) => setVomit(String(val))} color="#F0B85A" />
             </View>
           </View>
-        ) : null}
+        )}
 
-        {type === 'pump' ? (
+        {type === 'pump' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'PUMP FLOW' : 'PUMP FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Minuteur + quantite' : 'Timer + amount'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-            <View style={styles.infoStrip}>
-              <Text style={styles.infoStripText}>🍼 {language === 'fr' ? 'Tire-lait' : 'Pump'}</Text>
-              <Text style={styles.infoStripText}>⏱ {language === 'fr' ? 'Minuteur' : 'Timer'}</Text>
-              <Text style={styles.infoStripText}>💧 {language === 'fr' ? 'Quantité' : 'Amount'}</Text>
-            </View>
-            <TimerWidget label={language === 'fr' ? 'Session tire-lait' : 'Pump session'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Durée' : 'Duration'}</Text>
+            <TimerWidget label={language === 'fr' ? 'Session (min)' : 'Session (min)'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
+            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Quantité' : 'Amount'}</Text>
             <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
           </View>
-        ) : null}
+        )}
 
-        {type === 'measurement' ? (
+        {type === 'measurement' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'MEASURE FLOW' : 'MEASURE FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Croissance et taille' : 'Growth and size'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-            <View style={styles.stack}>
-              <Input label={language === 'fr' ? 'Poids (kg)' : 'Weight (kg)'} value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" inputMode="decimal" />
-              <Input label={language === 'fr' ? 'Taille (cm)' : 'Height (cm)'} value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" inputMode="decimal" />
-              <Input label={language === 'fr' ? 'Perimetre cranien (cm)' : 'Head circumference (cm)'} value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" inputMode="decimal" />
-              <Input label={language === 'fr' ? 'Temperature (C)' : 'Temperature (C)'} value={tempC} onChangeText={setTempC} keyboardType="decimal-pad" inputMode="decimal" />
-            </View>
+            <Input label={language === 'fr' ? 'Poids (kg)' : 'Weight (kg)'} value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" placeholder="5.2" />
+            <Input label={language === 'fr' ? 'Taille (cm)' : 'Height (cm)'} value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholder="52" />
+            <Input label={language === 'fr' ? 'PC (cm)' : 'Head circ (cm)'} value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" placeholder="35" />
+            <Input label={language === 'fr' ? 'Température' : 'Temperature'} value={tempC} onChangeText={setTempC} keyboardType="decimal-pad" placeholder="37.5" />
           </View>
-        ) : null}
+        )}
 
-        {type === 'medication' ? (
+        {type === 'medication' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'MEDICINE FLOW' : 'MEDICINE FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Nom, dose et contexte' : 'Name, dosage and context'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-            <View style={styles.chipRow}>
-              <Pressable onPress={() => setName('Paracetamol')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>Med</Text>
-              </Pressable>
-              <Pressable onPress={() => setDosage('1 dose')} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>Dose</Text>
-              </Pressable>
-              <Pressable onPress={() => setNotesOpen(true)} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>Time</Text>
-              </Pressable>
-            </View>
-            <View style={styles.savedWrap}>
-              <Text style={[styles.savedLabel, { color: colors.muted }]}>{language === 'fr' ? 'Medicaments sauvegardes' : 'Saved medicines'}</Text>
-              <View style={styles.savedRow}>
-                {savedMedicines.length ? (
-                  savedMedicines.slice(0, 8).map((medicine) => (
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Médicament' : 'Medication'}</Text>
+            {savedMedicines.length > 0 && (
+              <View style={styles.savedWrap}>
+                <View style={styles.savedRow}>
+                  {savedMedicines.slice(0, 4).map((med) => (
                     <Pressable
-                      key={`${medicine.name}-${medicine.dosage ?? ''}`}
+                      key={`${med.name}-${med.dosage}`}
                       onPress={() => {
-                        setName(medicine.name);
-                        if (medicine.dosage) setDosage(medicine.dosage);
+                        setName(med.name);
+                        if (med.dosage) setDosage(med.dosage);
                       }}
-                      style={styles.savedChip}
+                      style={[styles.savedChip, name === med.name && { borderColor: meta.tone }]}
                     >
-                      <Text style={styles.savedChipTitle}>{medicine.name}</Text>
-                      {medicine.dosage ? <Text style={styles.savedChipSubtitle}>{medicine.dosage}</Text> : null}
+                      <Text style={styles.savedChipTitle}>{med.name}</Text>
+                      {med.dosage && <Text style={styles.savedChipSubtitle}>{med.dosage}</Text>}
                     </Pressable>
-                  ))
-                ) : (
-                  <Text style={[styles.sectionBody, { color: colors.muted }]}>{language === 'fr' ? 'Aucun modele garde.' : 'No saved medicine yet.'}</Text>
-                )}
+                  ))}
+                </View>
               </View>
-              {name.trim() ? (
-                <Pressable onPress={async () => setSavedMedicines(await upsertSavedMedicine({ name, dosage }))} style={styles.savePresetButton}>
-                  <Text style={styles.savePresetText}>{language === 'fr' ? 'Sauver en modele' : 'Save as preset'}</Text>
-                </Pressable>
-              ) : null}
-            </View>
-            <Input label={language === 'fr' ? 'Nom du medicament' : 'Medication name'} value={name} onChangeText={setName} />
-            <View style={styles.savedRow}>
-              {savedMedicines
-                .filter((medicine) => medicine.name.toLowerCase() === name.trim().toLowerCase())
-                .map((medicine) => (
-                  <Pressable key={`${medicine.name}-${medicine.dosage ?? ''}`} onPress={() => medicine.dosage && setDosage(medicine.dosage)} style={styles.smallChip}>
-                    <Text style={styles.smallChipText}>{medicine.dosage || 'Usual dose'}</Text>
-                  </Pressable>
-                ))}
-            </View>
-            <Input label={language === 'fr' ? 'Dose' : 'Dosage'} value={dosage} onChangeText={setDosage} />
+            )}
+            <Input label={language === 'fr' ? 'Nom' : 'Name'} value={name} onChangeText={setName} />
+            <Input label={language === 'fr' ? 'Dosage' : 'Dosage'} value={dosage} onChangeText={setDosage} />
+            {name.trim() && (
+              <Pressable onPress={async () => setSavedMedicines(await upsertSavedMedicine({ name, dosage }))} style={[styles.savePresetButton, { marginTop: 8 }]}>
+                <Text style={styles.savePresetText}>💾 {language === 'fr' ? 'Sauver' : 'Save'}</Text>
+              </Pressable>
+            )}
           </View>
-        ) : null}
+        )}
 
-        {type === 'milestone' ? (
+        {type === 'milestone' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'MILESTONE FLOW' : 'MILESTONE FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Etape et photo' : 'Milestone and photo'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[1]}</Text>
-            <Input label={language === 'fr' ? 'Titre' : 'Title'} value={title} onChangeText={setTitle} />
-            <Input label="Icon" value={icon} onChangeText={setIcon} />
+            <Input label={language === 'fr' ? 'Titre' : 'Title'} value={title} onChangeText={setTitle} placeholder={language === 'fr' ? 'Premier sourire...' : 'First smile...'} />
+            <Input label="Icon" value={icon} onChangeText={setIcon} placeholder="✨" />
             <Button
-              label={photoUri ? (language === 'fr' ? 'Remplacer la photo' : 'Replace photo') : language === 'fr' ? 'Ajouter une photo' : 'Attach photo'}
+              label={photoUri ? (language === 'fr' ? '📸 Remplacer' : '📸 Replace') : language === 'fr' ? '📸 Ajouter' : '📸 Add'}
               onPress={async () => {
                 const result = await ImagePicker.launchImageLibraryAsync({
                   mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -637,78 +515,86 @@ export default function EntryComposerScreen() {
               }}
               variant="ghost"
             />
-            {photoUri ? <Text style={{ color: colors.muted, textAlign: 'center' }}>{language === 'fr' ? 'Photo jointe.' : 'Photo attached.'}</Text> : null}
           </View>
-        ) : null}
+        )}
 
-        {type === 'symptom' ? (
+        {type === 'symptom' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>{language === 'fr' ? 'SYMPTOM FLOW' : 'SYMPTOM FLOW'}</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Tags et notes' : 'Tags and notes'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>{meta.details[0]}</Text>
-            <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16, textAlign: 'center' }}>{language === 'fr' ? 'Tags' : 'Tags'}</Text>
-            <Segment
-              value={symptoms[0] ?? 'irritable'}
-              onChange={(value) => setSymptoms((current) => Array.from(new Set([value, ...current])).slice(0, 4))}
-              options={symptomOptions}
-            />
+            <View style={styles.chipRow}>
+              {symptomOptions.map((option) => (
+                <Pressable
+                  key={option.value}
+                  onPress={() =>
+                    setSymptoms((current) => {
+                      const newSymptoms = current.includes(option.value)
+                        ? current.filter((s) => s !== option.value)
+                        : Array.from(new Set([option.value, ...current])).slice(0, 4);
+                      return newSymptoms;
+                    })
+                  }
+                  style={[styles.symptomChip, symptoms.includes(option.value) && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                >
+                  <Text style={[styles.symptomChipText, symptoms.includes(option.value) && { color: meta.tone, fontWeight: '900' }]}>{option.label}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-        ) : null}
+        )}
 
-        {type === 'temperature' ? (
+        {type === 'temperature' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>BODY TEMPERATURE</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Temperature corporelle' : 'Body temperature'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted }]}>Enter the temperature in Celsius.</Text>
-            <Input
-              label="°C"
-              value={vaccineTemp}
-              onChangeText={setVaccineTemp}
-              placeholder="37.5"
-              keyboardType="decimal-pad"
-            />
+            <Input label="°C" value={vaccineTemp} onChangeText={setVaccineTemp} placeholder="37.5" keyboardType="decimal-pad" />
             {vaccineTemp && (
-              <View style={[styles.infoStrip, { marginTop: 8 }]}>
-                <Text style={[styles.infoStripText, { backgroundColor: Number(vaccineTemp) < 37.5 ? 'rgba(63,185,80,0.20)' : Number(vaccineTemp) < 38 ? 'rgba(242,200,111,0.20)' : 'rgba(231,76,60,0.20)' }]}>
-                  {Number(vaccineTemp) < 37.5 ? '✓ Normal' : Number(vaccineTemp) < 38 ? '⚠ Febrícula' : '🚨 Fiebre'}
-                </Text>
+              <View style={styles.tempStatusContainer}>
+                {Number(vaccineTemp) < 37.5 ? (
+                  <View style={[styles.tempStatus, { backgroundColor: 'rgba(63,185,80,0.16)', borderColor: '#3FB950' }]}>
+                    <Text style={[styles.tempStatusText, { color: '#3FB950' }]}>✓ {language === 'fr' ? 'Normal' : 'Normal'}</Text>
+                  </View>
+                ) : Number(vaccineTemp) < 38 ? (
+                  <View style={[styles.tempStatus, { backgroundColor: 'rgba(242,200,111,0.16)', borderColor: '#F2C86F' }]}>
+                    <Text style={[styles.tempStatusText, { color: '#F2C86F' }]}>⚠ {language === 'fr' ? 'Febrícula' : 'Mild fever'}</Text>
+                  </View>
+                ) : (
+                  <View style={[styles.tempStatus, { backgroundColor: 'rgba(231,76,60,0.16)', borderColor: '#E74C3C' }]}>
+                    <Text style={[styles.tempStatusText, { color: '#E74C3C' }]}>🚨 {language === 'fr' ? 'Fievre' : 'Fever'}</Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
-        ) : null}
+        )}
 
-        {type === 'vaccine' ? (
+        {type === 'vaccine' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionLabel, { color: meta.tone }]}>VACCINE DETAILS</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Vaccine info' : 'Vaccine information'}</Text>
-            <Input
-              label={language === 'fr' ? 'Nom du vaccin' : 'Vaccine name'}
-              value={vaccineName}
-              onChangeText={setVaccineName}
-              placeholder={language === 'fr' ? 'BCG, DTP, MMR...' : 'BCG, DTP, MMR...'}
-            />
-            <Input
-              label={language === 'fr' ? 'Numero dose' : 'Dose number'}
-              value={vaccineDose}
-              onChangeText={setVaccineDose}
-              keyboardType="number-pad"
-              placeholder="1"
-            />
-            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 8 }]}>{language === 'fr' ? 'Prochaine dose prevue' : 'Next dose due'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Vaccin' : 'Vaccine'}</Text>
+            <View style={styles.chipRow}>
+              {vaccinePresets.map((preset) => (
+                <Pressable
+                  key={preset}
+                  onPress={() => setVaccineName(preset)}
+                  style={[styles.vaccineChip, vaccineName === preset && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                >
+                  <Text style={[styles.vaccineChipText, vaccineName === preset && { color: meta.tone, fontWeight: '900' }]}>{preset}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Input label={language === 'fr' ? 'Nom' : 'Name'} value={vaccineName} onChangeText={setVaccineName} />
+            <Input label={language === 'fr' ? 'Dose' : 'Dose'} value={vaccineDose} onChangeText={setVaccineDose} keyboardType="number-pad" placeholder="1" />
+            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 12 }]}>{language === 'fr' ? 'Prochaine dose' : 'Next dose'}</Text>
             <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={vaccineNextDueDate} onChange={setVaccineNextDueDate} />
           </View>
-        ) : null}
+        )}
 
         <View style={styles.notesToggleWrap}>
           <Pressable onPress={() => setNotesOpen((current) => !current)} style={styles.notesToggle}>
-            <Text style={{ color: colors.primary, fontWeight: '800', textAlign: 'center' }}>{notesOpen ? '- Masquer la note' : '+ Ajouter une note'}</Text>
+            <Text style={{ color: colors.primary, fontWeight: '800', textAlign: 'center' }}>{notesOpen ? '- ' : '+ '}{language === 'fr' ? 'Notes' : 'Notes'}</Text>
           </Pressable>
         </View>
-        {notesOpen ? <Input label={language === 'fr' ? 'Notes' : 'Notes'} value={notes} onChangeText={setNotes} multiline placeholder={language === 'fr' ? 'Details optionnels' : 'Optional details'} /> : null}
+        {notesOpen && <Input label={language === 'fr' ? 'Notes' : 'Notes'} value={notes} onChangeText={setNotes} multiline placeholder={language === 'fr' ? 'Optionnel...' : 'Optional...'} />}
 
         <View style={styles.actions}>
-          <Button label={editing ? (language === 'fr' ? 'Mettre a jour' : 'Update entry') : language === 'fr' ? 'Enregistrer' : 'Save entry'} onPress={handleSave} loading={saving} />
-          {editing ? <Button label={language === 'fr' ? 'Supprimer' : 'Delete entry'} onPress={handleDelete} variant="danger" /> : null}
+          <Button label={editing ? (language === 'fr' ? 'Mettre à jour' : 'Update') : language === 'fr' ? 'Enregistrer' : 'Save'} onPress={handleSave} loading={saving} />
+          {editing && <Button label={language === 'fr' ? 'Supprimer' : 'Delete'} onPress={handleDelete} variant="danger" />}
         </View>
       </Card>
     </Page>
@@ -717,9 +603,9 @@ export default function EntryComposerScreen() {
 
 const styles = StyleSheet.create({
   heroCard: {
-    gap: 10,
+    gap: 12,
     padding: 14,
-    borderRadius: 22,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#21262D',
     backgroundColor: '#161B22',
@@ -728,93 +614,93 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
   },
   heroIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
   heroIconText: {
-    fontSize: 22,
-  },
-  heroCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  heroEyebrow: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    fontSize: 20,
   },
   heroTitle: {
     color: '#F0F6FC',
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
-    lineHeight: 26,
-  },
-  heroSubtitle: {
-    color: '#8B949E',
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  badge: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '800',
   },
   closeButton: {
-    width: 34,
-    height: 34,
+    width: 32,
+    height: 32,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#161B22',
+    backgroundColor: '#1C2128',
     borderWidth: 1,
     borderColor: '#21262D',
   },
   closeButtonLabel: {
     color: '#F0F6FC',
     fontSize: 16,
-    lineHeight: 16,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   sectionCard: {
     gap: 10,
     paddingVertical: 10,
   },
-  sectionLabel: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '900',
-    lineHeight: 21,
-    textAlign: 'left',
-  },
-  sectionBody: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   stack: {
     gap: 10,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  quickChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+  },
+  quickChipText: {
+    color: '#F0F6FC',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  symptomChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+  },
+  symptomChipText: {
+    color: '#F0F6FC',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  vaccineChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+  },
+  vaccineChipText: {
+    color: '#F0F6FC',
+    fontSize: 10,
+    fontWeight: '700',
   },
   infoStrip: {
     flexDirection: 'row',
@@ -832,34 +718,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+  tempStatusContainer: {
+    marginTop: 12,
   },
-  smallChip: {
-    minHeight: 32,
-    paddingHorizontal: 10,
-    borderRadius: 999,
+  tempStatus: {
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
+    borderRadius: 10,
+    padding: 10,
+    gap: 2,
+  },
+  tempStatusText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  diaperMinimalStack: {
+    gap: 16,
+  },
+  diaperMinimal: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  diaperMinimalEmoji: {
+    fontSize: 32,
+    minWidth: 40,
+  },
+  diaperMinimalBar: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1.5,
     justifyContent: 'center',
   },
-  smallChipText: {
-    color: '#F0F6FC',
-    fontSize: 10,
-    fontWeight: '800',
+  diaperMinimalFill: {
+    height: '100%',
+    borderRadius: 9,
+  },
+  diaperMinimalValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    minWidth: 35,
+    textAlign: 'right',
   },
   savedWrap: {
     gap: 8,
-  },
-  savedLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    marginBottom: 8,
   },
   savedRow: {
     flexDirection: 'row',
@@ -868,23 +772,23 @@ const styles = StyleSheet.create({
   },
   savedChip: {
     minHeight: 36,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#21262D',
     backgroundColor: '#1A2029',
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 6,
     gap: 2,
   },
   savedChipTitle: {
     color: '#F0F6FC',
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '700',
   },
   savedChipSubtitle: {
     color: '#8B949E',
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 9,
+    fontWeight: '600',
   },
   savePresetButton: {
     alignSelf: 'flex-start',
@@ -898,16 +802,18 @@ const styles = StyleSheet.create({
   savePresetText: {
     color: '#3FB950',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   notesToggleWrap: {
     alignItems: 'center',
+    marginVertical: 8,
   },
   notesToggle: {
     paddingVertical: 4,
     paddingHorizontal: 8,
   },
   actions: {
-    gap: 12,
+    gap: 10,
+    marginTop: 8,
   },
 });
