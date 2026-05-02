@@ -618,9 +618,9 @@ export default function EntryComposerScreen() {
 
         {type === 'vaccine' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Nom du vaccin' : 'Vaccine name'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 8 }]}>{language === 'fr' ? 'Selectionnez un preset ou entrez un nom personnalise' : 'Select a preset or enter a custom name'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Vaccin' : 'Vaccine'}</Text>
 
+            <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 10 }]}>{language === 'fr' ? 'Presets courants:' : 'Common vaccines:'}</Text>
             <View style={styles.vaccinePresetsGrid}>
               {vaccinePresets.map((preset) => (
                 <Pressable
@@ -633,11 +633,12 @@ export default function EntryComposerScreen() {
               ))}
             </View>
 
+            <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 10, marginTop: 8 }]}>{language === 'fr' ? 'Ou ajouter une autre:' : 'Or add another:'}</Text>
             <Input
-              label={language === 'fr' ? 'Ou entrez' : 'Or enter'}
+              label={language === 'fr' ? 'Nom du vaccin' : 'Vaccine name'}
               value={vaccineName}
               onChangeText={setVaccineName}
-              placeholder={language === 'fr' ? 'Nom personnalise...' : 'Custom name...'}
+              placeholder={language === 'fr' ? 'Entrez le nom du vaccin...' : 'Enter vaccine name...'}
             />
 
             <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Numero de dose' : 'Dose number'}</Text>
