@@ -10,7 +10,9 @@ export type EntryType =
   | 'measurement'
   | 'medication'
   | 'milestone'
-  | 'symptom';
+  | 'symptom'
+  | 'temperature'
+  | 'vaccine';
 
 export type FeedMode = 'breast' | 'bottle';
 export type BreastSide = 'left' | 'right' | 'both';
@@ -36,6 +38,10 @@ export interface EntryPayload {
   photoUri?: string;
   tags?: string[];
   notes?: string;
+  vaccineName?: string;
+  vaccineDose?: number;
+  vaccineNextDueDate?: string;
+  severity?: number;
 }
 
 export interface EntryRecord {

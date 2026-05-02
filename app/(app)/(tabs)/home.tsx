@@ -1,7 +1,9 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -17,7 +19,7 @@ import { Button, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
-import { BreastSide } from '@/types';
+import { BreastSide, EntryRecord } from '@/types';
 import { buildSmartAlerts, getMeanFeedingInterval } from '@/lib/patterns';
 import {
   defaultAppSettings,
@@ -36,14 +38,17 @@ import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
 import { NextFeedingCard } from '@/components/NextFeedingCard';
 
 const BG = 'rgba(13, 17, 23, 0.28)';
-const CARD = 'rgba(22, 27, 34, 0.78)';
-const BORDER = 'rgba(255, 255, 255, 0.08)';
+const CARD = 'rgba(18, 24, 34, 0.72)';
+const CARD_BLUR = 'rgba(22, 27, 34, 0.65)';
+const BORDER = 'rgba(255, 255, 255, 0.10)';
+const BORDER_GLOW = 'rgba(201, 162, 39, 0.15)';
 const GOLD = '#C9A227';
 const GREEN = '#3FB950';
 const BLUE = '#58A6FF';
 const RED = '#E74C3C';
 const MUTED = '#8B949E';
 const TEXT = '#F0F6FC';
+const YELLOW = '#F2C86F';
 
 type QuickTimerMode = 'breast' | 'bottle' | null;
 
@@ -52,20 +57,11 @@ const touchTargetProps = {
   pressRetentionOffset: 8,
 } as const;
 
-function sectionEyebrowStyle() {
-  return { color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600' as const, textTransform: 'uppercase' as const };
-}
-
-function sectionTitleStyle() {
-  return { color: TEXT, fontSize: 18, fontWeight: '700' as const, marginTop: 2 };
-}
-
-function alertToneColor(tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger') {
-  if (tone === 'danger') return RED;
-  if (tone === 'warning') return '#F2C86F';
-  if (tone === 'success') return GREEN;
-  if (tone === 'secondary') return BLUE;
-  return GOLD;
+function getGreeting(language: string) {
+  const hour = new Date().getHours();
+  if (hour < 12) return language === 'fr' ? 'Bonjour' : 'Good morning';
+  if (hour < 18) return language === 'fr' ? 'Bonjour' : 'Good afternoon';
+  return language === 'fr' ? 'Bonsoir' : 'Good evening';
 }
 
 function localeTag(language: string) {
@@ -93,197 +89,154 @@ function formatClock(timestamp: string | undefined, locale: string) {
   return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(timestamp));
 }
 
-function formatCountdown(ms: number | null | undefined, language: string) {
-  if (!ms || ms <= 0) return language === 'fr' ? 'Possible maintenant' : 'Possible now';
-  const totalMinutes = Math.round(ms / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (!hours) return `${minutes} min`;
-  if (!minutes) return `${hours} h`;
-  return `${hours} h ${minutes} min`;
+function calculateBabyAge(birthDate: string) {
+  const birth = new Date(birthDate);
+  const today = new Date();
+  let months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
+  let days = today.getDate() - birth.getDate();
+  if (days < 0) {
+    months--;
+    const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    days += lastMonth.getDate();
+  }
+  return { months, days };
 }
 
-function PressScale({
-  children,
-  onPress,
-  pressedScale = 0.94,
-  flashColor,
-  style,
-}: {
-  children: React.ReactNode;
-  onPress?: () => void;
-  pressedScale?: number;
-  flashColor?: string;
-  style?: any;
-}) {
-  const scale = useSharedValue(1);
-  const flash = useSharedValue(0);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: withSpring(scale.value, { damping: 10, stiffness: 200 }) }],
-    opacity: withTiming(flash.value ? 0.92 : 1, { duration: 120 }),
-  }));
+function getHealthStatus(entries: EntryRecord[]) {
+  const lastTemp = entries.find((e) => e.type === 'temperature' || (e.type === 'measurement' && e.payload?.tempC));
+  const tempC = lastTemp?.payload?.tempC;
+  if (!tempC) return { status: 'unknown', color: MUTED, label: 'No data' };
+  if (tempC < 37.5) return { status: 'normal', color: GREEN, label: 'Normal' };
+  if (tempC < 38) return { status: 'fever_low', color: YELLOW, label: 'Febrícula' };
+  return { status: 'fever', color: RED, label: 'Fiebre' };
+}
+
+function getWeightMeasurements(entries: EntryRecord[]) {
+  return entries
+    .filter((e) => e.type === 'measurement' && e.payload?.weightKg)
+    .slice(0, 5)
+    .map((e) => ({
+      weight: e.payload.weightKg,
+      date: new Date(e.occurredAt),
+    }))
+    .reverse();
+}
+
+function alertToneColor(tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger') {
+  if (tone === 'danger') return RED;
+  if (tone === 'warning') return '#F2C86F';
+  if (tone === 'success') return GREEN;
+  if (tone === 'secondary') return BLUE;
+  return GOLD;
+}
+
+function GlassCard({ children, style, blur = true }: { children: React.ReactNode; style?: any; blur?: boolean }) {
+  const content = (
+    <View
+      style={[
+        {
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: BORDER,
+          backgroundColor: CARD,
+          shadowColor: '#000',
+          shadowOpacity: 0.24,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 6,
+        },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+
+  if (!blur) return content;
 
   return (
-    <Animated.View style={[animatedStyle, style]}>
-      <Pressable
-        {...touchTargetProps}
-        onPress={onPress}
-        onPressIn={() => {
-          scale.value = pressedScale;
-          if (flashColor) {
-            flash.value = 1;
-          }
-        }}
-        onPressOut={() => {
-          scale.value = 1;
-          flash.value = 0;
-        }}
-      >
-        {children}
-      </Pressable>
-    </Animated.View>
+    <BlurView intensity={20} style={[{ borderRadius: 16, overflow: 'hidden' }, style]}>
+      {content}
+    </BlurView>
   );
 }
 
-function HeaderAction({ label, onPress }: { label: string; onPress: () => void }) {
-  const rotate = useSharedValue(0);
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: withSpring(scale.value, { damping: 12, stiffness: 220 }) },
-      { rotate: `${withSpring(rotate.value, { damping: 12, stiffness: 180 })}deg` },
-    ],
-  }));
-
+function GradientButton({
+  label,
+  icon,
+  onPress,
+  colors,
+  style,
+}: {
+  label: string;
+  icon: string;
+  onPress: () => void;
+  colors: [string, string];
+  style?: any;
+}) {
   return (
     <Pressable
       {...touchTargetProps}
       onPress={onPress}
-      onPressIn={() => {
-        scale.value = 0.95;
-        rotate.value = 90;
-      }}
-      onPressOut={() => {
-        scale.value = 1;
-        rotate.value = 0;
-      }}
-      style={{ minHeight: 36 }}
+      style={({ pressed }) => [
+        {
+          height: 60,
+          borderRadius: 16,
+          overflow: 'hidden',
+          opacity: pressed ? 0.9 : 1,
+          shadowColor: colors[0],
+          shadowOpacity: 0.35,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 6 },
+          elevation: 5,
+        },
+        style,
+      ]}
     >
-      <Animated.View
-        style={[
-          animatedStyle,
-          {
-            height: 36,
-            paddingHorizontal: 14,
-            borderRadius: 20,
-            backgroundColor: GOLD,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            shadowColor: '#000',
-            shadowOpacity: 0.18,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 3,
-          },
-        ]}
-      >
-        <Text style={{ color: BG, fontSize: 14, fontWeight: '700' }}>+</Text>
-        <Text style={{ color: BG, fontSize: 13, fontWeight: '700' }}>{label}</Text>
-      </Animated.View>
+      <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }}>
+        <Text style={{ fontSize: 24 }}>{icon}</Text>
+        <Text style={{ color: TEXT, fontSize: 16, fontWeight: '800', letterSpacing: 0.5 }}>{label}</Text>
+      </LinearGradient>
     </Pressable>
   );
 }
 
-function StatCell({
+function ActionButton({
   label,
-  value,
-  index,
+  icon,
+  onPress,
+  color = BLUE,
+  style,
 }: {
   label: string;
-  value: string;
-  index: number;
-}) {
-  return (
-    <Animated.View
-      entering={FadeInDown.duration(260).delay(index * 60)}
-      style={{
-        flexBasis: '48%',
-        minWidth: 140,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: CARD,
-        borderWidth: 1,
-        borderColor: BORDER,
-        gap: 6,
-      }}
-    >
-      <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 }}>{label}</Text>
-      <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700' }}>{value}</Text>
-    </Animated.View>
-  );
-}
-
-function ActivityRow({
-  color,
-  title,
-  detail,
-  time,
-  onPress,
-}: {
-  color: string;
-  title: string;
-  detail: string;
-  time: string;
+  icon: string;
   onPress: () => void;
+  color?: string;
+  style?: any;
 }) {
-  const scale = useSharedValue(1);
-  const highlight = useSharedValue(0);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: withSpring(scale.value, { damping: 10, stiffness: 200 }) }],
-    borderLeftWidth: withTiming(highlight.value ? 3 : 0, { duration: 140 }),
-    borderLeftColor: GOLD,
-  }));
-
   return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        {...touchTargetProps}
-        onPress={onPress}
-        onPressIn={() => {
-          scale.value = 0.97;
-          highlight.value = 1;
-        }}
-        onPressOut={() => {
-          scale.value = 1;
-          highlight.value = 0;
-        }}
-        style={{
-          minHeight: 52,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          borderRadius: 8,
+    <Pressable
+      {...touchTargetProps}
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          height: 56,
+          paddingHorizontal: 14,
+          borderRadius: 12,
+          backgroundColor: pressed ? `${color}22` : CARD,
           borderWidth: 1,
           borderColor: BORDER,
-          backgroundColor: CARD,
-          flexDirection: 'row',
           alignItems: 'center',
-          gap: 10,
-          marginBottom: 6,
-        }}
-      >
-        <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: `${color}22`, alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: color }} />
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{title}</Text>
-          <Text style={{ color: MUTED, fontSize: 11 }}>{detail}</Text>
-        </View>
-        <Text style={{ color: MUTED, fontSize: 11 }}>{time}</Text>
-      </Pressable>
-    </Animated.View>
+          justifyContent: 'center',
+          gap: 8,
+          opacity: pressed ? 0.92 : 1,
+        },
+        style,
+      ]}
+    >
+      <Text style={{ fontSize: 18 }}>{icon}</Text>
+      <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -302,7 +255,6 @@ export default function HomeScreen() {
   const [timerElapsedSeconds, setTimerElapsedSeconds] = useState(0);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
   const [showBabySwitcher, setShowBabySwitcher] = useState(false);
-  const [showSmartSignalsMenu, setShowSmartSignalsMenu] = useState(false);
   const [showHomeCustomizer, setShowHomeCustomizer] = useState(false);
   const [showNextFeedPicker, setShowNextFeedPicker] = useState(false);
   const [quickAmount, setQuickAmount] = useState(150);
@@ -311,12 +263,9 @@ export default function HomeScreen() {
 
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
   const lastFeed = useMemo(() => feedEntries[0], [feedEntries]);
-  const lastBreastFeed = useMemo(() => feedEntries.find((entry) => entry.payload?.mode === 'breast'), [feedEntries]);
-  const lastBottleFeed = useMemo(() => feedEntries.find((entry) => entry.payload?.mode === 'bottle'), [feedEntries]);
-  const lastDiaper = useMemo(() => entries.find((entry) => entry.type === 'diaper'), [entries]);
   const lastMeasurement = useMemo(() => entries.find((entry) => entry.type === 'measurement'), [entries]);
+
   const meanInterval = getMeanFeedingInterval(entries);
-  const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
   const nextFeedDueIn = useMemo(() => {
     if (!meanInterval || !lastFeed) return null;
     return new Date(lastFeed.occurredAt).getTime() + meanInterval - now;
@@ -329,7 +278,7 @@ export default function HomeScreen() {
   const milkStatus =
     totalMilkToday < milkGoalMin
       ? language === 'fr'
-        ? 'En dessous de la zone'
+        ? 'Encore sous le repère'
         : 'Below target'
       : totalMilkToday > milkGoalMax
         ? language === 'fr'
@@ -339,27 +288,19 @@ export default function HomeScreen() {
           ? 'Dans la zone'
           : 'In target';
 
+  const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
+  const urgentAlerts = smartAlerts.filter((a) => a.tone === 'warning' || a.tone === 'danger');
+  const healthStatus = useMemo(() => getHealthStatus(entries), [entries]);
+  const weightMeasurements = useMemo(() => getWeightMeasurements(entries), [entries]);
+
   const milkProgress = useSharedValue(0);
-  const nextFeedPulse = useSharedValue(1);
 
   useEffect(() => {
     milkProgress.value = withTiming(milkTargetPercent, { duration: 800 });
   }, [milkProgress, milkTargetPercent]);
 
-  useEffect(() => {
-    if (nextFeedDueIn && nextFeedDueIn > 0) {
-      nextFeedPulse.value = 1;
-      return;
-    }
-    nextFeedPulse.value = withRepeat(withSequence(withTiming(1.04, { duration: 1000 }), withTiming(1, { duration: 1000 })), -1, false);
-  }, [nextFeedDueIn, nextFeedPulse]);
-
   const milkBarStyle = useAnimatedStyle(() => ({
     width: `${milkProgress.value}%`,
-  }));
-
-  const nextBadgeStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: nextFeedPulse.value }],
   }));
 
   useEffect(() => {
@@ -394,61 +335,6 @@ export default function HomeScreen() {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  const quickActions: Array<[string, string, string]> = [
-    ['Sein', 'quick-breast', 'feed'],
-    ['Biberon', 'quick-bottle', 'feed'],
-    ['Couche', '/entry/diaper', 'diaper'],
-    ['Sommeil', '/entry/sleep', 'sleep'],
-    ['Tire-lait', '/entry/pump', 'pump'],
-    ['Medicament', '/entry/medication', 'medication'],
-    ['Repas', '/entry/food', 'food'],
-    ['Mesure', '/entry/measurement', 'measurement'],
-    ['Etape', '/entry/milestone', 'milestone'],
-  ];
-  const presetActions = [
-    { label: 'Biberon 150ml', href: '/entry/feed?presetMode=bottle&presetAmount=150' },
-    { label: 'Biberon 180ml', href: '/entry/feed?presetMode=bottle&presetAmount=180' },
-    { label: 'Sein gauche', href: '/entry/feed?presetMode=breast&presetSide=left' },
-    { label: 'Tire-lait 20m', href: '/entry/pump' },
-  ];
-  const hydrationButtons = ['+250ml', '+500ml'];
-  const visibleActions = quickActions.filter(([, , key]) => visibility[key]);
-  const showSmartSignals = appSettings.dashboardMetrics.smartSignals;
-  const timelineChips = useMemo(() => {
-    const source = entries.slice(0, 24);
-    const chips: Array<{ key: string; label: string; count: number; type: string }> = [];
-    const seen = new Map<string, number>();
-
-    for (const entry of source) {
-      const current = seen.get(entry.type) ?? 0;
-      seen.set(entry.type, current + 1);
-      if (current > 0) continue;
-      const label = entry.type.slice(0, 3).toUpperCase();
-      chips.push({ key: `${entry.id}`, label, count: 1, type: entry.type });
-    }
-
-    return chips.map((chip) => ({
-      ...chip,
-      count: seen.get(chip.type) ?? 1,
-    }));
-
-  }, [entries]);
-
-  const renderedLabels = useMemo(
-    () => ['Nouveau', ...visibleActions.map(([label]) => label), ...presetActions.map((item) => item.label), ...hydrationButtons],
-    [visibleActions],
-  );
-
-  useEffect(() => {
-    const seen = new Set<string>();
-    for (const label of renderedLabels) {
-      if (seen.has(label)) {
-        console.warn('DUPLICATE BUTTON DETECTED:', label);
-      }
-      seen.add(label);
-    }
-  }, [renderedLabels]);
 
   function startQuickTimer(mode: 'breast' | 'bottle', side: BreastSide = 'left') {
     const startedAt = Date.now();
@@ -512,27 +398,7 @@ export default function HomeScreen() {
     });
     setAppSettingsState(next);
     setShowHomeCustomizer(false);
-    setShowSmartSignalsMenu(false);
   }
-
-  const recentEntries = entries.slice(0, 6);
-  const activeBabyName = babies.find((baby) => baby.id === babyId)?.name ?? profile?.babyName ?? 'Leo';
-  const activeFeedTitle =
-    quickTimerMode === 'bottle'
-      ? 'Biberon'
-      : quickFeedSide === 'both'
-        ? 'Sein des deux'
-        : quickFeedSide === 'right'
-          ? 'Sein droit'
-          : 'Sein gauche';
-  const activeFeedSubtitlePrefix =
-    quickTimerMode === 'bottle'
-      ? 'Biberon'
-      : quickFeedSide === 'both'
-        ? 'Les deux'
-        : quickFeedSide === 'right'
-          ? 'Droite'
-          : 'Gauche';
 
   async function switchBaby(nextBaby: { id: string }) {
     await setActiveBabyId(nextBaby.id);
@@ -550,301 +416,308 @@ export default function HomeScreen() {
     startQuickTimer(mode, side);
   }
 
+  const activeBabyName = babies.find((baby) => baby.id === babyId)?.name ?? profile?.babyName ?? 'Leo';
+  const activeBaby = babies.find((baby) => baby.id === babyId);
+  const babyAge = activeBaby ? calculateBabyAge(activeBaby.birthDate) : null;
+
+  const lastFeedTime = lastFeed ? formatClock(lastFeed.occurredAt, locale) : '--:--';
+  const lastFeedAmount = lastFeed?.payload?.amountMl ?? lastFeed?.payload?.durationMin ?? 0;
+  const lastFeedType = lastFeed?.payload?.mode === 'bottle' ? 'Biberon' : 'Sein';
+  const timeSinceLastFeed = formatRelative(lastFeed?.occurredAt, locale);
+
+  const recentEntries = entries.slice(0, 4);
+
+  const activeFeedTitle =
+    quickTimerMode === 'bottle'
+      ? 'Biberon'
+      : quickFeedSide === 'both'
+        ? 'Sein des deux'
+        : quickFeedSide === 'right'
+          ? 'Sein droit'
+          : 'Sein gauche';
+  const activeFeedSubtitlePrefix =
+    quickTimerMode === 'bottle'
+      ? 'Biberon'
+      : quickFeedSide === 'both'
+        ? 'Les deux'
+        : quickFeedSide === 'right'
+          ? 'Droite'
+          : 'Gauche';
+
   return (
     <Page contentStyle={styles.pageContent}>
-      <View style={{ backgroundColor: 'transparent', borderRadius: 16, paddingTop: 6, paddingHorizontal: 4, paddingBottom: 80 }}>
-        <Animated.View entering={FadeIn.duration(300)} style={{ marginBottom: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'ACCUEIL' : 'HOME'}</Text>
+      <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+        <View style={{ paddingBottom: 80 }}>
+          {/* Header with LinearGradient */}
+          <Animated.View entering={FadeIn.duration(300)}>
+            <LinearGradient colors={['rgba(22, 28, 40, 0.95)', 'rgba(13, 17, 25, 0.0)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ paddingHorizontal: 16, paddingVertical: 20 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={{ color: TEXT, fontSize: 24, fontWeight: '700' }}>
+                  {getGreeting(language)}, {profile?.displayName || 'maman'} ✨
+                </Text>
+                <Pressable
+                  onPress={() => setShowHomeCustomizer(true)}
+                  style={({ pressed }) => ({
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    borderWidth: 1,
+                    borderColor: BORDER,
+                    backgroundColor: pressed ? `${BLUE}22` : CARD,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: pressed ? 0.88 : 1,
+                  })}
+                >
+                  <Ionicons name="settings" size={16} color={TEXT} />
+                </Pressable>
+              </View>
               <Pressable
                 onPress={() => setShowBabySwitcher(true)}
                 style={({ pressed }) => ({
-                  alignSelf: 'flex-start',
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  borderColor: BORDER,
-                  backgroundColor: pressed ? '#1B2430' : CARD,
+                  opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <Text style={sectionTitleStyle()}>{activeBabyName}</Text>
-                <Text style={{ color: MUTED, fontSize: 12, fontWeight: '700' }}>v</Text>
+                <Text style={{ fontSize: 18 }}>🍼</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: TEXT, fontSize: 15, fontWeight: '700' }}>{activeBabyName}</Text>
+                  {lastMeasurement && babyAge && (
+                    <Text style={{ color: MUTED, fontSize: 11 }}>
+                      {lastMeasurement.payload?.weightKg ?? '--'} kg · {lastMeasurement.payload?.heightCm ?? '--'} cm · {babyAge.months} {language === 'fr' ? 'mois' : 'months'} {babyAge.days} {language === 'fr' ? 'j' : 'd'}
+                    </Text>
+                  )}
+                </View>
+                <Text style={{ color: MUTED, fontSize: 14, fontWeight: '700' }}>›</Text>
               </Pressable>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <HeaderAction label="Nouveau" onPress={() => router.push('/entry/feed')} />
-              <Pressable
-                onPress={() => setShowHomeCustomizer(true)}
-                style={({ pressed }) => ({
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  borderWidth: 1,
-                  borderColor: BORDER,
-                  backgroundColor: pressed ? '#1B2430' : CARD,
+            </LinearGradient>
+          </Animated.View>
+
+          {/* NextFeedingCard */}
+          <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+            <NextFeedingCard onPress={openNextFeedPicker} />
+          </Animated.View>
+
+          {/* Health Status Card */}
+          <Animated.View entering={FadeInDown.duration(260).delay(90)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+            <Pressable
+              onPress={() => router.push('/entry/temperature')}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: `${healthStatus.color}44`,
+                backgroundColor: `${healthStatus.color}12`,
+                opacity: pressed ? 0.88 : 1,
+              })}
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: `${healthStatus.color}22`,
                   alignItems: 'center',
                   justifyContent: 'center',
-                })}
+                }}
               >
-                <Text style={{ color: TEXT, fontSize: 18, fontWeight: '900', lineHeight: 18 }}>...</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ marginBottom: 10 }}>
-          <NextFeedingCard onPress={openNextFeedPicker} />
-        </Animated.View>
-
-        {showSmartSignals && smartAlerts.length ? (
-          <Animated.View entering={FadeIn.duration(300).delay(120)} style={{ marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'RAPPELS' : 'REMINDERS'}</Text>
-                  <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Signaux intelligents' : 'Smart signals'}</Text>
-                </View>
-                <Pressable
-                  onPress={() => setShowSmartSignalsMenu(true)}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 999,
-                    borderWidth: 1,
-                    borderColor: BORDER,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: BG,
-                  }}
-                >
-                  <Text style={{ color: TEXT, fontSize: 18, fontWeight: '800', lineHeight: 18 }}>...</Text>
-                </Pressable>
+                <Text style={{ fontSize: 20 }}>🌡️</Text>
               </View>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {smartAlerts.map((alert) => (
-                  <Pressable
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: MUTED, fontSize: 9, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>
+                  {language === 'fr' ? 'SANTÉ' : 'HEALTH'}
+                </Text>
+                <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>
+                  {healthStatus.label}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 16 }}>›</Text>
+            </Pressable>
+          </Animated.View>
+
+          {/* Two Stat Cards */}
+          <Animated.View entering={FadeInDown.duration(260).delay(120)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <GlassCard style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 12 }} blur={false}>
+                <Text style={{ color: MUTED, fontSize: 9, letterSpacing: 1.2, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 }}>
+                  {language === 'fr' ? 'DERNIÈRE PRISE' : 'LAST FEEDING'}
+                </Text>
+                <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700', marginBottom: 2 }}>{lastFeedTime}</Text>
+                <Text style={{ color: MUTED, fontSize: 11 }}>
+                  {lastFeedAmount} {lastFeed?.payload?.mode === 'bottle' ? 'ml' : 'min'} · {lastFeedType}
+                </Text>
+              </GlassCard>
+              <GlassCard style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 12 }} blur={false}>
+                <Text style={{ color: MUTED, fontSize: 9, letterSpacing: 1.2, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 }}>
+                  {language === 'fr' ? 'DEPUIS LA DERNIÈRE' : 'TIME SINCE LAST'}
+                </Text>
+                <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700', marginBottom: 2 }}>{timeSinceLastFeed}</Text>
+                <Text style={{ color: MUTED, fontSize: 11 }}>
+                  {language === 'fr' ? 'Temps écoulé' : 'Elapsed time'}
+                </Text>
+              </GlassCard>
+            </View>
+          </Animated.View>
+
+          {/* Large Gradient Buttons */}
+          <Animated.View entering={FadeInDown.duration(260).delay(180)} style={{ paddingHorizontal: 16, marginBottom: 12, gap: 8 }}>
+            <GradientButton
+              label={language === 'fr' ? 'Sein' : 'Breast'}
+              icon="🤱"
+              onPress={openNextFeedPicker}
+              colors={[GOLD, '#A07818']}
+            />
+            <GradientButton
+              label={language === 'fr' ? 'Biberon' : 'Bottle'}
+              icon="🍼"
+              onPress={() => startQuickTimer('bottle')}
+              colors={['#1A6BB0', '#0D4F8C']}
+            />
+          </Animated.View>
+
+          {/* Milk Section */}
+          <Animated.View entering={FadeInDown.duration(260).delay(240)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+            <GlassCard
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                gap: 10,
+                borderColor: BORDER_GLOW,
+              }}
+              blur={false}
+            >
+              <Text style={{ color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600', textTransform: 'uppercase' }}>
+                {language === 'fr' ? 'LAIT' : 'MILK'}
+              </Text>
+              <View style={{ gap: 6 }}>
+                <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{totalMilkToday} ml</Text>
+                <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
+                  <Animated.View style={[{ height: '100%', backgroundColor: GOLD, borderRadius: 999 }, milkBarStyle]} />
+                </View>
+                <Text style={{ color: MUTED, fontSize: 11 }}>
+                  {language === 'fr' ? 'Repère 750–1 050 ml' : 'Target 750–1 050 ml'} • {milkStatus}
+                </Text>
+              </View>
+            </GlassCard>
+          </Animated.View>
+
+          {/* Smart Signals - Only if urgent alerts */}
+          {urgentAlerts.length > 0 && (
+            <Animated.View entering={FadeInDown.duration(260).delay(300)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+              <View style={{ gap: 6 }}>
+                {urgentAlerts.slice(0, 2).map((alert) => (
+                  <GlassCard
                     key={alert.id}
-                    onPress={() => {
-                      if (alert.targetType) {
-                        router.push({ pathname: '/entry/[type]', params: { type: alert.targetType } });
-                      }
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      borderColor: `${alertToneColor(alert.tone)}44`,
+                      backgroundColor: `${alertToneColor(alert.tone)}12`,
                     }}
-                    style={({ pressed }) => ({
-                      flexBasis: '48%',
-                      minWidth: 150,
-                      paddingHorizontal: 10,
-                      paddingVertical: 8,
-                      borderRadius: 14,
-                      borderWidth: 1,
-                      borderColor: BORDER,
-                      backgroundColor: pressed ? '#1B2430' : BG,
-                      gap: 4,
-                    })}
+                    blur={false}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                        <Text style={{ fontSize: 15 }}>{alert.icon}</Text>
-                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '800' }}>{alert.value}</Text>
-                      </View>
-                      <View style={{ paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, backgroundColor: `${alertToneColor(alert.tone)}22` }}>
-                        <Text style={{ color: alertToneColor(alert.tone), fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>{alert.statusLabel}</Text>
-                      </View>
+                    <Text style={{ fontSize: 18 }}>{alert.icon}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{alert.value}</Text>
+                      <Text style={{ color: MUTED, fontSize: 11 }}>{alert.body}</Text>
                     </View>
-                    <Text style={{ color: MUTED, fontSize: 11 }} numberOfLines={1}>
-                      {alert.body}
-                    </Text>
-                  </Pressable>
+                  </GlassCard>
                 ))}
+              </View>
+            </Animated.View>
+          )}
+
+          {/* Grid Actions - Expanded */}
+          <Animated.View entering={FadeInDown.duration(260).delay(360)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+              <View style={{ flex: 1 }}>
+                <ActionButton label={language === 'fr' ? 'Couche' : 'Diaper'} icon="💚" onPress={() => router.push('/entry/diaper')} color={GREEN} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ActionButton label={language === 'fr' ? 'Température' : 'Temperature'} icon="🌡️" onPress={() => router.push('/entry/temperature')} color={RED} />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+              <View style={{ flex: 1 }}>
+                <ActionButton label={language === 'fr' ? 'Vaccin' : 'Vaccine'} icon="💉" onPress={() => router.push('/entry/vaccine')} color={GREEN} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ActionButton label={language === 'fr' ? 'Symptômes' : 'Symptoms'} icon="🩺" onPress={() => router.push('/entry/symptom')} color={BLUE} />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <ActionButton label={language === 'fr' ? 'Médicaments' : 'Medicine'} icon="💊" onPress={() => router.push('/entry/medication')} color={GREEN} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ActionButton label={language === 'fr' ? 'Mesures' : 'Measurement'} icon="📏" onPress={() => router.push('/entry/measurement')} color={BLUE} />
               </View>
             </View>
           </Animated.View>
-        ) : null}
 
-        <Animated.View entering={FadeIn.duration(300).delay(180)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'LAIT' : 'MILK'}</Text>
-                <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{totalMilkToday} ml</Text>
-              </View>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'PROCHAINE PRISE' : 'NEXT FEED'}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="time-outline" size={14} color={BLUE} />
-                  <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{formatCountdown(nextFeedDueIn, language)}</Text>
-                  <Animated.View style={[nextBadgeStyle, { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: nextFeedDueIn && nextFeedDueIn > 0 ? `${BLUE}22` : `${GOLD}22` }]}>
-                    <Text style={{ color: nextFeedDueIn && nextFeedDueIn > 0 ? BLUE : GOLD, fontSize: 11, fontWeight: '700' }}>
-                      {lastFeed ? formatRelative(lastFeed.occurredAt, locale) : '--'}
-                    </Text>
-                  </Animated.View>
+          {/* Growth Chart */}
+          {weightMeasurements.length > 0 && (
+            <Animated.View entering={FadeInDown.duration(260).delay(390)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+              <GlassCard style={{ paddingHorizontal: 14, paddingVertical: 12 }} blur={false}>
+                <Text style={{ color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600', textTransform: 'uppercase', marginBottom: 8 }}>
+                  {language === 'fr' ? 'CROISSANCE' : 'GROWTH'}
+                </Text>
+                <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700', marginBottom: 10 }}>
+                  {language === 'fr' ? 'Poids' : 'Weight'}: {weightMeasurements[0]?.weight.toFixed(2)} kg
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 50, justifyContent: 'center' }}>
+                  {(() => {
+                    const weights = weightMeasurements.map((w) => w.weight ?? 0).filter((w) => w > 0);
+                    if (weights.length === 0) return null;
+                    const maxWeight = Math.max(...weights);
+                    const minWeight = Math.min(...weights);
+                    const range = maxWeight - minWeight || 1;
+                    return weightMeasurements.map((m, i) => {
+                      const w = m.weight ?? 0;
+                      const height = ((w - minWeight) / range) * 40 + 10;
+                      return (
+                        <View
+                          key={i}
+                          style={{
+                            flex: 1,
+                            height,
+                            borderRadius: 4,
+                            backgroundColor: GOLD,
+                            opacity: 0.8 + (i / weightMeasurements.length) * 0.2,
+                          }}
+                        />
+                      );
+                    });
+                  })()}
                 </View>
-              </View>
-            </View>
-            <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
-              <Animated.View style={[{ height: '100%', backgroundColor: GOLD, borderRadius: 999 }, milkBarStyle]} />
-            </View>
-            <Text style={{ color: MUTED, fontSize: 11 }}>{milkStatus}</Text>
-          </View>
-        </Animated.View>
+                <Text style={{ color: MUTED, fontSize: 10, marginTop: 8 }}>
+                  {language === 'fr' ? 'Dernières ' : 'Last '}
+                  {weightMeasurements.length}
+                  {language === 'fr' ? ' mesures' : ' measurements'}
+                </Text>
+              </GlassCard>
+            </Animated.View>
+          )}
 
-        <Animated.View entering={FadeIn.duration(300).delay(220)} style={{ marginBottom: 10 }}>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {[
-              { label: 'Dernier sein', value: formatClock(lastBreastFeed?.occurredAt, locale), detail: formatRelative(lastBreastFeed?.occurredAt, locale) },
-              { label: 'Dernier biberon', value: formatClock(lastBottleFeed?.occurredAt, locale), detail: formatRelative(lastBottleFeed?.occurredAt, locale) },
-            ].map((item) => (
-              <View key={item.label} style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 4 }}>
-                <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 }}>{item.label.toUpperCase()}</Text>
-                <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{item.value}</Text>
-                <Text style={{ color: MUTED, fontSize: 11 }}>{item.detail}</Text>
-              </View>
-            ))}
-          </View>
-        </Animated.View>
-
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-          {[
-            { label: 'FEEDS', value: String(summary.today.feedCount) },
-            { label: 'BOTTLE', value: `${summary.today.bottleMl} ml` },
-            { label: 'SLEEP', value: `${summary.today.sleepMinutes}m` },
-            { label: 'DIAPERS', value: String(summary.today.diaperCount) },
-            { label: 'FOOD', value: String(summary.today.foodCount) },
-          ].map((item, index) => (
-            <StatCell key={item.label} label={item.label} value={item.value} index={index} />
-          ))}
-        </View>
-
-        <Animated.View entering={FadeIn.duration(300).delay(320)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-            <Text style={sectionEyebrowStyle()}>TIMELINE</Text>
-            <Text style={sectionTitleStyle()}>24h strip</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 8 }}>
-              {timelineChips.map((chip) => (
-                <PressScale
-                  key={chip.key}
-                  onPress={() => {
-                    const entry = [...entries].find((candidate) => candidate.type === chip.type);
-                    if (!entry) return;
-                    router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } });
-                  }}
-                  pressedScale={0.96}
-                >
-                  <View style={{ height: 36, minWidth: 48, paddingHorizontal: 12, borderRadius: 20, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 11, fontWeight: '600' }}>
-                      {chip.label}
-                      {chip.count > 1 ? ` ${chip.count}` : ''}
-                    </Text>
-                  </View>
-                </PressScale>
-              ))}
-            </View>
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeIn.duration(300).delay(400)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 6 }}>
-            <Text style={sectionEyebrowStyle()}>ACTIONS RAPIDES</Text>
-            <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Actions directes' : 'Quick actions'}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-              {visibleActions.map(([label, href]) => (
-                <PressScale
-                  key={label}
-                  onPress={() => {
-                    if (href === 'quick-breast') {
-                      openNextFeedPicker();
-                      return;
-                    }
-                    if (href === 'quick-bottle') {
-                      startQuickTimer('bottle');
-                      return;
-                    }
-                    router.push(href as any);
-                  }}
-                  pressedScale={0.92}
-                  flashColor={GOLD}
-                  style={{ flexBasis: '31%', minWidth: 96, flexGrow: 1 }}
-                >
-                  <View style={{ height: 38, paddingHorizontal: 12, borderRadius: 18, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
-                      {label}
-                    </Text>
-                  </View>
-                </PressScale>
-              ))}
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-              {[
-                { label: '+150 ml', href: '/entry/feed?presetMode=bottle&presetAmount=150' },
-                { label: '+ diaper', href: '/entry/diaper' },
-                { label: '+ sleep', href: '/entry/sleep' },
-                { label: '+ food', href: '/entry/food' },
-              ].map((item) => (
-                <PressScale key={item.label} onPress={() => router.push(item.href as any)} pressedScale={0.95} style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}>
-                  <View style={{ height: 38, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
-                  </View>
-                </PressScale>
-              ))}
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-              {presetActions.map((preset) => (
-                <PressScale key={preset.label} onPress={() => router.push(preset.href as any)} pressedScale={0.94} style={{ flexBasis: '48%', minWidth: 132, flexGrow: 1 }}>
-                  <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1F2A1F', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{preset.label}</Text>
-                  </View>
-                </PressScale>
-              ))}
-            </View>
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeIn.duration(300).delay(480)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 8 }}>
-            <Text style={sectionEyebrowStyle()}>HYDRATION</Text>
-            <Text style={sectionTitleStyle()}>Hydration</Text>
-            <Text style={{ color: MUTED, fontSize: 11 }}>{hydration} ml / {appSettings.hydrationGoalMl} ml</Text>
-            <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
-              <View style={{ width: `${Math.max(0, Math.min(100, (hydration / appSettings.hydrationGoalMl) * 100))}%`, height: '100%', backgroundColor: BLUE }} />
-            </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {[
-                { label: '+250ml', amount: 250 },
-                { label: '+500ml', amount: 500 },
-              ].map((item) => (
-                <PressScale
-                  key={item.label}
-                  onPress={async () => {
-                    if (!babyId) return;
-                    const next = hydration + item.amount;
-                    setHydration(next);
-                    await setMomHydration(babyId, next);
-                  }}
-                  pressedScale={0.94}
-                >
-                  <View style={{ height: 36, paddingHorizontal: 14, borderRadius: 20, backgroundColor: BORDER, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{item.label}</Text>
-                  </View>
-                </PressScale>
-              ))}
-            </View>
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeIn.duration(300).delay(560)} style={{ marginBottom: 10 }}>
-          <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER }}>
-            <Text style={sectionEyebrowStyle()}>{language === 'fr' ? 'HISTORIQUE' : 'RECENT'}</Text>
-            <Text style={sectionTitleStyle()}>{language === 'fr' ? 'Dernieres activites' : 'Recent activity'}</Text>
-            <View style={{ marginTop: 8 }}>
-              {recentEntries.length ? (
-                recentEntries.map((entry) => (
-                  <ActivityRow
-                    key={entry.id}
-                    color={
+          {/* Recent Activity */}
+          {recentEntries.length > 0 && (
+            <Animated.View entering={FadeInDown.duration(260).delay(420)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+              <GlassCard style={{ paddingHorizontal: 14, paddingVertical: 12 }} blur={false}>
+                <Text style={{ color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600', textTransform: 'uppercase', marginBottom: 8 }}>
+                  {language === 'fr' ? 'HISTORIQUE' : 'RECENT'}
+                </Text>
+                <View style={{ gap: 6 }}>
+                  {recentEntries.map((entry) => {
+                    const color =
                       entry.type === 'feed'
                         ? GOLD
                         : entry.type === 'sleep'
@@ -853,129 +726,129 @@ export default function HomeScreen() {
                             ? RED
                             : entry.type === 'medication'
                               ? GREEN
-                              : '#A371F7'
-                    }
-                    title={entry.title}
-                    detail={
-                      entry.type === 'feed'
-                        ? `${entry.payload?.amountMl ?? entry.payload?.durationMin ?? 0} ${entry.payload?.mode === 'bottle' ? 'ml' : 'min'}`
-                        : entry.notes ?? entry.type
-                    }
-                    time={formatClock(entry.occurredAt, locale)}
-                    onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
-                  />
-                ))
-              ) : (
-                <View style={{ paddingVertical: 10 }}>
-                  <Text style={{ color: MUTED, fontSize: 11 }}>{language === 'fr' ? 'Aucune activite recente.' : 'No recent activity.'}</Text>
+                              : '#A371F7';
+                    return (
+                      <Pressable
+                        key={entry.id}
+                        onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
+                        style={({ pressed }) => ({
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 10,
+                          paddingVertical: 8,
+                          opacity: pressed ? 0.7 : 1,
+                        })}
+                      >
+                        <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: `${color}22`, alignItems: 'center', justifyContent: 'center' }}>
+                          <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: color }} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{entry.title}</Text>
+                          <Text style={{ color: MUTED, fontSize: 11 }}>
+                            {entry.type === 'feed'
+                              ? `${entry.payload?.amountMl ?? entry.payload?.durationMin ?? 0} ${entry.payload?.mode === 'bottle' ? 'ml' : 'min'}`
+                              : entry.notes ?? entry.type}
+                          </Text>
+                        </View>
+                        <Text style={{ color: MUTED, fontSize: 11 }}>{formatClock(entry.occurredAt, locale)}</Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
-              )}
-            </View>
-          </View>
-        </Animated.View>
-      </View>
+              </GlassCard>
+            </Animated.View>
+          )}
 
-      <Modal visible={showSmartSignalsMenu} transparent animationType="fade" onRequestClose={() => setShowSmartSignalsMenu(false)}>
-        <View style={styles.menuOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowSmartSignalsMenu(false)} />
-          <View style={styles.menuSheet}>
-            <Text style={styles.menuTitle}>{language === 'fr' ? 'Signaux intelligents' : 'Smart signals'}</Text>
-            <Text style={styles.menuSubtitle}>
-              {showSmartSignals
-                ? language === 'fr'
-                  ? 'Tu peux cacher cette section si elle ne t aide pas.'
-                  : 'Hide this section if it does not help.'
-                : language === 'fr'
-                  ? 'Tu peux la remettre quand tu veux.'
-                  : 'You can bring it back anytime.'}
-            </Text>
-            <View style={{ gap: 8 }}>
-              <Button
-                label={showSmartSignals ? (language === 'fr' ? 'Masquer la section' : 'Hide section') : (language === 'fr' ? 'Afficher la section' : 'Show section')}
-                onPress={async () => {
-                  await updateDashboardMetric('smartSignals', !showSmartSignals);
-                  setShowSmartSignalsMenu(false);
-                }}
-                variant="secondary"
-              />
-              <Button
-                label={language === 'fr' ? 'Personnaliser l\'accueil' : 'Customize home'}
-                onPress={() => {
-                  setShowSmartSignalsMenu(false);
-                  setShowHomeCustomizer(true);
-                }}
-                variant="ghost"
-                size="sm"
-              />
-              <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowSmartSignalsMenu(false)} variant="ghost" />
-            </View>
-          </View>
+          {/* Hydration */}
+          <Animated.View entering={FadeInDown.duration(260).delay(480)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+            <GlassCard style={{ paddingHorizontal: 14, paddingVertical: 12, gap: 10 }} blur={false}>
+              <Text style={{ color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600', textTransform: 'uppercase' }}>
+                {language === 'fr' ? 'HYDRATATION' : 'HYDRATION'}
+              </Text>
+              <Text style={{ color: MUTED, fontSize: 11 }}>
+                {hydration} ml / {appSettings.hydrationGoalMl} ml
+              </Text>
+              <View style={{ height: 6, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
+                <View style={{ width: `${Math.max(0, Math.min(100, (hydration / appSettings.hydrationGoalMl) * 100))}%`, height: '100%', backgroundColor: BLUE }} />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {[
+                  { label: '+250ml', amount: 250 },
+                  { label: '+500ml', amount: 500 },
+                ].map((item) => (
+                  <Pressable
+                    key={item.label}
+                    onPress={async () => {
+                      if (!babyId) return;
+                      const next = hydration + item.amount;
+                      setHydration(next);
+                      await setMomHydration(babyId, next);
+                    }}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: pressed ? `${BLUE}22` : CARD,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: pressed ? 0.88 : 1,
+                    })}
+                  >
+                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{item.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </GlassCard>
+          </Animated.View>
         </View>
-      </Modal>
+      </ScrollView>
+
+      {/* ========== MODALS ========== */}
 
       <Modal visible={showNextFeedPicker} transparent animationType="fade" onRequestClose={() => setShowNextFeedPicker(false)}>
         <View style={styles.menuOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowNextFeedPicker(false)} />
+          <BlurView intensity={30} style={StyleSheet.absoluteFill} />
           <View style={styles.menuSheet}>
-            <Text style={styles.menuTitle}>{language === 'fr' ? 'Next feeding' : 'Next feeding'}</Text>
+            <Text style={styles.menuTitle}>{language === 'fr' ? 'Choisir le côté' : 'Choose side'}</Text>
             <Text style={styles.menuSubtitle}>
-              {language === 'fr'
-                ? 'Choisis biberon ou sein. Pour le sein, choisis le cote avant de lancer le timer.'
-                : 'Choose bottle or breast. For breast, pick the side before starting the timer.'}
+              {language === 'fr' ? 'Choisis le côté avant de lancer le timer.' : 'Pick the side before starting the timer.'}
             </Text>
             <View style={styles.choiceGrid}>
-              <PressScale
-                onPress={() => beginNextFeed('bottle')}
-                pressedScale={0.96}
-                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
-              >
-                <View style={[styles.choiceChip, { borderColor: BLUE, backgroundColor: `${BLUE}18` }]}>
-                  <View style={styles.choiceTitleRow}>
-                    <Ionicons name="water-outline" size={16} color={BLUE} />
-                    <Text style={[styles.choiceTitle, { color: BLUE }]}>Biberon</Text>
+              {[
+                { label: language === 'fr' ? 'Sein gauche' : 'Left breast', side: 'left' as BreastSide, color: GOLD },
+                { label: language === 'fr' ? 'Sein droit' : 'Right breast', side: 'right' as BreastSide, color: GREEN },
+                { label: language === 'fr' ? 'Les deux' : 'Both sides', side: 'both' as BreastSide, color: TEXT },
+              ].map(({ label, side, color }) => (
+                <Pressable
+                  key={side}
+                  onPress={() => beginNextFeed('breast', side)}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    minWidth: 130,
+                    height: 80,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: color,
+                    backgroundColor: pressed ? `${color}22` : `${color}12`,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    justifyContent: 'center',
+                    gap: 4,
+                    opacity: pressed ? 0.88 : 1,
+                  })}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 16 }}>🤱</Text>
+                    <Text style={{ color, fontSize: 13, fontWeight: '700' }}>{label}</Text>
                   </View>
-                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Lance le minuteur' : 'Start timer'}</Text>
-                </View>
-              </PressScale>
-              <PressScale
-                onPress={() => beginNextFeed('breast', 'left')}
-                pressedScale={0.96}
-                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
-              >
-                <View style={[styles.choiceChip, { borderColor: GOLD, backgroundColor: `${GOLD}18` }]}>
-                  <View style={styles.choiceTitleRow}>
-                    <Ionicons name="body-outline" size={16} color={GOLD} />
-                    <Text style={[styles.choiceTitle, { color: GOLD }]}>Sein gauche</Text>
-                  </View>
-                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Timer immediat' : 'Immediate timer'}</Text>
-                </View>
-              </PressScale>
-              <PressScale
-                onPress={() => beginNextFeed('breast', 'right')}
-                pressedScale={0.96}
-                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
-              >
-                <View style={[styles.choiceChip, { borderColor: GREEN, backgroundColor: `${GREEN}18` }]}>
-                  <View style={styles.choiceTitleRow}>
-                    <Ionicons name="body-outline" size={16} color={GREEN} />
-                    <Text style={[styles.choiceTitle, { color: GREEN }]}>Sein droit</Text>
-                  </View>
-                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Timer immediat' : 'Immediate timer'}</Text>
-                </View>
-              </PressScale>
-              <PressScale
-                onPress={() => beginNextFeed('breast', 'both')}
-                pressedScale={0.96}
-                style={{ flexBasis: '48%', minWidth: 130, flexGrow: 1 }}
-              >
-                <View style={[styles.choiceChip, { borderColor: TEXT, backgroundColor: `${TEXT}12` }]}>
-                  <View style={styles.choiceTitleRow}>
-                    <Ionicons name="body-outline" size={16} color={TEXT} />
-                    <Text style={[styles.choiceTitle, { color: TEXT }]}>Les deux</Text>
-                  </View>
-                  <Text style={styles.choiceSubtitle}>{language === 'fr' ? 'Alterner les deux' : 'Both sides'}</Text>
-                </View>
-              </PressScale>
+                  <Text style={{ color: MUTED, fontSize: 11 }}>
+                    {language === 'fr' ? 'Timer immédiat' : 'Start timer'}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
             <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowNextFeedPicker(false)} variant="ghost" />
           </View>
@@ -985,24 +858,17 @@ export default function HomeScreen() {
       <Modal visible={showHomeCustomizer} transparent animationType="fade" onRequestClose={() => setShowHomeCustomizer(false)}>
         <View style={styles.menuOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowHomeCustomizer(false)} />
+          <BlurView intensity={30} style={StyleSheet.absoluteFill} />
           <View style={styles.menuSheet}>
-            <Text style={styles.menuTitle}>{language === 'fr' ? 'Personnaliser l\'accueil' : 'Customize home'}</Text>
+            <Text style={styles.menuTitle}>{language === 'fr' ? 'Personnaliser' : 'Customize'}</Text>
             <Text style={styles.menuSubtitle}>
-              {language === 'fr'
-                ? 'Masque ou restaure les blocs visibles sans changer la logique.'
-                : 'Hide or restore visible blocks without changing logic.'}
+              {language === 'fr' ? 'Affiche ou masque les sections importantes.' : 'Show or hide important sections.'}
             </Text>
             <View style={styles.customizerGrid}>
               {[
-                { key: 'nextFeed', label: language === 'fr' ? 'Next feeding' : 'Next feeding' },
-                { key: 'smartSignals', label: language === 'fr' ? 'Signaux intelligents' : 'Smart signals' },
-                { key: 'lastFeeds', label: language === 'fr' ? 'Derniers biberons' : 'Last feeds' },
-                { key: 'timeline', label: 'Timeline' },
-                { key: 'recentActivity', label: language === 'fr' ? 'Historique court' : 'Recent activity' },
-                { key: 'hydration', label: 'Hydration' },
-                { key: 'dailyStatus', label: language === 'fr' ? 'Etat du jour' : 'Daily status' },
-                { key: 'weeklyDigest', label: language === 'fr' ? 'Digest hebdo' : 'Weekly digest' },
-                { key: 'widget', label: 'Widget' },
+                { key: 'nextFeed', label: language === 'fr' ? 'Prochaine tame' : 'Next feeding' },
+                { key: 'milkProgress', label: language === 'fr' ? 'Progrès lait' : 'Milk progress' },
+                { key: 'smartSignals', label: language === 'fr' ? 'Alertes' : 'Alerts' },
               ].map((item) => {
                 const enabled = appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics];
                 return (
@@ -1028,21 +894,20 @@ export default function HomeScreen() {
       <Modal visible={showBabySwitcher} transparent animationType="fade" onRequestClose={() => setShowBabySwitcher(false)}>
         <View style={styles.switcherOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowBabySwitcher(false)} />
+          <BlurView intensity={30} style={StyleSheet.absoluteFill} />
           <View style={styles.switcherSheet}>
             <View style={styles.switcherHeader}>
               <View>
-                <Text style={styles.switcherTitle}>{language === 'fr' ? "Changer d'enfant" : 'Switch child profile'}</Text>
-                <Text style={styles.switcherSubtitle}>{language === 'fr' ? 'Choisis le profil actif pour ce tableau de bord.' : 'Choose the active profile for this dashboard.'}</Text>
+                <Text style={styles.switcherTitle}>{language === 'fr' ? "Changer d'enfant" : 'Switch child'}</Text>
+                <Text style={styles.switcherSubtitle}>
+                  {language === 'fr' ? 'Choisis le profil actif pour ce tableau de bord.' : 'Choose the active profile for this dashboard.'}
+                </Text>
               </View>
               <View style={styles.switcherBadge}>
                 <Text style={{ color: GOLD, fontSize: 11, fontWeight: '800' }}>{babies.length}</Text>
               </View>
             </View>
-            <ScrollView
-              style={styles.switcherList}
-              contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
-              showsVerticalScrollIndicator={false}
-            >
+            <ScrollView style={styles.switcherList} contentContainerStyle={{ gap: 8, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
               {babies.length ? (
                 babies.map((baby) => {
                   const active = baby.id === babyId;
@@ -1054,18 +919,34 @@ export default function HomeScreen() {
                       }}
                       style={({ pressed }) => [
                         styles.switcherItem,
-                        { borderColor: active ? GOLD : BORDER, backgroundColor: active ? `${GOLD}18` : CARD, opacity: pressed ? 0.88 : 1 },
+                        {
+                          borderColor: active ? GOLD : BORDER,
+                          backgroundColor: active ? `${GOLD}18` : CARD,
+                          opacity: pressed ? 0.88 : 1,
+                        },
                       ]}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                         <Text style={{ color: active ? GOLD : TEXT, fontSize: 15, fontWeight: '700' }}>{baby.name}</Text>
-                        <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: active ? `${GOLD}66` : BORDER, backgroundColor: active ? `${GOLD}22` : BG }}>
+                        <View
+                          style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 999,
+                            borderWidth: 1,
+                            borderColor: active ? `${GOLD}66` : BORDER,
+                            backgroundColor: active ? `${GOLD}22` : BG,
+                          }}
+                        >
                           <Text style={{ color: active ? GOLD : MUTED, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>
                             {active ? (language === 'fr' ? 'Actif' : 'Active') : language === 'fr' ? 'Utiliser' : 'Use'}
                           </Text>
                         </View>
                       </View>
-                      <Text style={{ color: MUTED, fontSize: 12 }}>{language === 'fr' ? 'Naissance:' : 'Birth:'} {baby.birthDate}</Text>
+                      <Text style={{ color: MUTED, fontSize: 12 }}>
+                        {language === 'fr' ? 'Naissance: ' : 'Birth: '}
+                        {baby.birthDate}
+                      </Text>
                     </Pressable>
                   );
                 })
@@ -1076,9 +957,7 @@ export default function HomeScreen() {
                   </View>
                   <Text style={styles.emptySwitcherTitle}>{language === 'fr' ? "Aucun profil d'enfant" : 'No child profile yet'}</Text>
                   <Text style={styles.emptySwitcherSubtitle}>
-                    {language === 'fr'
-                      ? "Va dans Profil pour creer un enfant, puis reviens ici pour l'activer."
-                      : 'Go to Profile to create one, then return here to set it active.'}
+                    {language === 'fr' ? "Va dans Profil pour creer un enfant, puis reviens ici pour l'activer." : 'Go to Profile to create one, then return here to set it active.'}
                   </Text>
                 </View>
               )}
@@ -1114,16 +993,16 @@ export default function HomeScreen() {
           <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
             <View style={styles.sheetCard}>
               <Text style={styles.sheetTitle}>
-                {quickTimerMode === 'bottle' ? 'Biberon termine' : `${activeFeedTitle} termine`}
+                {quickTimerMode === 'bottle' ? (language === 'fr' ? 'Biberon terminé' : 'Bottle complete') : `${activeFeedTitle} ${language === 'fr' ? 'terminé' : 'complete'}`}
               </Text>
               <Text style={styles.sheetSubtitle}>
-                Duree {Math.max(1, Math.round(timerElapsedSeconds / 60))} min - commence a {formatClock(timerStartedAt ? new Date(timerStartedAt).toISOString() : undefined, locale)}
+                {language === 'fr' ? 'Durée ' : 'Duration '}{Math.max(1, Math.round(timerElapsedSeconds / 60))} min -{language === 'fr' ? ' commence à ' : ' started at '}{formatClock(timerStartedAt ? new Date(timerStartedAt).toISOString() : undefined, locale)}
               </Text>
               <QuantityPicker value={quickAmount} onChange={setQuickAmount} largeTouchMode={appSettings.largeTouchMode} />
               <View style={styles.sheetActions}>
-                <Button label="Save" onPress={saveQuickTimerEntry} />
+                <Button label={language === 'fr' ? 'Enregistrer' : 'Save'} onPress={saveQuickTimerEntry} />
                 <Button
-                  label="Cancel"
+                  label={language === 'fr' ? 'Annuler' : 'Cancel'}
                   variant="ghost"
                   onPress={() => {
                     setQuickTimerMode(null);
@@ -1231,28 +1110,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-  },
-  choiceChip: {
-    minHeight: 72,
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    justifyContent: 'center',
-    gap: 4,
-  },
-  choiceTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  choiceTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  choiceSubtitle: {
-    color: MUTED,
-    fontSize: 11,
   },
   customizerGrid: {
     flexDirection: 'row',
@@ -1362,5 +1219,3 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 });
-
-

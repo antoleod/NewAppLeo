@@ -36,6 +36,7 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   const lastFeed = sorted.find((entry) => entry.type === 'feed');
   const lastSleep = sorted.find((entry) => entry.type === 'sleep');
   const lastMedication = sorted.find((entry) => entry.type === 'medication');
+  const lastTemp = sorted.find((entry) => entry.type === 'temperature' || (entry.type === 'measurement' && entry.payload.tempC));
 
   const feedHours = hoursSince(lastFeed?.occurredAt);
   if (feedHours !== null && feedHours >= 3) {
@@ -80,6 +81,53 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
       actionLabel: 'Log medication',
       targetType: 'medication',
     });
+  }
+
+  // Fever alert
+  const tempC = lastTemp?.payload?.tempC;
+  if (tempC !== undefined && tempC >= 38.0) {
+    alerts.push({
+      id: 'fever-alert',
+      title: 'Fever detected',
+      body: `Temperature is ${tempC.toFixed(1)}°C. Monitor closely and consult doctor if persists.`,
+      icon: '🌡️',
+      value: `${tempC.toFixed(1)}°C`,
+      statusLabel: 'urgent',
+      tone: 'danger',
+      actionLabel: 'Log temperature',
+      targetType: 'temperature',
+    });
+  }
+
+  // Vaccine due alert
+  const nextVaccine = sorted.find((entry) => entry.type === 'vaccine' && entry.payload.vaccineNextDueDate);
+  if (nextVaccine?.payload?.vaccineNextDueDate) {
+    const daysUntilDue = Math.ceil((new Date(nextVaccine.payload.vaccineNextDueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (daysUntilDue <= 7 && daysUntilDue > 0) {
+      alerts.push({
+        id: 'vaccine-due',
+        title: 'Vaccine due soon',
+        body: `${nextVaccine.payload.vaccineName} is due in ${daysUntilDue} day${daysUntilDue > 1 ? 's' : ''}.`,
+        icon: '💉',
+        value: `In ${daysUntilDue}d`,
+        statusLabel: 'upcoming',
+        tone: 'warning',
+        actionLabel: 'Schedule',
+        targetType: 'vaccine',
+      });
+    } else if (daysUntilDue <= 0) {
+      alerts.push({
+        id: 'vaccine-overdue',
+        title: 'Vaccine overdue',
+        body: `${nextVaccine.payload.vaccineName} is overdue. Contact clinic to schedule.`,
+        icon: '💉',
+        value: 'Overdue',
+        statusLabel: 'critical',
+        tone: 'danger',
+        actionLabel: 'Update',
+        targetType: 'vaccine',
+      });
+    }
   }
 
   return alerts.slice(0, 3);

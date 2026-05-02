@@ -23,6 +23,8 @@ const typeLabels: Record<EntryType, string> = {
   medication: 'Medication',
   milestone: 'Milestone',
   symptom: 'Symptom',
+  temperature: 'Temperature',
+  vaccine: 'Vaccine',
 };
 
 const symptomOptions = [
@@ -115,6 +117,22 @@ const typeMeta: Record<
     details: ['Tags + note', 'Observations first', 'Review later'],
     badges: ['💬 Symptom', '🏷 Tags', '📝 Context'],
   },
+  temperature: {
+    icon: '🌡️',
+    eyebrow: 'Temperature log',
+    tone: '#E74C3C',
+    toneSoft: 'rgba(231,76,60,0.16)',
+    details: ['Body temperature', 'Fast entry', 'Auto alerts'],
+    badges: ['🌡️ Temp', '📊 Status', '⚡ Alert'],
+  },
+  vaccine: {
+    icon: '💉',
+    eyebrow: 'Vaccine record',
+    tone: '#3FB950',
+    toneSoft: 'rgba(63,185,80,0.16)',
+    details: ['Vaccine name + dose', 'Schedule next dose', 'Track program'],
+    badges: ['💉 Vaccine', '📅 Schedule', '✓ Record'],
+  },
 };
 
 function typeSubtitle(type: EntryType) {
@@ -176,6 +194,10 @@ export default function EntryComposerScreen() {
   const [saving, setSaving] = useState(false);
   const [largeTouchMode, setLargeTouchMode] = useState(false);
   const [savedMedicines, setSavedMedicines] = useState<SavedMedicine[]>([]);
+  const [vaccineTemp, setVaccineTemp] = useState('');
+  const [vaccineName, setVaccineName] = useState('');
+  const [vaccineDose, setVaccineDose] = useState('1');
+  const [vaccineNextDueDate, setVaccineNextDueDate] = useState(new Date());
   const meta = typeMeta[type];
 
   useEffect(() => {
@@ -224,6 +246,16 @@ export default function EntryComposerScreen() {
         break;
       case 'symptom':
         setSymptoms((editing.payload as any)?.tags ?? ((editing.payload?.notes ?? '') as string).split(',').map((value) => value.trim()).filter(Boolean));
+        break;
+      case 'temperature':
+        setVaccineTemp(editing.payload?.tempC ? String(editing.payload.tempC) : '');
+        break;
+      case 'vaccine':
+        setVaccineName(editing.payload?.vaccineName ?? '');
+        setVaccineDose(String(editing.payload?.vaccineDose ?? 1));
+        if (editing.payload?.vaccineNextDueDate) {
+          setVaccineNextDueDate(new Date(editing.payload.vaccineNextDueDate));
+        }
         break;
     }
   }, [editing]);
@@ -276,6 +308,15 @@ export default function EntryComposerScreen() {
         return { title: title || 'Milestone', icon, photoUri: photoUri || undefined, notes };
       case 'symptom':
         return { notes, tags: symptoms };
+      case 'temperature':
+        return { tempC: vaccineTemp ? Number(vaccineTemp) : undefined, notes };
+      case 'vaccine':
+        return {
+          vaccineName,
+          vaccineDose: Number(vaccineDose) || 1,
+          vaccineNextDueDate: vaccineNextDueDate.toISOString(),
+          notes,
+        };
     }
   }
 
@@ -299,6 +340,10 @@ export default function EntryComposerScreen() {
         return title || 'Milestone';
       case 'symptom':
         return 'Symptom log';
+      case 'temperature':
+        return vaccineTemp ? `Temperature: ${vaccineTemp}°C` : 'Temperature reading';
+      case 'vaccine':
+        return vaccineName || 'Vaccine record';
     }
   }
 
@@ -607,6 +652,50 @@ export default function EntryComposerScreen() {
               onChange={(value) => setSymptoms((current) => Array.from(new Set([value, ...current])).slice(0, 4))}
               options={symptomOptions}
             />
+          </View>
+        ) : null}
+
+        {type === 'temperature' ? (
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>BODY TEMPERATURE</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Temperature corporelle' : 'Body temperature'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted }]}>Enter the temperature in Celsius.</Text>
+            <Input
+              label="°C"
+              value={vaccineTemp}
+              onChangeText={setVaccineTemp}
+              placeholder="37.5"
+              keyboardType="decimal-pad"
+            />
+            {vaccineTemp && (
+              <View style={[styles.infoStrip, { marginTop: 8 }]}>
+                <Text style={[styles.infoStripText, { backgroundColor: Number(vaccineTemp) < 37.5 ? 'rgba(63,185,80,0.20)' : Number(vaccineTemp) < 38 ? 'rgba(242,200,111,0.20)' : 'rgba(231,76,60,0.20)' }]}>
+                  {Number(vaccineTemp) < 37.5 ? '✓ Normal' : Number(vaccineTemp) < 38 ? '⚠ Febrícula' : '🚨 Fiebre'}
+                </Text>
+              </View>
+            )}
+          </View>
+        ) : null}
+
+        {type === 'vaccine' ? (
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionLabel, { color: meta.tone }]}>VACCINE DETAILS</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Vaccine info' : 'Vaccine information'}</Text>
+            <Input
+              label={language === 'fr' ? 'Nom du vaccin' : 'Vaccine name'}
+              value={vaccineName}
+              onChangeText={setVaccineName}
+              placeholder={language === 'fr' ? 'BCG, DTP, MMR...' : 'BCG, DTP, MMR...'}
+            />
+            <Input
+              label={language === 'fr' ? 'Numero dose' : 'Dose number'}
+              value={vaccineDose}
+              onChangeText={setVaccineDose}
+              keyboardType="number-pad"
+              placeholder="1"
+            />
+            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 8 }]}>{language === 'fr' ? 'Prochaine dose prevue' : 'Next dose due'}</Text>
+            <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={vaccineNextDueDate} onChange={setVaccineNextDueDate} />
           </View>
         ) : null}
 
