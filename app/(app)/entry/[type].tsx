@@ -543,7 +543,47 @@ export default function EntryComposerScreen() {
 
         {type === 'temperature' && (
           <View style={styles.sectionCard}>
-            <Input label="°C" value={vaccineTemp} onChangeText={setVaccineTemp} placeholder="37.5" keyboardType="decimal-pad" />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Température' : 'Temperature'}</Text>
+
+            <View style={styles.tempPresets}>
+              <Pressable onPress={() => setVaccineTemp('36.5')} style={[styles.tempPreset, vaccineTemp === '36.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                <Text style={[styles.tempPresetText, vaccineTemp === '36.5' && { color: meta.tone, fontWeight: '900' }]}>36.5</Text>
+              </Pressable>
+              <Pressable onPress={() => setVaccineTemp('37.5')} style={[styles.tempPreset, vaccineTemp === '37.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                <Text style={[styles.tempPresetText, vaccineTemp === '37.5' && { color: meta.tone, fontWeight: '900' }]}>37.5</Text>
+              </Pressable>
+              <Pressable onPress={() => setVaccineTemp('38.5')} style={[styles.tempPreset, vaccineTemp === '38.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                <Text style={[styles.tempPresetText, vaccineTemp === '38.5' && { color: meta.tone, fontWeight: '900' }]}>38.5</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.tempInputRow}>
+              <Pressable
+                onPress={() => {
+                  const current = Number(vaccineTemp) || 37.5;
+                  setVaccineTemp((Math.max(35, current - 0.1)).toFixed(1));
+                }}
+                style={styles.tempButton}
+              >
+                <Text style={styles.tempButtonText}>−</Text>
+              </Pressable>
+
+              <View style={styles.tempDisplay}>
+                <Text style={[styles.tempDisplayValue, { color: meta.tone }]}>{vaccineTemp || '37.5'}</Text>
+                <Text style={[styles.tempDisplayUnit, { color: colors.muted }]}>°C</Text>
+              </View>
+
+              <Pressable
+                onPress={() => {
+                  const current = Number(vaccineTemp) || 37.5;
+                  setVaccineTemp((Math.min(42, current + 0.1)).toFixed(1));
+                }}
+                style={styles.tempButton}
+              >
+                <Text style={styles.tempButtonText}>+</Text>
+              </Pressable>
+            </View>
+
             {vaccineTemp && (
               <View style={styles.tempStatusContainer}>
                 {Number(vaccineTemp) < 37.5 ? (
@@ -717,6 +757,67 @@ const styles = StyleSheet.create({
     backgroundColor: '#1C2128',
     paddingHorizontal: 10,
     paddingVertical: 6,
+  },
+  tempPresets: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  tempPreset: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+    alignItems: 'center',
+  },
+  tempPresetText: {
+    color: '#F0F6FC',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  tempInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  tempButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#1C2128',
+    borderWidth: 1,
+    borderColor: '#21262D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tempButtonText: {
+    color: '#F0F6FC',
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  tempDisplay: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#1C2128',
+    borderWidth: 1,
+    borderColor: '#21262D',
+  },
+  tempDisplayValue: {
+    fontSize: 36,
+    fontWeight: '900',
+  },
+  tempDisplayUnit: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   tempStatusContainer: {
     marginTop: 12,
