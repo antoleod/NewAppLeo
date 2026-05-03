@@ -26,6 +26,26 @@ import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
 
+function withColorOpacity(color: string, opacity: number) {
+  const alpha = Math.max(0, Math.min(1, opacity));
+  const hex = color.trim().match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    const value = hex[1];
+    const red = parseInt(value.slice(0, 2), 16);
+    const green = parseInt(value.slice(2, 4), 16);
+    const blue = parseInt(value.slice(4, 6), 16);
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+  }
+
+  const rgb = color.trim().match(/^rgba?\(([^)]+)\)$/i);
+  if (rgb) {
+    const channels = rgb[1].split(',').slice(0, 3).map((part) => part.trim());
+    return `rgba(${channels.join(', ')}, ${alpha})`;
+  }
+
+  return color;
+}
+
 export function Page({
   children,
   scroll = true,
@@ -186,6 +206,7 @@ export function Button({
   const { width } = useWindowDimensions();
   const { theme, buttonOpacity } = useTheme();
   const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
+  const solidOpacity = disabled ? 0.45 : buttonOpacity;
   const background =
     variant === 'primary'
       ? theme.accent
@@ -196,6 +217,8 @@ export function Button({
           : 'transparent';
   const color = variant === 'ghost' ? theme.textPrimary : variant === 'primary' ? theme.accentText : '#ffffff';
   const borderColor = variant === 'ghost' ? theme.border : 'transparent';
+  const transparentBackground = withColorOpacity(background, solidOpacity);
+  const transparentBorder = variant === 'ghost' ? borderColor : withColorOpacity(background, Math.min(1, solidOpacity + 0.18));
   const isSmall = size === 'sm';
 
   return (
@@ -209,11 +232,11 @@ export function Button({
         {
           minHeight: isDesktopWeb ? (isSmall ? 36 : 44) : isSmall ? 40 : 48,
           width: fullWidth ? '100%' : undefined,
-          backgroundColor: background,
-          borderColor,
-          opacity: disabled ? 0.45 : pressed ? Math.min(buttonOpacity, 0.85) : buttonOpacity,
+          backgroundColor: transparentBackground,
+          borderColor: transparentBorder,
+          opacity: pressed ? 0.85 : 1,
           shadowColor: variant === 'ghost' ? 'transparent' : theme.textPrimary,
-          shadowOpacity: variant === 'ghost' ? 0 : 0.08,
+          shadowOpacity: variant === 'ghost' || disabled ? 0 : 0.08 * solidOpacity,
           shadowRadius: 14,
           shadowOffset: { width: 0, height: 8 },
           elevation: variant === 'ghost' ? 0 : 2,

@@ -228,7 +228,7 @@ export default function ThemeSettings() {
             <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>100%</Text>
           </View>
           <View style={styles.previewRow}>
-            <Button label="Preview" onPress={() => {}} fullWidth={false} style={{ opacity: opacityValue }} />
+            <Button label="Preview" onPress={() => {}} fullWidth={false} />
             <Text style={[styles.previewText, { color: theme.textMuted }]}>{Math.round(opacityValue * 100)}%</Text>
           </View>
         </Card>
