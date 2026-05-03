@@ -37,6 +37,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const themeMode = profile?.themeMode ?? 'system';
   const resolvedMode = themeMode === 'system' ? systemScheme ?? 'light' : themeMode;
 
+  const normalizeButtonOpacity = (opacity: unknown) => {
+    const numericOpacity = Number(opacity);
+    return Number.isFinite(numericOpacity) ? Math.max(0.2, Math.min(1, numericOpacity)) : defaultAppSettings.buttonOpacity;
+  };
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -45,7 +50,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setThemeVariantState(settings.themeVariant);
         setThemeStyleState(settings.themeStyle);
         setBackgroundPhotoUriState(settings.backgroundPhotoUri ?? '');
-        setButtonOpacityState(settings.buttonOpacity);
+        setButtonOpacityState(normalizeButtonOpacity(settings.buttonOpacity));
         setCustomThemeState(settings.customTheme);
       }
     })();
@@ -81,7 +86,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         await setAppSettings({ ...settings, backgroundPhotoUri: uri });
       },
       setButtonOpacity: async (opacity) => {
-        const nextOpacity = Math.max(0.2, Math.min(1, opacity));
+        const nextOpacity = normalizeButtonOpacity(opacity);
         setButtonOpacityState(nextOpacity);
         const settings = await getAppSettings();
         await setAppSettings({ ...settings, buttonOpacity: nextOpacity });

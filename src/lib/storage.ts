@@ -250,9 +250,13 @@ export async function setModuleVisibility(next: ModuleVisibility) {
 
 export async function getAppSettings() {
   const parsed = safeParse<Partial<AppSettings>>(await AsyncStorage.getItem(APP_SETTINGS_KEY), defaultAppSettings);
+  const parsedButtonOpacity = Number(parsed.buttonOpacity);
   return {
     ...defaultAppSettings,
     ...parsed,
+    buttonOpacity: Number.isFinite(parsedButtonOpacity)
+      ? Math.max(0.2, Math.min(1, parsedButtonOpacity))
+      : defaultAppSettings.buttonOpacity,
     dashboardMetrics: {
       ...defaultAppSettings.dashboardMetrics,
       ...(parsed.dashboardMetrics ?? {}),

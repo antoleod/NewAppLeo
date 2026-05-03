@@ -21,8 +21,13 @@ export default function ThemeSettings() {
     setButtonOpacity,
   } = useTheme();
   const { setThemeMode } = useAuth();
-  const [opacityValue, setOpacityValue] = useState(buttonOpacity);
+  const normalizeOpacity = (opacity: unknown) => {
+    const numericOpacity = Number(opacity);
+    return Number.isFinite(numericOpacity) ? Math.max(0.2, Math.min(1, numericOpacity)) : 1;
+  };
+  const [opacityValue, setOpacityValue] = useState(() => normalizeOpacity(buttonOpacity));
   const [opacityTrackWidth, setOpacityTrackWidth] = useState(0);
+  const opacityPercent = ((opacityValue - 0.2) / 0.8) * 100;
 
   const themes = [
     {
@@ -52,11 +57,11 @@ export default function ThemeSettings() {
   ] as const;
 
   useEffect(() => {
-    setOpacityValue(buttonOpacity);
+    setOpacityValue(normalizeOpacity(buttonOpacity));
   }, [buttonOpacity]);
 
   async function handleButtonOpacityChange(value: number) {
-    const nextOpacity = Math.max(0.2, Math.min(1, value));
+    const nextOpacity = normalizeOpacity(value);
     setOpacityValue(nextOpacity);
     await setButtonOpacity(nextOpacity);
   }
@@ -194,7 +199,7 @@ export default function ThemeSettings() {
               style={[
                 styles.opacityFill,
                 {
-                  width: `${((opacityValue - 0.2) / 0.8) * 100}%`,
+                  width: `${opacityPercent}%`,
                   backgroundColor: theme.accent,
                 },
               ]}
@@ -203,7 +208,7 @@ export default function ThemeSettings() {
               style={[
                 styles.opacityThumb,
                 {
-                  left: `${((opacityValue - 0.2) / 0.8) * 100}%`,
+                  left: `${opacityPercent}%`,
                   backgroundColor: theme.accent,
                   borderColor: theme.bgCard,
                 },
