@@ -1,16 +1,18 @@
 import React, { useMemo } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
 import { EmptyState } from '@/components/ui';
 import { spacing } from '@/theme';
+import type { EntryRecord } from '@/types';
 
 interface WeightHistoryChartProps {
   limit?: number;
+  onEditEntry?: (entry: EntryRecord) => void;
 }
 
-export function WeightHistoryChart({ limit = 10 }: WeightHistoryChartProps) {
+export function WeightHistoryChart({ limit = 10, onEditEntry }: WeightHistoryChartProps) {
   const { colors, gradients } = useTheme();
   const { entries } = useAppData();
 
@@ -45,7 +47,18 @@ export function WeightHistoryChart({ limit = 10 }: WeightHistoryChartProps) {
         const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
         return (
-          <View key={entry.id} style={{ gap: 4 }}>
+          <Pressable
+            key={entry.id}
+            onPress={() => onEditEntry?.(entry)}
+            style={({ pressed }) => ({
+              gap: 4,
+              opacity: pressed ? 0.7 : 1,
+              paddingVertical: 4,
+              paddingHorizontal: 8,
+              borderRadius: 8,
+              backgroundColor: pressed ? colors.backgroundAlt : 'transparent',
+            })}
+          >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={{ color: colors.muted, fontSize: 12 }}>{dateStr}</Text>
               <Text style={{ color: colors.text, fontWeight: '700', fontSize: 14 }}>{weight.toFixed(1)} kg</Text>
@@ -60,7 +73,7 @@ export function WeightHistoryChart({ limit = 10 }: WeightHistoryChartProps) {
                 width: `${barWidth}%`,
               }}
             />
-          </View>
+          </Pressable>
         );
       })}
     </View>

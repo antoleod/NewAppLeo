@@ -10,6 +10,7 @@ import { ExpandableSection } from '@/components/ExpandableSection';
 import { ProfileSkeleton } from '@/components/ProfileSkeleton';
 import { AvatarInitials } from '@/components/AvatarInitials';
 import { BabyEditSheet } from '@/components/BabyEditSheet';
+import { EntryEditSheet } from '@/components/EntryEditSheet';
 import { WeightHistoryChart } from '@/components/WeightHistoryChart';
 import { useAuth } from '@/context/AuthContext';
 import { useAppData } from '@/context/AppDataContext';
@@ -85,8 +86,10 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editingBaby, setEditingBaby] = useState<typeof babies[0] | null>(null);
+  const [editingEntry, setEditingEntry] = useState<any>(null);
   const photoScale = useSharedValue(1);
   const bottomSheetModalRef = useRef<any>(null);
+  const entrySheetModalRef = useRef<any>(null);
 
   useEffect(() => {
     setForm({
@@ -311,6 +314,30 @@ export default function ProfileScreen() {
     [refreshProfileData]
   );
 
+  const { updateEntry, deleteEntry } = useAppData();
+
+  const handleEditEntry = useCallback(
+    (entry: any) => {
+      setEditingEntry(entry);
+      entrySheetModalRef.current?.present();
+    },
+    []
+  );
+
+  const handleSaveEntry = useCallback(
+    async (updated: any) => {
+      await updateEntry(updated.id, updated);
+    },
+    [updateEntry]
+  );
+
+  const handleDeleteEntry = useCallback(
+    async (id: string) => {
+      await deleteEntry(id);
+    },
+    [deleteEntry]
+  );
+
   const language = profile?.language ?? 'fr';
   const childSummary = useMemo(
     () => (activeBabyId ? babies.find((baby) => baby.id === activeBabyId) : null),
@@ -400,7 +427,7 @@ export default function ProfileScreen() {
         <Input label={t('profile.notesLabel')} value={form.babyNotes} onChangeText={(value) => handleFieldChange('babyNotes', value)} multiline />
 
         <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 16, marginBottom: 8 }}>Weight History</Text>
-        <WeightHistoryChart limit={5} />
+        <WeightHistoryChart limit={5} onEditEntry={handleEditEntry} />
 
         <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 16, marginBottom: 8 }}>{t('profile.preferencesTitle')}</Text>
         <Segment value={language} onChange={(value) => void setContextLanguage(value as any)} options={languageOptions} />
@@ -539,6 +566,16 @@ export default function ProfileScreen() {
           onSave={handleSaveBaby}
           onClose={() => setEditingBaby(null)}
           bottomSheetModalRef={bottomSheetModalRef}
+        />
+      )}
+
+      {editingEntry && (
+        <EntryEditSheet
+          entry={editingEntry}
+          onSave={handleSaveEntry}
+          onClose={() => setEditingEntry(null)}
+          onDelete={handleDeleteEntry}
+          bottomSheetModalRef={entrySheetModalRef}
         />
       )}
     </Page>

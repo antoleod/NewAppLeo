@@ -45,7 +45,7 @@ export function EntryEditSheet({ entry, onSave, onClose, onDelete, bottomSheetMo
     try {
       await onSave({
         ...entry,
-        occururedAt: dateToIsoString(date),
+        occurredAt: dateToIsoString(date),
         payload: {
           ...entry.payload,
           weightKg: parseNumber(weight),
