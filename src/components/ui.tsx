@@ -128,10 +128,19 @@ export function Heading({
   const scale = isDesktopWeb ? 0.9 : width >= 900 ? 0.98 : width >= 700 ? 1 : 1;
   return (
     <View style={[styles.headingRow, shouldStack && styles.headingStacked, align === 'center' && styles.headingCentered]}>
-      <View style={{ flex: 1, gap: spacing.xs, alignItems: align === 'center' ? 'center' : 'flex-start' }}>
-        {eyebrow ? <Text style={[styles.eyebrow, { color: theme.accent, fontSize: 11 * scale }, align === 'center' && { textAlign: 'center' }]}>{eyebrow}</Text> : null}
-        <Text style={[styles.title, { color: theme.textPrimary, fontSize: 22 * scale }, align === 'center' && { textAlign: 'center' }]}>{title}</Text>
-        {subtitle ? <Text style={[styles.subtitle, { color: theme.textMuted, fontSize: 13 * scale }, align === 'center' && { textAlign: 'center' }]}>{subtitle}</Text> : null}
+      <View style={{ flex: 1, alignItems: align === 'center' ? 'center' : 'flex-start' }}>
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.title,
+            { color: theme.textPrimary, fontSize: 16 * scale },
+            align === 'center' && { textAlign: 'center' },
+          ]}
+        >
+          {eyebrow ? `${eyebrow} · ` : ''}
+          {title}
+          {subtitle ? ` · ${subtitle}` : ''}
+        </Text>
       </View>
       {action}
     </View>

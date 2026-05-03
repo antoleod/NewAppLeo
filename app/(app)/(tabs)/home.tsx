@@ -9,9 +9,6 @@ import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
-  withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +16,7 @@ import { Button, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { BreastSide, EntryRecord } from '@/types';
 import { buildSmartAlerts, getMeanFeedingInterval } from '@/lib/patterns';
 import {
@@ -57,11 +55,11 @@ const touchTargetProps = {
   pressRetentionOffset: 8,
 } as const;
 
-function getGreeting(language: string) {
+function getHourPeriod(): 'morning' | 'afternoon' | 'evening' {
   const hour = new Date().getHours();
-  if (hour < 12) return language === 'fr' ? 'Bonjour' : 'Good morning';
-  if (hour < 18) return language === 'fr' ? 'Bonjour' : 'Good afternoon';
-  return language === 'fr' ? 'Bonsoir' : 'Good evening';
+  if (hour < 12) return 'morning';
+  if (hour < 18) return 'afternoon';
+  return 'evening';
 }
 
 function localeTag(language: string) {
@@ -329,6 +327,7 @@ function ActionButton({
 export default function HomeScreen() {
   const { language } = useLocale();
   const locale = localeTag(language);
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const { entries, summary, addEntry } = useAppData();
   const [hydration, setHydration] = useState(0);
@@ -546,7 +545,7 @@ export default function HomeScreen() {
             <LinearGradient colors={['rgba(22, 28, 40, 0.95)', 'rgba(13, 17, 25, 0.0)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ paddingHorizontal: 16, paddingVertical: 20 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <Text style={{ color: TEXT, fontSize: 24, fontWeight: '700' }}>
-                  {getGreeting(language)}, {profile?.displayName || 'maman'} ✨
+                  {t(`greeting.${getHourPeriod()}`)}, {profile?.displayName || 'maman'} ✨
                 </Text>
                 <Pressable
                   onPress={() => setShowHomeCustomizer(true)}
@@ -624,7 +623,7 @@ export default function HomeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: MUTED, fontSize: 9, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>
-                  {language === 'fr' ? 'SANTÉ' : 'HEALTH'}
+                  {t('health.status')}
                 </Text>
                 <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>
                   {healthStatus.label}
@@ -666,10 +665,10 @@ export default function HomeScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: MUTED, fontSize: 9, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>
-                    {language === 'fr' ? 'ALIMENTATION' : 'FEEDING'}
+                    {t('food.status')}
                   </Text>
                   <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>
-                    {lastFood.payload?.foodName || 'Comida registrada'} • {foodTodayCount} {language === 'fr' ? 'hoy' : 'today'}
+                    {lastFood.payload?.foodName || 'Comida registrada'} • {foodTodayCount} {t('food.today')}
                   </Text>
                 </View>
                 <Text style={{ fontSize: 16 }}>›</Text>
@@ -682,7 +681,7 @@ export default function HomeScreen() {
             <Animated.View entering={FadeInDown.duration(260).delay(110)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
               <GlassCard style={{ paddingHorizontal: 14, paddingVertical: 12 }} blur={false}>
                 <Text style={{ color: GREEN, fontSize: 10, letterSpacing: 1.5, fontWeight: '600', textTransform: 'uppercase', marginBottom: 8 }}>
-                  {language === 'fr' ? 'VACCINS PROGRAMMÉS' : 'SCHEDULED VACCINES'}
+                  {t('vaccine.scheduled')}
                 </Text>
                 <View style={{ gap: 8 }}>
                   {pinnedVaccines.map((vaccine) => {
@@ -724,7 +723,7 @@ export default function HomeScreen() {
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <GlassCard style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 12 }} blur={false}>
                 <Text style={{ color: MUTED, fontSize: 9, letterSpacing: 1.2, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 }}>
-                  {language === 'fr' ? 'DERNIÈRE PRISE' : 'LAST FEEDING'}
+                  {t('feeding.lastFeeding')}
                 </Text>
                 <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700', marginBottom: 2 }}>{lastFeedTime}</Text>
                 <Text style={{ color: MUTED, fontSize: 11 }}>
@@ -733,11 +732,11 @@ export default function HomeScreen() {
               </GlassCard>
               <GlassCard style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 12 }} blur={false}>
                 <Text style={{ color: MUTED, fontSize: 9, letterSpacing: 1.2, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 }}>
-                  {language === 'fr' ? 'DEPUIS LA DERNIÈRE' : 'TIME SINCE LAST'}
+                  {t('feeding.timeSinceLast')}
                 </Text>
                 <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700', marginBottom: 2 }}>{timeSinceLastFeed}</Text>
                 <Text style={{ color: MUTED, fontSize: 11 }}>
-                  {language === 'fr' ? 'Temps écoulé' : 'Elapsed time'}
+                  {t('feeding.elapsed')}
                 </Text>
               </GlassCard>
             </View>
@@ -746,13 +745,13 @@ export default function HomeScreen() {
           {/* Large Gradient Buttons */}
           <Animated.View entering={FadeInDown.duration(260).delay(180)} style={{ paddingHorizontal: 16, marginBottom: 12, gap: 8 }}>
             <GradientButton
-              label={language === 'fr' ? 'Sein' : 'Breast'}
+              label={t('feeding.breast')}
               icon="🤱"
               onPress={openNextFeedPicker}
               colors={[GOLD, '#A07818']}
             />
             <GradientButton
-              label={language === 'fr' ? 'Biberon' : 'Bottle'}
+              label={t('feeding.bottle')}
               icon="🍼"
               onPress={() => startQuickTimer('bottle')}
               colors={['#1A6BB0', '#0D4F8C']}
@@ -771,7 +770,7 @@ export default function HomeScreen() {
               blur={false}
             >
               <Text style={{ color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600', textTransform: 'uppercase' }}>
-                {language === 'fr' ? 'LAIT' : 'MILK'}
+                {t('milk.milk')}
               </Text>
               <View style={{ gap: 6 }}>
                 <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{totalMilkToday} ml</Text>
@@ -779,7 +778,7 @@ export default function HomeScreen() {
                   <Animated.View style={[{ height: '100%', backgroundColor: GOLD, borderRadius: 999 }, milkBarStyle]} />
                 </View>
                 <Text style={{ color: MUTED, fontSize: 11 }}>
-                  {language === 'fr' ? 'Repère 750–1 050 ml' : 'Target 750–1 050 ml'} • {milkStatus}
+                  {t('milk.target')} • {milkStatus}
                 </Text>
               </View>
             </GlassCard>
@@ -832,7 +831,7 @@ export default function HomeScreen() {
                 <Text style={{ fontSize: 18 }}>⚠️</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>
-                    {language === 'fr' ? 'Possibles allergies' : 'Possible allergies'}
+                    {t('food.possibleAllergies')}
                   </Text>
                   <Text style={{ color: MUTED, fontSize: 11 }}>
                     {foodAllergyAlerts.slice(0, 2).map((a) => a.food).join(', ')}
@@ -846,34 +845,34 @@ export default function HomeScreen() {
           <Animated.View entering={FadeInDown.duration(260).delay(360)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
               <View style={{ flex: 1 }}>
-                <ActionButton label={language === 'fr' ? 'Couche' : 'Diaper'} icon="💚" onPress={() => router.push('/entry/diaper')} color={GREEN} />
+                <ActionButton label={t('entry.diaper')} icon="💚" onPress={() => router.push('/entry/diaper')} color={GREEN} />
               </View>
               <View style={{ flex: 1 }}>
-                <ActionButton label={language === 'fr' ? 'Température' : 'Temperature'} icon="🌡️" onPress={() => router.push('/entry/temperature')} color={RED} />
-              </View>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-              <View style={{ flex: 1 }}>
-                <ActionButton label={language === 'fr' ? 'Vaccin' : 'Vaccine'} icon="💉" onPress={() => router.push('/entry/vaccine')} color={GREEN} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <ActionButton label={language === 'fr' ? 'Symptômes' : 'Symptoms'} icon="🩺" onPress={() => router.push('/entry/symptom')} color={BLUE} />
+                <ActionButton label={t('entry.temperature')} icon="🌡️" onPress={() => router.push('/entry/temperature')} color={RED} />
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
               <View style={{ flex: 1 }}>
-                <ActionButton label={language === 'fr' ? 'Comidas' : 'Food'} icon="🍽️" onPress={() => router.push('/entry/food')} color={BLUE} />
+                <ActionButton label={t('entry.vaccine')} icon="💉" onPress={() => router.push('/entry/vaccine')} color={GREEN} />
               </View>
               <View style={{ flex: 1 }}>
-                <ActionButton label={language === 'fr' ? 'Médicaments' : 'Medicine'} icon="💊" onPress={() => router.push('/entry/medication')} color={GREEN} />
+                <ActionButton label={t('entry.symptoms')} icon="🩺" onPress={() => router.push('/entry/symptom')} color={BLUE} />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+              <View style={{ flex: 1 }}>
+                <ActionButton label={t('entry.food')} icon="🍽️" onPress={() => router.push('/entry/food')} color={BLUE} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ActionButton label={t('entry.medicine')} icon="💊" onPress={() => router.push('/entry/medication')} color={GREEN} />
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1 }}>
-                <ActionButton label={language === 'fr' ? 'Mesures' : 'Measurement'} icon="📏" onPress={() => router.push('/entry/measurement')} color={BLUE} />
+                <ActionButton label={t('entry.measurement')} icon="📏" onPress={() => router.push('/entry/measurement')} color={BLUE} />
               </View>
               <View style={{ flex: 1 }}>
-                <ActionButton label={language === 'fr' ? 'Sommeil' : 'Sleep'} icon="😴" onPress={() => router.push('/entry/sleep')} color={BLUE} />
+                <ActionButton label={t('entry.sleep')} icon="😴" onPress={() => router.push('/entry/sleep')} color={BLUE} />
               </View>
             </View>
           </Animated.View>
@@ -883,10 +882,10 @@ export default function HomeScreen() {
             <Animated.View entering={FadeInDown.duration(260).delay(390)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
               <GlassCard style={{ paddingHorizontal: 14, paddingVertical: 12 }} blur={false}>
                 <Text style={{ color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600', textTransform: 'uppercase', marginBottom: 8 }}>
-                  {language === 'fr' ? 'CROISSANCE' : 'GROWTH'}
+                  {t('growth.growth')}
                 </Text>
                 <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700', marginBottom: 10 }}>
-                  {language === 'fr' ? 'Poids' : 'Weight'}: {(weightMeasurements[0]?.weight ?? 0).toFixed(2)} kg
+                  {t('growth.weight')}: {(weightMeasurements[0]?.weight ?? 0).toFixed(2)} kg
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 50, justifyContent: 'center' }}>
                   {(() => {
@@ -914,7 +913,7 @@ export default function HomeScreen() {
                   })()}
                 </View>
                 <Text style={{ color: MUTED, fontSize: 10, marginTop: 8 }}>
-                  {language === 'fr' ? 'Dernières ' : 'Last '}
+                  {t('growth.lastMeasurements')}
                   {weightMeasurements.length}
                   {language === 'fr' ? ' mesures' : ' measurements'}
                 </Text>
@@ -927,7 +926,7 @@ export default function HomeScreen() {
             <Animated.View entering={FadeInDown.duration(260).delay(405)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
               <GlassCard style={{ paddingHorizontal: 14, paddingVertical: 12 }} blur={false}>
                 <Text style={{ color: GREEN, fontSize: 10, letterSpacing: 1.5, fontWeight: '600', textTransform: 'uppercase', marginBottom: 8 }}>
-                  {language === 'fr' ? 'HISTORIQUE VACCIN' : 'VACCINE HISTORY'}
+                  {t('vaccine.history')}
                 </Text>
                 <View style={{ gap: 6 }}>
                   {vaccineHistory.map((vaccine) => (
@@ -948,7 +947,7 @@ export default function HomeScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{vaccine.payload?.vaccineName}</Text>
                         <Text style={{ color: MUTED, fontSize: 11 }}>
-                          {language === 'fr' ? 'Dose ' : 'Dose '}{vaccine.payload?.vaccineDose}{vaccine.payload?.hasReminder ? ' • 🔔 ' + (language === 'fr' ? 'Rappel' : 'Reminder') : ''}
+                          {t('vaccine.dose')}{vaccine.payload?.vaccineDose}{vaccine.payload?.hasReminder ? ' • 🔔 ' + t('vaccine.reminder') : ''}
                         </Text>
                       </View>
                       <Text style={{ color: MUTED, fontSize: 11 }}>{formatClock(vaccine.occurredAt, locale)}</Text>
@@ -965,11 +964,11 @@ export default function HomeScreen() {
               <GlassCard style={{ paddingHorizontal: 14, paddingVertical: 12 }} blur={false}>
                 <View style={{ marginBottom: 10 }}>
                   <Text style={{ color: BLUE, fontSize: 10, letterSpacing: 1.5, fontWeight: '600', textTransform: 'uppercase', marginBottom: 8 }}>
-                    {language === 'fr' ? 'HISTORIQUE COMIDAS' : 'FOOD HISTORY'}
+                    {t('food.history')}
                   </Text>
                   {foodStats.mostCommon && (
                     <Text style={{ color: MUTED, fontSize: 11 }}>
-                      {language === 'fr' ? 'Favori: ' : 'Favorite: '}
+                      {t('food.favorite')}
                       <Text style={{ color: TEXT, fontWeight: '600' }}>{foodStats.mostCommon.name}</Text>
                       {' '}
                       ({foodStats.mostCommon.count}x)
@@ -999,7 +998,7 @@ export default function HomeScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{food.payload?.foodName}</Text>
                         <Text style={{ color: MUTED, fontSize: 11 }}>
-                          {language === 'fr' ? 'Quantité: ' : 'Amount: '}
+                          {t('food.amount')}
                           {food.payload?.quantity}
                           {(food.payload?.foodAllergies?.length ?? 0) > 0 && ` • ${food.payload?.foodAllergies?.join(', ')}`}
                         </Text>
@@ -1017,7 +1016,7 @@ export default function HomeScreen() {
             <Animated.View entering={FadeInDown.duration(260).delay(435)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
               <GlassCard style={{ paddingHorizontal: 14, paddingVertical: 12 }} blur={false}>
                 <Text style={{ color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600', textTransform: 'uppercase', marginBottom: 8 }}>
-                  {language === 'fr' ? 'HISTORIQUE' : 'RECENT'}
+                  {t('recent.recent')}
                 </Text>
                 <View style={{ gap: 6 }}>
                   {recentEntries.map((entry) => {
@@ -1067,7 +1066,7 @@ export default function HomeScreen() {
           <Animated.View entering={FadeInDown.duration(260).delay(495)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
             <GlassCard style={{ paddingHorizontal: 14, paddingVertical: 12, gap: 10 }} blur={false}>
               <Text style={{ color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600', textTransform: 'uppercase' }}>
-                {language === 'fr' ? 'HYDRATATION' : 'HYDRATION'}
+                {t('hydration.hydration')}
               </Text>
               <Text style={{ color: MUTED, fontSize: 11 }}>
                 {hydration} ml / {appSettings.hydrationGoalMl} ml
@@ -1116,15 +1115,15 @@ export default function HomeScreen() {
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowNextFeedPicker(false)} />
           <BlurView intensity={30} style={StyleSheet.absoluteFill} />
           <View style={styles.menuSheet}>
-            <Text style={styles.menuTitle}>{language === 'fr' ? 'Choisir le côté' : 'Choose side'}</Text>
+            <Text style={styles.menuTitle}>{t('modal.chooseSide')}</Text>
             <Text style={styles.menuSubtitle}>
-              {language === 'fr' ? 'Choisis le côté avant de lancer le timer.' : 'Pick the side before starting the timer.'}
+              {t('modal.chooseBeforeLaunch')}
             </Text>
             <View style={styles.choiceGrid}>
               {[
-                { label: language === 'fr' ? 'Sein gauche' : 'Left breast', side: 'left' as BreastSide, color: GOLD },
-                { label: language === 'fr' ? 'Sein droit' : 'Right breast', side: 'right' as BreastSide, color: GREEN },
-                { label: language === 'fr' ? 'Les deux' : 'Both sides', side: 'both' as BreastSide, color: TEXT },
+                { label: t('modal.leftBreast'), side: 'left' as BreastSide, color: GOLD },
+                { label: t('modal.rightBreast'), side: 'right' as BreastSide, color: GREEN },
+                { label: t('modal.bothSides'), side: 'both' as BreastSide, color: TEXT },
               ].map(({ label, side, color }) => (
                 <Pressable
                   key={side}
@@ -1149,12 +1148,12 @@ export default function HomeScreen() {
                     <Text style={{ color, fontSize: 13, fontWeight: '700' }}>{label}</Text>
                   </View>
                   <Text style={{ color: MUTED, fontSize: 11 }}>
-                    {language === 'fr' ? 'Timer immédiat' : 'Start timer'}
+                    {t('modal.immediateTimer')}
                   </Text>
                 </Pressable>
               ))}
             </View>
-            <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowNextFeedPicker(false)} variant="ghost" />
+            <Button label={t('common.close')} onPress={() => setShowNextFeedPicker(false)} variant="ghost" />
           </View>
         </View>
       </Modal>
@@ -1164,21 +1163,21 @@ export default function HomeScreen() {
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowHomeCustomizer(false)} />
           <BlurView intensity={30} style={StyleSheet.absoluteFill} />
           <View style={styles.menuSheet}>
-            <Text style={styles.menuTitle}>{language === 'fr' ? 'Personnaliser' : 'Customize'}</Text>
+            <Text style={styles.menuTitle}>{t('modal.customize')}</Text>
             <Text style={styles.menuSubtitle}>
-              {language === 'fr' ? 'Affiche ou masque les sections importantes.' : 'Show or hide important sections.'}
+              {t('modal.toggleSections')}
             </Text>
             <View style={styles.customizerGrid}>
               {[
-                { key: 'nextFeed', label: language === 'fr' ? 'Prochaine tame' : 'Next feeding' },
-                { key: 'milkProgress', label: language === 'fr' ? 'Progrès lait' : 'Milk progress' },
-                { key: 'smartSignals', label: language === 'fr' ? 'Alertes' : 'Alerts' },
+                { key: 'nextFeed', label: t('modal.nextFeeding') },
+                { key: 'milkProgress', label: t('modal.milkProgress') },
+                { key: 'smartSignals', label: t('modal.alerts') },
               ].map((item) => {
                 const enabled = appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics];
                 return (
                   <View key={item.key} style={styles.customizerItem}>
                     <Button
-                      label={`${enabled ? (language === 'fr' ? 'Masquer' : 'Hide') : (language === 'fr' ? 'Afficher' : 'Show')} ${item.label}`}
+                      label={`${enabled ? t('modal.hide') : t('modal.show')} ${item.label}`}
                       onPress={() => void updateDashboardMetric(item.key as keyof typeof appSettings.dashboardMetrics, !enabled)}
                       variant={enabled ? 'secondary' : 'ghost'}
                       size="sm"
@@ -1188,8 +1187,8 @@ export default function HomeScreen() {
               })}
             </View>
             <View style={{ gap: 8 }}>
-              <Button label={language === 'fr' ? 'Tout restaurer' : 'Restore all'} onPress={() => void restoreHomeCustomization()} variant="secondary" />
-              <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowHomeCustomizer(false)} variant="ghost" />
+              <Button label={t('modal.restoreAll')} onPress={() => void restoreHomeCustomization()} variant="secondary" />
+              <Button label={t('common.close')} onPress={() => setShowHomeCustomizer(false)} variant="ghost" />
             </View>
           </View>
         </View>
@@ -1202,7 +1201,7 @@ export default function HomeScreen() {
           <View style={styles.switcherSheet}>
             <View style={styles.switcherHeader}>
               <View>
-                <Text style={styles.switcherTitle}>{language === 'fr' ? "Changer d'enfant" : 'Switch child'}</Text>
+                <Text style={styles.switcherTitle}>{t('header.switchChild')}</Text>
                 <Text style={styles.switcherSubtitle}>
                   {language === 'fr' ? 'Choisis le profil actif pour ce tableau de bord.' : 'Choose the active profile for this dashboard.'}
                 </Text>
@@ -1243,7 +1242,7 @@ export default function HomeScreen() {
                           }}
                         >
                           <Text style={{ color: active ? GOLD : MUTED, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>
-                            {active ? (language === 'fr' ? 'Actif' : 'Active') : language === 'fr' ? 'Utiliser' : 'Use'}
+                            {active ? (language === 'fr' ? 'Actif' : 'Active') : t('common.add')}
                           </Text>
                         </View>
                       </View>
@@ -1275,7 +1274,7 @@ export default function HomeScreen() {
                 }}
                 variant="secondary"
               />
-              <Button label={language === 'fr' ? 'Fermer' : 'Close'} onPress={() => setShowBabySwitcher(false)} variant="ghost" />
+              <Button label={t('common.close')} onPress={() => setShowBabySwitcher(false)} variant="ghost" />
             </View>
           </View>
         </View>
@@ -1304,9 +1303,9 @@ export default function HomeScreen() {
               </Text>
               <QuantityPicker value={quickAmount} onChange={setQuickAmount} largeTouchMode={appSettings.largeTouchMode} />
               <View style={styles.sheetActions}>
-                <Button label={language === 'fr' ? 'Enregistrer' : 'Save'} onPress={saveQuickTimerEntry} />
+                <Button label={t('common.save')} onPress={saveQuickTimerEntry} />
                 <Button
-                  label={language === 'fr' ? 'Annuler' : 'Cancel'}
+                  label={t('common.cancel')}
                   variant="ghost"
                   onPress={() => {
                     setQuickTimerMode(null);

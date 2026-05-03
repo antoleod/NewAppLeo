@@ -47,7 +47,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
       },
       t: (key, fallback) => translate(language, key, fallback),
     }),
-    [guestMode, language, saveProfile, user],
+    [guestMode, language, localLanguage, saveProfile, user],
   );
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;

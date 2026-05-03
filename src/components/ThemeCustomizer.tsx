@@ -1,11 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
@@ -19,14 +13,11 @@ export function ThemeVariantGrid({
   onChange: (variant: ThemeVariant) => void;
 }) {
   const { theme } = useTheme();
-  const { width } = useWindowDimensions();
-  const columnCount = width >= 900 ? 4 : width >= 600 ? 2 : 1;
-
   const variants: ThemeVariant[] = ['sage', 'rose', 'navy', 'sand'];
 
   return (
     <View style={styles.gridContainer}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
         {variants.map((variant) => {
           const isSelected = variant === value;
           const desc = themeVariantDescriptions[variant];
@@ -37,31 +28,25 @@ export function ThemeVariantGrid({
               style={[
                 styles.variantCard,
                 {
-                  flex: columnCount === 1 ? undefined : 1,
                   borderColor: isSelected ? theme.accent : theme.border,
                   borderWidth: isSelected ? 2 : 1,
-                  backgroundColor: theme.bgCard,
-                  opacity: isSelected ? 1 : 0.7,
-                  shadowColor: isSelected ? theme.accent : 'transparent',
-                  shadowOpacity: isSelected ? 0.3 : 0,
-                  shadowRadius: 8,
-                  shadowOffset: { width: 0, height: 4 },
-                  elevation: isSelected ? 4 : 0,
+                  backgroundColor: isSelected ? `${theme.accent}14` : theme.bgCard,
+                  opacity: 1,
                 },
               ]}
             >
               <View style={styles.variantPreview}>
                 <VariantColorPill variant={variant} />
               </View>
-              <Text style={[styles.variantEmoji, { fontSize: 24 }]}>
+              <Text style={[styles.variantEmoji, { fontSize: 13 }]}>
                 {desc.emoji}
               </Text>
               <Text style={[styles.variantLabel, { color: theme.textPrimary }]}>
                 {desc.label}
               </Text>
-              <Text style={[styles.variantDescription, { color: theme.textMuted }]}>
-                {desc.description}
-              </Text>
+              {isSelected ? (
+                <View style={[styles.selectedDot, { backgroundColor: theme.accent }]} />
+              ) : null}
             </Pressable>
           );
         })}
@@ -280,14 +265,18 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   variantCard: {
-    borderRadius: radii.lg,
-    padding: spacing.md,
-    gap: spacing.md,
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    gap: 6,
+    minWidth: 92,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   variantPreview: {
-    width: '100%',
-    height: 80,
-    borderRadius: radii.md,
+    width: 22,
+    height: 14,
+    borderRadius: 999,
     overflow: 'hidden',
   },
   colorPill: {
@@ -299,14 +288,18 @@ const styles = StyleSheet.create({
   },
   variantLabel: {
     ...typography.sectionTitle,
-    fontWeight: '800',
+    fontWeight: '700',
+    fontSize: 12,
+    letterSpacing: 0.2,
   },
   variantEmoji: {
     textAlign: 'center',
   },
-  variantDescription: {
-    ...typography.body,
-    fontSize: 12,
+  selectedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    marginLeft: 2,
   },
   preview: {
     borderRadius: radii.lg,

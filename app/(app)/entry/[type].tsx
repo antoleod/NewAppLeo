@@ -6,6 +6,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useLocale } from '@/context/LocaleContext';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { clamp } from '@/utils/date';
 import { BreastSide, EntryPayload, EntryType } from '@/types';
 import { TimerWidget } from '@/components/TimerWidget';
@@ -134,6 +135,7 @@ function DiaperVolumeSlider({ emoji, value, onChange, color }: DiaperVolumeSlide
 export default function EntryComposerScreen() {
   const { colors } = useTheme();
   const { language } = useLocale();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string }>();
   const { addEntry, updateEntry, deleteEntry, entryById } = useAppData();
   const type = (params.type as EntryType) || 'feed';
@@ -434,29 +436,29 @@ export default function EntryComposerScreen() {
       <Card>
         {showDateTime && (
           <View style={styles.sectionCard}>
-            <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={occurredAt} onChange={setOccurredAt} />
+            <DateTimeField label={t('entry.when')} value={occurredAt} onChange={setOccurredAt} />
           </View>
         )}
         {type === 'diaper' && (
           <View style={styles.sectionCard}>
-            <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={occurredAt} onChange={setOccurredAt} />
+            <DateTimeField label={t('entry.when')} value={occurredAt} onChange={setOccurredAt} />
           </View>
         )}
 
         {type === 'feed' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Type' : 'Type'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.type')}</Text>
             <Segment
               value={mode}
               onChange={(value) => setMode(value as 'breast' | 'bottle')}
               options={[
-                { label: language === 'fr' ? 'Sein' : 'Breast', value: 'breast' },
-                { label: language === 'fr' ? 'Biberon' : 'Bottle', value: 'bottle' },
+                { label: t('entry.breast'), value: 'breast' },
+                { label: t('entry.bottle'), value: 'bottle' },
               ]}
             />
             {mode === 'bottle' ? (
               <>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Quantité' : 'Amount'}</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{t('entry.amount')}</Text>
                 <View style={styles.chipRow}>
                   <Pressable onPress={() => setAmountMl('150')} style={[styles.quickChip, amountMl === '150' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
                     <Text style={[styles.quickChipText, amountMl === '150' && { color: meta.tone, fontWeight: '900' }]}>150</Text>
@@ -472,7 +474,7 @@ export default function EntryComposerScreen() {
               </>
             ) : (
               <>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Durée' : 'Duration'}</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{t('entry.duration')}</Text>
                 <TimerWidget
                   label={language === 'fr' ? 'Durée (min)' : 'Duration (min)'}
                   valueMinutes={Number(durationMin) || 0}
@@ -493,7 +495,7 @@ export default function EntryComposerScreen() {
           <View style={styles.sectionCard}>
             <View style={{ marginBottom: 12 }}>
               <Input
-                label={language === 'fr' ? 'Aliment' : 'Food'}
+                label={t('food.foodLabel')}
                 value={foodName}
                 onChangeText={setFoodName}
                 placeholder={language === 'fr' ? 'Pomme, riz, purée...' : 'Apple, rice, puree...'}
@@ -502,7 +504,7 @@ export default function EntryComposerScreen() {
 
             <View>
               <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
-                {language === 'fr' ? 'Quantité' : 'Amount'}
+                {t('entry.amount')}
               </Text>
               <View style={styles.chipRow}>
                 <Pressable
@@ -591,9 +593,9 @@ export default function EntryComposerScreen() {
 
         {type === 'pump' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Durée' : 'Duration'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.duration')}</Text>
             <TimerWidget label={language === 'fr' ? 'Session (min)' : 'Session (min)'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
-            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Quantité' : 'Amount'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{t('entry.amount')}</Text>
             <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
           </View>
         )}
@@ -614,7 +616,7 @@ export default function EntryComposerScreen() {
                       <View style={styles.whoSuggestedRow}>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.whoSuggestedLabel, { color: colors.muted }]}>
-                            {language === 'fr' ? 'Poids' : 'Weight'}
+                            {t('entry.weight')}
                           </Text>
                           <Text style={[styles.whoSuggestedValue, { color: meta.tone }]}>
                             {suggested.weight.value.toFixed(1)} kg
@@ -625,7 +627,7 @@ export default function EntryComposerScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.whoSuggestedLabel, { color: colors.muted }]}>
-                            {language === 'fr' ? 'Taille' : 'Height'}
+                            {t('entry.height')}
                           </Text>
                           <Text style={[styles.whoSuggestedValue, { color: meta.tone }]}>
                             {suggested.height.value.toFixed(1)} cm
@@ -671,7 +673,7 @@ export default function EntryComposerScreen() {
                       )}
                     </View>
 
-                    <Input label={language === 'fr' ? 'PC (cm)' : 'Head circ (cm)'} value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" placeholder="35" />
+                    <Input label={t('entry.headCirc')} value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" placeholder="35" />
                     <Input label={language === 'fr' ? 'Température' : 'Temperature'} value={tempC} onChangeText={setTempC} keyboardType="decimal-pad" placeholder="37.5" />
                   </View>
                 </>
@@ -702,8 +704,8 @@ export default function EntryComposerScreen() {
                 </View>
               </View>
             )}
-            <Input label={language === 'fr' ? 'Nom' : 'Name'} value={name} onChangeText={setName} />
-            <Input label={language === 'fr' ? 'Dosage' : 'Dosage'} value={dosage} onChangeText={setDosage} />
+            <Input label={t('entry.medicationName')} value={name} onChangeText={setName} />
+            <Input label={t('entry.dosage')} value={dosage} onChangeText={setDosage} />
             {name.trim() && (
               <Pressable onPress={async () => setSavedMedicines(await upsertSavedMedicine({ name, dosage }))} style={[styles.savePresetButton, { marginTop: 8 }]}>
                 <Text style={styles.savePresetText}>💾 {language === 'fr' ? 'Sauver' : 'Save'}</Text>
@@ -726,7 +728,7 @@ export default function EntryComposerScreen() {
 
         {type === 'milestone' && (
           <View style={styles.sectionCard}>
-            <Input label={language === 'fr' ? 'Titre' : 'Title'} value={title} onChangeText={setTitle} placeholder={language === 'fr' ? 'Premier sourire...' : 'First smile...'} />
+            <Input label={t('entry.titleLabel')} value={title} onChangeText={setTitle} placeholder={language === 'fr' ? 'Premier sourire...' : 'First smile...'} />
             <Input label="Icon" value={icon} onChangeText={setIcon} placeholder="✨" />
             <Button
               label={photoUri ? (language === 'fr' ? '📸 Remplacer' : '📸 Replace') : language === 'fr' ? '📸 Ajouter' : '📸 Add'}
@@ -901,7 +903,7 @@ export default function EntryComposerScreen() {
 
                 <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Prochaine dose' : 'Next dose scheduled'}</Text>
                 <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 8 }]}>{language === 'fr' ? 'Date prevue pour la prochaine dose' : 'When is the next dose scheduled'}</Text>
-                <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={vaccineNextDueDate} onChange={setVaccineNextDueDate} />
+                <DateTimeField label={t('entry.when')} value={vaccineNextDueDate} onChange={setVaccineNextDueDate} />
               </>
             )}
 

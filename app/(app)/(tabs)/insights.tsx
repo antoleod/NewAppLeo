@@ -6,6 +6,7 @@ import { Button, EmptyState, Heading, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { getMeanFeedingInterval } from '@/lib/patterns';
 import { whoHeightTable, whoWeightTable } from '@/lib/who-data';
 import {
@@ -37,7 +38,8 @@ function titleStyle() {
 }
 
 export default function InsightsScreen() {
-  const { t, language } = useLocale();
+  const { language } = useLocale();
+  const { t } = useTranslation();
   const { entries, summary } = useAppData();
   const { profile } = useAuth();
   const [range, setRange] = useState<RangeKey>('7d');
@@ -90,11 +92,11 @@ export default function InsightsScreen() {
   );
 
   const summaryCards = [
-    { label: language === 'fr' ? 'Prises' : 'Feeds', value: String(summary.today.feedCount), color: GOLD },
-    { label: language === 'fr' ? 'Lait' : 'Bottle', value: `${summary.today.bottleMl} ml`, color: BLUE },
-    { label: language === 'fr' ? 'Sommeil' : 'Sleep', value: formatDuration(summary.today.sleepMinutes), color: GREEN },
-    { label: language === 'fr' ? 'Couches' : 'Diapers', value: String(summary.today.diaperCount), color: '#F778BA' },
-    { label: language === 'fr' ? 'Repas' : 'Food', value: String(summary.today.foodCount), color: '#F0B85A' },
+    { label: t('insights.feeds'), value: String(summary.today.feedCount), color: GOLD },
+    { label: t('insights.bottle'), value: `${summary.today.bottleMl} ml`, color: BLUE },
+    { label: t('insights.sleep'), value: formatDuration(summary.today.sleepMinutes), color: GREEN },
+    { label: t('insights.diapers'), value: String(summary.today.diaperCount), color: '#F778BA' },
+    { label: t('insights.food'), value: String(summary.today.foodCount), color: '#F0B85A' },
   ];
 
   if (!entries.length) {
