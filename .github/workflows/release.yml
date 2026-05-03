@@ -67,14 +67,3 @@ jobs:
             **Deployment**: Automatic deploy to GitHub Pages will start shortly.
           draft: false
           prerelease: false
-
-      - name: Comment on commits
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.repos.createReaction({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-              content: 'rocket'
-            });
