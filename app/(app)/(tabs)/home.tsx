@@ -1100,8 +1100,8 @@ export default function HomeScreen() {
                         paddingHorizontal: 4,
                       })}
                     >
-                      <View style={{ width: 22, height: 22 }}>
-                        {GetEntryIcon(action.type, 22, action.color)}
+                      <View style={{ width: 29, height: 29 }}>
+                        {GetEntryIcon(action.type, 29, action.color)}
                       </View>
                       <Text style={{ color: TEXT_SECONDARY, fontSize: 10, fontWeight: '500', textAlign: 'center' }} numberOfLines={1}>{action.label}</Text>
                     </Pressable>
