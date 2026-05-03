@@ -214,6 +214,8 @@
     "currentWeightLabel": "Peso actual (kg)",
     "heightLabel": "Altura (cm)",
     "notesLabel": "Notas",
+    "measurementsTitle": "Medidas",
+    "preferencesTitle": "Preferencias",
     "languageLabel2": "Idioma",
     "saveProfile": "Guardar perfil",
     "childrenTitle": "Hijos",
