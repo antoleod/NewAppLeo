@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { createPairingSession, joinPairingSession, getLocalPairingSession, type PairingSession } from '@/services/pairingService';
 import { useToast } from '@/components/Toast';
 import { haptics } from '@/lib/haptics';
+import { getDeviceDisplayName, setDeviceDisplayName } from '@/lib/storage';
 
 function makeCode() {
   const raw = globalThis.crypto?.getRandomValues ? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(3))) : [1, 2, 3];
@@ -20,6 +21,7 @@ export default function PairScreen() {
   const { user } = useAuth();
   const toast = useToast();
   const [code, setCode] = useState(makeCode);
+  const [participantName, setParticipantName] = useState('');
   const [session, setSession] = useState<PairingSession | null>(null);
   const isTablet = width >= 768;
   const isDesktop = width >= 1280;
@@ -54,6 +56,7 @@ export default function PairScreen() {
   useEffect(() => {
     (async () => {
       setSession(await getLocalPairingSession());
+      setParticipantName(await getDeviceDisplayName());
     })();
   }, []);
 
@@ -106,11 +109,18 @@ export default function PairScreen() {
       </Card>
       <Card style={[styles.joinCard, { borderColor: colors.border }]}>
         <View style={{ gap: 10 * uiScale }}>
+          <Input label="Your name" value={participantName} onChangeText={setParticipantName} placeholder="Papa, Mama, Abuela..." />
           <Input label="Join code" value={code} onChangeText={setCode} placeholder="123456" keyboardType="numeric" inputMode="numeric" />
           <Button
             label="Join"
             onPress={async () => {
               try {
+                const cleanName = participantName.trim();
+                if (!cleanName) {
+                  toast.warning('Please enter your name first.');
+                  return;
+                }
+                await setDeviceDisplayName(cleanName);
                 const next = await joinPairingSession(code, user?.uid ?? 'anonymous');
                 setSession(next);
                 haptics.success();

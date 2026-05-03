@@ -30,6 +30,7 @@ import {
   getMomHydration,
   setActiveBabyId,
   setMomHydration,
+  getDeviceDisplayName,
   updateAppSettings,
 } from '@/lib/storage';
 import { QuantityPicker } from '@/components/QuantityPicker';
@@ -513,6 +514,7 @@ export default function HomeScreen() {
   const [quickFeedSide, setQuickFeedSide] = useState<BreastSide>('left');
   const [now, setNow] = useState(Date.now());
   const [defaultFeedingMode, setDefaultFeedingMode] = useState<'breast' | 'bottle'>('breast');
+  const [deviceDisplayName, setDeviceDisplayName] = useState('');
 
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
   const lastFeed = useMemo(() => feedEntries[0], [feedEntries]);
@@ -572,6 +574,7 @@ export default function HomeScreen() {
       setHydration(await getMomHydration(activeBaby.id));
       setVisibility(await getModuleVisibility());
       setAppSettingsState(await getAppSettings());
+      setDeviceDisplayName(await getDeviceDisplayName());
     };
 
     void refresh();
@@ -727,6 +730,10 @@ export default function HomeScreen() {
   }
 
   const resolvedDisplayName = useMemo(() => {
+    const fromDevice = deviceDisplayName.trim();
+    if (fromDevice) return fromDevice;
+    const fromCaregiver = (profile?.caregiverName ?? '').trim();
+    if (fromCaregiver) return fromCaregiver;
     const fromProfile = (profile?.displayName ?? '').trim();
     if (fromProfile && fromProfile.toLowerCase() !== 'local') return fromProfile;
     const fromUserName = (user?.displayName ?? '').trim();
@@ -738,7 +745,7 @@ export default function HomeScreen() {
       return fromProfileEmail.split('@')[0];
     }
     return 'Parent';
-  }, [profile?.authEmail, profile?.displayName, user?.displayName, user?.email]);
+  }, [deviceDisplayName, profile?.authEmail, profile?.caregiverName, profile?.displayName, user?.displayName, user?.email]);
 
   return (
     <Page contentStyle={styles.pageContent}>

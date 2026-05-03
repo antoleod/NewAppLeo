@@ -9,6 +9,7 @@ const MODULE_VISIBILITY_KEY = 'appleo.moduleVisibility';
 const APP_SETTINGS_KEY = 'appleo.appSettings';
 const GUEST_PROFILE_KEY = 'appleo.guestProfile';
 const SAVED_MEDICINES_KEY = 'appleo.savedMedicines';
+const DEVICE_DISPLAY_NAME_KEY = 'appleo.deviceDisplayName';
 const SESSION_PREFIX = 'appleo.sessions';
 const CURRENT_SESSION_PREFIX = 'appleo.currentSession';
 
@@ -364,6 +365,14 @@ export async function setGuestProfile(profile: UserProfile) {
 
 export async function clearGuestProfile() {
   await AsyncStorage.removeItem(GUEST_PROFILE_KEY);
+}
+
+export async function getDeviceDisplayName() {
+  return (await AsyncStorage.getItem(DEVICE_DISPLAY_NAME_KEY)) ?? '';
+}
+
+export async function setDeviceDisplayName(name: string) {
+  await AsyncStorage.setItem(DEVICE_DISPLAY_NAME_KEY, name.trim());
 }
 
 export async function getSessions(uid: string) {

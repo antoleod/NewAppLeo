@@ -201,12 +201,21 @@ export default function ProfileScreen() {
     setSyncing(true);
     try {
       const result = await flushQueuedOperations(profile.uid);
-      setQueuedSyncCount(0);
+      const queuedOperations = await loadQueuedOperations();
+      setQueuedSyncCount(queuedOperations.length);
       haptics.success();
       toast.success(format('profile.syncFlushed', { count: result.flushed }));
     } catch (error: any) {
       haptics.error();
-      toast.error(error?.message ?? t('profile.syncError'));
+      const message = String(error?.message ?? '');
+      const code = String(error?.code ?? '');
+      if (code.includes('permission-denied') || /insufficient permissions|missing or insufficient/i.test(message)) {
+        toast.error('Sync blocked by Firestore rules for this account. Please verify database permissions.');
+      } else {
+        toast.error(error?.message ?? t('profile.syncError'));
+      }
+      const queuedOperations = await loadQueuedOperations();
+      setQueuedSyncCount(queuedOperations.length);
     } finally {
       setSyncing(false);
     }
