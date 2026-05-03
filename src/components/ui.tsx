@@ -184,7 +184,7 @@ export function Button({
   style?: any;
 }) {
   const { width } = useWindowDimensions();
-  const { theme } = useTheme();
+  const { theme, buttonOpacity } = useTheme();
   const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
   const background =
     variant === 'primary'
@@ -211,7 +211,7 @@ export function Button({
           width: fullWidth ? '100%' : undefined,
           backgroundColor: background,
           borderColor,
-          opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
+          opacity: disabled ? 0.45 : pressed ? Math.min(buttonOpacity, 0.85) : buttonOpacity,
           shadowColor: variant === 'ghost' ? 'transparent' : theme.textPrimary,
           shadowOpacity: variant === 'ghost' ? 0 : 0.08,
           shadowRadius: 14,

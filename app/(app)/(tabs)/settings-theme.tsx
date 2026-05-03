@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -9,8 +9,19 @@ import { getAppSettings, setAppSettings } from '@/lib/storage';
 
 export default function ThemeSettings() {
   const { width } = useWindowDimensions();
-  const { theme, themeMode, themeVariant, backgroundPhotoUri, setThemeVariant, setThemeStyle, setBackgroundPhotoUri } = useTheme();
+  const {
+    theme,
+    themeMode,
+    themeVariant,
+    backgroundPhotoUri,
+    buttonOpacity,
+    setThemeVariant,
+    setThemeStyle,
+    setBackgroundPhotoUri,
+    setButtonOpacity,
+  } = useTheme();
   const { setThemeMode } = useAuth();
+  const [opacityValue, setOpacityValue] = useState(buttonOpacity);
 
   const themes = [
     {
@@ -39,6 +50,23 @@ export default function ThemeSettings() {
     },
   ] as const;
 
+  const opacityOptions = [
+    { label: '100%', value: 1 },
+    { label: '90%', value: 0.9 },
+    { label: '80%', value: 0.8 },
+    { label: '70%', value: 0.7 },
+  ];
+
+  useEffect(() => {
+    setOpacityValue(buttonOpacity);
+  }, [buttonOpacity]);
+
+  async function handleButtonOpacityChange(value: string) {
+    const nextOpacity = Number(value);
+    setOpacityValue(nextOpacity);
+    await setButtonOpacity(nextOpacity);
+  }
+
   async function handleResetRecommended() {
     try {
       const current = await getAppSettings();
@@ -46,6 +74,7 @@ export default function ThemeSettings() {
         ...current,
         themeVariant: 'sage' as const,
         themeStyle: 'default' as const,
+        buttonOpacity: 1,
         customTheme: {
           ...current.customTheme,
           enabled: false,
@@ -55,6 +84,7 @@ export default function ThemeSettings() {
       await setThemeVariant('sage');
       await setThemeStyle('default');
       await setBackgroundPhotoUri('');
+      await setButtonOpacity(1);
       await setThemeMode('system');
       Alert.alert('Appearance', 'Recommended appearance restored.');
     } catch (error: any) {
@@ -146,6 +176,20 @@ export default function ThemeSettings() {
         </Card>
 
         <Card>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Button Opacity</Text>
+          <Text style={[styles.sectionBody, { color: theme.textMuted }]}>Adjust how solid primary app buttons look.</Text>
+          <Segment
+            value={String(opacityValue)}
+            onChange={(value) => void handleButtonOpacityChange(value)}
+            options={opacityOptions.map((item) => ({ label: item.label, value: String(item.value) }))}
+          />
+          <View style={styles.previewRow}>
+            <Button label="Preview" onPress={() => {}} fullWidth={false} style={{ opacity: opacityValue }} />
+            <Text style={[styles.previewText, { color: theme.textMuted }]}>{Math.round(opacityValue * 100)}%</Text>
+          </View>
+        </Card>
+
+        <Card>
           <Button label="Restore Recommended" onPress={() => void handleResetRecommended()} variant="secondary" />
         </Card>
 
@@ -170,4 +214,6 @@ const styles = StyleSheet.create({
   themeTitle: { fontSize: 14, fontWeight: '800' },
   themeBody: { fontSize: 12, marginTop: 4 },
   themeState: { fontSize: 12, fontWeight: '800', marginTop: 8 },
+  previewRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
+  previewText: { fontSize: 12, fontWeight: '700' },
 });

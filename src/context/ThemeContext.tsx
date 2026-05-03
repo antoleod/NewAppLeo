@@ -12,9 +12,11 @@ interface ThemeContextValue {
   themeVariant: ThemeVariant;
   themeStyle: ThemeStyle;
   backgroundPhotoUri: string;
+  buttonOpacity: number;
   setThemeVariant: (variant: ThemeVariant) => Promise<void>;
   setThemeStyle: (style: ThemeStyle) => Promise<void>;
   setBackgroundPhotoUri: (uri: string) => Promise<void>;
+  setButtonOpacity: (opacity: number) => Promise<void>;
   setCustomTheme: (colors: { enabled?: boolean; primary?: string; secondary?: string; backgroundAlt?: string }) => Promise<void>;
   toggleTheme: () => Promise<void>;
   theme: Theme;
@@ -30,6 +32,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [themeVariant, setThemeVariantState] = useState<ThemeVariant>(defaultAppSettings.themeVariant);
   const [themeStyle, setThemeStyleState] = useState<ThemeStyle>(defaultAppSettings.themeStyle);
   const [backgroundPhotoUri, setBackgroundPhotoUriState] = useState(defaultAppSettings.backgroundPhotoUri);
+  const [buttonOpacity, setButtonOpacityState] = useState(defaultAppSettings.buttonOpacity);
   const [customTheme, setCustomThemeState] = useState(defaultAppSettings.customTheme);
   const themeMode = profile?.themeMode ?? 'system';
   const resolvedMode = themeMode === 'system' ? systemScheme ?? 'light' : themeMode;
@@ -42,6 +45,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setThemeVariantState(settings.themeVariant);
         setThemeStyleState(settings.themeStyle);
         setBackgroundPhotoUriState(settings.backgroundPhotoUri ?? '');
+        setButtonOpacityState(settings.buttonOpacity);
         setCustomThemeState(settings.customTheme);
       }
     })();
@@ -60,6 +64,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       themeVariant,
       themeStyle,
       backgroundPhotoUri,
+      buttonOpacity,
       setThemeVariant: async (variant) => {
         setThemeVariantState(variant);
         const settings = await getAppSettings();
@@ -75,6 +80,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const settings = await getAppSettings();
         await setAppSettings({ ...settings, backgroundPhotoUri: uri });
       },
+      setButtonOpacity: async (opacity) => {
+        const nextOpacity = Math.max(0.6, Math.min(1, opacity));
+        setButtonOpacityState(nextOpacity);
+        const settings = await getAppSettings();
+        await setAppSettings({ ...settings, buttonOpacity: nextOpacity });
+      },
       setCustomTheme: async (nextCustomTheme) => {
         const next = { ...customTheme, ...nextCustomTheme };
         setCustomThemeState(next);
@@ -89,7 +100,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       colors: tokens.colors,
       gradients: tokens.gradients,
     }),
-    [backgroundPhotoUri, customTheme, resolvedMode, setThemeMode, themeMode, themeStyle, themeVariant, tokens],
+    [backgroundPhotoUri, buttonOpacity, customTheme, resolvedMode, setThemeMode, themeMode, themeStyle, themeVariant, tokens],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

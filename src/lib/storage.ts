@@ -96,6 +96,7 @@ export interface AppSettings {
   language: AppLanguage;
   hydrationGoalMl: number;
   compactHomeCards: boolean;
+  buttonOpacity: number;
   hasImportedLeoData: boolean;
   dashboardMetrics: DashboardMetrics;
   effects: MotionEffects;
@@ -112,6 +113,7 @@ export const defaultAppSettings: AppSettings = {
   language: 'fr',
   hydrationGoalMl: 2500,
   compactHomeCards: false,
+  buttonOpacity: 1,
   hasImportedLeoData: false,
   dashboardMetrics: {
     dailyStatus: true,
