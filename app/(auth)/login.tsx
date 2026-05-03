@@ -243,7 +243,7 @@ export default function LoginScreen() {
     'Sign in to continue';
 
   return (
-    <Page scroll contentStyle={styles.page}>
+    <Page scroll={false} contentStyle={styles.page}>
       {/* ── Background: deep black with subtle accent glow ── */}
       <LinearGradient colors={['#000000', '#0A0A0F', '#0F0F1A']} style={StyleSheet.absoluteFill} />
       <View pointerEvents="none" style={styles.glowTop} />
@@ -263,8 +263,11 @@ export default function LoginScreen() {
                 resizeMode="contain"
               />
             </View>
-            <Text style={[styles.greeting, isCompact && styles.greetingCompact]}>{greeting}</Text>
-            <Text style={styles.subline}>{subline}</Text>
+            <Text style={[styles.brandWordmark, isCompact && styles.brandWordmarkCompact]}>
+              BabyFlow
+            </Text>
+            <Text style={styles.greeting}>{greeting}</Text>
+            {!isCompact ? <Text style={styles.subline}>{subline}</Text> : null}
           </Animated.View>
 
           {/* ── Form group (Apple-style stacked rows with hairlines) ── */}
@@ -473,8 +476,9 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  page: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  kbAvoider: { width: '100%', alignItems: 'center' },
+  // No-scroll: fill screen, center content vertically
+  page: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12 },
+  kbAvoider: { width: '100%', alignItems: 'center', justifyContent: 'center', flex: 1 },
 
   // Background glows
   glowTop: {
@@ -493,42 +497,50 @@ const styles = StyleSheet.create({
     width: 360,
     height: 360,
     borderRadius: 360,
-    backgroundColor: '#5E5CE6', // Apple indigo accent
+    backgroundColor: '#5E5CE6',
     opacity: 0.08,
   },
 
-  container: { width: '100%', maxWidth: 420, gap: 14 },
+  container: { width: '100%', maxWidth: 420, gap: 10 },
 
-  // Hero
-  hero: { alignItems: 'center', gap: 10, marginBottom: 8 },
+  // Hero — compact, mobile-first
+  hero: { alignItems: 'center', gap: 4, marginBottom: 4 },
   iconWrap: {
     shadowColor: ACCENT_GLOW,
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.30,
-    shadowRadius: 24,
-    elevation: 10,
-    marginBottom: 12,
+    shadowRadius: 20,
+    elevation: 8,
+    marginBottom: 6,
   },
-  appIcon: { width: 96, height: 96, borderRadius: 22 },
-  appIconCompact: { width: 76, height: 76, borderRadius: 18 },
-  greeting: {
+  appIcon: { width: 76, height: 76, borderRadius: 18 },
+  appIconCompact: { width: 60, height: 60, borderRadius: 14 },
+  brandWordmark: {
     color: TEXT_PRIMARY,
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: '900',
     letterSpacing: -0.8,
     textAlign: 'center',
   },
-  greetingCompact: { fontSize: 26 },
-  subline: {
+  brandWordmarkCompact: { fontSize: 24 },
+  greeting: {
     color: TEXT_SECONDARY,
     fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.1,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  subline: {
+    color: TEXT_TERTIARY,
+    fontSize: 13,
     textAlign: 'center',
     fontWeight: '400',
   },
 
   // Form group (iOS-style grouped rows)
   formGroup: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: HAIRLINE,
@@ -537,58 +549,57 @@ const styles = StyleSheet.create({
   fieldRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    minHeight: 56,
+    paddingHorizontal: 14,
+    minHeight: 50,
   },
-  fieldIcon: { marginRight: 12, width: 20, alignItems: 'center' },
+  fieldIcon: { marginRight: 10, width: 20, alignItems: 'center' },
   fieldInput: {
     flex: 1,
     color: TEXT_PRIMARY,
     fontSize: 16,
-    paddingVertical: 16,
+    paddingVertical: 14,
     fontWeight: '400',
-    // Remove web outline
     ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}),
   },
-  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: HAIRLINE, marginLeft: 48 },
+  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: HAIRLINE, marginLeft: 44 },
   eyeButton: { padding: 4, marginLeft: 4 },
 
   // Inline error
-  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginTop: -6 },
-  errorText: { color: DESTRUCTIVE, fontSize: 13, fontWeight: '500', flex: 1 },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginTop: -2 },
+  errorText: { color: DESTRUCTIVE, fontSize: 12, fontWeight: '500', flex: 1 },
 
   // Forgot
-  forgotRow: { alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 4, marginTop: -8 },
-  forgotText: { color: ACCENT, fontSize: 14, fontWeight: '600' },
+  forgotRow: { alignSelf: 'flex-end', paddingVertical: 2, paddingHorizontal: 2, marginTop: -4 },
+  forgotText: { color: ACCENT, fontSize: 13, fontWeight: '600' },
 
   // Primary button (Apple-style filled)
   primaryButton: {
-    minHeight: 54,
-    borderRadius: 14,
+    minHeight: 50,
+    borderRadius: 13,
     backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: ACCENT_GLOW,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.40,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowRadius: 14,
+    elevation: 5,
   },
   primaryButtonDim: { opacity: 0.5, shadowOpacity: 0 },
   primaryButtonPressed: { opacity: 0.85, transform: [{ scale: 0.985 }] },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
 
   // Divider
-  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 0 },
   dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.14)' },
   dividerText: {
     color: TEXT_TERTIARY,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
@@ -596,8 +607,8 @@ const styles = StyleSheet.create({
 
   // Google (Apple-style: white-fill secondary)
   googleButton: {
-    minHeight: 54,
-    borderRadius: 14,
+    minHeight: 50,
+    borderRadius: 13,
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
@@ -616,15 +627,15 @@ const styles = StyleSheet.create({
   googleGlyph: { color: '#1A73E8', fontSize: 17, fontWeight: '900' },
   googleButtonText: {
     color: '#000000',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     letterSpacing: -0.2,
   },
 
   // Ghost (guest)
   ghostButton: {
-    minHeight: 54,
-    borderRadius: 14,
+    minHeight: 50,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.06)',
@@ -640,10 +651,10 @@ const styles = StyleSheet.create({
   },
 
   // Footer
-  footer: { gap: 16, alignItems: 'center', marginTop: 4 },
+  footer: { gap: 10, alignItems: 'center', marginTop: 4 },
   footerRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' },
-  footerText: { color: TEXT_SECONDARY, fontSize: 14 },
-  footerLink: { color: ACCENT, fontSize: 14, fontWeight: '700' },
+  footerText: { color: TEXT_SECONDARY, fontSize: 13 },
+  footerLink: { color: ACCENT, fontSize: 13, fontWeight: '700' },
 
   // Language selector — tight inline pill
   languageSelector: {
