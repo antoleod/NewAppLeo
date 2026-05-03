@@ -10,6 +10,9 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "experiments": {
+      "baseUrl": "/NewAppLeo/"
+    },
     "web": {
       "bundler": "metro",
       "favicon": "./assets/branding/app-icon/babyflow-app-icon-192.png",
