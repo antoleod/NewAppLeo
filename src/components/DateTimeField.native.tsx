@@ -4,19 +4,25 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useTheme } from '@/context/ThemeContext';
 
+function safeDate(value: Date) {
+  return value instanceof Date && Number.isFinite(value.getTime()) ? value : new Date();
+}
+
 function formatDate(value: Date, locale = 'fr-FR') {
+  const date = safeDate(value);
   return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(value);
+  }).format(date);
 }
 
 function formatTime(value: Date, locale = 'fr-FR') {
+  const date = safeDate(value);
   return new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
-  }).format(value);
+  }).format(date);
 }
 
 export function DateTimeField({
@@ -36,7 +42,7 @@ export function DateTimeField({
   const timeDisplay = useMemo(() => formatTime(value), [value]);
 
   function openDateTimePicker() {
-    setDraftValue(new Date(value));
+    setDraftValue(new Date(safeDate(value)));
     setPickerMode('date');
   }
 
@@ -48,14 +54,14 @@ export function DateTimeField({
     }
 
     if (pickerMode === 'date') {
-      const merged = new Date(draftValue ?? value);
+      const merged = new Date(draftValue ?? safeDate(value));
       merged.setFullYear(next.getFullYear(), next.getMonth(), next.getDate());
       setDraftValue(merged);
       setPickerMode('time');
       return;
     }
 
-    const merged = new Date(draftValue ?? value);
+    const merged = new Date(draftValue ?? safeDate(value));
     merged.setHours(next.getHours(), next.getMinutes(), 0, 0);
     onChange(merged);
     setPickerMode(null);
@@ -93,7 +99,7 @@ export function DateTimeField({
           </View>
         </View>
       </Pressable>
-      {pickerMode ? <DateTimePicker value={draftValue ?? value} mode={pickerMode} display="default" onChange={handleChange} /> : null}
+      {pickerMode ? <DateTimePicker value={draftValue ?? safeDate(value)} mode={pickerMode} display="default" onChange={handleChange} /> : null}
     </View>
   );
 }

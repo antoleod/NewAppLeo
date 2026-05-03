@@ -7,19 +7,30 @@ function pad2(value: number) {
   return String(value).padStart(2, '0');
 }
 
+function safeDate(value: Date) {
+  return value instanceof Date && Number.isFinite(value.getTime()) ? value : new Date();
+}
+
 function formatDate(value: Date, locale = 'fr-FR') {
+  const date = safeDate(value);
   return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(value);
+  }).format(date);
 }
 
 function formatTime(value: Date, locale = 'fr-FR') {
+  const date = safeDate(value);
   return new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
-  }).format(value);
+  }).format(date);
+}
+
+function toInputValue(value: Date) {
+  const date = safeDate(value);
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
 export function DateTimeField({
@@ -36,10 +47,7 @@ export function DateTimeField({
 
   const dateDisplay = useMemo(() => formatDate(value), [value]);
   const timeDisplay = useMemo(() => formatTime(value), [value]);
-  const inputValue = useMemo(
-    () => `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}T${pad2(value.getHours())}:${pad2(value.getMinutes())}`,
-    [value],
-  );
+  const inputValue = useMemo(() => toInputValue(value), [value]);
 
   function openDateTimePicker() {
     inputRef.current?.showPicker?.();
