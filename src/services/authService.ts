@@ -24,6 +24,27 @@ import { decryptWithPin, encryptWithPin, generateSalt, hashPin, normalizeEmail, 
 import { putLocalProfile, putLocalUsername } from './localStore';
 import { Platform } from 'react-native';
 
+function friendlyAuthError(error: any) {
+  const code = String(error?.code ?? '');
+  const message = String(error?.message ?? '');
+
+  if (code.includes('auth/invalid-credential')) return 'Invalid email or password.';
+  if (code.includes('auth/user-not-found')) return 'User not found.';
+  if (code.includes('auth/wrong-password')) return 'Invalid email or password.';
+  if (code.includes('auth/invalid-email')) return 'Invalid email format.';
+  if (code.includes('auth/user-disabled')) return 'This account is disabled.';
+  if (code.includes('auth/too-many-requests')) return 'Too many attempts. Try again later.';
+  if (code.includes('auth/network-request-failed')) return 'Network error. Check your connection.';
+  if (code.includes('auth/operation-not-allowed')) return 'Email/password sign-in is disabled in Firebase Auth.';
+
+  if (message.includes('INVALID_LOGIN_CREDENTIALS')) return 'Invalid email or password.';
+  if (message.includes('EMAIL_NOT_FOUND')) return 'User not found.';
+  if (message.includes('INVALID_PASSWORD')) return 'Invalid email or password.';
+  if (message.includes('USER_DISABLED')) return 'This account is disabled.';
+
+  return error?.message ?? 'Authentication failed.';
+}
+
 export async function registerAccount(payload: RegisterPayload) {
   const email = normalizeEmail(payload.email);
   const username = normalizeUsername(payload.username);
@@ -89,9 +110,13 @@ export async function registerAccount(payload: RegisterPayload) {
 }
 
 export async function signInWithEmail(payload: { email: string; password: string }) {
-  const authResult = await signInWithEmailAndPassword(auth, normalizeEmail(payload.email), payload.password);
-  const profile = await loadProfile(authResult.user.uid);
-  return { user: authResult.user, profile };
+  try {
+    const authResult = await signInWithEmailAndPassword(auth, normalizeEmail(payload.email), payload.password);
+    const profile = await loadProfile(authResult.user.uid);
+    return { user: authResult.user, profile };
+  } catch (error: any) {
+    throw new Error(friendlyAuthError(error));
+  }
 }
 
 // Errors where the popup approach is blocked or fails for environmental reasons.
