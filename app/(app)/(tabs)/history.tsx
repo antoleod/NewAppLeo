@@ -1,52 +1,41 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Button, Card, EmptyState, Heading, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { EntryRecord, EntryType } from '@/types';
 import { generateWeeklyPdf } from '@/lib/pdf';
 import { dateKey, formatLongDate, formatTime, isSameDay, startOfDay, subtractDays, toDate } from '@/utils/date';
 import { getOmsRow, interpolatePercentileBand, omsBySex, type OmsSex } from '@/lib/omsData';
 import { useWideWeb } from '@/hooks/useWideWeb';
 import { useToast } from '@/components/Toast';
+import { useLocale } from '@/context/LocaleContext';
 
-const BG = '#0D1117';
-const CARD = '#161B22';
-const BORDER = '#21262D';
-const GOLD = '#C9A227';
-const GREEN = '#3FB950';
-const BLUE = '#58A6FF';
-const RED = '#E74C3C';
-const PURPLE = '#A371F7';
-const TEXT = '#F0F6FC';
-const MUTED = '#8B949E';
-
-const FILTERS: Array<{ label: string; value: EntryType | 'all' }> = [
-  { label: 'Tout', value: 'all' },
-  { label: 'Feed', value: 'feed' },
-  { label: 'Food', value: 'food' },
-  { label: 'Sleep', value: 'sleep' },
-  { label: 'Diaper', value: 'diaper' },
-  { label: 'Pump', value: 'pump' },
-  { label: 'Meds', value: 'medication' },
-  { label: 'Mesure', value: 'measurement' },
-  { label: 'Milestone', value: 'milestone' },
-  { label: 'Symptome', value: 'symptom' },
-];
-
-function iconColor(type: EntryType) {
-  if (type === 'feed') return GOLD;
-  if (type === 'food') return '#F0B85A';
-  if (type === 'sleep') return BLUE;
-  if (type === 'diaper') return RED;
-  if (type === 'medication') return GREEN;
-  if (type === 'measurement') return PURPLE;
-  if (type === 'pump') return '#F778BA';
-  if (type === 'milestone') return '#FFA657';
-  return '#56D364';
+function getFilters(language: string): Array<{ label: string; value: EntryType | 'all' }> {
+  if (language === 'es') return [
+    { label: 'Todo', value: 'all' }, { label: 'Leche', value: 'feed' }, { label: 'Comida', value: 'food' }, { label: 'Sueño', value: 'sleep' },
+    { label: 'Pañal', value: 'diaper' }, { label: 'Bomba', value: 'pump' }, { label: 'Meds', value: 'medication' }, { label: 'Medidas', value: 'measurement' },
+    { label: 'Hito', value: 'milestone' }, { label: 'Síntoma', value: 'symptom' },
+  ];
+  if (language === 'en') return [
+    { label: 'All', value: 'all' }, { label: 'Feed', value: 'feed' }, { label: 'Food', value: 'food' }, { label: 'Sleep', value: 'sleep' },
+    { label: 'Diaper', value: 'diaper' }, { label: 'Pump', value: 'pump' }, { label: 'Meds', value: 'medication' }, { label: 'Measure', value: 'measurement' },
+    { label: 'Milestone', value: 'milestone' }, { label: 'Symptom', value: 'symptom' },
+  ];
+  if (language === 'nl') return [
+    { label: 'Alles', value: 'all' }, { label: 'Voeding', value: 'feed' }, { label: 'Eten', value: 'food' }, { label: 'Slaap', value: 'sleep' },
+    { label: 'Luier', value: 'diaper' }, { label: 'Kolf', value: 'pump' }, { label: 'Meds', value: 'medication' }, { label: 'Meting', value: 'measurement' },
+    { label: 'Mijlpaal', value: 'milestone' }, { label: 'Symptoom', value: 'symptom' },
+  ];
+  return [
+    { label: 'Tout', value: 'all' }, { label: 'Feed', value: 'feed' }, { label: 'Food', value: 'food' }, { label: 'Sleep', value: 'sleep' },
+    { label: 'Diaper', value: 'diaper' }, { label: 'Pump', value: 'pump' }, { label: 'Meds', value: 'medication' }, { label: 'Mesure', value: 'measurement' },
+    { label: 'Milestone', value: 'milestone' }, { label: 'Symptome', value: 'symptom' },
+  ];
 }
 
 function getDetail(entry: EntryRecord) {
@@ -116,180 +105,209 @@ function buildCsv(entries: EntryRecord[]) {
   ].join('\n');
 }
 
-function percentileStatus(value: number | null | undefined, band: { p3: number; p10: number; p90: number; p97: number }) {
-  if (!value) return { label: 'Sans donnees', color: MUTED };
-  if (value < band.p3 || value > band.p97) return { label: '⚠ Consulter pediatre', color: RED };
-  if (value < band.p10 || value > band.p90) return { label: 'Attention', color: '#F2C86F' };
-  return { label: '✓ Normal', color: GREEN };
-}
-
 function progressPercent(value: number | null | undefined, min: number, max: number) {
   if (!value || max <= min) return 0;
   return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
 }
 
-function WeightChart({
-  points,
-  bandRows,
-}: {
-  points: Array<{ label: string; value: number }>;
-  bandRows: Array<{ label: string; p25: number; p75: number }>;
-}) {
-  const width = 320;
-  const height = 190;
-  const padding = 28;
-  const allValues = [
-    ...points.map((point) => point.value),
-    ...bandRows.map((row) => row.p25),
-    ...bandRows.map((row) => row.p75),
-  ].filter((value) => Number.isFinite(value));
+export default function HistoryScreen() {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  const { isWideWeb } = useWideWeb();
+  const { language } = useLocale();
+  const FILTERS = useMemo(() => getFilters(language), [language]);
+  const { entries, deleteEntry, addEntry } = useAppData();
+  const { profile } = useAuth();
+  const { theme } = useTheme();
+  const toast = useToast();
 
-  if (!allValues.length) {
-    return <Text style={{ color: MUTED, textAlign: 'center' }}>Aucune courbe de poids disponible.</Text>;
-  }
+  const BG = theme.bg;
+  const CARD = theme.bgCard;
+  const BORDER = theme.border;
+  const GOLD = theme.accent;
+  const GREEN = theme.green;
+  const BLUE = theme.blue;
+  const RED = theme.red;
+  const PURPLE = theme.blue;
+  const TEXT = theme.textPrimary;
+  const MUTED = theme.textMuted;
 
-  const minValue = Math.min(...allValues) - 0.2;
-  const maxValue = Math.max(...allValues) + 0.2;
-  const stepX = points.length > 1 ? (width - padding * 2) / (points.length - 1) : width - padding * 2;
-  const y = (value: number) => height - padding - ((value - minValue) / Math.max(0.1, maxValue - minValue)) * (height - padding * 2);
-  const x = (index: number) => padding + stepX * index;
-  const plotWidth = width - padding * 2;
-  const plotHeight = height - padding * 2;
-  const bandSegments = bandRows.slice(0, Math.max(0, bandRows.length - 1));
-  const lineSegments = points.slice(0, Math.max(0, points.length - 1));
+  const iconColor = (type: EntryType) => {
+    if (type === 'feed') return GOLD;
+    if (type === 'food') return '#F0B85A';
+    if (type === 'sleep') return BLUE;
+    if (type === 'diaper') return RED;
+    if (type === 'medication') return GREEN;
+    if (type === 'measurement') return PURPLE;
+    if (type === 'pump') return '#F778BA';
+    if (type === 'milestone') return '#FFA657';
+    return '#56D364';
+  };
 
-  return (
-    <View style={{ height, borderRadius: 12, backgroundColor: CARD, overflow: 'hidden', paddingVertical: 8 }}>
-      {[0, 1, 2, 3].map((tick) => {
-        const value = minValue + ((maxValue - minValue) / 3) * tick;
-        const tickY = y(value);
-        return (
-          <View
-            key={tick}
-            style={{
-              position: 'absolute',
-              left: padding,
-              right: padding,
-              top: tickY,
-              borderTopWidth: 1,
-              borderTopColor: 'rgba(139,148,158,0.18)',
-            }}
-          >
-            <Text style={{ position: 'absolute', left: -24, top: -8, color: MUTED, fontSize: 10 }}>{value.toFixed(1)}</Text>
+  const percentileStatus = (value: number | null | undefined, band: { p3: number; p10: number; p90: number; p97: number }) => {
+    if (!value) return { label: 'Sans donnees', color: MUTED };
+    if (value < band.p3 || value > band.p97) return { label: '⚠ Consulter pediatre', color: RED };
+    if (value < band.p10 || value > band.p90) return { label: 'Attention', color: '#F2C86F' };
+    return { label: '✓ Normal', color: GREEN };
+  };
+
+  const OmsMetricCard = ({
+    label,
+    value,
+    unit,
+    band,
+  }: {
+    label: string;
+    value: number | null | undefined;
+    unit: string;
+    band: { p3: number; p10: number; p50: number; p90: number; p97: number };
+  }) => {
+    const status = percentileStatus(value, band);
+    return (
+      <View style={{ gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: BORDER, backgroundColor: BG }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+          <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{label}</Text>
+          <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: `${status.color}22` }}>
+            <Text style={{ color: status.color, fontSize: 12, fontWeight: '700' }}>{status.label}</Text>
           </View>
-        );
-      })}
+        </View>
+        <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700' }}>{value ? `${value.toFixed(1)} ${unit}` : '--'}</Text>
+        <View style={{ height: 10, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
+          <View style={{ width: `${progressPercent(value, band.p3, band.p97)}%`, height: '100%', backgroundColor: status.color }} />
+        </View>
+        <Text style={{ color: MUTED, fontSize: 12 }}>
+          P3 {band.p3.toFixed(1)} · P50 {band.p50.toFixed(1)} · P97 {band.p97.toFixed(1)}
+        </Text>
+      </View>
+    );
+  };
 
-      <View style={{ position: 'absolute', top: padding, left: padding, width: plotWidth, height: plotHeight }}>
-        {bandSegments.map((row, index) => {
-          const next = bandRows[index + 1];
-          const left = x(index) - padding;
-          const right = x(index + 1) - padding;
+  const WeightChart = ({
+    points,
+    bandRows,
+  }: {
+    points: Array<{ label: string; value: number }>;
+    bandRows: Array<{ label: string; p25: number; p75: number }>;
+  }) => {
+    const width = 320;
+    const height = 190;
+    const padding = 28;
+    const allValues = [
+      ...points.map((point) => point.value),
+      ...bandRows.map((row) => row.p25),
+      ...bandRows.map((row) => row.p75),
+    ].filter((value) => Number.isFinite(value));
+
+    if (!allValues.length) {
+      return <Text style={{ color: MUTED, textAlign: 'center' }}>Aucune courbe de poids disponible.</Text>;
+    }
+
+    const minValue = Math.min(...allValues) - 0.2;
+    const maxValue = Math.max(...allValues) + 0.2;
+    const stepX = points.length > 1 ? (width - padding * 2) / (points.length - 1) : width - padding * 2;
+    const y = (value: number) => height - padding - ((value - minValue) / Math.max(0.1, maxValue - minValue)) * (height - padding * 2);
+    const x = (index: number) => padding + stepX * index;
+    const plotWidth = width - padding * 2;
+    const plotHeight = height - padding * 2;
+    const bandSegments = bandRows.slice(0, Math.max(0, bandRows.length - 1));
+    const lineSegments = points.slice(0, Math.max(0, points.length - 1));
+
+    return (
+      <View style={{ height, borderRadius: 12, backgroundColor: CARD, overflow: 'hidden', paddingVertical: 8 }}>
+        {[0, 1, 2, 3].map((tick) => {
+          const value = minValue + ((maxValue - minValue) / 3) * tick;
+          const tickY = y(value);
           return (
-            <View key={`${row.label}-${index}`}>
-              <View
-                style={{
-                  position: 'absolute',
-                  left,
-                  top: y(row.p75) - padding,
-                  width: Math.max(4, right - left),
-                  height: Math.max(6, y(row.p25) - y(row.p75)),
-                  backgroundColor: 'rgba(201,162,39,0.18)',
-                }}
-              />
-              {next ? null : null}
+            <View
+              key={tick}
+              style={{
+                position: 'absolute',
+                left: padding,
+                right: padding,
+                top: tickY,
+                borderTopWidth: 1,
+                borderTopColor: 'rgba(139,148,158,0.18)',
+              }}
+            >
+              <Text style={{ position: 'absolute', left: -24, top: -8, color: MUTED, fontSize: 10 }}>{value.toFixed(1)}</Text>
             </View>
           );
         })}
 
-        {lineSegments.map((point, index) => {
-          const currentX = x(index) - padding;
-          const currentY = y(point.value) - padding;
-          const nextX = x(index + 1) - padding;
-          const nextY = y(points[index + 1].value) - padding;
-          const left = Math.min(currentX, nextX);
-          const top = Math.min(currentY, nextY);
-          return (
+        <View style={{ position: 'absolute', top: padding, left: padding, width: plotWidth, height: plotHeight }}>
+          {bandSegments.map((row, index) => {
+            const next = bandRows[index + 1];
+            const left = x(index) - padding;
+            const right = x(index + 1) - padding;
+            return (
+              <View key={`${row.label}-${index}`}>
+                <View
+                  style={{
+                    position: 'absolute',
+                    left,
+                    top: y(row.p75) - padding,
+                    width: Math.max(4, right - left),
+                    height: Math.max(6, y(row.p25) - y(row.p75)),
+                    backgroundColor: 'rgba(201,162,39,0.18)',
+                  }}
+                />
+                {next ? null : null}
+              </View>
+            );
+          })}
+
+          {lineSegments.map((point, index) => {
+            const currentX = x(index) - padding;
+            const currentY = y(point.value) - padding;
+            const nextX = x(index + 1) - padding;
+            const nextY = y(points[index + 1].value) - padding;
+            const left = Math.min(currentX, nextX);
+            const top = Math.min(currentY, nextY);
+            return (
+              <View
+                key={`${point.label}-${index}`}
+                style={{
+                  position: 'absolute',
+                  left,
+                  top,
+                  width: Math.max(3, nextX - currentX + 3),
+                  height: Math.max(3, Math.abs(nextY - currentY) + 3),
+                  borderTopWidth: 3,
+                  borderRightWidth: 3,
+                  borderColor: GOLD,
+                  borderTopRightRadius: 999,
+                }}
+              />
+            );
+          })}
+
+          {points.map((point, index) => (
             <View
-              key={`${point.label}-${index}`}
+              key={`${point.label}-dot-${index}`}
               style={{
                 position: 'absolute',
-                left,
-                top,
-                width: Math.max(3, nextX - currentX + 3),
-                height: Math.max(3, Math.abs(nextY - currentY) + 3),
-                borderTopWidth: 3,
-                borderRightWidth: 3,
-                borderColor: GOLD,
-                borderTopRightRadius: 999,
+                left: x(index) - padding - 4,
+                top: y(point.value) - padding - 4,
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                backgroundColor: GOLD,
               }}
             />
-          );
-        })}
+          ))}
+        </View>
 
-        {points.map((point, index) => (
-          <View
-            key={`${point.label}-dot-${index}`}
-            style={{
-              position: 'absolute',
-              left: x(index) - padding - 4,
-              top: y(point.value) - padding - 4,
-              width: 8,
-              height: 8,
-              borderRadius: 999,
-              backgroundColor: GOLD,
-            }}
-          />
-        ))}
-      </View>
-
-      <View style={{ position: 'absolute', left: padding, right: padding, bottom: 8, flexDirection: 'row', justifyContent: 'space-between' }}>
-        {points.map((point, index) => (
-          <Text key={point.label + index} style={{ color: MUTED, fontSize: 10, textAlign: 'center', minWidth: 28 }}>
-            {point.label}
-          </Text>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function OmsMetricCard({
-  label,
-  value,
-  unit,
-  band,
-}: {
-  label: string;
-  value: number | null | undefined;
-  unit: string;
-  band: { p3: number; p10: number; p50: number; p90: number; p97: number };
-}) {
-  const status = percentileStatus(value, band);
-  return (
-    <View style={{ gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: BORDER, backgroundColor: BG }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-        <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{label}</Text>
-        <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: `${status.color}22` }}>
-          <Text style={{ color: status.color, fontSize: 12, fontWeight: '700' }}>{status.label}</Text>
+        <View style={{ position: 'absolute', left: padding, right: padding, bottom: 8, flexDirection: 'row', justifyContent: 'space-between' }}>
+          {points.map((point, index) => (
+            <Text key={point.label + index} style={{ color: MUTED, fontSize: 10, textAlign: 'center', minWidth: 28 }}>
+              {point.label}
+            </Text>
+          ))}
         </View>
       </View>
-      <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700' }}>{value ? `${value.toFixed(1)} ${unit}` : '--'}</Text>
-      <View style={{ height: 10, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
-        <View style={{ width: `${progressPercent(value, band.p3, band.p97)}%`, height: '100%', backgroundColor: status.color }} />
-      </View>
-      <Text style={{ color: MUTED, fontSize: 12 }}>
-        P3 {band.p3.toFixed(1)} · P50 {band.p50.toFixed(1)} · P97 {band.p97.toFixed(1)}
-      </Text>
-    </View>
-  );
-}
+    );
+  };
 
-export default function HistoryScreen() {
-  const { isWideWeb } = useWideWeb();
-  const { entries, deleteEntry, addEntry } = useAppData();
-  const { profile } = useAuth();
-  const toast = useToast();
   const [filter, setFilter] = useState<EntryType | 'all'>('all');
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -466,7 +484,7 @@ export default function HistoryScreen() {
 
   const historySidebar = (
     <>
-        <Heading eyebrow="REPORT" title="Historique & OMS" subtitle="Resume quotidien, courbes de croissance, timeline unifiee et export docteur." />
+        <Heading title={language === 'es' ? 'Historial y Salud' : language === 'en' ? 'History & Health' : language === 'nl' ? 'Historiek & Gezondheid' : 'Historique & Santé'} />
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -478,7 +496,7 @@ export default function HistoryScreen() {
               size="sm"
             />
             <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', textAlign: 'center', flex: 1 }}>
-              {new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
+              {new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : language === 'en' ? 'en-US' : language === 'nl' ? 'nl-NL' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
             </Text>
             <Button
               label=">"
@@ -492,8 +510,8 @@ export default function HistoryScreen() {
             {[
               { label: 'CSV', action: exportCsv, active: false },
               { label: 'PDF', action: exportPdf, active: false },
-              { label: 'Partager', action: shareDay, active: false },
-              { label: "Aujourd'hui", action: () => setSelectedDate(startOfDay(new Date())), active: true },
+              { label: language === 'es' ? 'Compartir' : language === 'en' ? 'Share' : language === 'nl' ? 'Delen' : 'Partager', action: shareDay, active: false },
+              { label: language === 'es' ? 'Hoy' : language === 'en' ? 'Today' : language === 'nl' ? 'Vandaag' : "Aujourd'hui", action: () => setSelectedDate(startOfDay(new Date())), active: true },
             ].map((item) => (
               <Pressable
                 key={item.label}
@@ -530,7 +548,7 @@ export default function HistoryScreen() {
             <TextInput
               value={searchInput}
               onChangeText={setSearchInput}
-              placeholder="Rechercher (notes, type, aliment...)"
+              placeholder={language === 'es' ? 'Buscar (notas, tipo, alimento...)' : language === 'en' ? 'Search (notes, type, food...)' : language === 'nl' ? 'Zoeken (notities, type, voeding...)' : 'Rechercher (notes, type, aliment...)'}
               placeholderTextColor={MUTED}
               style={{ flex: 1, color: TEXT, fontSize: 14, paddingVertical: 4 }}
               autoCapitalize="none"
@@ -542,7 +560,7 @@ export default function HistoryScreen() {
                 onPress={() => setSearchInput('')}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Effacer la recherche"
+                accessibilityLabel={language === 'es' ? 'Borrar búsqueda' : language === 'en' ? 'Clear search' : language === 'nl' ? 'Zoeken wissen' : 'Effacer la recherche'}
               >
                 <Ionicons name="close-circle" size={18} color={MUTED} />
               </Pressable>
@@ -550,7 +568,7 @@ export default function HistoryScreen() {
           </View>
           {searchQuery && timelineEntries.length === 0 ? (
             <Text style={{ color: MUTED, fontSize: 12, marginTop: 4, fontStyle: 'italic' }}>
-              Aucun resultat pour "{searchInput}"
+              {language === 'es' ? `Sin resultados para "${searchInput}"` : language === 'en' ? `No results for "${searchInput}"` : language === 'nl' ? `Geen resultaten voor "${searchInput}"` : `Aucun resultat pour "${searchInput}"`}
             </Text>
           ) : null}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 6 }}>
@@ -579,8 +597,8 @@ export default function HistoryScreen() {
         </Card>
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <Heading eyebrow="JOUR" title="Day Summary" subtitle="Resume intelligent du jour avec deltas et reperes." />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+          <Heading eyebrow="JOUR" title="Day Summary" subtitle="Resume du jour." />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
             {[
               { label: 'Prises', value: String(dayFeedCount), detail: `${dayFeedCount - yesterdayFeedCount >= 0 ? '+' : ''}${dayFeedCount - yesterdayFeedCount} vs hier` },
               { label: 'Lait total', value: `${dayBottleMl} ml`, detail: `${profile?.goalFeedingsPerDay ?? 8} prises cible` },
@@ -589,20 +607,32 @@ export default function HistoryScreen() {
               { label: 'Medicaments', value: String(medEntries.length), detail: medEntries.map((entry) => entry.payload.name).filter(Boolean).join(', ') || 'Aucun' },
               { label: 'Mesures', value: String(measureEntries.length), detail: latestMeasure ? getDetail(latestMeasure) : 'Aucune' },
             ].map((stat) => (
-              <View key={stat.label} style={{ flexBasis: '48%', minWidth: 220, gap: 8, padding: 14, borderRadius: 12, backgroundColor: BG, borderWidth: 1, borderColor: BORDER }}>
+              <View
+                key={stat.label}
+                style={{
+                  flexBasis: isMobile ? '100%' : '48%',
+                  minWidth: isMobile ? 0 : 220,
+                  gap: 6,
+                  padding: isMobile ? 12 : 14,
+                  borderRadius: 12,
+                  backgroundColor: BG,
+                  borderWidth: 1,
+                  borderColor: BORDER,
+                }}
+              >
                 <Text style={{ color: MUTED, fontSize: 12, fontWeight: '600' }}>{stat.label}</Text>
-                <Text style={{ color: TEXT, fontSize: 24, fontWeight: '700' }}>{stat.value}</Text>
+                <Text style={{ color: TEXT, fontSize: isMobile ? 22 : 24, fontWeight: '700' }}>{stat.value}</Text>
                 <Text style={{ color: MUTED, fontSize: 13 }}>{stat.detail}</Text>
               </View>
             ))}
           </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' }}>
             {[
               { label: 'Frequence', value: frequencyBadge },
               { label: 'Moy. ml/prise', value: `${avgMlPerFeed} ml` },
               { label: 'Premiere prise', value: firstFeed ? formatTime(firstFeed.occurredAt) : '--' },
             ].map((badge) => (
-              <View key={badge.label} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: BG, borderWidth: 1, borderColor: BORDER }}>
+              <View key={badge.label} style={{ paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999, backgroundColor: BG, borderWidth: 1, borderColor: BORDER }}>
                 <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600' }}>{badge.label}</Text>
                 <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700' }}>{badge.value}</Text>
               </View>
@@ -615,7 +645,7 @@ export default function HistoryScreen() {
   const historyMain = (
     <>
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <Heading eyebrow="POIDS" title="Weight Trend Chart" subtitle="Courbe reelle bebe + bande OMS mediane." />
+          <Heading eyebrow="POIDS" title="Weight Trend Chart" subtitle="Courbe bebe + repere OMS." />
           <WeightChart points={weightPoints} bandRows={weightBandRows.length ? weightBandRows : weightPoints.map((point) => ({ label: point.label, p25: point.value - 0.3, p75: point.value + 0.3 }))} />
         </Card>
 
@@ -709,20 +739,20 @@ export default function HistoryScreen() {
                         gap: 10,
                       }}
                     >
-                      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                      <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
                         <View style={{ width: 14, height: 14, borderRadius: 999, backgroundColor: iconColor(entry.type) }} />
                         <View style={{ flex: 1, gap: 4 }}>
-                          <Text style={{ color: TEXT, fontSize: 15, fontWeight: '700' }}>{entry.type.toUpperCase()}</Text>
+                          <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{entry.type.toUpperCase()}</Text>
                           <Text style={{ color: MUTED, fontSize: 13 }}>{getDetail(entry)}</Text>
                         </View>
-                        <Text style={{ color: TEXT, fontSize: 14, fontWeight: '600' }}>{formatTime(entry.occurredAt)}</Text>
+                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{formatTime(entry.occurredAt)}</Text>
                       </View>
                       {expanded ? (
                         <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 10 }}>
                           <Text style={{ color: MUTED, fontSize: 13 }}>{entry.notes || 'Sans note'}</Text>
-                          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
-                            <Button label="Editer" onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })} variant="secondary" fullWidth={false} />
-                            <Button label="Supprimer" onPress={() => handleDeleteEntry(entry)} variant="danger" fullWidth={false} />
+                          <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 10, justifyContent: 'flex-end' }}>
+                            <Button label="Editer" onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })} variant="secondary" fullWidth={isMobile} />
+                            <Button label="Supprimer" onPress={() => handleDeleteEntry(entry)} variant="danger" fullWidth={isMobile} />
                           </View>
                         </View>
                       ) : null}
@@ -786,7 +816,7 @@ export default function HistoryScreen() {
           {undoBar}
         </View>
       ) : (
-        <View style={{ gap: 18, position: 'relative' }}>
+        <View style={{ gap: 14, position: 'relative' }}>
           {historySidebar}
           {historyMain}
           {undoBar}

@@ -3,7 +3,11 @@
     "allow": [
       "Bash(npx tsc *)",
       "Bash(git add *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(Get-ChildItem -Recurse -Filter \"*.tsx\")",
+      "Bash(Select-String -Pattern \"backgroundColor|background:|theme\" -List)",
+      "Bash(Select-Object Path -Unique)",
+      "Bash(npm run *)"
     ]
   }
 }

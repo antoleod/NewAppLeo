@@ -25,6 +25,7 @@ import { getRecommendedQuantity, getFoodRecommendationMessage } from '@/lib/food
 import { getSeasonalRecommendations, getRandomSeasonalFruit, getRandomSeasonalVegetable } from '@/lib/seasonal-recommendations';
 import { haptics } from '@/lib/haptics';
 import { useToast } from '@/components/Toast';
+import { shareEntry, buildShareMessage } from '@/lib/shareEntry';
 
 const typeLabels: Record<EntryType, string> = {
   feed: 'Feed',
@@ -575,6 +576,14 @@ export default function EntryComposerScreen() {
       const timestamp = occurredAt.toISOString();
       const payload = buildPayload();
       const titleValue = buildTitle();
+      const savedEntry = {
+        id: editing?.id ?? `tmp_${Date.now()}`,
+        type,
+        title: titleValue,
+        notes,
+        occurredAt: timestamp,
+        payload,
+      } as any;
 
       if (editing) {
         await updateEntry(editing.id, { type, title: titleValue, notes, occurredAt: timestamp, payload } as any);
@@ -595,7 +604,28 @@ export default function EntryComposerScreen() {
       }
 
       haptics.success();
-      router.back();
+
+      // Suggest sharing for joyful, non-medical entries on new save
+      const shareableTypes: EntryType[] = ['food', 'sleep', 'feed', 'measurement', 'milestone', 'diaper'];
+      if (!editing && shareableTypes.includes(type)) {
+        const shareLabel = language === 'fr' ? 'Partager' : language === 'es' ? 'Compartir' : language === 'nl' ? 'Delen' : 'Share';
+        const skipLabel = language === 'fr' ? 'Plus tard' : language === 'es' ? 'Después' : language === 'nl' ? 'Later' : 'Later';
+        const title = language === 'fr' ? 'Partager ce moment ?' : language === 'es' ? '¿Compartir este momento?' : language === 'nl' ? 'Dit moment delen?' : 'Share this moment?';
+        const preview = buildShareMessage(savedEntry, profile?.babyName ?? '', language as any);
+
+        Alert.alert(title, preview, [
+          { text: skipLabel, style: 'cancel', onPress: () => router.back() },
+          {
+            text: shareLabel,
+            onPress: async () => {
+              await shareEntry(savedEntry, profile?.babyName ?? '', language as any);
+              router.back();
+            },
+          },
+        ]);
+      } else {
+        router.back();
+      }
     } catch (error: any) {
       haptics.error();
       toast.error(error?.message ?? 'Could not save this record.');
@@ -1570,6 +1600,30 @@ export default function EntryComposerScreen() {
         <View style={styles.actions}>
           {!((type === 'sleep' || type === 'pump') && !editing) && (
             <Button label={editing ? (language === 'fr' ? 'Mettre à jour' : 'Update') : language === 'fr' ? 'Enregistrer' : 'Save'} onPress={() => void handlePrimarySave()} loading={saving} />
+          )}
+          {editing && (
+            <Pressable
+              onPress={() => {
+                if (!editing) return;
+                void shareEntry(editing as any, profile?.babyName ?? '', language as any);
+              }}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                height: 48,
+                borderRadius: 12,
+                borderWidth: 1.5,
+                borderColor: colors.primary,
+                backgroundColor: pressed ? `${colors.primary}15` : 'transparent',
+              })}
+            >
+              <Ionicons name="share-outline" size={18} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600' }}>
+                {language === 'fr' ? 'Partager' : language === 'es' ? 'Compartir' : language === 'nl' ? 'Delen' : 'Share'}
+              </Text>
+            </Pressable>
           )}
           {editing && <Button label={language === 'fr' ? 'Supprimer' : 'Delete'} onPress={handleDelete} variant="danger" />}
         </View>

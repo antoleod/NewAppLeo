@@ -33,7 +33,7 @@ export default function PairScreen() {
 
   return (
     <Page contentStyle={[styles.container, { maxWidth: cardMaxWidth }]}>
-      <Heading eyebrow="Pairing" title="Connect a partner device" subtitle="Use a short code to share the same baby session." />
+      <Heading eyebrow="Pairing" title="Connect a partner device" subtitle="Share the same baby session." />
       <Card>
         <View style={{ gap: 8 * uiScale }}>
           <Text style={{ color: colors.muted, fontSize: 14 * uiScale }}>Share this code with the other device:</Text>

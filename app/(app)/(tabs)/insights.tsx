@@ -6,6 +6,7 @@ import { Button, EmptyState, Heading, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getMeanFeedingInterval } from '@/lib/patterns';
 import { whoHeightTable, whoWeightTable } from '@/lib/who-data';
@@ -18,31 +19,39 @@ import {
 import { getWeeklyTrend } from '@/utils/entries';
 import { dateKey, formatDuration, startOfDay, subtractDays } from '@/utils/date';
 
-const BG = '#0D1117';
-const CARD = '#161B22';
-const BORDER = '#21262D';
-const GOLD = '#C9A227';
-const GREEN = '#3FB950';
-const BLUE = '#58A6FF';
-const MUTED = '#8B949E';
-const TEXT = '#F0F6FC';
-
 type RangeKey = '7d' | '3d' | 'today';
-
-function eyebrowStyle() {
-  return { color: GOLD, fontSize: 10, letterSpacing: 1.5, fontWeight: '600' as const, textTransform: 'uppercase' as const };
-}
-
-function titleStyle() {
-  return { color: TEXT, fontSize: 18, fontWeight: '700' as const, marginTop: 2 };
-}
 
 export default function InsightsScreen() {
   const { language } = useLocale();
   const { t } = useTranslation();
   const { entries, summary } = useAppData();
   const { profile } = useAuth();
+  const { theme } = useTheme();
   const [range, setRange] = useState<RangeKey>('7d');
+
+  const BG = theme.bg;
+  const CARD = theme.bgCard;
+  const BORDER = theme.border;
+  const GOLD = theme.accent;
+  const GREEN = theme.green;
+  const BLUE = theme.blue;
+  const MUTED = theme.textMuted;
+  const TEXT = theme.textPrimary;
+
+  const eyebrowStyle = () => ({
+    color: GOLD,
+    fontSize: 10,
+    letterSpacing: 1.5,
+    fontWeight: '600' as const,
+    textTransform: 'uppercase' as const,
+  });
+
+  const titleStyle = () => ({
+    color: TEXT,
+    fontSize: 18,
+    fontWeight: '700' as const,
+    marginTop: 2,
+  });
 
   const trend = useMemo(() => getWeeklyTrend(entries), [entries]);
   const meanInterval = getMeanFeedingInterval(entries);
