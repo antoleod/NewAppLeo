@@ -5,12 +5,12 @@ import { Page } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 
 export default function AppLayout() {
-  const { loading, user, profile, guestMode } = useAuth();
+  const { loading, user, profile, guestMode, profileLoading } = useAuth();
   const { colors } = useTheme();
   const segments = useSegments();
   const onOnboardingRoute = segments.includes('onboarding');
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <Page scroll={false}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
