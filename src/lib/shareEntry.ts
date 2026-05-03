@@ -1,6 +1,8 @@
-import { Share } from 'react-native';
+import { Share, Platform } from 'react-native';
+import * as Sharing from 'expo-sharing';
 import { EntryRecord } from '@/types';
 import { haptics } from './haptics';
+import { GOOGLE_PLAY_URL } from '@/components/ShareCard';
 
 type Lang = 'fr' | 'es' | 'en' | 'nl';
 
@@ -102,7 +104,6 @@ export function buildShareMessage(entry: EntryRecord, babyName: string, lang: La
     }
 
     case 'vaccine': {
-      // Medical: only share the milestone, not the vaccine name/dose
       return pick(
         {
           fr: `💪 ${name} a fait sa vaccination aujourd'hui. Quel courage ! ✨`,
@@ -117,7 +118,6 @@ export function buildShareMessage(entry: EntryRecord, babyName: string, lang: La
     case 'temperature':
     case 'symptom':
     case 'medication': {
-      // Medical: generic supportive message, never share medical details
       return pick(
         {
           fr: `💚 Pensées positives pour ${name} aujourd'hui`,
@@ -157,7 +157,7 @@ export function buildShareMessage(entry: EntryRecord, babyName: string, lang: La
 }
 
 /**
- * Share an entry via the native share sheet.
+ * Share a text-only entry via the native share sheet.
  * Returns true if user shared, false if cancelled.
  */
 export async function shareEntry(entry: EntryRecord, babyName: string, lang: Lang): Promise<boolean> {
@@ -173,6 +173,66 @@ export async function shareEntry(entry: EntryRecord, babyName: string, lang: Lan
     haptics.error();
     return false;
   }
+}
+
+/**
+ * Capture the ShareCard component as a PNG image and share it.
+ * Accepts the `captureRef` result from react-native-view-shot.
+ * Falls back to text sharing if image capture fails.
+ */
+export async function shareEntryAsImage(
+  captureAsync: () => Promise<string>,
+  entry: EntryRecord,
+  babyName: string,
+  lang: Lang,
+): Promise<boolean> {
+  // Web: share as text (image capture not supported on web)
+  if (Platform.OS === 'web') {
+    return shareEntry(entry, babyName, lang);
+  }
+
+  let imageUri: string | null = null;
+
+  try {
+    imageUri = await captureAsync();
+  } catch {
+    // If capture fails, fall back to text
+    return shareEntry(entry, babyName, lang);
+  }
+
+  try {
+    const canShare = await Sharing.isAvailableAsync();
+    if (!canShare) {
+      // Sharing not available (simulator / restricted env) → text fallback
+      return shareEntry(entry, babyName, lang);
+    }
+
+    const caption = buildShareCaption(entry, babyName, lang);
+    await Sharing.shareAsync(imageUri, {
+      mimeType: 'image/png',
+      dialogTitle: caption,
+      UTI: 'public.png',
+    });
+
+    haptics.success();
+    return true;
+  } catch {
+    haptics.error();
+    // Last resort: text-only
+    return shareEntry(entry, babyName, lang);
+  }
+}
+
+/** Short caption text that accompanies the image in the share sheet */
+function buildShareCaption(entry: EntryRecord, babyName: string, lang: Lang): string {
+  const msg = buildShareMessage(entry, babyName, lang);
+  const cta = {
+    fr: `Trouver Leo sur Google Play : ${GOOGLE_PLAY_URL}`,
+    es: `Encuentra Leo en Google Play: ${GOOGLE_PLAY_URL}`,
+    en: `Find Leo on Google Play: ${GOOGLE_PLAY_URL}`,
+    nl: `Vind Leo op Google Play: ${GOOGLE_PLAY_URL}`,
+  }[lang];
+  return `${msg}\n\n${cta}`;
 }
 
 /**

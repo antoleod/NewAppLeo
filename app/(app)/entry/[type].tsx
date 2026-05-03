@@ -1,7 +1,8 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Modal, Pressable, StyleSheet, Text, View, GestureResponderEvent } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { captureRef } from 'react-native-view-shot';
 import { Button, Card, Input, Page, Segment } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
@@ -25,7 +26,8 @@ import { getRecommendedQuantity, getFoodRecommendationMessage } from '@/lib/food
 import { getSeasonalRecommendations, getRandomSeasonalFruit, getRandomSeasonalVegetable } from '@/lib/seasonal-recommendations';
 import { haptics } from '@/lib/haptics';
 import { useToast } from '@/components/Toast';
-import { shareEntry, buildShareMessage } from '@/lib/shareEntry';
+import { shareEntry, shareEntryAsImage, buildShareMessage } from '@/lib/shareEntry';
+import { ShareCard } from '@/components/ShareCard';
 
 const typeLabels: Record<EntryType, string> = {
   feed: 'Feed',
@@ -230,6 +232,8 @@ export default function EntryComposerScreen() {
   const [reminderVaccineName, setReminderVaccineName] = useState('');
   const [reminderVaccineDate, setReminderVaccineDate] = useState(new Date());
   const [showMedicationReminderFlow, setShowMedicationReminderFlow] = useState(false);
+  const [sharingImage, setSharingImage] = useState(false);
+  const shareCardRef = useRef<View>(null);
   const [reminderMedicationName, setReminderMedicationName] = useState('');
   const [reminderMedicationDate, setReminderMedicationDate] = useState(new Date());
   const [foodAllergies, setFoodAllergies] = useState<string[]>([]);
@@ -1605,8 +1609,18 @@ export default function EntryComposerScreen() {
             <Pressable
               onPress={() => {
                 if (!editing) return;
-                void shareEntry(editing as any, profile?.babyName ?? '', language as any);
+                setSharingImage(true);
+                // pequeño delay para que la ShareCard renderice antes de capturar
+                setTimeout(() => {
+                  void shareEntryAsImage(
+                    () => captureRef(shareCardRef, { format: 'png', quality: 1.0, result: 'tmpfile' }),
+                    editing as any,
+                    profile?.babyName ?? '',
+                    language as any,
+                  ).finally(() => setSharingImage(false));
+                }, 150);
               }}
+              disabled={sharingImage}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -1617,11 +1631,14 @@ export default function EntryComposerScreen() {
                 borderWidth: 1.5,
                 borderColor: colors.primary,
                 backgroundColor: pressed ? `${colors.primary}15` : 'transparent',
+                opacity: sharingImage ? 0.6 : 1,
               })}
             >
-              <Ionicons name="share-outline" size={18} color={colors.primary} />
+              <Ionicons name={sharingImage ? 'hourglass-outline' : 'share-outline'} size={18} color={colors.primary} />
               <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600' }}>
-                {language === 'fr' ? 'Partager' : language === 'es' ? 'Compartir' : language === 'nl' ? 'Delen' : 'Share'}
+                {sharingImage
+                  ? (language === 'fr' ? 'Préparation...' : language === 'es' ? 'Preparando...' : language === 'nl' ? 'Laden...' : 'Preparing...')
+                  : (language === 'fr' ? 'Partager' : language === 'es' ? 'Compartir' : language === 'nl' ? 'Delen' : 'Share')}
               </Text>
             </Pressable>
           )}
@@ -1670,6 +1687,21 @@ export default function EntryComposerScreen() {
           onSave={handleSaveReminder}
           saving={saving}
         />
+      )}
+
+      {/* ShareCard fuera de pantalla: se captura como imagen cuando el usuario toca Partager */}
+      {editing && (
+        <View
+          ref={shareCardRef}
+          style={{ position: 'absolute', top: -2000, left: 0 }}
+          collapsable={false}
+        >
+          <ShareCard
+            entry={editing as any}
+            babyName={profile?.babyName}
+            lang={language as any}
+          />
+        </View>
       )}
     </Page>
   );
