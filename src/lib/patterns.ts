@@ -70,7 +70,8 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
     });
   }
 
-  const medicationHours = hoursSince(lastMedication?.occurredAt);
+  const medicationDose = lastMedication?.payload?.dosage?.trim();
+  const medicationHours = hoursSince(medicationDose ? lastMedication?.occurredAt : undefined);
   if (medicationHours !== null && medicationHours >= 6) {
     alerts.push({
       id: 'med-due',
