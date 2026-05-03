@@ -191,7 +191,7 @@ export default function HomeScreen() {
   const { language } = useLocale();
   const locale = localeTag(language);
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { entries, summary, addEntry, loading } = useAppData();
   const { theme, colors } = useTheme();
 
@@ -726,6 +726,20 @@ export default function HomeScreen() {
     );
   }
 
+  const resolvedDisplayName = useMemo(() => {
+    const fromProfile = (profile?.displayName ?? '').trim();
+    if (fromProfile && fromProfile.toLowerCase() !== 'local') return fromProfile;
+    const fromUserName = (user?.displayName ?? '').trim();
+    if (fromUserName) return fromUserName;
+    const fromUserEmail = (user?.email ?? '').trim();
+    if (fromUserEmail.includes('@')) return fromUserEmail.split('@')[0];
+    const fromProfileEmail = (profile?.authEmail ?? '').trim();
+    if (fromProfileEmail && fromProfileEmail !== 'local@example.com' && fromProfileEmail.includes('@')) {
+      return fromProfileEmail.split('@')[0];
+    }
+    return 'Parent';
+  }, [profile?.authEmail, profile?.displayName, user?.displayName, user?.email]);
+
   return (
     <Page contentStyle={styles.pageContent}>
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
@@ -739,7 +753,7 @@ export default function HomeScreen() {
                   {t(`greeting.${getHourPeriod()}`)}
                 </Text>
                 <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>
-                  {profile?.displayName || 'maman'}
+                  {resolvedDisplayName}
                 </Text>
               </View>
               <Pressable
