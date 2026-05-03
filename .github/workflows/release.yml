@@ -53,12 +53,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create Release
-        uses: actions/create-release@v1
+        uses: ncipollo/release-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ needs.check-version.outputs.version }}
-          release_name: Release v${{ needs.check-version.outputs.version }}
+          tag: v${{ needs.check-version.outputs.version }}
+          name: Release v${{ needs.check-version.outputs.version }}
           body: |
             # Release v${{ needs.check-version.outputs.version }}
 
