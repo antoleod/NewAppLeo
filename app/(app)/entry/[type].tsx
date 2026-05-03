@@ -21,6 +21,7 @@ import { scheduleVaccineReminder } from '@/lib/notifications';
 import { scheduleMedicationReminder } from '@/lib/notifications';
 import { getSuggestedValues, getWeightCategory, getHeightCategory } from '@/lib/who-recommendations';
 import { getRecommendedQuantity, getFoodRecommendationMessage } from '@/lib/food-recommendations';
+import { getSeasonalRecommendations, getRandomSeasonalFruit, getRandomSeasonalVegetable } from '@/lib/seasonal-recommendations';
 import { haptics } from '@/lib/haptics';
 import { useToast } from '@/components/Toast';
 
@@ -262,6 +263,10 @@ export default function EntryComposerScreen() {
       });
     return map;
   }, [entries]);
+
+  const seasonalRecommendations = useMemo(() => {
+    return getSeasonalRecommendations();
+  }, []);
   const medStatus = useMemo(() => {
     const currentName = name.trim().toLowerCase();
     if (!currentName) {
@@ -306,10 +311,14 @@ export default function EntryComposerScreen() {
   const nextDosePreview = useMemo(() => {
     if (!name.trim()) return '';
     const interval = Number(medIntervalHours) || 6;
-    const nextAt = new Date(occurredAt.getTime() + interval * 60 * 60 * 1000);
+    const lastSame = entries.find(
+      (entry) => entry.type === 'medication' && ((entry.payload as any)?.name ?? '').trim().toLowerCase() === name.trim().toLowerCase(),
+    );
+    const baseTime = lastSame ? new Date(lastSame.occurredAt).getTime() : occurredAt.getTime();
+    const nextAt = new Date(baseTime + interval * 60 * 60 * 1000);
     const locale = language === 'fr' ? 'fr-FR' : 'en-US';
     return `${nextAt.toLocaleDateString(locale)} ${nextAt.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
-  }, [language, medIntervalHours, name, occurredAt]);
+  }, [entries, language, medIntervalHours, name, occurredAt]);
   const normalizedMedName = name.trim().toLowerCase();
   const existingSavedMedicine = useMemo(
     () => savedMedicines.find((item) => item.name.trim().toLowerCase() === normalizedMedName),
@@ -319,6 +328,22 @@ export default function EntryComposerScreen() {
     if (!existingSavedMedicine) return Boolean(name.trim());
     return (existingSavedMedicine.dosage ?? '').trim() !== dosage.trim();
   }, [dosage, existingSavedMedicine, name]);
+  const medicationSuggestions = useMemo(() => {
+    const query = name.trim().toLowerCase();
+    if (!query) return [] as Array<{ name: string; dosage?: string }>;
+    const fromSaved = savedMedicines.map((item) => ({ name: item.name, dosage: item.dosage }));
+    const fromCommon = (commonMedications as Array<any>).map((item) => ({
+      name: String(item.name),
+      dosage: (getRecommendedDose(String(item.name)) || item.defaultDosage || '') as string,
+    }));
+    const merged = [...fromSaved, ...fromCommon].filter(
+      (item, idx, arr) => arr.findIndex((x) => x.name.toLowerCase() === item.name.toLowerCase()) === idx,
+    );
+    return merged
+      .filter((item) => item.name.toLowerCase().includes(query))
+      .filter((item) => item.name.toLowerCase() !== query)
+      .slice(0, 6);
+  }, [name, savedMedicines, profile?.currentWeightKg]);
 
   function getRecommendedDose(medName: string) {
     const med = (commonMedications as Array<any>).find((item) => item.name.toLowerCase() === medName.trim().toLowerCase());
@@ -725,6 +750,41 @@ export default function EntryComposerScreen() {
               }
               return null;
             })()}
+
+            {seasonalRecommendations && (
+              <View style={[styles.seasonalBox, { borderColor: meta.tone, backgroundColor: `${meta.tone}10` }]}>
+                <Text style={[styles.seasonalTitle, { color: meta.tone }]}>
+                  {seasonalRecommendations.emoji} {language === 'fr' ? seasonalRecommendations.season_fr : seasonalRecommendations.season_en}
+                </Text>
+                <Text style={[styles.seasonalBenefit, { color: colors.text }]}>
+                  {seasonalRecommendations.benefits}
+                </Text>
+                <View style={{ marginTop: 10 }}>
+                  <Text style={[styles.seasonalLabel, { color: colors.muted }]}>
+                    {language === 'fr' ? 'Fruits de saison' : 'Seasonal fruits'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                    {seasonalRecommendations.fruits.map((fruit) => (
+                      <Text key={fruit.name} style={[styles.seasonalFoodTag, { backgroundColor: meta.toneSoft, color: meta.tone }]}>
+                        {fruit.icon} {fruit.name}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+                <View style={{ marginTop: 10 }}>
+                  <Text style={[styles.seasonalLabel, { color: colors.muted }]}>
+                    {language === 'fr' ? 'Légumes de saison' : 'Seasonal vegetables'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                    {seasonalRecommendations.vegetables.map((veg) => (
+                      <Text key={veg.name} style={[styles.seasonalFoodTag, { backgroundColor: meta.toneSoft, color: meta.tone }]}>
+                        {veg.icon} {veg.name}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            )}
 
             <View style={{ marginBottom: 12 }}>
               <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
@@ -1143,6 +1203,25 @@ export default function EntryComposerScreen() {
               </Pressable>
             )}
             <Input label={t('entry.medicationName')} value={name} onChangeText={setName} />
+            {medicationSuggestions.length > 0 && (
+              <View style={[styles.savedWrap, { marginTop: 6 }]}>
+                <View style={styles.savedRow}>
+                  {medicationSuggestions.map((med) => (
+                    <Pressable
+                      key={`suggest-${med.name}`}
+                      onPress={() => {
+                        setName(med.name);
+                        if (med.dosage) setDosage(med.dosage);
+                      }}
+                      style={styles.savedChip}
+                    >
+                      <Text style={styles.savedChipTitle}>{med.name}</Text>
+                      {med.dosage ? <Text style={styles.savedChipSubtitle}>{med.dosage}</Text> : null}
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
             <Input label={t('entry.dosage')} value={dosage} onChangeText={setDosage} />
             <View style={styles.medIntervalHeader}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -2104,6 +2183,36 @@ const styles = StyleSheet.create({
     color: '#F0F6FC',
     fontSize: 12,
     fontWeight: '700',
+  },
+  seasonalBox: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginBottom: 12,
+  },
+  seasonalTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  seasonalBenefit: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  seasonalLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  seasonalFoodTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    fontSize: 11,
+    fontWeight: '600',
   },
 });
 

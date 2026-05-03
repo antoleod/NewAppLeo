@@ -1,0 +1,94 @@
+{
+  "description": "Alimentos recomendados por temporada según disponibilidad local",
+  "source": "WHO - Local and seasonal foods for infant nutrition",
+  "seasons": {
+    "spring": {
+      "months": [3, 4, 5],
+      "season_es": "Primavera",
+      "season_en": "Spring",
+      "season_fr": "Printemps",
+      "emoji": "🌱",
+      "fruits": [
+        { "name": "Fresas", "en": "Strawberries", "icon": "🍓" },
+        { "name": "Cerezas", "en": "Cherries", "icon": "🍒" },
+        { "name": "Melocotones", "en": "Peaches", "icon": "🍑" },
+        { "name": "Peras", "en": "Pears", "icon": "🍐" },
+        { "name": "Manzanas", "en": "Apples", "icon": "🍎" }
+      ],
+      "vegetables": [
+        { "name": "Espárragos", "en": "Asparagus", "icon": "🥒" },
+        { "name": "Guisantes", "en": "Peas", "icon": "🫛" },
+        { "name": "Brócoli", "en": "Broccoli", "icon": "🥦" },
+        { "name": "Zanahoria", "en": "Carrot", "icon": "🥕" },
+        { "name": "Calabaza", "en": "Zucchini", "icon": "🥒" }
+      ],
+      "benefits": "Mayor contenido de vitaminas C y nutrientes frescos"
+    },
+    "summer": {
+      "months": [6, 7, 8],
+      "season_es": "Verano",
+      "season_en": "Summer",
+      "season_fr": "Été",
+      "emoji": "☀️",
+      "fruits": [
+        { "name": "Sandía", "en": "Watermelon", "icon": "🍉" },
+        { "name": "Melón", "en": "Melon", "icon": "🍈" },
+        { "name": "Arándanos", "en": "Blueberries", "icon": "🫐" },
+        { "name": "Frambuesas", "en": "Raspberries", "icon": "🫐" },
+        { "name": "Melocotones", "en": "Peaches", "icon": "🍑" }
+      ],
+      "vegetables": [
+        { "name": "Tomate", "en": "Tomato", "icon": "🍅" },
+        { "name": "Calabacín", "en": "Zucchini", "icon": "🥒" },
+        { "name": "Lechuga", "en": "Lettuce", "icon": "🥬" },
+        { "name": "Pepino", "en": "Cucumber", "icon": "🥒" },
+        { "name": "Pimiento", "en": "Bell Pepper", "icon": "🫑" }
+      ],
+      "benefits": "Frutas hidratantes, ideales para mantener la hidratación"
+    },
+    "autumn": {
+      "months": [9, 10, 11],
+      "season_es": "Otoño",
+      "season_en": "Autumn",
+      "season_fr": "Automne",
+      "emoji": "🍂",
+      "fruits": [
+        { "name": "Manzanas", "en": "Apples", "icon": "🍎" },
+        { "name": "Peras", "en": "Pears", "icon": "🍐" },
+        { "name": "Uvas", "en": "Grapes", "icon": "🍇" },
+        { "name": "Higos", "en": "Figs", "icon": "🟣" },
+        { "name": "Ciruelas", "en": "Plums", "icon": "🟣" }
+      ],
+      "vegetables": [
+        { "name": "Calabaza", "en": "Pumpkin", "icon": "🎃" },
+        { "name": "Zanahoria", "en": "Carrot", "icon": "🥕" },
+        { "name": "Batata", "en": "Sweet Potato", "icon": "🟠" },
+        { "name": "Remolacha", "en": "Beet", "icon": "🟣" },
+        { "name": "Brócoli", "en": "Broccoli", "icon": "🥦" }
+      ],
+      "benefits": "Alimentos ricos en fibra y antioxidantes, perfectos para transición"
+    },
+    "winter": {
+      "months": [12, 1, 2],
+      "season_es": "Invierno",
+      "season_en": "Winter",
+      "season_fr": "Hiver",
+      "emoji": "❄️",
+      "fruits": [
+        { "name": "Naranjas", "en": "Oranges", "icon": "🍊" },
+        { "name": "Limones", "en": "Lemons", "icon": "🍋" },
+        { "name": "Mandarinas", "en": "Tangerines", "icon": "🍊" },
+        { "name": "Kiwi", "en": "Kiwi", "icon": "🥝" },
+        { "name": "Granadas", "en": "Pomegranate", "icon": "🍇" }
+      ],
+      "vegetables": [
+        { "name": "Col", "en": "Cabbage", "icon": "🥬" },
+        { "name": "Coliflor", "en": "Cauliflower", "icon": "🥦" },
+        { "name": "Espinaca", "en": "Spinach", "icon": "🥬" },
+        { "name": "Puerro", "en": "Leek", "icon": "🟢" },
+        { "name": "Zanahoria", "en": "Carrot", "icon": "🥕" }
+      ],
+      "benefits": "Alto contenido en vitamina C para inmunidad, alimentos de almacenamiento"
+    }
+  }
+}
