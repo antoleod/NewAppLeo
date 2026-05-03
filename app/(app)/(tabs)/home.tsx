@@ -707,22 +707,6 @@ export default function HomeScreen() {
           ? t('modal.rightBreast')
           : t('modal.leftBreast');
 
-  if (loading && entries.length === 0) {
-    return (
-      <Page contentStyle={styles.pageContent}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 24, gap: 14 }}>
-          <SkeletonCard lines={2} />
-          <SkeletonCard lines={3} />
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1 }}><SkeletonCard lines={1} /></View>
-            <View style={{ flex: 1 }}><SkeletonCard lines={1} /></View>
-          </View>
-          <SkeletonCard lines={4} />
-        </View>
-      </Page>
-    );
-  }
-
   const resolvedDisplayName = useMemo(() => {
     const fromDevice = deviceDisplayName.trim();
     if (fromDevice) return fromDevice;
@@ -740,6 +724,22 @@ export default function HomeScreen() {
     }
     return 'Parent';
   }, [deviceDisplayName, profile?.authEmail, profile?.caregiverName, profile?.displayName, user?.displayName, user?.email]);
+
+  if (loading && entries.length === 0) {
+    return (
+      <Page contentStyle={styles.pageContent}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 24, gap: 14 }}>
+          <SkeletonCard lines={2} />
+          <SkeletonCard lines={3} />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}><SkeletonCard lines={1} /></View>
+            <View style={{ flex: 1 }}><SkeletonCard lines={1} /></View>
+          </View>
+          <SkeletonCard lines={4} />
+        </View>
+      </Page>
+    );
+  }
 
   return (
     <Page contentStyle={styles.pageContent}>
