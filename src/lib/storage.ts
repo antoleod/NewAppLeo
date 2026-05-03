@@ -9,6 +9,8 @@ const MODULE_VISIBILITY_KEY = 'appleo.moduleVisibility';
 const APP_SETTINGS_KEY = 'appleo.appSettings';
 const GUEST_PROFILE_KEY = 'appleo.guestProfile';
 const SAVED_MEDICINES_KEY = 'appleo.savedMedicines';
+const SESSION_PREFIX = 'appleo.sessions';
+const CURRENT_SESSION_PREFIX = 'appleo.currentSession';
 
 export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand';
 export type ThemeStyle = 'default' | 'photo' | 'classic';
@@ -31,6 +33,14 @@ export interface BabyProfile {
 export interface SavedMedicine {
   name: string;
   dosage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SessionRecord {
+  id: string;
+  email: string;
+  device: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -134,6 +144,14 @@ function safeParse<T>(raw: string | null, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function sessionsKey(uid: string) {
+  return `${SESSION_PREFIX}:${uid}`;
+}
+
+function currentSessionKey(uid: string) {
+  return `${CURRENT_SESSION_PREFIX}:${uid}`;
 }
 
 function babyEntryKey(babyId: string) {
@@ -346,6 +364,38 @@ export async function setGuestProfile(profile: UserProfile) {
 
 export async function clearGuestProfile() {
   await AsyncStorage.removeItem(GUEST_PROFILE_KEY);
+}
+
+export async function getSessions(uid: string) {
+  return safeParse<SessionRecord[]>(await AsyncStorage.getItem(sessionsKey(uid)), []);
+}
+
+export async function getCurrentSessionId(uid: string) {
+  return (await AsyncStorage.getItem(currentSessionKey(uid))) ?? null;
+}
+
+export async function registerSession(uid: string, email: string) {
+  const now = new Date().toISOString();
+  const device =
+    typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 80) : 'Mobile device';
+  const sessionId = globalThis.crypto?.randomUUID?.() ?? `sess_${Date.now()}`;
+  const current: SessionRecord = { id: sessionId, email, device, createdAt: now, updatedAt: now };
+  const sessions = await getSessions(uid);
+  const next = [current, ...sessions.filter((item) => item.id !== sessionId)].slice(0, 20);
+  await AsyncStorage.setItem(sessionsKey(uid), JSON.stringify(next));
+  await AsyncStorage.setItem(currentSessionKey(uid), sessionId);
+  return current;
+}
+
+export async function removeSession(uid: string, sessionId: string) {
+  const sessions = await getSessions(uid);
+  const next = sessions.filter((item) => item.id !== sessionId);
+  await AsyncStorage.setItem(sessionsKey(uid), JSON.stringify(next));
+  const currentId = await getCurrentSessionId(uid);
+  if (currentId === sessionId) {
+    await AsyncStorage.removeItem(currentSessionKey(uid));
+  }
+  return next;
 }
 
 export async function buildBabyFromProfile(

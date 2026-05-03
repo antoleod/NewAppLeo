@@ -12,6 +12,7 @@ import {
 import { consumeGoogleRedirectResult, registerAccount, signInWithEmail, signInWithGoogle, signInWithUsernamePin, signOutUser } from '@/services/authService';
 import { clearGuestProfile, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import { createSession } from '@/services/sessionService';
 
 interface AuthContextValue {
   user: User | null;
@@ -111,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInEmail: async (payload) => {
         await clearGuestProfile();
         const result = await signInWithEmail(payload);
+        await createSession(result.user.uid, result.user.email ?? payload.email);
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);
@@ -118,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInGoogle: async () => {
         await clearGuestProfile();
         const result = await signInWithGoogle();
+        await createSession(result.user.uid, result.user.email ?? profile?.authEmail ?? 'unknown');
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);
@@ -144,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register: async (payload) => {
         await clearGuestProfile();
         const result = await registerAccount(payload);
+        await createSession(result.user.uid, result.user.email ?? payload.email);
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);

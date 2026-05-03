@@ -13,6 +13,7 @@ import { getLocalPairingSession } from '@/services/pairingService';
 import { flushQueuedOperations, loadQueuedOperations } from '@/lib/sync';
 import { useToast } from '@/components/Toast';
 import { haptics } from '@/lib/haptics';
+import { deleteSession, watchSessions, type SessionItem } from '@/services/sessionService';
 
 const languageOptions = [
   { label: 'FR', value: 'fr' },
@@ -34,7 +35,7 @@ export default function ProfileScreen() {
   const { colors } = useTheme();
   const { t, format } = useTranslation();
   const { setLanguage: setContextLanguage } = useLocale();
-  const { profile, guestMode, saveProfile, signOut } = useAuth();
+  const { profile, guestMode, saveProfile, signOut, user } = useAuth();
   const toast = useToast();
 
   const [form, setForm] = useState({
@@ -53,6 +54,7 @@ export default function ProfileScreen() {
   const [queuedSyncCount, setQueuedSyncCount] = useState(0);
   const [showChildren, setShowChildren] = useState(false);
   const [showSession, setShowSession] = useState(false);
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
@@ -80,7 +82,7 @@ export default function ProfileScreen() {
     setActiveBabyIdLocal((await getActiveBaby())?.id ?? null);
     setPairingCode(session?.code ?? null);
     setQueuedSyncCount(queuedOperations.length);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     void refreshProfileData();
@@ -89,6 +91,12 @@ export default function ProfileScreen() {
     });
     return () => subscription.remove();
   }, [refreshProfileData]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = watchSessions(user.uid, setSessions);
+    return () => unsub();
+  }, [user]);
 
   const handleFieldChange = useCallback(
     (field: keyof typeof form, value: string) => {
@@ -203,6 +211,17 @@ export default function ProfileScreen() {
       setSyncing(false);
     }
   }, [profile, t, toast]);
+
+  const handleRemoveSession = useCallback(
+    async (sessionId: string) => {
+      if (!user) return;
+      const target = sessions.find((item) => item.id === sessionId);
+      if (!target) return;
+      await deleteSession(user.uid, target);
+      toast.success('Session removed.');
+    },
+    [sessions, toast, user],
+  );
 
   const language = profile?.language ?? 'fr';
   const childSummary = useMemo(
@@ -355,9 +374,25 @@ export default function ProfileScreen() {
 
         {showSession && (
           <>
-            <Text style={{ color: colors.muted }}>{t('profile.emailLabel')}: {profile?.authEmail ?? t('profile.emailUnknown')}</Text>
+            <Text style={{ color: colors.muted }}>Current session email: {user?.email ?? profile?.authEmail ?? t('profile.emailUnknown')}</Text>
             <Text style={{ color: colors.muted }}>{t('profile.pairing')}: {pairingCode ?? t('profile.pairingNone')}</Text>
             <Text style={{ color: colors.muted }}>{t('profile.queuedSync')}{queuedSyncCount}</Text>
+            <Text style={{ color: colors.text, fontWeight: '700', marginTop: 10 }}>Open sessions</Text>
+            {sessions.length ? (
+              sessions.map((item) => {
+                const isCurrent = item.email === (user?.email ?? profile?.authEmail);
+                return (
+                  <View key={item.id} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 10, marginTop: 8 }}>
+                    <Text style={{ color: colors.text, fontWeight: '700' }}>{item.email} {isCurrent ? '(current)' : ''}</Text>
+                    <Text style={{ color: colors.muted, fontSize: 12 }}>{item.device}</Text>
+                    <Text style={{ color: colors.muted, fontSize: 12 }}>{new Date(item.createdAt ?? Date.now()).toLocaleString()}</Text>
+                    <Button label={item.isOwner ? 'Owner session' : 'Remove session'} onPress={() => void handleRemoveSession(item.id)} variant="ghost" disabled={item.isOwner} />
+                  </View>
+                );
+              })
+            ) : (
+              <Text style={{ color: colors.muted, marginTop: 6 }}>No open sessions found.</Text>
+            )}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
               <View style={{ flex: 1 }}>
                 <Button label={t('profile.syncNow')} onPress={handleSyncNow} variant="ghost" loading={syncing} disabled={syncing} />
