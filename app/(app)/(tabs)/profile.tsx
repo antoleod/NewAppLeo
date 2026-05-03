@@ -8,6 +8,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useLocale } from '@/context/LocaleContext';
 import { getActiveBaby, getBabies, saveBaby, setActiveBabyId, removeBaby } from '@/lib/storage';
+import { DataImporter } from '@/components/DataImporter';
 import { getLocalPairingSession } from '@/services/pairingService';
 import { flushQueuedOperations, loadQueuedOperations } from '@/lib/sync';
 import { useToast } from '@/components/Toast';
@@ -369,6 +370,8 @@ export default function ProfileScreen() {
           </>
         )}
       </Card>
+
+      <DataImporter />
     </Page>
   );
 }
