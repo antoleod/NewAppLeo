@@ -1086,14 +1086,14 @@ export default function HomeScreen() {
             </Text>
             {(() => {
               const actions = [
-                { type: 'diaper', label: t('entry.diaper'), color: ACCENT },
-                { type: 'temperature', label: t('entry.temperature'), color: RED },
-                { type: 'vaccine', label: t('entry.vaccine'), color: ACCENT },
-                { type: 'symptom', label: t('entry.symptoms'), color: BLUE },
-                { type: 'food', label: t('entry.food'), color: GOLD },
-                { type: 'medication', label: t('entry.medicine'), color: ACCENT },
-                { type: 'measurement', label: t('entry.measurement'), color: BLUE },
-                { type: 'sleep', label: t('entry.sleep'), color: BLUE },
+                { type: 'diaper', label: t('entry.diaper'), color: '#F59E0B' },
+                { type: 'temperature', label: t('entry.temperature'), color: '#EF4444' },
+                { type: 'vaccine', label: t('entry.vaccine'), color: '#22C55E' },
+                { type: 'symptom', label: t('entry.symptoms'), color: '#EC4899' },
+                { type: 'food', label: t('entry.food'), color: '#D97706' },
+                { type: 'medication', label: t('entry.medicine'), color: '#06B6D4' },
+                { type: 'measurement', label: t('entry.measurement'), color: '#8B5CF6' },
+                { type: 'sleep', label: t('entry.sleep'), color: '#3B82F6' },
               ];
               const renderRow = (rowItems: typeof actions, isFirst: boolean) => (
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: isFirst ? 0 : 8 }}>
