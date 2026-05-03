@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, StyleSheet, Text, View, GestureResponderEvent } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Button, Card, Input, Page, Segment } from '@/components/ui';
@@ -12,9 +12,12 @@ import { BreastSide, EntryPayload, EntryType } from '@/types';
 import { TimerWidget } from '@/components/TimerWidget';
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { DateTimeField } from '@/components/DateTimeField';
+import { VaccineReminderModal } from '@/components/VaccineReminderModal';
 import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
+import commonMedications from '@/data/common-medications.json';
 import * as ImagePicker from 'expo-image-picker';
 import { scheduleVaccineReminder } from '@/lib/notifications';
+import { scheduleMedicationReminder } from '@/lib/notifications';
 import { getSuggestedValues, getWeightCategory, getHeightCategory } from '@/lib/who-recommendations';
 import { haptics } from '@/lib/haptics';
 import { useToast } from '@/components/Toast';
@@ -42,6 +45,37 @@ const symptomOptions = [
 
 const vaccinePresets = ['BCG', 'Hepatitis B', 'DTP', 'Polio', 'MMR', 'Varicella', 'Rotavirus', 'PCV'];
 
+const foodPresets = [
+  { label: 'Purée', value: 'puree', ingredients: ['Frutas o vegetales'], icon: '🥜' },
+  { label: 'Fruit', value: 'fruit', ingredients: ['Manzana', 'Pera', 'Plátano', 'Naranja'], icon: '🍎' },
+  { label: 'Céréales', value: 'cereals', ingredients: ['Avena', 'Arroz', 'Maíz'], icon: '🌾' },
+  { label: 'Yaourt', value: 'yogurt', ingredients: ['Leche', 'Cultivos vivos'], icon: '🥛' },
+  { label: 'Légumes', value: 'vegetables', ingredients: ['Zanahoria', 'Brócoli', 'Calabaza', 'Espinaca'], icon: '🥕' },
+  { label: 'Agua', value: 'water', ingredients: ['Agua'], icon: '💧' },
+];
+
+const mealTimes = [
+  { label: '🌅 Desayuno', value: 'breakfast', labelEn: '🌅 Breakfast', startHour: 6, endHour: 10 },
+  { label: '🌞 Almuerzo', value: 'lunch', labelEn: '🌞 Lunch', startHour: 11, endHour: 14 },
+  { label: '🍪 Merienda', value: 'snack', labelEn: '🍪 Snack', startHour: 15, endHour: 17 },
+  { label: '🌙 Cena', value: 'dinner', labelEn: '🌙 Dinner', startHour: 18, endHour: 21 },
+];
+
+const foodDefaultQuantities: Record<string, number> = {
+  puree: 50,
+  fruit: 40,
+  cereals: 30,
+  yogurt: 80,
+  vegetables: 60,
+  water: 100,
+};
+
+function getRecommendedMealTime(): 'breakfast' | 'lunch' | 'snack' | 'dinner' {
+  const hour = new Date().getHours();
+  const meal = mealTimes.find((m) => hour >= m.startHour && hour < m.endHour);
+  return (meal?.value as any) || 'lunch';
+}
+
 const typeMeta: Record<
   EntryType,
   {
@@ -51,57 +85,57 @@ const typeMeta: Record<
   }
 > = {
   feed: {
-    icon: '🍼',
+    icon: '??',
     tone: '#C9A227',
     toneSoft: 'rgba(201,162,39,0.16)',
   },
   food: {
-    icon: '🍲',
+    icon: '??',
     tone: '#F0B85A',
     toneSoft: 'rgba(240,184,90,0.16)',
   },
   sleep: {
-    icon: '😴',
+    icon: '??',
     tone: '#58A6FF',
     toneSoft: 'rgba(88,166,255,0.16)',
   },
   diaper: {
-    icon: '🧷',
+    icon: '??',
     tone: '#E74C3C',
     toneSoft: 'rgba(231,76,60,0.16)',
   },
   pump: {
-    icon: '🍼',
+    icon: '??',
     tone: '#3FB950',
     toneSoft: 'rgba(63,185,80,0.16)',
   },
   measurement: {
-    icon: '⚖️',
+    icon: '??',
     tone: '#A371F7',
     toneSoft: 'rgba(163,113,247,0.16)',
   },
   medication: {
-    icon: '💊',
+    icon: '??',
     tone: '#7CC2FF',
     toneSoft: 'rgba(124,194,255,0.16)',
   },
   milestone: {
-    icon: '✨',
+    icon: '?',
     tone: '#D9B97D',
     toneSoft: 'rgba(217,185,125,0.16)',
   },
   symptom: {
-    icon: '💬',
+    icon: '??',
     tone: '#8EB5EA',
     toneSoft: 'rgba(142,181,234,0.16)',
   },
   temperature: {
-    icon: '🌡️',
+    icon: '???',
     tone: '#E74C3C',
     toneSoft: 'rgba(231,76,60,0.16)',
   },
   vaccine: {
-    icon: '💉',
+    icon: '??',
     tone: '#3FB950',
     toneSoft: 'rgba(63,185,80,0.16)',
   },
@@ -139,7 +173,7 @@ export default function EntryComposerScreen() {
   const { language } = useLocale();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string }>();
-  const { addEntry, updateEntry, deleteEntry, entryById } = useAppData();
+  const { entries, addEntry, updateEntry, deleteEntry, entryById } = useAppData();
   const toast = useToast();
   const type = (params.type as EntryType) || 'feed';
   const editing = params.id ? entryById(String(params.id)) : undefined;
@@ -162,6 +196,7 @@ export default function EntryComposerScreen() {
   const [tempC, setTempC] = useState('');
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
+  const [medIntervalHours, setMedIntervalHours] = useState('6');
   const [title, setTitle] = useState('');
   const [icon, setIcon] = useState('sparkles');
   const [photoUri, setPhotoUri] = useState('');
@@ -170,6 +205,8 @@ export default function EntryComposerScreen() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [occurredAt, setOccurredAt] = useState(new Date());
   const [saving, setSaving] = useState(false);
+  const [sleepTimerRunning, setSleepTimerRunning] = useState(false);
+  const [sleepStopToken, setSleepStopToken] = useState(0);
   const [largeTouchMode, setLargeTouchMode] = useState(false);
   const [savedMedicines, setSavedMedicines] = useState<SavedMedicine[]>([]);
   const [vaccineTemp, setVaccineTemp] = useState('');
@@ -184,8 +221,110 @@ export default function EntryComposerScreen() {
   const [reminderMedicationName, setReminderMedicationName] = useState('');
   const [reminderMedicationDate, setReminderMedicationDate] = useState(new Date());
   const [foodAllergies, setFoodAllergies] = useState<string[]>([]);
+  const [foodLiked, setFoodLiked] = useState<'yes' | 'no' | 'neutral' | null>(null);
+  const [mealTime, setMealTime] = useState<'breakfast' | 'lunch' | 'snack' | 'dinner' | ''>(type === 'food' && !editing ? getRecommendedMealTime() : '');
+  const [quantityGrams, setQuantityGrams] = useState('');
   const meta = typeMeta[type];
-  const { profile } = useAuth();
+  const { profile, saveProfile } = useAuth();
+  const recentMedicationEntries = useMemo(
+    () =>
+      entries
+        .filter((entry) => entry.type === 'medication' && typeof (entry.payload as any)?.name === 'string')
+        .slice(0, 5),
+    [entries],
+  );
+  const recentFoodEntries = useMemo(
+    () =>
+      entries
+        .filter((entry) => entry.type === 'food' && typeof (entry.payload as any)?.foodName === 'string')
+        .slice(0, 4),
+    [entries],
+  );
+
+  const foodPreferencesMap = useMemo(() => {
+    const map: Record<string, { liked: number; neutral: number; disliked: number }> = {};
+    entries
+      .filter((entry) => entry.type === 'food' && (entry.payload as any)?.foodName)
+      .forEach((entry) => {
+        const foodName = (entry.payload as any).foodName;
+        const liked = (entry.payload as any).foodLiked;
+        if (!map[foodName]) {
+          map[foodName] = { liked: 0, neutral: 0, disliked: 0 };
+        }
+        if (liked === 'yes') map[foodName].liked++;
+        else if (liked === 'neutral') map[foodName].neutral++;
+        else if (liked === 'no') map[foodName].disliked++;
+      });
+    return map;
+  }, [entries]);
+  const medStatus = useMemo(() => {
+    const currentName = name.trim().toLowerCase();
+    if (!currentName) {
+      return {
+        label: language === 'fr' ? 'OK' : 'OK',
+        text: language === 'fr' ? 'Choisissez un médicament pour voir le statut.' : 'Select a medicine to see status.',
+        color: '#3FB950',
+      };
+    }
+    const lastSame = entries.find(
+      (entry) => entry.type === 'medication' && ((entry.payload as any)?.name ?? '').trim().toLowerCase() === currentName,
+    );
+    if (!lastSame) {
+      return {
+        label: language === 'fr' ? 'DUE' : 'DUE',
+        text: language === 'fr' ? 'Aucune dose récente trouvée.' : 'No recent dose found.',
+        color: '#E74C3C',
+      };
+    }
+    const intervalHours = Number(medIntervalHours) || 6;
+    const hoursSince = (Date.now() - new Date(lastSame.occurredAt).getTime()) / 36e5;
+    if (hoursSince >= intervalHours) {
+      return {
+        label: 'DUE',
+        text: language === 'fr' ? 'Prochaine dose recommandée maintenant.' : 'Next dose recommended now.',
+        color: '#E74C3C',
+      };
+    }
+    if (hoursSince >= Math.max(1, intervalHours - 2)) {
+      return {
+        label: 'SOON',
+        text: language === 'fr' ? 'Dose bientôt possible.' : 'Dose will be due soon.',
+        color: '#F0B85A',
+      };
+    }
+    return {
+      label: 'OK',
+      text: language === 'fr' ? 'Fenêtre de sécurité active.' : 'Safe interval active.',
+      color: '#3FB950',
+    };
+  }, [entries, language, medIntervalHours, name]);
+  const nextDosePreview = useMemo(() => {
+    if (!name.trim()) return '';
+    const interval = Number(medIntervalHours) || 6;
+    const nextAt = new Date(occurredAt.getTime() + interval * 60 * 60 * 1000);
+    const locale = language === 'fr' ? 'fr-FR' : 'en-US';
+    return `${nextAt.toLocaleDateString(locale)} ${nextAt.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
+  }, [language, medIntervalHours, name, occurredAt]);
+  const normalizedMedName = name.trim().toLowerCase();
+  const existingSavedMedicine = useMemo(
+    () => savedMedicines.find((item) => item.name.trim().toLowerCase() === normalizedMedName),
+    [normalizedMedName, savedMedicines],
+  );
+  const isMedicationDirty = useMemo(() => {
+    if (!existingSavedMedicine) return Boolean(name.trim());
+    return (existingSavedMedicine.dosage ?? '').trim() !== dosage.trim();
+  }, [dosage, existingSavedMedicine, name]);
+
+  function getRecommendedDose(medName: string) {
+    const med = (commonMedications as Array<any>).find((item) => item.name.toLowerCase() === medName.trim().toLowerCase());
+    if (!med) return '';
+    const kg = Number(profile?.currentWeightKg ?? 0);
+    if (Number.isFinite(kg) && kg > 0 && Array.isArray(med.dosingByKg)) {
+      const byKg = med.dosingByKg.find((row: any) => kg <= Number(row.maxKg));
+      if (byKg?.dosage) return byKg.dosage as string;
+    }
+    return med.defaultDosage ?? '';
+  }
 
   useEffect(() => {
     if (!editing) return;
@@ -203,7 +342,10 @@ export default function EntryComposerScreen() {
       case 'food':
         setFoodName(editing.payload?.foodName ?? '');
         setQuantity(editing.payload?.quantity ?? '');
+        setQuantityGrams(editing.payload?.quantityGrams ? String(editing.payload.quantityGrams) : '');
         setFoodAllergies((editing.payload?.foodAllergies as string[]) ?? []);
+        setFoodLiked((editing.payload?.foodLiked as any) ?? null);
+        setMealTime((editing.payload?.mealTime as any) ?? '');
         break;
       case 'sleep':
       case 'pump':
@@ -263,6 +405,17 @@ export default function EntryComposerScreen() {
     if (presetSide) setSide(presetSide);
   }, [editing, presetAmount, presetMode, presetSide]);
 
+  useEffect(() => {
+    if (type !== 'food' || editing || !foodName) return;
+    const selectedPreset = foodPresets.find((p) => p.label === foodName);
+    if (selectedPreset && !quantityGrams) {
+      const defaultQty = foodDefaultQuantities[selectedPreset.value];
+      if (defaultQty) {
+        setQuantityGrams(String(defaultQty));
+      }
+    }
+  }, [foodName, editing, type, quantityGrams]);
+
   function buildPayload(): EntryPayload {
     switch (type) {
       case 'feed':
@@ -270,7 +423,15 @@ export default function EntryComposerScreen() {
           ? { mode: 'bottle', amountMl: Number(amountMl) || 0, notes }
           : { mode: 'breast', side: side as BreastSide, durationMin: Number(durationMin) || 0, amountMl: Number(amountMl) || 0, notes };
       case 'food':
-        return { foodName, quantity, foodAllergies: foodAllergies.length > 0 ? foodAllergies : undefined, notes };
+        return {
+          foodName,
+          quantity,
+          quantityGrams: quantityGrams ? Number(quantityGrams) : undefined,
+          foodAllergies: foodAllergies.length > 0 ? foodAllergies : undefined,
+          foodLiked: foodLiked || undefined,
+          mealTime: mealTime || undefined,
+          notes,
+        };
       case 'sleep':
         return { durationMin: Number(durationMin) || 0, notes };
       case 'diaper':
@@ -349,6 +510,15 @@ export default function EntryComposerScreen() {
       }
       if (type === 'medication' && name.trim()) {
         setSavedMedicines(await upsertSavedMedicine({ name, dosage }));
+        const reminderEntry = {
+          id: editing?.id ?? `med_${Date.now()}`,
+          type,
+          title: titleValue,
+          notes,
+          occurredAt: timestamp,
+          payload,
+        } as any;
+        await scheduleMedicationReminder(reminderEntry, profile?.babyName ?? 'Baby', Number(medIntervalHours) || 6);
       }
 
       haptics.success();
@@ -359,6 +529,17 @@ export default function EntryComposerScreen() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handlePrimarySave() {
+    if (type === 'sleep' && sleepTimerRunning) {
+      setSleepStopToken((current) => current + 1);
+      setTimeout(() => {
+        void handleSave();
+      }, 40);
+      return;
+    }
+    await handleSave();
   }
 
   async function handleSaveReminder() {
@@ -434,7 +615,7 @@ export default function EntryComposerScreen() {
             <Text style={styles.heroTitle}>{typeLabels[type]}</Text>
           </View>
           <Pressable onPress={() => router.back()} style={styles.closeButton}>
-            <Text style={styles.closeButtonLabel}>✕</Text>
+            <Text style={styles.closeButtonLabel}>?</Text>
           </Pressable>
         </View>
       </View>
@@ -499,48 +680,182 @@ export default function EntryComposerScreen() {
 
         {type === 'food' && (
           <View style={styles.sectionCard}>
+            {profile?.babyBirthDate && (() => {
+              const birthDate = new Date(profile.babyBirthDate);
+              const ageMonths = (new Date().getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+              if (ageMonths < 6) {
+                return (
+                  <View style={[styles.ageWarningBox, { borderColor: '#F0B85A', backgroundColor: 'rgba(240,184,90,0.1)' }]}>
+                    <Text style={[styles.ageWarningText, { color: '#F0B85A' }]}>
+                      ⚠️ {language === 'fr' ? 'Les aliments solides ne sont recommandés qu\'à partir de 6 mois' : 'Solid foods recommended from 6 months'}
+                    </Text>
+                  </View>
+                );
+              }
+              return null;
+            })()}
+
+            <View style={{ marginBottom: 12 }}>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
+                {language === 'fr' ? 'Choisir un aliment' : 'Choose food'}
+              </Text>
+              <View style={styles.chipRow}>
+                {foodPresets.map((preset) => (
+                  <Pressable
+                    key={preset.value}
+                    onPress={() => setFoodName(preset.label)}
+                    style={[styles.quickChip, foodName === preset.label && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                  >
+                    <Text style={[styles.quickChipText, foodName === preset.label && { color: meta.tone, fontWeight: '900' }]}>
+                      {preset.icon} {preset.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {recentFoodEntries.length > 0 && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>
+                  {language === 'fr' ? 'Récents & Favoris' : 'Recent & Favorites'}
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {recentFoodEntries.map((entry) => {
+                    const foodName_ = (entry.payload as any).foodName;
+                    const prefs = foodPreferencesMap[foodName_];
+                    const emoji = !prefs
+                      ? ''
+                      : prefs.liked > prefs.disliked + prefs.neutral
+                        ? '❤️'
+                        : prefs.disliked > prefs.liked + prefs.neutral
+                          ? '😕'
+                          : '';
+                    return (
+                      <Pressable
+                        key={entry.id}
+                        onPress={() => setFoodName(foodName_)}
+                        style={[
+                          styles.recentFoodChip,
+                          foodName === foodName_ && { backgroundColor: meta.toneSoft, borderColor: meta.tone },
+                        ]}
+                      >
+                        <Text style={[styles.recentFoodChipText, foodName === foodName_ && { color: meta.tone, fontWeight: '900' }]}>
+                          {emoji} {foodName_}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
             <View style={{ marginBottom: 12 }}>
               <Input
-                label={t('food.foodLabel')}
+                label={language === 'fr' ? 'Nom de l\'aliment' : 'Food name'}
                 value={foodName}
                 onChangeText={setFoodName}
                 placeholder={language === 'fr' ? 'Pomme, riz, purée...' : 'Apple, rice, puree...'}
               />
             </View>
 
-            <View>
+            <View style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  {language === 'fr' ? 'Heure du repas' : 'Meal time'}
+                </Text>
+                <Text style={[styles.sectionBody, { color: colors.muted, fontSize: 11 }]}>
+                  {new Date().toLocaleTimeString(language === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </View>
+              <View style={styles.chipRow}>
+                {mealTimes.map((meal) => {
+                  const isRecommended = getRecommendedMealTime() === meal.value && !mealTime;
+                  return (
+                    <Pressable
+                      key={meal.value}
+                      onPress={() => setMealTime(meal.value as any)}
+                      style={[
+                        styles.quickChip,
+                        mealTime === meal.value && { backgroundColor: meta.toneSoft, borderColor: meta.tone },
+                        isRecommended && !mealTime && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 },
+                      ]}
+                    >
+                      <Text style={[styles.quickChipText, (mealTime === meal.value || isRecommended) && { color: meta.tone, fontWeight: '900' }]}>
+                        {language === 'fr' ? meal.label : meal.labelEn}
+                        {isRecommended && !mealTime ? ' ✓' : ''}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  {language === 'fr' ? 'Quantité (g)' : 'Quantity (g)'}
+                </Text>
+                {foodName && foodDefaultQuantities[foodPresets.find((p) => p.label === foodName)?.value || ''] && (
+                  <Text style={[styles.sectionBody, { color: colors.muted, fontSize: 10, fontStyle: 'italic' }]}>
+                    {language === 'fr' ? 'Suggéré' : 'Suggested'}: {foodDefaultQuantities[foodPresets.find((p) => p.label === foodName)?.value || '']}g
+                  </Text>
+                )}
+              </View>
+              <Input
+                label=""
+                value={quantityGrams}
+                onChangeText={setQuantityGrams}
+                keyboardType="decimal-pad"
+                placeholder={foodName ? String(foodDefaultQuantities[foodPresets.find((p) => p.label === foodName)?.value || '50']) : '50'}
+              />
+              <View style={styles.quantityQuickButtons}>
+                {[20, 50, 100, 150].map((g) => (
+                  <Pressable
+                    key={g}
+                    onPress={() => setQuantityGrams(String(g))}
+                    style={[styles.quickQuantityBtn, quantityGrams === String(g) && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                  >
+                    <Text style={[styles.quickQuantityText, quantityGrams === String(g) && { color: meta.tone, fontWeight: '900' }]}>
+                      {g}g
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <View style={{ marginBottom: 12 }}>
               <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
-                {t('entry.amount')}
+                {language === 'fr' ? '¿Le gustó?' : 'Did baby like it?'}
               </Text>
               <View style={styles.chipRow}>
                 <Pressable
-                  onPress={() => setQuantity('peu')}
-                  style={[styles.quickChip, quantity === 'peu' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                  onPress={() => setFoodLiked(foodLiked === 'yes' ? null : 'yes')}
+                  style={[styles.quickChip, foodLiked === 'yes' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
                 >
-                  <Text style={[styles.quickChipText, quantity === 'peu' && { color: meta.tone, fontWeight: '900' }]}>
-                    {language === 'fr' ? 'Peu' : 'Little'}
+                  <Text style={[styles.quickChipText, foodLiked === 'yes' && { color: meta.tone, fontWeight: '900' }]}>
+                    👍 {language === 'fr' ? 'Sí' : 'Yes'}
                   </Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => setQuantity('moyen')}
-                  style={[styles.quickChip, quantity === 'moyen' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                  onPress={() => setFoodLiked(foodLiked === 'neutral' ? null : 'neutral')}
+                  style={[styles.quickChip, foodLiked === 'neutral' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
                 >
-                  <Text style={[styles.quickChipText, quantity === 'moyen' && { color: meta.tone, fontWeight: '900' }]}>
-                    {language === 'fr' ? 'Moyen' : 'Medium'}
+                  <Text style={[styles.quickChipText, foodLiked === 'neutral' && { color: meta.tone, fontWeight: '900' }]}>
+                    😐 {language === 'fr' ? 'Neutral' : 'Neutral'}
                   </Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => setQuantity('beaucoup')}
-                  style={[styles.quickChip, quantity === 'beaucoup' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                  onPress={() => setFoodLiked(foodLiked === 'no' ? null : 'no')}
+                  style={[styles.quickChip, foodLiked === 'no' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
                 >
-                  <Text style={[styles.quickChipText, quantity === 'beaucoup' && { color: meta.tone, fontWeight: '900' }]}>
-                    {language === 'fr' ? 'Beaucoup' : 'Lots'}
+                  <Text style={[styles.quickChipText, foodLiked === 'no' && { color: meta.tone, fontWeight: '900' }]}>
+                    👎 {language === 'fr' ? 'No' : 'No'}
                   </Text>
                 </Pressable>
               </View>
             </View>
 
-            <View style={{ marginTop: 16 }}>
+            <View style={{ marginBottom: 12 }}>
               <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
                 {language === 'fr' ? 'Réaction?' : 'Any reaction?'}
               </Text>
@@ -578,10 +893,19 @@ export default function EntryComposerScreen() {
 
         {type === 'sleep' && (
           <View style={styles.sectionCard}>
-            <TimerWidget label={language === 'fr' ? 'Durée (min)' : 'Duration (min)'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
+            <TimerWidget
+              label={language === 'fr' ? 'Durée (min)' : 'Duration (min)'}
+              valueMinutes={Number(durationMin) || 0}
+              onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
+              largeTouchMode={largeTouchMode}
+              autoStart={!editing}
+              hideActionButton
+              stopRequestToken={sleepStopToken}
+              onRunningChange={setSleepTimerRunning}
+            />
             {durationMin && (
               <View style={[styles.infoStrip, { marginTop: 12 }]}>
-                <Text style={styles.infoStripText}>😴 {Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
+                <Text style={styles.infoStripText}>?? {Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
               </View>
             )}
           </View>
@@ -590,9 +914,9 @@ export default function EntryComposerScreen() {
         {type === 'diaper' && (
           <View style={styles.sectionCard}>
             <View style={styles.diaperMinimalStack}>
-              <DiaperVolumeSlider emoji="💧" value={Number(pee)} onChange={(val) => setPee(String(val))} color="#58A6FF" />
-              <DiaperVolumeSlider emoji="💩" value={Number(poop)} onChange={(val) => setPoop(String(val))} color="#A371F7" />
-              <DiaperVolumeSlider emoji="🤢" value={Number(vomit)} onChange={(val) => setVomit(String(val))} color="#F0B85A" />
+              <DiaperVolumeSlider emoji="??" value={Number(pee)} onChange={(val) => setPee(String(val))} color="#58A6FF" />
+              <DiaperVolumeSlider emoji="??" value={Number(poop)} onChange={(val) => setPoop(String(val))} color="#A371F7" />
+              <DiaperVolumeSlider emoji="??" value={Number(vomit)} onChange={(val) => setVomit(String(val))} color="#F0B85A" />
             </View>
           </View>
         )}
@@ -617,7 +941,7 @@ export default function EntryComposerScreen() {
                 <>
                   {suggested && (
                     <View style={[styles.whoSuggestedBox, { borderColor: meta.tone, backgroundColor: `${meta.tone}10` }]}>
-                      <Text style={[styles.whoSuggestedTitle, { color: meta.tone }]}>💡 {language === 'fr' ? 'Suggestion selon OMS' : 'WHO Suggested Range'}</Text>
+                      <Text style={[styles.whoSuggestedTitle, { color: meta.tone }]}>?? {language === 'fr' ? 'Suggestion selon OMS' : 'WHO Suggested Range'}</Text>
                       <Text style={[styles.whoSuggestedMessage, { color: colors.text }]}>{suggested.message}</Text>
                       <View style={styles.whoSuggestedRow}>
                         <View style={{ flex: 1 }}>
@@ -647,7 +971,7 @@ export default function EntryComposerScreen() {
                   )}
 
                   <View style={{ marginTop: suggested ? 12 : 0 }}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>📏 {language === 'fr' ? 'Mesures actuelles' : 'Current Measurements'}</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>?? {language === 'fr' ? 'Mesures actuelles' : 'Current Measurements'}</Text>
 
                     <View style={{ marginTop: 12 }}>
                       <Input
@@ -691,6 +1015,32 @@ export default function EntryComposerScreen() {
         {type === 'medication' && (
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Médicament' : 'Medication'}</Text>
+            <View style={styles.medQuickRow}>
+              {(commonMedications as Array<any>).map((med) => (
+                <Pressable
+                  key={med.name}
+                  onPress={() => {
+                    setName(med.name);
+                    setDosage(getRecommendedDose(med.name) || med.defaultDosage || '');
+                  }}
+                  style={[styles.medQuickBtn, { borderColor: meta.tone }]}
+                >
+                  <Text style={styles.medQuickTitle}>{med.name}</Text>
+                  <Text style={styles.medQuickSub}>{getRecommendedDose(med.name) || med.defaultDosage || ''}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable
+              onPress={() => {
+                setName('');
+                setDosage('');
+              }}
+              style={[styles.medManualBtn, { borderColor: meta.tone }]}
+            >
+              <Text style={[styles.medManualText, { color: meta.tone }]}>
+                {language === 'fr' ? 'Ajouter manuellement' : 'Add manually'}
+              </Text>
+            </Pressable>
             {savedMedicines.length > 0 && (
               <View style={styles.savedWrap}>
                 <View style={styles.savedRow}>
@@ -710,13 +1060,70 @@ export default function EntryComposerScreen() {
                 </View>
               </View>
             )}
-            <Input label={t('entry.medicationName')} value={name} onChangeText={setName} />
-            <Input label={t('entry.dosage')} value={dosage} onChangeText={setDosage} />
             {name.trim() && (
-              <Pressable onPress={async () => setSavedMedicines(await upsertSavedMedicine({ name, dosage }))} style={[styles.savePresetButton, { marginTop: 8 }]}>
-                <Text style={styles.savePresetText}>💾 {language === 'fr' ? 'Sauver' : 'Save'}</Text>
+              <Pressable
+                onPress={async () => {
+                  const next = await upsertSavedMedicine({ name, dosage });
+                  setSavedMedicines(next);
+                  const profileList = profile?.customMedicines ?? [];
+                  const now = new Date().toISOString();
+                  const merged = [
+                    { name: name.trim(), dosage: dosage.trim() || undefined, updatedAt: now },
+                    ...profileList.filter((item) => item.name.toLowerCase() !== name.trim().toLowerCase()),
+                  ].slice(0, 24);
+                  await saveProfile({ customMedicines: merged });
+                }}
+                style={[styles.savePresetButton, { marginTop: 8 }]}
+              >
+                <Text style={styles.savePresetText}>
+                  {!existingSavedMedicine
+                    ? language === 'fr'
+                      ? 'Ajouter ce medicament'
+                      : 'Add this medicine'
+                    : isMedicationDirty
+                      ? language === 'fr'
+                        ? 'Mettre a jour la dose'
+                        : 'Update dosage'
+                      : language === 'fr'
+                        ? 'Deja enregistre'
+                        : 'Already saved'}
+                </Text>
               </Pressable>
             )}
+            <Input label={t('entry.medicationName')} value={name} onChangeText={setName} />
+            <Input label={t('entry.dosage')} value={dosage} onChangeText={setDosage} />
+            <View style={styles.medIntervalHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {language === 'fr' ? 'Intervalle recommandé' : 'Recommended interval'}
+              </Text>
+              {name.trim() ? <Text style={[styles.medStatusLabel, { color: medStatus.color }]}>{medStatus.label}</Text> : null}
+            </View>
+            <View style={styles.medIntervalRow}>
+              {['4', '6', '8'].map((value) => {
+                const active = medIntervalHours === value;
+                return (
+                  <Pressable
+                    key={value}
+                    onPress={() => setMedIntervalHours(value)}
+                    style={[styles.medIntervalBtn, active && { borderColor: meta.tone, backgroundColor: meta.toneSoft }]}
+                  >
+                    <Text style={[styles.medIntervalText, active && { color: meta.tone }]}>{value}h</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {name.trim() ? (
+              <Text style={[styles.medNextDoseText, { color: colors.muted }]}>
+                {language === 'fr' ? 'Prochaine dose:' : 'Next dose:'} {nextDosePreview}
+              </Text>
+            ) : null}
+            <Text style={[styles.medStatusText, { color: colors.text }]}>
+              {name.trim()
+                ? medStatus.text
+                : language === 'fr'
+                  ? 'Choisissez ou ajoutez un medicament pour voir le statut.'
+                  : 'Choose or add a medicine to see status.'}
+            </Text>
             <Pressable
               onPress={() => setShowMedicationReminderFlow(true)}
               style={[
@@ -729,15 +1136,37 @@ export default function EntryComposerScreen() {
                 {language === 'fr' ? 'Rappel pour la prochaine dose' : 'Reminder for next dose'}
               </Text>
             </Pressable>
+            <View style={styles.medTimelineWrap}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {language === 'fr' ? 'Doses recentes' : 'Recent doses'}
+              </Text>
+              {recentMedicationEntries.length === 0 ? (
+                <Text style={[styles.medTimelineEmpty, { color: colors.muted }]}>
+                  {language === 'fr' ? 'Aucune dose enregistree aujourd hui.' : 'No medication logged yet.'}
+                </Text>
+              ) : (
+                recentMedicationEntries.map((entry) => (
+                  <View key={entry.id} style={styles.medTimelineItem}>
+                    <View style={[styles.medTimelineDot, { backgroundColor: meta.tone }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.medTimelineName, { color: colors.text }]}>{(entry.payload as any)?.name}</Text>
+                      <Text style={[styles.medTimelineMeta, { color: colors.muted }]}>
+                        {((entry.payload as any)?.dosage || '').trim() || '—'} · {new Date(entry.occurredAt).toLocaleTimeString(language === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
           </View>
         )}
 
         {type === 'milestone' && (
           <View style={styles.sectionCard}>
             <Input label={t('entry.titleLabel')} value={title} onChangeText={setTitle} placeholder={language === 'fr' ? 'Premier sourire...' : 'First smile...'} />
-            <Input label="Icon" value={icon} onChangeText={setIcon} placeholder="✨" />
+            <Input label="Icon" value={icon} onChangeText={setIcon} placeholder="?" />
             <Button
-              label={photoUri ? (language === 'fr' ? '📸 Remplacer' : '📸 Replace') : language === 'fr' ? '📸 Ajouter' : '📸 Add'}
+              label={photoUri ? (language === 'fr' ? '?? Remplacer' : '?? Replace') : language === 'fr' ? '?? Ajouter' : '?? Add'}
               onPress={async () => {
                 const result = await ImagePicker.launchImageLibraryAsync({
                   mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -797,7 +1226,7 @@ export default function EntryComposerScreen() {
                 }}
                 style={styles.tempButton}
               >
-                <Text style={styles.tempButtonText}>−</Text>
+                <Text style={styles.tempButtonText}>-</Text>
               </Pressable>
 
               <View style={{ flex: 1 }}>
@@ -831,15 +1260,15 @@ export default function EntryComposerScreen() {
               <View style={styles.tempStatusContainer}>
                 {Number(vaccineTemp) < 37.5 ? (
                   <View style={[styles.tempStatus, { backgroundColor: 'rgba(63,185,80,0.16)', borderColor: '#3FB950' }]}>
-                    <Text style={[styles.tempStatusText, { color: '#3FB950' }]}>✓ {language === 'fr' ? 'Normal' : 'Normal'}</Text>
+                    <Text style={[styles.tempStatusText, { color: '#3FB950' }]}>? {language === 'fr' ? 'Normal' : 'Normal'}</Text>
                   </View>
                 ) : Number(vaccineTemp) < 38 ? (
                   <View style={[styles.tempStatus, { backgroundColor: 'rgba(242,200,111,0.16)', borderColor: '#F2C86F' }]}>
-                    <Text style={[styles.tempStatusText, { color: '#F2C86F' }]}>⚠ {language === 'fr' ? 'Febrícula' : 'Mild fever'}</Text>
+                    <Text style={[styles.tempStatusText, { color: '#F2C86F' }]}>? {language === 'fr' ? 'Febrícula' : 'Mild fever'}</Text>
                   </View>
                 ) : (
                   <View style={[styles.tempStatus, { backgroundColor: 'rgba(231,76,60,0.16)', borderColor: '#E74C3C' }]}>
-                    <Text style={[styles.tempStatusText, { color: '#E74C3C' }]}>🚨 {language === 'fr' ? 'Fievre' : 'Fever'}</Text>
+                    <Text style={[styles.tempStatusText, { color: '#E74C3C' }]}>?? {language === 'fr' ? 'Fievre' : 'Fever'}</Text>
                   </View>
                 )}
               </View>
@@ -890,7 +1319,7 @@ export default function EntryComposerScreen() {
                     onPress={() => setVaccineDose(String(Math.max(1, Number(vaccineDose) - 1)))}
                     style={styles.vaccineDoseButton}
                   >
-                    <Text style={styles.vaccineDoseButtonText}>−</Text>
+                    <Text style={styles.vaccineDoseButtonText}>-</Text>
                   </Pressable>
 
                   <View style={{ flex: 1, alignItems: 'center' }}>
@@ -939,226 +1368,29 @@ export default function EntryComposerScreen() {
       {/* Sticky Footer Actions */}
       <View style={[styles.actionsStickyContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <View style={styles.actions}>
-          <Button label={editing ? (language === 'fr' ? 'Mettre à jour' : 'Update') : language === 'fr' ? 'Enregistrer' : 'Save'} onPress={handleSave} loading={saving} />
+          <Button label={editing ? (language === 'fr' ? 'Mettre à jour' : 'Update') : language === 'fr' ? 'Enregistrer' : 'Save'} onPress={() => void handlePrimarySave()} loading={saving} />
           {editing && <Button label={language === 'fr' ? 'Supprimer' : 'Delete'} onPress={handleDelete} variant="danger" />}
         </View>
       </View>
 
-      {/* Medication Reminder Flow Modal */}
-      {type === 'medication' && (
-        <Modal visible={showMedicationReminderFlow} transparent animationType="slide" onRequestClose={() => setShowMedicationReminderFlow(false)}>
-          <View style={styles.reminderModalOverlay}>
-            <View style={styles.reminderModalContent}>
-              <View style={styles.reminderModalHeader}>
-                <Text style={styles.reminderModalTitle}>{language === 'fr' ? 'Rappel médicament' : 'Medication Reminder'}</Text>
-                <Text style={[styles.reminderModalSubtitle, { color: colors.muted }]}>
-                  {language === 'fr' ? 'Prochaine dose' : 'Next dose'}
-                </Text>
-              </View>
-
-              <View style={styles.reminderCustomSection}>
-                <Text style={[styles.reminderLabel, { color: colors.muted }]}>
-                  {language === 'fr' ? 'Médicament:' : 'Medication:'}
-                </Text>
-                {savedMedicines.length > 0 && (
-                  <View style={styles.reminderModalGrid}>
-                    {savedMedicines.map((med) => (
-                      <Pressable
-                        key={`${med.name}-${med.dosage}`}
-                        onPress={() => setReminderMedicationName(med.name)}
-                        style={[
-                          styles.reminderPresetBtn,
-                          reminderMedicationName === med.name && { backgroundColor: meta.toneSoft, borderColor: meta.tone },
-                        ]}
-                      >
-                        <Text style={[styles.reminderPresetText, reminderMedicationName === med.name && { color: meta.tone, fontWeight: '900' }]}>
-                          {med.name}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-                <Input
-                  label=""
-                  value={reminderMedicationName}
-                  onChangeText={setReminderMedicationName}
-                  placeholder={language === 'fr' ? 'Nom du médicament...' : 'Medication name...'}
-                />
-              </View>
-
-              <View style={styles.reminderDateSection}>
-                <Text style={[styles.reminderLabel, { color: colors.muted, marginBottom: 12 }]}>
-                  {language === 'fr' ? 'Prochaine prise:' : 'Next dose at:'}
-                </Text>
-                <DateTimeField
-                  label={language === 'fr' ? 'Date et heure' : 'Date and time'}
-                  value={reminderMedicationDate}
-                  onChange={setReminderMedicationDate}
-                />
-              </View>
-
-              <View style={styles.reminderSummary}>
-                <Text style={[styles.reminderSummaryTitle, { color: colors.text }]}>
-                  {language === 'fr' ? 'Récapitulatif' : 'Summary'}
-                </Text>
-                <View style={styles.reminderSummaryItem}>
-                  <Text style={{ color: colors.muted }}>💊 {language === 'fr' ? 'Médicament:' : 'Medication:'}</Text>
-                  <Text style={{ color: colors.text, fontWeight: '700' }}>{reminderMedicationName}</Text>
-                </View>
-                <View style={styles.reminderSummaryItem}>
-                  <Text style={{ color: colors.muted }}>⏰ {language === 'fr' ? 'Prochaine prise:' : 'Next dose:'}</Text>
-                  <Text style={{ color: colors.text, fontWeight: '700' }}>
-                    {reminderMedicationDate.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')} {reminderMedicationDate.toLocaleTimeString(language === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.reminderActions}>
-                <Button
-                  label={language === 'fr' ? 'Créer le rappel' : 'Create reminder'}
-                  onPress={() => {
-                    if (!reminderMedicationName.trim()) {
-                      haptics.warning();
-                      toast.warning(
-                        language === 'fr' ? 'Entrez le nom du médicament.' : 'Please enter medication name.'
-                      );
-                      return;
-                    }
-                    // Schedule reminder (24h before)
-                    const reminderTime = new Date(reminderMedicationDate.getTime() - 24 * 60 * 60 * 1000);
-                    haptics.success();
-                    toast.success(
-                      language === 'fr'
-                        ? `Rappel créé : ${reminderMedicationName} pour ${reminderTime.toLocaleDateString('fr-FR')}`
-                        : `Reminder set: ${reminderMedicationName} for ${reminderTime.toLocaleDateString('en-US')}`
-                    );
-                    setShowMedicationReminderFlow(false);
-                    setReminderMedicationName('');
-                    setReminderMedicationDate(new Date());
-                  }}
-                />
-                <Button
-                  label={language === 'fr' ? 'Annuler' : 'Cancel'}
-                  variant="ghost"
-                  onPress={() => setShowMedicationReminderFlow(false)}
-                />
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* Vaccine Reminder Flow Modal */}
       {type === 'vaccine' && (
-        <Modal visible={showReminderFlow} transparent animationType="slide" onRequestClose={() => setShowReminderFlow(false)}>
-          <View style={styles.reminderModalOverlay}>
-            <View style={styles.reminderModalContent}>
-              {reminderStep === 'vaccine' && (
-                <>
-                  <View style={styles.reminderModalHeader}>
-                    <Text style={styles.reminderModalTitle}>{language === 'fr' ? 'Rappel de vaccin' : 'Vaccine Reminder'}</Text>
-                    <Text style={[styles.reminderModalSubtitle, { color: colors.muted }]}>
-                      {language === 'fr' ? '1/2 - Choisir le vaccin' : '1/2 - Choose vaccine'}
-                    </Text>
-                  </View>
-
-                  <View style={styles.reminderModalGrid}>
-                    {vaccinePresets.map((preset) => (
-                      <Pressable
-                        key={preset}
-                        onPress={() => setReminderVaccineName(preset)}
-                        style={[
-                          styles.reminderPresetBtn,
-                          reminderVaccineName === preset && { backgroundColor: meta.toneSoft, borderColor: meta.tone },
-                        ]}
-                      >
-                        <Text style={[styles.reminderPresetText, reminderVaccineName === preset && { color: meta.tone, fontWeight: '900' }]}>
-                          {preset}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-
-                  <View style={styles.reminderCustomSection}>
-                    <Text style={[styles.reminderLabel, { color: colors.muted }]}>
-                      {language === 'fr' ? 'Ou saisir un autre nom:' : 'Or enter another name:'}
-                    </Text>
-                    <Input
-                      label=""
-                      value={reminderVaccineName}
-                      onChangeText={setReminderVaccineName}
-                      placeholder={language === 'fr' ? 'Nom du vaccin...' : 'Vaccine name...'}
-                    />
-                  </View>
-
-                  <View style={styles.reminderActions}>
-                    <Button
-                      label={language === 'fr' ? 'Continuer' : 'Continue'}
-                      onPress={() => setReminderStep('date')}
-                      disabled={!reminderVaccineName.trim()}
-                    />
-                    <Button
-                      label={language === 'fr' ? 'Annuler' : 'Cancel'}
-                      variant="ghost"
-                      onPress={() => setShowReminderFlow(false)}
-                    />
-                  </View>
-                </>
-              )}
-
-              {reminderStep === 'date' && (
-                <>
-                  <View style={styles.reminderModalHeader}>
-                    <Text style={styles.reminderModalTitle}>{language === 'fr' ? 'Rappel de vaccin' : 'Vaccine Reminder'}</Text>
-                    <Text style={[styles.reminderModalSubtitle, { color: colors.muted }]}>
-                      {language === 'fr' ? '2/2 - Choisir la date' : '2/2 - Choose date'}
-                    </Text>
-                  </View>
-
-                  <View style={styles.reminderDateSection}>
-                    <Text style={[styles.reminderLabel, { color: colors.muted, marginBottom: 12 }]}>
-                      {language === 'fr' ? 'Quand sera la prochaine dose?' : 'When will the next dose be?'}
-                    </Text>
-                    <DateTimeField
-                      label={language === 'fr' ? 'Date et heure' : 'Date and time'}
-                      value={reminderVaccineDate}
-                      onChange={setReminderVaccineDate}
-                    />
-                  </View>
-
-                  <View style={styles.reminderSummary}>
-                    <Text style={[styles.reminderSummaryTitle, { color: colors.text }]}>
-                      {language === 'fr' ? 'Récapitulatif' : 'Summary'}
-                    </Text>
-                    <View style={styles.reminderSummaryItem}>
-                      <Text style={{ color: colors.muted }}>💉 {language === 'fr' ? 'Vaccin:' : 'Vaccine:'}</Text>
-                      <Text style={{ color: colors.text, fontWeight: '700' }}>{reminderVaccineName}</Text>
-                    </View>
-                    <View style={styles.reminderSummaryItem}>
-                      <Text style={{ color: colors.muted }}>📅 {language === 'fr' ? 'Date:' : 'Date:'}</Text>
-                      <Text style={{ color: colors.text, fontWeight: '700' }}>
-                        {reminderVaccineDate.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.reminderActions}>
-                    <Button
-                      label={language === 'fr' ? 'Créer le rappel' : 'Create reminder'}
-                      onPress={handleSaveReminder}
-                      loading={saving}
-                    />
-                    <Button
-                      label={language === 'fr' ? 'Retour' : 'Back'}
-                      variant="ghost"
-                      onPress={() => setReminderStep('vaccine')}
-                    />
-                  </View>
-                </>
-              )}
-            </View>
-          </View>
-        </Modal>
+        <VaccineReminderModal
+          visible={showReminderFlow}
+          onClose={() => setShowReminderFlow(false)}
+          language={language}
+          colors={colors}
+          metaTone={meta.tone}
+          metaToneSoft={meta.toneSoft}
+          reminderStep={reminderStep}
+          setReminderStep={setReminderStep}
+          vaccinePresets={vaccinePresets}
+          reminderVaccineName={reminderVaccineName}
+          setReminderVaccineName={setReminderVaccineName}
+          reminderVaccineDate={reminderVaccineDate}
+          setReminderVaccineDate={setReminderVaccineDate}
+          onSave={handleSaveReminder}
+          saving={saving}
+        />
       )}
     </Page>
   );
@@ -1234,6 +1466,128 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 18,
+  },
+  medicationHero: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  medicationHeroDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+  },
+  medicationHeroTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  medicationHeroBody: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  medQuickRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  medIntervalRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  medIntervalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  medIntervalBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+  },
+  medIntervalText: {
+    color: '#F0F6FC',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  medStatusCard: {
+    paddingHorizontal: 2,
+    paddingVertical: 2,
+    gap: 2,
+  },
+  medStatusLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  medStatusText: {
+    fontSize: 12,
+  },
+  medNextDoseText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  medQuickBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: '#1C2128',
+  },
+  medQuickTitle: {
+    color: '#F0F6FC',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  medQuickSub: {
+    color: '#8B949E',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  medManualBtn: {
+    marginTop: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0D1117',
+  },
+  medManualText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  medTimelineWrap: {
+    marginTop: 12,
+    gap: 8,
+  },
+  medTimelineEmpty: {
+    fontSize: 12,
+  },
+  medTimelineItem: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'flex-start',
+  },
+  medTimelineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    marginTop: 6,
+  },
+  medTimelineName: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  medTimelineMeta: {
+    fontSize: 11,
   },
   stack: {
     gap: 10,
@@ -1641,4 +1995,49 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 8,
   },
+  ageWarningBox: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  ageWarningText: {
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  recentFoodChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+  },
+  recentFoodChipText: {
+    color: '#F0F6FC',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  quantityQuickButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  quickQuantityBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+    alignItems: 'center',
+  },
+  quickQuantityText: {
+    color: '#F0F6FC',
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });
+

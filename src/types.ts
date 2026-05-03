@@ -24,6 +24,9 @@ export interface EntryPayload {
   amountMl?: number;
   foodName?: string;
   quantity?: string;
+  quantityGrams?: number;
+  foodLiked?: 'yes' | 'no' | 'neutral';
+  mealTime?: 'breakfast' | 'lunch' | 'snack' | 'dinner';
   pee?: number;
   poop?: number;
   vomit?: number;
@@ -82,6 +85,7 @@ export interface UserProfile {
   goalFeedingsPerDay: number;
   goalSleepHoursPerDay: number;
   goalDiapersPerDay: number;
+  customMedicines?: Array<{ name: string; dosage?: string; updatedAt?: string }>;
   themeMode: ThemeMode;
   hasCompletedOnboarding: boolean;
   createdAt?: string;
