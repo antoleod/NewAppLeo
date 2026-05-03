@@ -23,7 +23,7 @@ import { scheduleVaccineReminder } from '@/lib/notifications';
 import { scheduleMedicationReminder } from '@/lib/notifications';
 import { getSuggestedValues, getWeightCategory, getHeightCategory } from '@/lib/who-recommendations';
 import { getRecommendedQuantity, getFoodRecommendationMessage } from '@/lib/food-recommendations';
-import { getSeasonalRecommendations, getRandomSeasonalFruit, getRandomSeasonalVegetable } from '@/lib/seasonal-recommendations';
+import { getSeasonalRecommendations } from '@/lib/seasonal-recommendations';
 import { haptics } from '@/lib/haptics';
 import { useToast } from '@/components/Toast';
 import { shareEntry, shareEntryAsImage, buildShareMessage } from '@/lib/shareEntry';

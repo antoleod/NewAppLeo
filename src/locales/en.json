@@ -59,6 +59,15 @@
     "bottle": "Bottle",
     "amount": "Amount"
   },
+  "nextFeeding": {
+    "eyebrow": "FEEDING",
+    "title": "Next feeding",
+    "possible": "Possible now",
+    "soon": "Soon",
+    "waiting": "Not yet",
+    "lastFeedDetail": "Last feeding at {time} · {hours} h ago",
+    "noFeed": "No feeding recorded"
+  },
   "vaccine": {
     "scheduled": "SCHEDULED VACCINES",
     "history": "VACCINE HISTORY",

@@ -59,6 +59,15 @@
     "bottle": "Biberón",
     "amount": "Cantidad"
   },
+  "nextFeeding": {
+    "eyebrow": "TOMA",
+    "title": "Próxima toma",
+    "possible": "Posible ahora",
+    "soon": "Pronto",
+    "waiting": "Todavía no",
+    "lastFeedDetail": "Última toma a las {time} · hace {hours} h",
+    "noFeed": "No hay tomas registradas"
+  },
   "vaccine": {
     "scheduled": "VACUNAS PROGRAMADAS",
     "history": "HISTORIAL DE VACUNAS",

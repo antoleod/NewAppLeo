@@ -59,6 +59,15 @@
     "bottle": "Fles",
     "amount": "Hoeveelheid"
   },
+  "nextFeeding": {
+    "eyebrow": "VOEDING",
+    "title": "Volgende voeding",
+    "possible": "Nu mogelijk",
+    "soon": "Binnenkort",
+    "waiting": "Nog niet",
+    "lastFeedDetail": "Laatste voeding om {time} · {hours} u geleden",
+    "noFeed": "Geen voeding geregistreerd"
+  },
   "vaccine": {
     "scheduled": "GEPLANDE VACCINS",
     "history": "VACCINATIEGESCHIEDENIS",

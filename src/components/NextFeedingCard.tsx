@@ -4,16 +4,18 @@ import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
 import { useNextFeeding } from '@/hooks/useNextFeeding';
 import { usePulseAnimation } from '@/hooks/usePulseAnimation';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
   const { theme } = useTheme();
+  const { t, format } = useTranslation();
   const { status, hoursAgo, lastTime } = useNextFeeding();
   const isPossible = status === 'possible';
   const isSoon = status === 'soon';
   const { pulseStyle, glowStyle } = usePulseAnimation({ active: isPossible, intensity: 'soft' });
 
   const statusColor = isPossible ? theme.green : isSoon ? theme.accent : theme.muted;
-  const statusLabel = isPossible ? 'Possible maintenant' : isSoon ? 'Bientot' : 'Pas encore';
+  const statusLabel = isPossible ? t('nextFeeding.possible') : isSoon ? t('nextFeeding.soon') : t('nextFeeding.waiting');
 
   return (
     <Pressable onPress={onPress} accessibilityRole="button">
@@ -45,8 +47,8 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ flex: 1 }}>
-            <Text style={[typography.sectionLabel, { color: theme.accent }]}>PRISE</Text>
-            <Text style={[typography.sectionTitle, { color: theme.textPrimary }]}>Next feeding</Text>
+            <Text style={[typography.sectionLabel, { color: theme.accent }]}>{t('nextFeeding.eyebrow')}</Text>
+            <Text style={[typography.sectionTitle, { color: theme.textPrimary }]}>{t('nextFeeding.title')}</Text>
 
             <Animated.View style={[{ alignSelf: 'flex-start', marginTop: 8 }, pulseStyle]}>
               <View
@@ -68,9 +70,11 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
             </Animated.View>
 
             {lastTime ? (
-              <Text style={[typography.detail, { color: theme.textMuted, marginTop: 6 }]}>Derniere prise a {lastTime} Â· il y a {hoursAgo} h</Text>
+              <Text style={[typography.detail, { color: theme.textMuted, marginTop: 6 }]}>
+                {format('nextFeeding.lastFeedDetail', { time: lastTime, hours: hoursAgo })}
+              </Text>
             ) : (
-              <Text style={[typography.detail, { color: theme.textMuted, marginTop: 6 }]}>Aucune prise enregistree</Text>
+              <Text style={[typography.detail, { color: theme.textMuted, marginTop: 6 }]}>{t('nextFeeding.noFeed')}</Text>
             )}
           </View>
 
@@ -86,7 +90,7 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
               backgroundColor: `${statusColor}18`,
             }}
           >
-            <Text style={{ color: statusColor, fontSize: 18, fontWeight: '900' }}>›</Text>
+            <Text style={{ color: statusColor, fontSize: 18, fontWeight: '900' }}>{'>'}</Text>
           </View>
         </View>
       </View>
