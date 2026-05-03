@@ -172,6 +172,7 @@ export function Button({
   loading = false,
   disabled = false,
   fullWidth = true,
+  style,
 }: {
   label: string;
   onPress: () => void;
@@ -180,6 +181,7 @@ export function Button({
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
+  style?: any;
 }) {
   const { width } = useWindowDimensions();
   const { theme } = useTheme();
@@ -216,6 +218,7 @@ export function Button({
           shadowOffset: { width: 0, height: 8 },
           elevation: variant === 'ghost' ? 0 : 2,
         },
+        style,
       ]}
     >
       {loading ? (

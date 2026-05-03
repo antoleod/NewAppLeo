@@ -18,7 +18,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 type AuthView = 'landing' | 'login' | 'signup' | 'forgot';
 
 export default function IndexRoute() {
-  const { loading, user, profile, guestMode, signInGuest, signInEmail, signUpEmail, resetPassword, signOut } = useAuth();
+  const { loading, user, profile, guestMode, signInGuest, signInEmail, register, resetPassword, signOut } = useAuth();
   const { colors, gradients, themeVariant } = useTheme();
   const { language } = useLocale();
   
@@ -122,7 +122,7 @@ export default function IndexRoute() {
       if (result.success) {
         const savedPassword = await SecureStore.getItemAsync('saved_password');
         if (email && savedPassword) {
-          await signInEmail(email, savedPassword);
+          await signInEmail({ email, password: savedPassword });
         } else {
           setMessage('No se encontró información de acceso segura.');
         }
@@ -253,7 +253,7 @@ export default function IndexRoute() {
           setAuthLoading(true);
           try {
             if (view === 'login') {
-              await signInEmail(email, password);
+              await signInEmail({ email, password });
               if (rememberMe) {
                 await AsyncStorage.setItem('saved_email', email);
                 await SecureStore.setItemAsync('saved_password', password);
@@ -262,7 +262,13 @@ export default function IndexRoute() {
                 await SecureStore.deleteItemAsync('saved_password');
               }
             } else if (view === 'signup') {
-              await signUpEmail(email, password);
+              await register({
+                displayName: email.split('@')[0] || 'Parent',
+                username: email.split('@')[0] || `user_${Date.now()}`,
+                email,
+                password,
+                pin: '0000',
+              });
             } else {
               await resetPassword(email);
               setMessage(translate(language, 'auth.recovery_sent'));

@@ -11,6 +11,7 @@ import {
 } from '@/services/userProfileService';
 import { registerAccount, signInWithEmail, signInWithGoogle, signInWithUsernamePin, signOutUser } from '@/services/authService';
 import { clearGuestProfile, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 interface AuthContextValue {
   user: User | null;
@@ -23,6 +24,7 @@ interface AuthContextValue {
   signInUsernamePin: (payload: { username: string; pin: string }) => Promise<void>;
   signInGuest: () => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   completeUserOnboarding: (payload: OnboardingPayload) => Promise<void>;
   saveProfile: (partial: Partial<UserProfile>) => Promise<void>;
@@ -141,6 +143,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);
+      },
+      resetPassword: async (email) => {
+        await sendPasswordResetEmail(auth, email.trim().toLowerCase());
       },
       signOut: async () => {
         if (guestMode) {

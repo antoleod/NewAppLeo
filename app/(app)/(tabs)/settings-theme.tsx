@@ -8,7 +8,7 @@ import { getAppSettings, setAppSettings } from '@/lib/storage';
 
 export default function ThemeSettings() {
   const { width } = useWindowDimensions();
-  const { theme, themeMode, themeVariant, setThemeVariant, setThemeStyle, setBackgroundPhotoUri } = useTheme();
+  const { theme, themeMode, themeVariant, backgroundPhotoUri, setThemeVariant, setThemeStyle, setBackgroundPhotoUri } = useTheme();
   const { setThemeMode } = useAuth();
 
   const themes = [
@@ -137,7 +137,11 @@ export default function ThemeSettings() {
         <Card>
           <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Background Photo</Text>
           <Text style={[styles.sectionBody, { color: theme.textMuted }]}>Optional. You can keep it simple with no photo.</Text>
-          <BackgroundPhotoSelector />
+          <BackgroundPhotoSelector
+            currentPhotoUri={backgroundPhotoUri}
+            onPhotoSelected={(uri) => void setBackgroundPhotoUri(uri)}
+            onPhotoRemoved={() => void setBackgroundPhotoUri('')}
+          />
         </Card>
 
         <Card>

@@ -1,4 +1,4 @@
-import { AppDataContextType } from '@/context/AppDataContext';
+import { AppDataContextValue } from '@/context/AppDataContext';
 
 export interface ImporterConfig {
   onSuccess: (data: any) => void;
@@ -128,7 +128,7 @@ export function importJsonData(data: any) {
  */
 export async function batchImportEntries(
   entries: any[],
-  addEntry: AppDataContextType['addEntry']
+  addEntry: AppDataContextValue['addEntry']
 ) {
   const results = { success: 0, failed: 0, errors: [] as string[] };
 
