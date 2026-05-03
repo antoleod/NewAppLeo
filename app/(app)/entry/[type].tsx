@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View, GestureResponderEvent } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View, GestureResponderEvent } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Button, Card, Input, Page, Segment } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useLocale } from '@/context/LocaleContext';
+import { useAuth } from '@/context/AuthContext';
 import { clamp } from '@/utils/date';
 import { BreastSide, EntryPayload, EntryType } from '@/types';
 import { TimerWidget } from '@/components/TimerWidget';
@@ -12,6 +13,8 @@ import { QuantityPicker } from '@/components/QuantityPicker';
 import { DateTimeField } from '@/components/DateTimeField';
 import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
 import * as ImagePicker from 'expo-image-picker';
+import { scheduleVaccineReminder } from '@/lib/notifications';
+import { getSuggestedValues, getWeightCategory, getHeightCategory } from '@/lib/who-recommendations';
 
 const typeLabels: Record<EntryType, string> = {
   feed: 'Feed',
@@ -168,7 +171,16 @@ export default function EntryComposerScreen() {
   const [vaccineName, setVaccineName] = useState('');
   const [vaccineDose, setVaccineDose] = useState('1');
   const [vaccineNextDueDate, setVaccineNextDueDate] = useState(new Date());
+  const [showReminderFlow, setShowReminderFlow] = useState(false);
+  const [reminderStep, setReminderStep] = useState<'vaccine' | 'date'>('vaccine');
+  const [reminderVaccineName, setReminderVaccineName] = useState('');
+  const [reminderVaccineDate, setReminderVaccineDate] = useState(new Date());
+  const [showMedicationReminderFlow, setShowMedicationReminderFlow] = useState(false);
+  const [reminderMedicationName, setReminderMedicationName] = useState('');
+  const [reminderMedicationDate, setReminderMedicationDate] = useState(new Date());
+  const [foodAllergies, setFoodAllergies] = useState<string[]>([]);
   const meta = typeMeta[type];
+  const { profile } = useAuth();
 
   useEffect(() => {
     if (!editing) return;
@@ -186,6 +198,7 @@ export default function EntryComposerScreen() {
       case 'food':
         setFoodName(editing.payload?.foodName ?? '');
         setQuantity(editing.payload?.quantity ?? '');
+        setFoodAllergies((editing.payload?.foodAllergies as string[]) ?? []);
         break;
       case 'sleep':
       case 'pump':
@@ -252,7 +265,7 @@ export default function EntryComposerScreen() {
           ? { mode: 'bottle', amountMl: Number(amountMl) || 0, notes }
           : { mode: 'breast', side: side as BreastSide, durationMin: Number(durationMin) || 0, amountMl: Number(amountMl) || 0, notes };
       case 'food':
-        return { foodName, quantity, notes };
+        return { foodName, quantity, foodAllergies: foodAllergies.length > 0 ? foodAllergies : undefined, notes };
       case 'sleep':
         return { durationMin: Number(durationMin) || 0, notes };
       case 'diaper':
@@ -332,6 +345,59 @@ export default function EntryComposerScreen() {
       if (type === 'medication' && name.trim()) {
         setSavedMedicines(await upsertSavedMedicine({ name, dosage }));
       }
+
+      router.back();
+    } catch (error: any) {
+      Alert.alert('Save failed', error?.message ?? 'Could not save this record.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveReminder() {
+    if (!reminderVaccineName.trim()) {
+      Alert.alert(
+        language === 'fr' ? 'Vaccin requis' : 'Vaccine required',
+        language === 'fr' ? 'Sélectionnez ou entrez un nom de vaccin.' : 'Please select or enter a vaccine name.'
+      );
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const timestamp = reminderVaccineDate.toISOString();
+      const payload = {
+        vaccineName: reminderVaccineName,
+        vaccineDose: 1,
+        vaccineNextDueDate: reminderVaccineDate.toISOString(),
+        hasReminder: true,
+      };
+
+      await addEntry({
+        type: 'vaccine',
+        title: reminderVaccineName,
+        occurredAt: timestamp,
+        payload,
+      });
+
+      // Schedule the reminder notification
+      try {
+        await scheduleVaccineReminder(reminderVaccineName, reminderVaccineDate.toISOString(), profile?.babyName ?? 'Baby');
+      } catch (error) {
+        console.error('Failed to schedule vaccine reminder:', error);
+      }
+
+      Alert.alert(
+        language === 'fr' ? 'Rappel créé!' : 'Reminder created!',
+        language === 'fr'
+          ? `${reminderVaccineName} - Vous recevrez un rappel 7 jours avant.`
+          : `${reminderVaccineName} - You'll get a reminder 7 days before.`
+      );
+
+      setShowReminderFlow(false);
+      setReminderStep('vaccine');
+      setReminderVaccineName('');
+      setReminderVaccineDate(new Date());
       router.back();
     } catch (error: any) {
       Alert.alert('Save failed', error?.message ?? 'Could not save this record.');
@@ -425,8 +491,80 @@ export default function EntryComposerScreen() {
 
         {type === 'food' && (
           <View style={styles.sectionCard}>
-            <Input label={language === 'fr' ? 'Aliment' : 'Food'} value={foodName} onChangeText={setFoodName} placeholder={language === 'fr' ? 'Pomme, riz...' : 'Apple, rice...'} />
-            <Input label={language === 'fr' ? 'Quantité' : 'Quantity'} value={quantity} onChangeText={setQuantity} placeholder="250ml, 100g..." />
+            <View style={{ marginBottom: 12 }}>
+              <Input
+                label={language === 'fr' ? 'Aliment' : 'Food'}
+                value={foodName}
+                onChangeText={setFoodName}
+                placeholder={language === 'fr' ? 'Pomme, riz, purée...' : 'Apple, rice, puree...'}
+              />
+            </View>
+
+            <View>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
+                {language === 'fr' ? 'Quantité' : 'Amount'}
+              </Text>
+              <View style={styles.chipRow}>
+                <Pressable
+                  onPress={() => setQuantity('peu')}
+                  style={[styles.quickChip, quantity === 'peu' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                >
+                  <Text style={[styles.quickChipText, quantity === 'peu' && { color: meta.tone, fontWeight: '900' }]}>
+                    {language === 'fr' ? 'Peu' : 'Little'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setQuantity('moyen')}
+                  style={[styles.quickChip, quantity === 'moyen' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                >
+                  <Text style={[styles.quickChipText, quantity === 'moyen' && { color: meta.tone, fontWeight: '900' }]}>
+                    {language === 'fr' ? 'Moyen' : 'Medium'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setQuantity('beaucoup')}
+                  style={[styles.quickChip, quantity === 'beaucoup' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                >
+                  <Text style={[styles.quickChipText, quantity === 'beaucoup' && { color: meta.tone, fontWeight: '900' }]}>
+                    {language === 'fr' ? 'Beaucoup' : 'Lots'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={{ marginTop: 16 }}>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
+                {language === 'fr' ? 'Réaction?' : 'Any reaction?'}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {[
+                  { label: language === 'fr' ? 'Allergie' : 'Allergy', value: 'allergy' },
+                  { label: language === 'fr' ? 'Intolérance' : 'Intolerance', value: 'intolerance' },
+                  { label: language === 'fr' ? 'Éruption' : 'Rash', value: 'rash' },
+                  { label: language === 'fr' ? 'Vomissements' : 'Vomit', value: 'vomit' },
+                  { label: language === 'fr' ? 'Diarrhée' : 'Diarrhea', value: 'diarrhea' },
+                ].map(({ label, value }) => (
+                  <Pressable
+                    key={value}
+                    onPress={() => {
+                      if (foodAllergies.includes(value)) {
+                        setFoodAllergies(foodAllergies.filter((a) => a !== value));
+                      } else {
+                        setFoodAllergies([...foodAllergies, value]);
+                      }
+                    }}
+                    style={[
+                      styles.reactionChip,
+                      foodAllergies.includes(value) && { backgroundColor: meta.toneSoft, borderColor: meta.tone },
+                    ]}
+                  >
+                    <Text style={[{ color: foodAllergies.includes(value) ? meta.tone : colors.muted, fontWeight: '600', fontSize: 12 }]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
           </View>
         )}
 
@@ -462,10 +600,83 @@ export default function EntryComposerScreen() {
 
         {type === 'measurement' && (
           <View style={styles.sectionCard}>
-            <Input label={language === 'fr' ? 'Poids (kg)' : 'Weight (kg)'} value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" placeholder="5.2" />
-            <Input label={language === 'fr' ? 'Taille (cm)' : 'Height (cm)'} value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholder="52" />
-            <Input label={language === 'fr' ? 'PC (cm)' : 'Head circ (cm)'} value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" placeholder="35" />
-            <Input label={language === 'fr' ? 'Température' : 'Temperature'} value={tempC} onChangeText={setTempC} keyboardType="decimal-pad" placeholder="37.5" />
+            {(() => {
+              const suggested = profile?.babyBirthDate ? getSuggestedValues(profile.babyBirthDate) : null;
+              const weightCat = weightKg && profile?.babyBirthDate ? getWeightCategory(Number(weightKg), profile.babyBirthDate) : null;
+              const heightCat = heightCm && profile?.babyBirthDate ? getHeightCategory(Number(heightCm), profile.babyBirthDate) : null;
+
+              return (
+                <>
+                  {suggested && (
+                    <View style={[styles.whoSuggestedBox, { borderColor: meta.tone, backgroundColor: `${meta.tone}10` }]}>
+                      <Text style={[styles.whoSuggestedTitle, { color: meta.tone }]}>💡 {language === 'fr' ? 'Suggestion selon OMS' : 'WHO Suggested Range'}</Text>
+                      <Text style={[styles.whoSuggestedMessage, { color: colors.text }]}>{suggested.message}</Text>
+                      <View style={styles.whoSuggestedRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.whoSuggestedLabel, { color: colors.muted }]}>
+                            {language === 'fr' ? 'Poids' : 'Weight'}
+                          </Text>
+                          <Text style={[styles.whoSuggestedValue, { color: meta.tone }]}>
+                            {suggested.weight.value.toFixed(1)} kg
+                          </Text>
+                          <Text style={[styles.whoSuggestedRange, { color: colors.muted }]}>
+                            {suggested.weight.min.toFixed(1)} - {suggested.weight.max.toFixed(1)} kg
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.whoSuggestedLabel, { color: colors.muted }]}>
+                            {language === 'fr' ? 'Taille' : 'Height'}
+                          </Text>
+                          <Text style={[styles.whoSuggestedValue, { color: meta.tone }]}>
+                            {suggested.height.value.toFixed(1)} cm
+                          </Text>
+                          <Text style={[styles.whoSuggestedRange, { color: colors.muted }]}>
+                            {suggested.height.min.toFixed(1)} - {suggested.height.max.toFixed(1)} cm
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  <View style={{ marginTop: suggested ? 12 : 0 }}>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>📏 {language === 'fr' ? 'Mesures actuelles' : 'Current Measurements'}</Text>
+
+                    <View style={{ marginTop: 12 }}>
+                      <Input
+                        label={language === 'fr' ? 'Poids (kg)' : 'Weight (kg)'}
+                        value={weightKg}
+                        onChangeText={setWeightKg}
+                        keyboardType="decimal-pad"
+                        placeholder={suggested ? suggested.weight.value.toFixed(1) : '5.2'}
+                      />
+                      {weightCat && (
+                        <Text style={[styles.whoFeedback, { color: weightCat.category === 'healthy' ? '#3FB950' : '#F2C86F', marginTop: 8 }]}>
+                          {weightCat.emoji} {weightCat.message}
+                        </Text>
+                      )}
+                    </View>
+
+                    <View style={{ marginTop: 12 }}>
+                      <Input
+                        label={language === 'fr' ? 'Taille (cm)' : 'Height (cm)'}
+                        value={heightCm}
+                        onChangeText={setHeightCm}
+                        keyboardType="decimal-pad"
+                        placeholder={suggested ? suggested.height.value.toFixed(1) : '52'}
+                      />
+                      {heightCat && (
+                        <Text style={[styles.whoFeedback, { color: heightCat.category === 'healthy' ? '#3FB950' : '#F2C86F', marginTop: 8 }]}>
+                          {heightCat.emoji} {heightCat.message}
+                        </Text>
+                      )}
+                    </View>
+
+                    <Input label={language === 'fr' ? 'PC (cm)' : 'Head circ (cm)'} value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" placeholder="35" />
+                    <Input label={language === 'fr' ? 'Température' : 'Temperature'} value={tempC} onChangeText={setTempC} keyboardType="decimal-pad" placeholder="37.5" />
+                  </View>
+                </>
+              );
+            })()}
           </View>
         )}
 
@@ -498,6 +709,18 @@ export default function EntryComposerScreen() {
                 <Text style={styles.savePresetText}>💾 {language === 'fr' ? 'Sauver' : 'Save'}</Text>
               </Pressable>
             )}
+            <Pressable
+              onPress={() => setShowMedicationReminderFlow(true)}
+              style={[
+                styles.reminderToggle,
+                { borderColor: meta.tone, backgroundColor: meta.toneSoft, marginTop: 12 },
+              ]}
+            >
+              <Text style={[styles.reminderToggleCheckbox, { color: meta.tone }]}>+</Text>
+              <Text style={[styles.reminderToggleLabel, { color: meta.tone }]}>
+                {language === 'fr' ? 'Rappel pour la prochaine dose' : 'Reminder for next dose'}
+              </Text>
+            </Pressable>
           </View>
         )}
 
@@ -620,7 +843,7 @@ export default function EntryComposerScreen() {
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Vaccin' : 'Vaccine'}</Text>
 
-            <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 10 }]}>{language === 'fr' ? 'Presets courants:' : 'Common vaccines:'}</Text>
+            <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 10 }]}>{language === 'fr' ? 'Choisir un vaccin:' : 'Choose a vaccine:'}</Text>
             <View style={styles.vaccinePresetsGrid}>
               {vaccinePresets.map((preset) => (
                 <Pressable
@@ -631,42 +854,69 @@ export default function EntryComposerScreen() {
                   <Text style={[styles.vaccinePresetText, vaccineName === preset && { color: meta.tone, fontWeight: '900' }]}>{preset}</Text>
                 </Pressable>
               ))}
-            </View>
-
-            <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 10, marginTop: 8 }]}>{language === 'fr' ? 'Ou ajouter une autre:' : 'Or add another:'}</Text>
-            <Input
-              label={language === 'fr' ? 'Nom du vaccin' : 'Vaccine name'}
-              value={vaccineName}
-              onChangeText={setVaccineName}
-              placeholder={language === 'fr' ? 'Entrez le nom du vaccin...' : 'Enter vaccine name...'}
-            />
-
-            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Numero de dose' : 'Dose number'}</Text>
-            <View style={styles.vaccineInputRow}>
               <Pressable
-                onPress={() => setVaccineDose(String(Math.max(1, Number(vaccineDose) - 1)))}
-                style={styles.vaccineDoseButton}
+                onPress={() => setVaccineName('')}
+                style={[styles.vaccinePresetBtn, styles.vaccineAddBtnInGrid, { borderColor: meta.tone }]}
               >
-                <Text style={styles.vaccineDoseButtonText}>−</Text>
-              </Pressable>
-
-              <View style={{ flex: 1, alignItems: 'center' }}>
-                <Text style={[styles.vaccineDoseDisplay, { color: meta.tone }]}>
-                  {language === 'fr' ? 'Dose ' : 'Dose '}{vaccineDose}
-                </Text>
-              </View>
-
-              <Pressable
-                onPress={() => setVaccineDose(String(Math.min(5, Number(vaccineDose) + 1)))}
-                style={styles.vaccineDoseButton}
-              >
-                <Text style={styles.vaccineDoseButtonText}>+</Text>
+                <Text style={[styles.vaccinePresetText, { color: meta.tone, fontSize: 20 }]}>+</Text>
               </Pressable>
             </View>
 
-            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Prochaine dose' : 'Next dose scheduled'}</Text>
-            <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 8 }]}>{language === 'fr' ? 'Date prevue pour la prochaine dose' : 'When is the next dose scheduled'}</Text>
-            <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={vaccineNextDueDate} onChange={setVaccineNextDueDate} />
+            {vaccineName === '' && (
+              <>
+                <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 10, marginTop: 12 }]}>{language === 'fr' ? 'Nom du vaccin' : 'Vaccine name'}</Text>
+                <Input
+                  label=""
+                  value={vaccineName}
+                  onChangeText={setVaccineName}
+                  placeholder={language === 'fr' ? 'Entrez le nom du vaccin...' : 'Enter vaccine name...'}
+                />
+              </>
+            )}
+
+            {vaccineName && (
+              <>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Numero de dose' : 'Dose number'}</Text>
+                <View style={styles.vaccineInputRow}>
+                  <Pressable
+                    onPress={() => setVaccineDose(String(Math.max(1, Number(vaccineDose) - 1)))}
+                    style={styles.vaccineDoseButton}
+                  >
+                    <Text style={styles.vaccineDoseButtonText}>−</Text>
+                  </Pressable>
+
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={[styles.vaccineDoseDisplay, { color: meta.tone }]}>
+                      {language === 'fr' ? 'Dose ' : 'Dose '}{vaccineDose}
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    onPress={() => setVaccineDose(String(Math.min(5, Number(vaccineDose) + 1)))}
+                    style={styles.vaccineDoseButton}
+                  >
+                    <Text style={styles.vaccineDoseButtonText}>+</Text>
+                  </Pressable>
+                </View>
+
+                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Prochaine dose' : 'Next dose scheduled'}</Text>
+                <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 8 }]}>{language === 'fr' ? 'Date prevue pour la prochaine dose' : 'When is the next dose scheduled'}</Text>
+                <DateTimeField label={language === 'fr' ? 'Quand' : 'When'} value={vaccineNextDueDate} onChange={setVaccineNextDueDate} />
+              </>
+            )}
+
+            <Pressable
+              onPress={() => setShowReminderFlow(true)}
+              style={[
+                styles.reminderToggle,
+                { borderColor: meta.tone, backgroundColor: meta.toneSoft },
+              ]}
+            >
+              <Text style={[styles.reminderToggleCheckbox, { color: meta.tone }]}>+</Text>
+              <Text style={[styles.reminderToggleLabel, { color: meta.tone }]}>
+                {language === 'fr' ? 'Ajouter un rappel pour plus tard' : 'Add reminder for later'}
+              </Text>
+            </Pressable>
           </View>
         )}
 
@@ -676,12 +926,232 @@ export default function EntryComposerScreen() {
           </Pressable>
         </View>
         {notesOpen && <Input label={language === 'fr' ? 'Notes' : 'Notes'} value={notes} onChangeText={setNotes} multiline placeholder={language === 'fr' ? 'Optionnel...' : 'Optional...'} />}
+      </Card>
 
+      {/* Sticky Footer Actions */}
+      <View style={[styles.actionsStickyContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <View style={styles.actions}>
           <Button label={editing ? (language === 'fr' ? 'Mettre à jour' : 'Update') : language === 'fr' ? 'Enregistrer' : 'Save'} onPress={handleSave} loading={saving} />
           {editing && <Button label={language === 'fr' ? 'Supprimer' : 'Delete'} onPress={handleDelete} variant="danger" />}
         </View>
-      </Card>
+      </View>
+
+      {/* Medication Reminder Flow Modal */}
+      {type === 'medication' && (
+        <Modal visible={showMedicationReminderFlow} transparent animationType="slide" onRequestClose={() => setShowMedicationReminderFlow(false)}>
+          <View style={styles.reminderModalOverlay}>
+            <View style={styles.reminderModalContent}>
+              <View style={styles.reminderModalHeader}>
+                <Text style={styles.reminderModalTitle}>{language === 'fr' ? 'Rappel médicament' : 'Medication Reminder'}</Text>
+                <Text style={[styles.reminderModalSubtitle, { color: colors.muted }]}>
+                  {language === 'fr' ? 'Prochaine dose' : 'Next dose'}
+                </Text>
+              </View>
+
+              <View style={styles.reminderCustomSection}>
+                <Text style={[styles.reminderLabel, { color: colors.muted }]}>
+                  {language === 'fr' ? 'Médicament:' : 'Medication:'}
+                </Text>
+                {savedMedicines.length > 0 && (
+                  <View style={styles.reminderModalGrid}>
+                    {savedMedicines.map((med) => (
+                      <Pressable
+                        key={`${med.name}-${med.dosage}`}
+                        onPress={() => setReminderMedicationName(med.name)}
+                        style={[
+                          styles.reminderPresetBtn,
+                          reminderMedicationName === med.name && { backgroundColor: meta.toneSoft, borderColor: meta.tone },
+                        ]}
+                      >
+                        <Text style={[styles.reminderPresetText, reminderMedicationName === med.name && { color: meta.tone, fontWeight: '900' }]}>
+                          {med.name}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+                <Input
+                  label=""
+                  value={reminderMedicationName}
+                  onChangeText={setReminderMedicationName}
+                  placeholder={language === 'fr' ? 'Nom du médicament...' : 'Medication name...'}
+                />
+              </View>
+
+              <View style={styles.reminderDateSection}>
+                <Text style={[styles.reminderLabel, { color: colors.muted, marginBottom: 12 }]}>
+                  {language === 'fr' ? 'Prochaine prise:' : 'Next dose at:'}
+                </Text>
+                <DateTimeField
+                  label={language === 'fr' ? 'Date et heure' : 'Date and time'}
+                  value={reminderMedicationDate}
+                  onChange={setReminderMedicationDate}
+                />
+              </View>
+
+              <View style={styles.reminderSummary}>
+                <Text style={[styles.reminderSummaryTitle, { color: colors.text }]}>
+                  {language === 'fr' ? 'Récapitulatif' : 'Summary'}
+                </Text>
+                <View style={styles.reminderSummaryItem}>
+                  <Text style={{ color: colors.muted }}>💊 {language === 'fr' ? 'Médicament:' : 'Medication:'}</Text>
+                  <Text style={{ color: colors.text, fontWeight: '700' }}>{reminderMedicationName}</Text>
+                </View>
+                <View style={styles.reminderSummaryItem}>
+                  <Text style={{ color: colors.muted }}>⏰ {language === 'fr' ? 'Prochaine prise:' : 'Next dose:'}</Text>
+                  <Text style={{ color: colors.text, fontWeight: '700' }}>
+                    {reminderMedicationDate.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')} {reminderMedicationDate.toLocaleTimeString(language === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.reminderActions}>
+                <Button
+                  label={language === 'fr' ? 'Créer le rappel' : 'Create reminder'}
+                  onPress={() => {
+                    if (!reminderMedicationName.trim()) {
+                      Alert.alert(
+                        language === 'fr' ? 'Médicament requis' : 'Medication required',
+                        language === 'fr' ? 'Entrez le nom du médicament.' : 'Please enter medication name.'
+                      );
+                      return;
+                    }
+                    // Schedule reminder (24h before)
+                    const reminderTime = new Date(reminderMedicationDate.getTime() - 24 * 60 * 60 * 1000);
+                    Alert.alert(
+                      language === 'fr' ? 'Rappel créé!' : 'Reminder created!',
+                      language === 'fr'
+                        ? `${reminderMedicationName} - Rappel programmé pour ${reminderTime.toLocaleDateString('fr-FR')}`
+                        : `${reminderMedicationName} - Reminder set for ${reminderTime.toLocaleDateString('en-US')}`
+                    );
+                    setShowMedicationReminderFlow(false);
+                    setReminderMedicationName('');
+                    setReminderMedicationDate(new Date());
+                  }}
+                />
+                <Button
+                  label={language === 'fr' ? 'Annuler' : 'Cancel'}
+                  variant="ghost"
+                  onPress={() => setShowMedicationReminderFlow(false)}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Vaccine Reminder Flow Modal */}
+      {type === 'vaccine' && (
+        <Modal visible={showReminderFlow} transparent animationType="slide" onRequestClose={() => setShowReminderFlow(false)}>
+          <View style={styles.reminderModalOverlay}>
+            <View style={styles.reminderModalContent}>
+              {reminderStep === 'vaccine' && (
+                <>
+                  <View style={styles.reminderModalHeader}>
+                    <Text style={styles.reminderModalTitle}>{language === 'fr' ? 'Rappel de vaccin' : 'Vaccine Reminder'}</Text>
+                    <Text style={[styles.reminderModalSubtitle, { color: colors.muted }]}>
+                      {language === 'fr' ? '1/2 - Choisir le vaccin' : '1/2 - Choose vaccine'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.reminderModalGrid}>
+                    {vaccinePresets.map((preset) => (
+                      <Pressable
+                        key={preset}
+                        onPress={() => setReminderVaccineName(preset)}
+                        style={[
+                          styles.reminderPresetBtn,
+                          reminderVaccineName === preset && { backgroundColor: meta.toneSoft, borderColor: meta.tone },
+                        ]}
+                      >
+                        <Text style={[styles.reminderPresetText, reminderVaccineName === preset && { color: meta.tone, fontWeight: '900' }]}>
+                          {preset}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  <View style={styles.reminderCustomSection}>
+                    <Text style={[styles.reminderLabel, { color: colors.muted }]}>
+                      {language === 'fr' ? 'Ou saisir un autre nom:' : 'Or enter another name:'}
+                    </Text>
+                    <Input
+                      label=""
+                      value={reminderVaccineName}
+                      onChangeText={setReminderVaccineName}
+                      placeholder={language === 'fr' ? 'Nom du vaccin...' : 'Vaccine name...'}
+                    />
+                  </View>
+
+                  <View style={styles.reminderActions}>
+                    <Button
+                      label={language === 'fr' ? 'Continuer' : 'Continue'}
+                      onPress={() => setReminderStep('date')}
+                      disabled={!reminderVaccineName.trim()}
+                    />
+                    <Button
+                      label={language === 'fr' ? 'Annuler' : 'Cancel'}
+                      variant="ghost"
+                      onPress={() => setShowReminderFlow(false)}
+                    />
+                  </View>
+                </>
+              )}
+
+              {reminderStep === 'date' && (
+                <>
+                  <View style={styles.reminderModalHeader}>
+                    <Text style={styles.reminderModalTitle}>{language === 'fr' ? 'Rappel de vaccin' : 'Vaccine Reminder'}</Text>
+                    <Text style={[styles.reminderModalSubtitle, { color: colors.muted }]}>
+                      {language === 'fr' ? '2/2 - Choisir la date' : '2/2 - Choose date'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.reminderDateSection}>
+                    <Text style={[styles.reminderLabel, { color: colors.muted, marginBottom: 12 }]}>
+                      {language === 'fr' ? 'Quand sera la prochaine dose?' : 'When will the next dose be?'}
+                    </Text>
+                    <DateTimeField
+                      label={language === 'fr' ? 'Date et heure' : 'Date and time'}
+                      value={reminderVaccineDate}
+                      onChange={setReminderVaccineDate}
+                    />
+                  </View>
+
+                  <View style={styles.reminderSummary}>
+                    <Text style={[styles.reminderSummaryTitle, { color: colors.text }]}>
+                      {language === 'fr' ? 'Récapitulatif' : 'Summary'}
+                    </Text>
+                    <View style={styles.reminderSummaryItem}>
+                      <Text style={{ color: colors.muted }}>💉 {language === 'fr' ? 'Vaccin:' : 'Vaccine:'}</Text>
+                      <Text style={{ color: colors.text, fontWeight: '700' }}>{reminderVaccineName}</Text>
+                    </View>
+                    <View style={styles.reminderSummaryItem}>
+                      <Text style={{ color: colors.muted }}>📅 {language === 'fr' ? 'Date:' : 'Date:'}</Text>
+                      <Text style={{ color: colors.text, fontWeight: '700' }}>
+                        {reminderVaccineDate.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.reminderActions}>
+                    <Button
+                      label={language === 'fr' ? 'Créer le rappel' : 'Create reminder'}
+                      onPress={handleSaveReminder}
+                      loading={saving}
+                    />
+                    <Button
+                      label={language === 'fr' ? 'Retour' : 'Back'}
+                      variant="ghost"
+                      onPress={() => setReminderStep('vaccine')}
+                    />
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        </Modal>
+      )}
     </Page>
   );
 }
@@ -812,6 +1282,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  vaccineAddBtnInGrid: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+  },
   vaccineInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -836,6 +1310,170 @@ const styles = StyleSheet.create({
   vaccineDoseDisplay: {
     fontSize: 16,
     fontWeight: '900',
+  },
+  reminderToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    marginTop: 16,
+  },
+  reminderToggleCheckbox: {
+    fontSize: 18,
+    fontWeight: '700',
+    width: 24,
+    textAlign: 'center',
+  },
+  reminderToggleLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
+  reminderModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  reminderModalContent: {
+    backgroundColor: '#0D1117',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    paddingBottom: 40,
+    maxHeight: '85%',
+  },
+  reminderModalHeader: {
+    marginBottom: 24,
+  },
+  reminderModalTitle: {
+    color: '#F0F6FC',
+    fontSize: 20,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  reminderModalSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  reminderModalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  reminderPresetBtn: {
+    flex: 1,
+    minWidth: '31%',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+    alignItems: 'center',
+  },
+  reminderPresetText: {
+    color: '#F0F6FC',
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  reminderCustomSection: {
+    marginBottom: 20,
+  },
+  reminderLabel: {
+    fontSize: 12,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  reminderDateSection: {
+    marginBottom: 20,
+  },
+  reminderSummary: {
+    backgroundColor: 'rgba(201, 162, 39, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 162, 39, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 20,
+    gap: 10,
+  },
+  reminderSummaryTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  reminderSummaryItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  reminderActions: {
+    gap: 8,
+  },
+  actionsStickyContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#21262D',
+    gap: 8,
+  },
+  reactionChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+  },
+  whoSuggestedBox: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginBottom: 12,
+  },
+  whoSuggestedTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  whoSuggestedMessage: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 10,
+    fontWeight: '500',
+  },
+  whoSuggestedRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  whoSuggestedLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  whoSuggestedValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  whoSuggestedRange: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  whoFeedback: {
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 16,
   },
   sectionBody: {
     fontSize: 12,

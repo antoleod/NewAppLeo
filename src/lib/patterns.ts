@@ -37,6 +37,8 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   const lastSleep = sorted.find((entry) => entry.type === 'sleep');
   const lastMedication = sorted.find((entry) => entry.type === 'medication');
   const lastTemp = sorted.find((entry) => entry.type === 'temperature' || (entry.type === 'measurement' && entry.payload.tempC));
+  const lastDiaper = sorted.find((entry) => entry.type === 'diaper');
+  const lastMeasurement = sorted.find((entry) => entry.type === 'measurement');
 
   const feedHours = hoursSince(lastFeed?.occurredAt);
   if (feedHours !== null && feedHours >= 3) {
@@ -130,7 +132,117 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
     }
   }
 
+  // Constipation alert - no poop in 24h+
+  if (lastDiaper) {
+    const lastPoopEntry = sorted.find((entry) => entry.type === 'diaper' && (entry.payload?.poop ?? 0) > 0);
+    const poopHours = hoursSince(lastPoopEntry?.occurredAt);
+    if (poopHours !== null && poopHours >= 24) {
+      alerts.push({
+        id: 'constipation-alert',
+        title: 'No bowel movement',
+        body: `No poop recorded in ${Math.floor(poopHours)}h. Monitor and ensure hydration.`,
+        icon: '💚',
+        value: `${Math.floor(poopHours)}h`,
+        statusLabel: 'pending',
+        tone: 'warning',
+        actionLabel: 'Log diaper',
+        targetType: 'diaper',
+      });
+    }
+  }
+
+  // Diarrhea alert - multiple poops in short time
+  const diaperEntries24h = sorted.filter((entry) => {
+    const hours = hoursSince(entry.occurredAt);
+    return entry.type === 'diaper' && hours !== null && hours <= 24 && (entry.payload?.poop ?? 0) > 0;
+  });
+  if (diaperEntries24h.length >= 4) {
+    alerts.push({
+      id: 'diarrhea-alert',
+      title: 'Frequent bowel movements',
+      body: `${diaperEntries24h.length} bowel movements in last 24h. Monitor for dehydration.`,
+      icon: '⚠️',
+      value: `${diaperEntries24h.length}x`,
+      statusLabel: 'pending',
+      tone: 'warning',
+      actionLabel: 'Log diaper',
+      targetType: 'diaper',
+    });
+  }
+
+  // Persistent symptom alert - same symptom >2 times in 7 days
+  const symptomEntries7d = sorted.filter((entry) => {
+    const days = hoursSince(entry.occurredAt) ?? 0;
+    return entry.type === 'symptom' && days <= 168;
+  });
+  if (symptomEntries7d.length >= 2) {
+    const symptomsCount: Record<string, number> = {};
+    symptomEntries7d.forEach((entry) => {
+      const tags = (entry.payload?.tags as string[]) ?? [];
+      tags.forEach((tag) => {
+        symptomsCount[tag] = (symptomsCount[tag] ?? 0) + 1;
+      });
+    });
+    const persistentSymptom = Object.entries(symptomsCount).find(([, count]) => count >= 2);
+    if (persistentSymptom) {
+      alerts.push({
+        id: 'persistent-symptom',
+        title: 'Recurring symptom',
+        body: `"${persistentSymptom[0]}" recorded ${persistentSymptom[1]} times in 7 days.`,
+        icon: '🩺',
+        value: `${persistentSymptom[1]}x`,
+        statusLabel: 'pending',
+        tone: 'secondary',
+        actionLabel: 'View',
+        targetType: 'symptom',
+      });
+    }
+  }
+
+  // Growth warning - weight/height outside WHO percentiles
+  if (lastMeasurement?.payload?.weightKg) {
+    const weightKg = lastMeasurement.payload.weightKg;
+    const babyBirthDate = profile?.babyBirthDate;
+    if (babyBirthDate) {
+      const ageMonths = calculateAgeMonths(babyBirthDate);
+      // Simple check: if weight is extremely low or high for age (very basic)
+      const expectedMin = ageMonths < 6 ? 3.5 : ageMonths < 12 ? 6 : 8;
+      const expectedMax = ageMonths < 6 ? 8 : ageMonths < 12 ? 11 : 14;
+      if (weightKg < expectedMin) {
+        alerts.push({
+          id: 'weight-low',
+          title: 'Low weight',
+          body: `Weight is ${weightKg}kg, which is below expected range for age.`,
+          icon: '📏',
+          value: `${weightKg}kg`,
+          statusLabel: 'attention',
+          tone: 'warning',
+          actionLabel: 'Log measurement',
+          targetType: 'measurement',
+        });
+      } else if (weightKg > expectedMax) {
+        alerts.push({
+          id: 'weight-high',
+          title: 'High weight',
+          body: `Weight is ${weightKg}kg, which is above expected range for age.`,
+          icon: '📏',
+          value: `${weightKg}kg`,
+          statusLabel: 'attention',
+          tone: 'secondary',
+          actionLabel: 'Log measurement',
+          targetType: 'measurement',
+        });
+      }
+    }
+  }
+
   return alerts.slice(0, 3);
+}
+
+function calculateAgeMonths(birthDate: string): number {
+  const birth = new Date(birthDate);
+  const today = new Date();
+  return (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
 }
 
 function formatCompactHours(hours: number) {

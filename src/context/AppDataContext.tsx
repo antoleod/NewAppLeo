@@ -153,25 +153,42 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    setLoading(true);
-    setRemoteAvailable(true);
-    const q = query(entriesRef(user.uid), orderBy('occurredAt', 'desc'));
-    return onSnapshot(
-      q,
-      (snapshot) => {
-        setEntries(snapshot.docs.map((item) => normalizeEntry(item.id, item.data())));
-        setLoading(false);
-      },
-      (error) => {
-        if (isPermissionDenied(error)) {
-          setRemoteAvailable(false);
-          setEntries(getLocalEntries(user.uid));
-          return;
-        }
-        console.error('Entry listener error:', error);
-        setLoading(false);
-      },
-    );
+    let unsubscribe: (() => void) | null = null;
+    let cancelled = false;
+
+    const setupListener = () => {
+      setLoading(true);
+      setRemoteAvailable(true);
+      const q = query(entriesRef(user.uid), orderBy('occurredAt', 'desc'));
+      unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          if (cancelled) return;
+          setEntries(snapshot.docs.map((item) => normalizeEntry(item.id, item.data())));
+          setLoading(false);
+        },
+        (error) => {
+          if (cancelled) return;
+          if (isPermissionDenied(error)) {
+            setRemoteAvailable(false);
+            setEntries(getLocalEntries(user.uid));
+            setLoading(false);
+            return;
+          }
+          console.error('Entry listener error:', error);
+          setLoading(false);
+        },
+      );
+    };
+
+    setupListener();
+
+    return () => {
+      cancelled = true;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [guestMode, user]);
 
   useEffect(() => {

@@ -41,6 +41,8 @@ export interface EntryPayload {
   vaccineName?: string;
   vaccineDose?: number;
   vaccineNextDueDate?: string;
+  hasReminder?: boolean;
+  foodAllergies?: string[];
   severity?: number;
 }
 

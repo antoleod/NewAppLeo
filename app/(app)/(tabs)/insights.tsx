@@ -1,12 +1,19 @@
 ﻿import { useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Button, EmptyState, Heading, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
+import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
 import { getMeanFeedingInterval } from '@/lib/patterns';
 import { whoHeightTable, whoWeightTable } from '@/lib/who-data';
+import {
+  getSuggestedValues,
+  getWeightCategory,
+  getHeightCategory,
+  getAgeInMonths
+} from '@/lib/who-recommendations';
 import { getWeeklyTrend } from '@/utils/entries';
 import { dateKey, formatDuration, startOfDay, subtractDays } from '@/utils/date';
 
@@ -32,6 +39,7 @@ function titleStyle() {
 export default function InsightsScreen() {
   const { t, language } = useLocale();
   const { entries, summary } = useAppData();
+  const { profile } = useAuth();
   const [range, setRange] = useState<RangeKey>('7d');
 
   const trend = useMemo(() => getWeeklyTrend(entries), [entries]);
@@ -41,6 +49,24 @@ export default function InsightsScreen() {
   const latestHeight = Number(latestMeasurement?.payload?.heightCm ?? 0) || null;
   const latestHeadCirc = Number(latestMeasurement?.payload?.headCircCm ?? 0) || null;
   const sleepMinutes = summary.today.sleepMinutes;
+
+  // WHO Recommendations
+  const whoSuggested = profile?.babyBirthDate ? getSuggestedValues(profile.babyBirthDate) : null;
+  const ageMonths = profile?.babyBirthDate ? getAgeInMonths(profile.babyBirthDate) : null;
+  const weightCategory = latestWeight && profile?.babyBirthDate ? getWeightCategory(latestWeight, profile.babyBirthDate) : null;
+  const heightCategory = latestHeight && profile?.babyBirthDate ? getHeightCategory(latestHeight, profile.babyBirthDate) : null;
+
+  // Weight measurements history
+  const weightHistory = useMemo(() => {
+    return [...entries]
+      .filter((e) => e.type === 'measurement' && e.payload?.weightKg)
+      .slice(0, 7)
+      .reverse()
+      .map((e) => ({
+        weight: e.payload.weightKg,
+        date: new Date(e.occurredAt),
+      }));
+  }, [entries]);
 
   const sleepByDay = useMemo(() => {
     const days = range === 'today' ? 1 : range === '3d' ? 3 : 7;
@@ -162,18 +188,106 @@ export default function InsightsScreen() {
             <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
               <Text style={eyebrowStyle()}>{t('insights.growth')}</Text>
               <Text style={titleStyle()}>{language === 'fr' ? 'Croissance' : 'Growth'}</Text>
+
+              {whoSuggested && ageMonths !== null && (
+                <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: `${GREEN}15`, borderWidth: 1, borderColor: `${GREEN}40`, gap: 6, marginBottom: 4 }}>
+                  <Text style={{ color: GREEN, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    💡 {language === 'fr' ? 'Selon OMS' : 'WHO Reference'}
+                  </Text>
+                  <Text style={{ color: TEXT, fontSize: 12, lineHeight: 18 }}>{whoSuggested.message}</Text>
+                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: MUTED, fontSize: 9, fontWeight: '600' }}>
+                        {language === 'fr' ? 'POIDS' : 'WEIGHT'}
+                      </Text>
+                      <Text style={{ color: GREEN, fontSize: 14, fontWeight: '700' }}>
+                        {whoSuggested.weight.value.toFixed(1)} kg
+                      </Text>
+                      <Text style={{ color: MUTED, fontSize: 9, marginTop: 2 }}>
+                        {whoSuggested.weight.min.toFixed(1)} - {whoSuggested.weight.max.toFixed(1)}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: MUTED, fontSize: 9, fontWeight: '600' }}>
+                        {language === 'fr' ? 'TAILLE' : 'HEIGHT'}
+                      </Text>
+                      <Text style={{ color: GREEN, fontSize: 14, fontWeight: '700' }}>
+                        {whoSuggested.height.value.toFixed(1)} cm
+                      </Text>
+                      <Text style={{ color: MUTED, fontSize: 9, marginTop: 2 }}>
+                        {whoSuggested.height.min.toFixed(1)} - {whoSuggested.height.max.toFixed(1)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
               <View style={{ gap: 8 }}>
-                <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{latestWeight ? `${latestWeight} kg` : '--'}</Text>
-                <Text style={{ color: MUTED, fontSize: 11 }}>
-                  {latestHeight ? `${latestHeight} cm` : '--'} {latestHeadCirc ? `· ${latestHeadCirc} cm HC` : ''}
-                </Text>
-                <Text style={{ color: latestWeight && latestWeight <= whoWeightTable[1].p50 ? GOLD : GREEN, fontSize: 13, fontWeight: '700' }}>
-                  {latestWeight && latestWeight <= whoWeightTable[1].p50 ? t('insights.lowerMedian') : t('insights.aboveMedian')}
-                </Text>
-                <Text style={{ color: MUTED, fontSize: 11 }}>
-                  {t('insights.whoLoaded')}: {whoWeightTable.length} / {whoHeightTable.length}
-                </Text>
+                <View>
+                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                    {language === 'fr' ? 'Mesures actuelles' : 'Current'}
+                  </Text>
+                  <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{latestWeight ? `${latestWeight} kg` : '--'}</Text>
+                  <Text style={{ color: MUTED, fontSize: 11 }}>
+                    {latestHeight ? `${latestHeight} cm` : '--'} {latestHeadCirc ? `· ${latestHeadCirc} cm HC` : ''}
+                  </Text>
+                </View>
+
+                {weightCategory && (
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: `${weightCategory.category === 'healthy' ? GREEN : '#F2C86F'}15`, borderWidth: 1, borderColor: `${weightCategory.category === 'healthy' ? GREEN : '#F2C86F'}40` }}>
+                    <Text style={{ color: weightCategory.category === 'healthy' ? GREEN : '#F2C86F', fontSize: 11, fontWeight: '600', lineHeight: 16 }}>
+                      {weightCategory.emoji} {weightCategory.message}
+                    </Text>
+                  </View>
+                )}
+
+                {heightCategory && (
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: `${heightCategory.category === 'healthy' ? GREEN : '#F2C86F'}15`, borderWidth: 1, borderColor: `${heightCategory.category === 'healthy' ? GREEN : '#F2C86F'}40` }}>
+                    <Text style={{ color: heightCategory.category === 'healthy' ? GREEN : '#F2C86F', fontSize: 11, fontWeight: '600', lineHeight: 16 }}>
+                      {heightCategory.emoji} {heightCategory.message}
+                    </Text>
+                  </View>
+                )}
               </View>
+
+              {weightHistory.length > 0 && (
+                <View style={{ gap: 8, marginTop: 8 }}>
+                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    {language === 'fr' ? 'Historique' : 'Trend'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 50, justifyContent: 'center' }}>
+                    {(() => {
+                      const weights = weightHistory.map((w) => w.weight ?? 0).filter((w) => w > 0);
+                      if (weights.length === 0) return null;
+                      const maxWeight = Math.max(...weights);
+                      const minWeight = Math.min(...weights);
+                      const range = maxWeight - minWeight || 1;
+                      return weightHistory.map((m, i) => {
+                        const w = m.weight ?? 0;
+                        const height = ((w - minWeight) / range) * 40 + 10;
+                        return (
+                          <View
+                            key={i}
+                            style={{
+                              flex: 1,
+                              height,
+                              borderRadius: 4,
+                              backgroundColor: GREEN,
+                              opacity: 0.5 + (i / weightHistory.length) * 0.5,
+                            }}
+                          />
+                        );
+                      });
+                    })()}
+                  </View>
+                </View>
+              )}
+
+              <Pressable onPress={() => router.push('/entry/measurement')} style={{ paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: `${GREEN}20`, borderWidth: 1, borderColor: `${GREEN}40`, marginTop: 4 }}>
+                <Text style={{ color: GREEN, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>
+                  {language === 'fr' ? '📏 Ajouter une mesure' : '📏 Add Measurement'}
+                </Text>
+              </Pressable>
             </View>
           </Animated.View>
 
