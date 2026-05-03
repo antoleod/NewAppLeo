@@ -81,7 +81,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         await setAppSettings({ ...settings, backgroundPhotoUri: uri });
       },
       setButtonOpacity: async (opacity) => {
-        const nextOpacity = Math.max(0.6, Math.min(1, opacity));
+        const nextOpacity = Math.max(0.2, Math.min(1, opacity));
         setButtonOpacityState(nextOpacity);
         const settings = await getAppSettings();
         await setAppSettings({ ...settings, buttonOpacity: nextOpacity });

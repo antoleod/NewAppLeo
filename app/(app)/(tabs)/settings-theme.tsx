@@ -22,6 +22,7 @@ export default function ThemeSettings() {
   } = useTheme();
   const { setThemeMode } = useAuth();
   const [opacityValue, setOpacityValue] = useState(buttonOpacity);
+  const [opacityTrackWidth, setOpacityTrackWidth] = useState(0);
 
   const themes = [
     {
@@ -50,21 +51,21 @@ export default function ThemeSettings() {
     },
   ] as const;
 
-  const opacityOptions = [
-    { label: '100%', value: 1 },
-    { label: '90%', value: 0.9 },
-    { label: '80%', value: 0.8 },
-    { label: '70%', value: 0.7 },
-  ];
-
   useEffect(() => {
     setOpacityValue(buttonOpacity);
   }, [buttonOpacity]);
 
-  async function handleButtonOpacityChange(value: string) {
-    const nextOpacity = Number(value);
+  async function handleButtonOpacityChange(value: number) {
+    const nextOpacity = Math.max(0.2, Math.min(1, value));
     setOpacityValue(nextOpacity);
     await setButtonOpacity(nextOpacity);
+  }
+
+  function handleOpacityTrackPress(event: any) {
+    if (!opacityTrackWidth) return;
+    const ratio = Math.max(0, Math.min(1, event.nativeEvent.locationX / opacityTrackWidth));
+    const nextOpacity = Math.round((0.2 + ratio * 0.8) * 100) / 100;
+    void handleButtonOpacityChange(nextOpacity);
   }
 
   async function handleResetRecommended() {
@@ -177,12 +178,42 @@ export default function ThemeSettings() {
 
         <Card>
           <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Button Opacity</Text>
-          <Text style={[styles.sectionBody, { color: theme.textMuted }]}>Adjust how solid primary app buttons look.</Text>
-          <Segment
-            value={String(opacityValue)}
-            onChange={(value) => void handleButtonOpacityChange(value)}
-            options={opacityOptions.map((item) => ({ label: item.label, value: String(item.value) }))}
-          />
+          <Text style={[styles.sectionBody, { color: theme.textMuted }]}>Adjust how solid primary app buttons look, from 20% to 100%.</Text>
+          <Pressable
+            onPress={handleOpacityTrackPress}
+            onLayout={(event) => setOpacityTrackWidth(event.nativeEvent.layout.width)}
+            style={({ pressed }) => [
+              styles.opacityTrack,
+              {
+                backgroundColor: theme.bgCardAlt,
+                borderColor: pressed ? theme.accent : theme.border,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.opacityFill,
+                {
+                  width: `${((opacityValue - 0.2) / 0.8) * 100}%`,
+                  backgroundColor: theme.accent,
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.opacityThumb,
+                {
+                  left: `${((opacityValue - 0.2) / 0.8) * 100}%`,
+                  backgroundColor: theme.accent,
+                  borderColor: theme.bgCard,
+                },
+              ]}
+            />
+          </Pressable>
+          <View style={styles.opacityScale}>
+            <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>20%</Text>
+            <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>100%</Text>
+          </View>
           <View style={styles.previewRow}>
             <Button label="Preview" onPress={() => {}} fullWidth={false} style={{ opacity: opacityValue }} />
             <Text style={[styles.previewText, { color: theme.textMuted }]}>{Math.round(opacityValue * 100)}%</Text>
@@ -214,6 +245,11 @@ const styles = StyleSheet.create({
   themeTitle: { fontSize: 14, fontWeight: '800' },
   themeBody: { fontSize: 12, marginTop: 4 },
   themeState: { fontSize: 12, fontWeight: '800', marginTop: 8 },
+  opacityTrack: { height: 34, borderRadius: 999, borderWidth: 1, justifyContent: 'center', overflow: 'hidden', position: 'relative' },
+  opacityFill: { position: 'absolute', left: 0, top: 0, bottom: 0 },
+  opacityThumb: { position: 'absolute', width: 22, height: 22, marginLeft: -11, borderRadius: 999, borderWidth: 3 },
+  opacityScale: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  opacityScaleText: { fontSize: 11, fontWeight: '700' },
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
   previewText: { fontSize: 12, fontWeight: '700' },
 });
