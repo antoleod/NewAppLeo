@@ -9,7 +9,7 @@ import {
   updateThemeMode,
   watchProfile,
 } from '@/services/userProfileService';
-import { consumeGoogleRedirectResult, registerAccount, signInWithEmail, signInWithGoogle, signInWithUsernamePin, signOutUser } from '@/services/authService';
+import { consumeGoogleRedirectResult, registerAccount, signInWithEmail, signInWithGoogle, signOutUser } from '@/services/authService';
 import { clearGuestProfile, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { createSession } from '@/services/sessionService';
@@ -22,7 +22,6 @@ interface AuthContextValue {
   profileLoading: boolean;
   signInEmail: (payload: { email: string; password: string }) => Promise<void>;
   signInGoogle: () => Promise<void>;
-  signInUsernamePin: (payload: { username: string; pin: string }) => Promise<void>;
   signInGuest: () => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -121,13 +120,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await clearGuestProfile();
         const result = await signInWithGoogle();
         await createSession(result.user.uid, result.user.email ?? profile?.authEmail ?? 'unknown');
-        setGuestMode(false);
-        setUser(result.user);
-        setProfile(result.profile);
-      },
-      signInUsernamePin: async (payload) => {
-        await clearGuestProfile();
-        const result = await signInWithUsernamePin(payload);
         setGuestMode(false);
         setUser(result.user);
         setProfile(result.profile);

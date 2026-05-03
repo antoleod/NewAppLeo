@@ -36,67 +36,6 @@ export async function requestNotificationPermissions() {
   return result.status;
 }
 
-export async function scheduleDailySummary(time = '22:00', summary = 'Daily summary will appear here.') {
-  if (Platform.OS === 'web') {
-    return { scheduled: true, time, platform: 'web' };
-  }
-
-  const status = await requestNotificationPermissions();
-  if (status !== 'granted') {
-    throw new Error('Notification permissions were not granted.');
-  }
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('daily-summary', {
-      name: 'Daily summary',
-      importance: Notifications.AndroidImportance.DEFAULT,
-    });
-  }
-
-  const { hour, minute } = parseTime(time);
-  const id = await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'App Leo',
-      body: summary,
-      sound: true,
-    },
-    trigger: { hour, minute, repeats: true } as any,
-  });
-
-  return { scheduled: true, time, id };
-}
-
-// New notification functions for health tracking
-
-export async function scheduleNextFeedingReminder(
-  lastFeedAt: string,
-  intervalMs: number,
-  babyName: string = 'Baby'
-) {
-  try {
-    if (Platform.OS === 'web') return;
-    // Schedule notification 10 minutes before next feeding
-    const nextFeedTime = new Date(lastFeedAt).getTime() + intervalMs - 10 * 60 * 1000;
-    const now = Date.now();
-
-    if (nextFeedTime > now) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `Time for ${babyName}'s feeding soon`,
-          body: 'Next feeding window is coming up in 10 minutes',
-          data: { type: 'feeding' },
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: new Date(nextFeedTime),
-        },
-      });
-    }
-  } catch (error) {
-    console.error('Failed to schedule feeding reminder:', error);
-  }
-}
 
 export async function scheduleMedicationReminder(
   entry: EntryRecord,

@@ -245,20 +245,6 @@ export async function consumeGoogleRedirectResult() {
   }
 }
 
-export async function signInWithUsernamePin(payload: { username: string; pin: string }) {
-  const profile = await resolveUsernameToProfile(payload.username);
-  if (!verifyPinAgainstProfile(payload.pin, profile)) {
-    throw new Error('Incorrect PIN.');
-  }
-
-  const password = decryptWithPin(profile.encryptedPassword, payload.pin, profile.pinSalt);
-  if (!password) {
-    throw new Error('Could not decrypt the stored credentials.');
-  }
-
-  const authResult = await signInWithEmailAndPassword(auth, profile.authEmail, password);
-  return { user: authResult.user, profile };
-}
 
 export async function signOutUser() {
   await signOut(auth);
