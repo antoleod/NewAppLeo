@@ -1,21 +1,27 @@
 import { Redirect, router } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
+  useWindowDimensions,
   type TextInputProps,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { Page } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
+import { useToast } from '@/components/Toast';
 import { AppLanguage } from '@/types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -23,51 +29,61 @@ import { AppLanguage } from '@/types';
 const APP_ICON = require('../../assets/branding/app-icon/babyflow-app-icon-512.png');
 
 const LANGS: Array<{ code: AppLanguage; label: string }> = [
-  { code: 'en', label: 'English' },
-  { code: 'fr', label: 'Francais' },
-  { code: 'es', label: 'Espanol' },
-  { code: 'nl', label: 'Nederlands' },
+  { code: 'en', label: 'EN' },
+  { code: 'fr', label: 'FR' },
+  { code: 'es', label: 'ES' },
+  { code: 'nl', label: 'NL' },
 ];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// ─── LoginInput ───────────────────────────────────────────────────────────────
+const ACCENT = '#34C77B';        // Apple-style vibrant green
+const ACCENT_GLOW = '#34C77B';
+const TEXT_PRIMARY = '#F2F2F7';  // iOS white
+const TEXT_SECONDARY = 'rgba(235,235,245,0.60)';
+const TEXT_TERTIARY = 'rgba(235,235,245,0.30)';
+const HAIRLINE = 'rgba(255,255,255,0.08)';
+const FIELD_BG = 'rgba(118,118,128,0.18)'; // iOS material fill
+const FIELD_BG_FOCUS = 'rgba(118,118,128,0.28)';
+const DESTRUCTIVE = '#FF453A';
 
-interface LoginInputProps extends TextInputProps {
+// ─── AppleField (single row) ──────────────────────────────────────────────────
+
+interface AppleFieldProps extends TextInputProps {
   icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  error?: string;
+  inputRef?: React.RefObject<TextInput | null>;
   rightElement?: React.ReactNode;
+  showHairline?: boolean;
+  hasError?: boolean;
 }
 
-function LoginInput({ icon, label, error, rightElement, style, ...rest }: LoginInputProps) {
+function AppleField({
+  icon,
+  inputRef,
+  rightElement,
+  showHairline,
+  hasError,
+  style,
+  ...rest
+}: AppleFieldProps) {
+  const internalRef = useRef<TextInput>(null);
+  const ref = inputRef ?? internalRef;
   const [focused, setFocused] = useState(false);
-  const inputRef = useRef<TextInput>(null);
 
-  const borderColor = error
-    ? 'rgba(240,100,110,0.80)'
+  const iconColor = hasError
+    ? DESTRUCTIVE
     : focused
-    ? 'rgba(100,210,175,0.70)'
-    : 'rgba(255,255,255,0.14)';
-
-  const bgColor = focused ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)';
+    ? ACCENT
+    : TEXT_TERTIARY;
 
   return (
-    <View style={styles.field} accessibilityLabel={label}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Pressable
-        onPress={() => inputRef.current?.focus()}
-        style={[styles.inputRow, { borderColor, backgroundColor: bgColor }]}
-      >
-        <View style={styles.inputIconWrap}>
-          <Ionicons
-            name={icon}
-            size={18}
-            color={focused ? '#64D2AF' : 'rgba(255,255,255,0.40)'}
-          />
+    <View>
+      <Pressable onPress={() => ref.current?.focus()} style={styles.fieldRow}>
+        <View style={styles.fieldIcon}>
+          <Ionicons name={icon} size={19} color={iconColor} />
         </View>
         <TextInput
-          ref={inputRef}
+          ref={ref}
           {...rest}
           onFocus={(e) => {
             setFocused(true);
@@ -77,18 +93,12 @@ function LoginInput({ icon, label, error, rightElement, style, ...rest }: LoginI
             setFocused(false);
             rest.onBlur?.(e);
           }}
-          placeholderTextColor="rgba(255,255,255,0.30)"
-          style={[styles.inputText, style]}
-          accessibilityLabel={label}
+          placeholderTextColor={TEXT_TERTIARY}
+          style={[styles.fieldInput, style]}
         />
         {rightElement}
       </Pressable>
-      {error ? (
-        <View style={styles.errorRow}>
-          <Ionicons name="alert-circle-outline" size={13} color="#F0646E" />
-          <Text style={styles.fieldError}>{error}</Text>
-        </View>
-      ) : null}
+      {showHairline ? <View style={styles.hairline} /> : null}
     </View>
   );
 }
@@ -97,11 +107,15 @@ function LoginInput({ icon, label, error, rightElement, style, ...rest }: LoginI
 
 export default function LoginScreen() {
   const { language, setLanguage, t } = useLocale();
-  const { loading, user, guestMode, signInGuest, signInEmail, signInGoogle } = useAuth();
+  const { loading, user, guestMode, signInGuest, signInEmail, signInGoogle, resetPassword } = useAuth();
+  const toast = useToast();
+  const { width, height } = useWindowDimensions();
+  const isCompact = height < 740 || width < 360;
 
   const [selectedLanguage, setSelectedLanguage] = useState<AppLanguage>(language);
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [email, setEmail] = useState('');
   const [emailTouched, setEmailTouched] = useState(false);
@@ -109,18 +123,30 @@ export default function LoginScreen() {
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const emailError = emailTouched && email.length > 0 && !EMAIL_RE.test(email.trim())
-    ? t('auth.email_invalid', 'Invalid email address')
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+
+  const trimmedEmail = email.trim();
+  const emailValid = EMAIL_RE.test(trimmedEmail);
+  const passwordValid = password.length >= 6;
+
+  const emailError = emailTouched && email.length > 0 && !emailValid
+    ? t('auth.email_invalid', 'Invalid email')
     : undefined;
 
-  const passwordError = passwordTouched && password.length > 0 && password.length < 6
-    ? t('auth.password_short', 'At least 6 characters required')
+  const passwordError = passwordTouched && password.length > 0 && !passwordValid
+    ? t('auth.password_short', 'Password must be at least 6 characters')
     : undefined;
 
-  const canSubmit = useMemo(
-    () => EMAIL_RE.test(email.trim()) && password.length >= 6,
-    [email, password],
-  );
+  const inlineError = emailError ?? passwordError;
+  const canSubmit = useMemo(() => emailValid && passwordValid, [emailValid, passwordValid]);
+  const anyBusy = busy || googleBusy || resetBusy;
+
+  // Clear global error when user starts editing again
+  useEffect(() => {
+    if (errorMessage) setErrorMessage('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email, password]);
 
   async function commitLanguage(next: AppLanguage) {
     setSelectedLanguage(next);
@@ -128,13 +154,13 @@ export default function LoginScreen() {
   }
 
   const handleLogin = useCallback(async () => {
-    if (!canSubmit || busy) return;
     setEmailTouched(true);
     setPasswordTouched(true);
+    if (!canSubmit || anyBusy) return;
     setBusy(true);
     setErrorMessage('');
     try {
-      await signInEmail({ email: email.trim(), password });
+      await signInEmail({ email: trimmedEmail, password });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
       setErrorMessage(error?.message ?? t('auth.login_failed', 'Login failed'));
@@ -142,25 +168,25 @@ export default function LoginScreen() {
     } finally {
       setBusy(false);
     }
-  }, [canSubmit, busy, email, password, signInEmail, t]);
+  }, [canSubmit, anyBusy, trimmedEmail, password, signInEmail, t]);
 
   const handleGoogle = useCallback(async () => {
-    if (googleBusy) return;
+    if (anyBusy) return;
     setGoogleBusy(true);
     setErrorMessage('');
     try {
       await signInGoogle();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
-      setErrorMessage(error?.message ?? t('auth.google_unavailable', 'Google sign-in is not available right now.'));
+      setErrorMessage(error?.message ?? t('auth.google_unavailable', 'Google sign-in unavailable'));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setGoogleBusy(false);
     }
-  }, [googleBusy, signInGoogle, t]);
+  }, [anyBusy, signInGoogle, t]);
 
   const handleGuest = useCallback(async () => {
-    if (busy) return;
+    if (anyBusy) return;
     setBusy(true);
     setErrorMessage('');
     try {
@@ -170,189 +196,274 @@ export default function LoginScreen() {
     } finally {
       setBusy(false);
     }
-  }, [busy, signInGuest, t]);
+  }, [anyBusy, signInGuest, t]);
+
+  const handleForgotPassword = useCallback(async () => {
+    if (anyBusy) return;
+    if (!emailValid) {
+      setEmailTouched(true);
+      toast.warning(t('auth.reset_need_email', 'Enter your email first'));
+      emailRef.current?.focus();
+      return;
+    }
+    setResetBusy(true);
+    try {
+      await resetPassword(trimmedEmail);
+      toast.success(t('auth.reset_sent', 'Password reset email sent'));
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error: any) {
+      toast.error(error?.message ?? t('auth.reset_failed', 'Could not send reset email'));
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setResetBusy(false);
+    }
+  }, [anyBusy, emailValid, trimmedEmail, resetPassword, toast, t]);
 
   if (loading) {
     return (
       <View style={styles.loadingScreen}>
-        <LinearGradient colors={['#07111F', '#0B1630', '#101C39']} style={StyleSheet.absoluteFill} />
-        <ActivityIndicator size="large" color="#64D2AF" />
-        <Text style={styles.loadingText}>{t('common.loading', 'Loading...')}</Text>
+        <LinearGradient colors={['#000000', '#0A0A0F']} style={StyleSheet.absoluteFill} />
+        <ActivityIndicator size="large" color={ACCENT} />
       </View>
     );
   }
 
   if (user || guestMode) return <Redirect href="/home" />;
 
-  const anyBusy = busy || googleBusy;
+  const greeting =
+    language === 'fr' ? 'Bon retour' :
+    language === 'es' ? 'Bienvenido' :
+    language === 'nl' ? 'Welkom terug' :
+    'Welcome back';
+
+  const subline =
+    language === 'fr' ? 'Connectez-vous pour continuer' :
+    language === 'es' ? 'Inicia sesión para continuar' :
+    language === 'nl' ? 'Meld je aan om door te gaan' :
+    'Sign in to continue';
 
   return (
     <Page scroll contentStyle={styles.page}>
-      <LinearGradient colors={['#07111F', '#0B1630', '#101C39']} style={StyleSheet.absoluteFill} />
+      {/* ── Background: deep black with subtle accent glow ── */}
+      <LinearGradient colors={['#000000', '#0A0A0F', '#0F0F1A']} style={StyleSheet.absoluteFill} />
+      <View pointerEvents="none" style={styles.glowTop} />
+      <View pointerEvents="none" style={styles.glowBottom} />
 
-      <View style={styles.card}>
-        {/* ── Brand header ── */}
-        <View style={styles.brandSection}>
-          <Image source={APP_ICON} style={styles.appIcon} resizeMode="contain" />
-          <Text style={styles.brandName}>BabyFlow</Text>
-          <Text style={styles.brandTagline}>Because every moment flows into a memory.</Text>
-        </View>
-
-        {/* ── Fields ── */}
-        <LoginInput
-          icon="mail-outline"
-          label={t('auth.email', 'Email')}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="name@email.com"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          textContentType="emailAddress"
-          autoComplete="email"
-          returnKeyType="next"
-          error={emailError}
-          onBlur={() => setEmailTouched(true)}
-        />
-
-        <LoginInput
-          icon="lock-closed-outline"
-          label={t('auth.password', 'Password')}
-          value={password}
-          onChangeText={setPassword}
-          placeholder={t('auth.password_placeholder', 'Enter password')}
-          secureTextEntry={!showPassword}
-          autoCapitalize="none"
-          textContentType="password"
-          autoComplete="password"
-          returnKeyType="done"
-          onSubmitEditing={() => void handleLogin()}
-          error={passwordError}
-          onBlur={() => setPasswordTouched(true)}
-          rightElement={
-            <Pressable
-              onPress={() => setShowPassword((v) => !v)}
-              hitSlop={10}
-              accessibilityLabel={showPassword ? t('auth.hide_password', 'Hide password') : t('auth.show_password', 'Show password')}
-              style={styles.eyeButton}
-            >
-              <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={18}
-                color="rgba(255,255,255,0.40)"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.kbAvoider}
+      >
+        <Animated.View entering={FadeIn.duration(500)} style={styles.container}>
+          {/* ── Hero ── */}
+          <Animated.View entering={FadeInDown.duration(500).delay(80)} style={styles.hero}>
+            <View style={styles.iconWrap}>
+              <Image
+                source={APP_ICON}
+                style={[styles.appIcon, isCompact && styles.appIconCompact]}
+                resizeMode="contain"
               />
+            </View>
+            <Text style={[styles.greeting, isCompact && styles.greetingCompact]}>{greeting}</Text>
+            <Text style={styles.subline}>{subline}</Text>
+          </Animated.View>
+
+          {/* ── Form group (Apple-style stacked rows with hairlines) ── */}
+          <Animated.View entering={FadeInDown.duration(500).delay(160)} style={styles.formGroup}>
+            <BlurView
+              intensity={Platform.OS === 'ios' ? 40 : 0}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={[StyleSheet.absoluteFill, styles.formGroupBg]} />
+
+            <AppleField
+              icon="mail-outline"
+              inputRef={emailRef}
+              value={email}
+              onChangeText={setEmail}
+              placeholder={t('auth.email_placeholder', 'Email')}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              autoComplete="email"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              onBlur={() => setEmailTouched(true)}
+              hasError={!!emailError}
+              showHairline
+            />
+
+            <AppleField
+              icon="lock-closed-outline"
+              inputRef={passwordRef}
+              value={password}
+              onChangeText={setPassword}
+              placeholder={t('auth.password_placeholder', 'Password')}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              textContentType="password"
+              autoComplete="password"
+              returnKeyType="done"
+              onSubmitEditing={() => void handleLogin()}
+              onBlur={() => setPasswordTouched(true)}
+              hasError={!!passwordError}
+              rightElement={
+                <Pressable
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={12}
+                  accessibilityLabel={
+                    showPassword
+                      ? t('auth.hide_password', 'Hide password')
+                      : t('auth.show_password', 'Show password')
+                  }
+                  style={styles.eyeButton}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off' : 'eye-outline'}
+                    size={18}
+                    color={TEXT_TERTIARY}
+                  />
+                </Pressable>
+              }
+            />
+          </Animated.View>
+
+          {/* ── Inline error ── */}
+          {(inlineError || errorMessage) ? (
+            <Animated.View entering={FadeIn.duration(180)} style={styles.errorRow}>
+              <Ionicons name="alert-circle" size={14} color={DESTRUCTIVE} />
+              <Text style={styles.errorText}>{inlineError ?? errorMessage}</Text>
+            </Animated.View>
+          ) : null}
+
+          {/* ── Forgot password ── */}
+          <Pressable
+            onPress={() => void handleForgotPassword()}
+            disabled={anyBusy}
+            accessibilityRole="link"
+            style={styles.forgotRow}
+            hitSlop={6}
+          >
+            {resetBusy ? (
+              <ActivityIndicator size="small" color={ACCENT} />
+            ) : (
+              <Text style={styles.forgotText}>
+                {t('auth.forgot_password', 'Forgot password?')}
+              </Text>
+            )}
+          </Pressable>
+
+          {/* ── Primary action: Sign in ── */}
+          <Animated.View entering={FadeInDown.duration(500).delay(240)}>
+            <Pressable
+              onPress={() => void handleLogin()}
+              disabled={anyBusy}
+              accessibilityRole="button"
+              accessibilityLabel={t('auth.sign_in', 'Sign in')}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                !canSubmit && styles.primaryButtonDim,
+                pressed && canSubmit && !anyBusy && styles.primaryButtonPressed,
+              ]}
+            >
+              {busy ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>{t('auth.sign_in', 'Sign in')}</Text>
+              )}
             </Pressable>
-          }
-        />
+          </Animated.View>
 
-        {/* ── Global error ── */}
-        {errorMessage ? (
-          <View style={styles.errorBanner}>
-            <Ionicons name="warning-outline" size={15} color="#F0646E" />
-            <Text style={styles.errorBannerText}>{errorMessage}</Text>
+          {/* ── Divider ── */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>{t('auth.or', 'or')}</Text>
+            <View style={styles.dividerLine} />
           </View>
-        ) : null}
 
-        {/* ── Sign in button ── */}
-        <Pressable
-          onPress={() => void handleLogin()}
-          disabled={!canSubmit || anyBusy}
-          accessibilityRole="button"
-          accessibilityLabel={t('auth.sign_in', 'Sign in')}
-          style={({ pressed }) => [
-            styles.signInButton,
-            (!canSubmit || anyBusy) && styles.signInButtonDisabled,
-            pressed && canSubmit && styles.signInButtonPressed,
-          ]}
-        >
-          {busy ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="log-in-outline" size={18} color="#fff" />
-              <Text style={styles.signInText}>{t('auth.sign_in', 'Sign in')}</Text>
-            </>
-          )}
-        </Pressable>
+          {/* ── Google ── */}
+          <Pressable
+            onPress={() => void handleGoogle()}
+            disabled={anyBusy}
+            accessibilityRole="button"
+            accessibilityLabel={t('auth.continue_google', 'Continue with Google')}
+            style={({ pressed }) => [
+              styles.googleButton,
+              anyBusy && styles.googleButtonDisabled,
+              pressed && !anyBusy && styles.googleButtonPressed,
+            ]}
+          >
+            {googleBusy ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <>
+                <View style={styles.googleIconBox}>
+                  <Text style={styles.googleGlyph}>G</Text>
+                </View>
+                <Text style={styles.googleButtonText}>
+                  {t('auth.continue_google', 'Continue with Google')}
+                </Text>
+              </>
+            )}
+          </Pressable>
 
-        {/* ── Google button ── */}
-        <Pressable
-          onPress={() => void handleGoogle()}
-          disabled={anyBusy}
-          accessibilityRole="button"
-          accessibilityLabel={t('auth.continue_google', 'Continue with Google')}
-          style={({ pressed }) => [
-            styles.googleButton,
-            anyBusy && styles.googleButtonDisabled,
-            pressed && !anyBusy && styles.googleButtonPressed,
-          ]}
-        >
-          {googleBusy ? (
-            <ActivityIndicator color="#4285F4" />
-          ) : (
-            <>
-              <View style={styles.googleIconBox}>
-                {/* Google "G" coloured glyph */}
-                <Text style={styles.googleGlyph}>G</Text>
-              </View>
-              <Text style={styles.googleText}>{t('auth.continue_google', 'Continue with Google')}</Text>
-            </>
-          )}
-        </Pressable>
-
-        {/* ── Divider ── */}
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>{t('auth.or', 'or')}</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* ── Secondary actions ── */}
-        <View style={styles.secondaryRow}>
+          {/* ── Guest ── */}
           <Pressable
             onPress={() => void handleGuest()}
             disabled={anyBusy}
             accessibilityRole="button"
             accessibilityLabel={t('auth.guest', 'Continue as guest')}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.secondaryButtonPressed]}
+            style={({ pressed }) => [
+              styles.ghostButton,
+              pressed && !anyBusy && styles.ghostButtonPressed,
+            ]}
           >
-            <Ionicons name="person-outline" size={14} color="#9FCFC6" />
-            <Text style={styles.secondaryText}>{t('auth.guest', 'Continue as guest')}</Text>
+            <Text style={styles.ghostButtonText}>{t('auth.guest', 'Continue as guest')}</Text>
           </Pressable>
 
-          <View style={styles.dot} />
-
-          <Pressable
-            onPress={() => router.push('/register')}
-            disabled={anyBusy}
-            accessibilityRole="button"
-            accessibilityLabel={t('auth.create_account', 'Create account')}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.secondaryButtonPressed]}
-          >
-            <Ionicons name="person-add-outline" size={14} color="#9FCFC6" />
-            <Text style={styles.secondaryText}>{t('auth.create_account', 'Create account')}</Text>
-          </Pressable>
-        </View>
-
-        {/* ── Language selector ── */}
-        <View style={styles.languageSelector}>
-          {LANGS.map((item) => {
-            const active = item.code === selectedLanguage;
-            return (
+          {/* ── Footer: Create account + language ── */}
+          <View style={styles.footer}>
+            <View style={styles.footerRow}>
+              <Text style={styles.footerText}>
+                {t('auth.no_account', "Don't have an account?")}{' '}
+              </Text>
               <Pressable
-                key={item.code}
-                onPress={() => void commitLanguage(item.code)}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: active }}
-                style={[styles.languageButton, active && styles.languageButtonActive]}
+                onPress={() => router.push('/register')}
+                disabled={anyBusy}
+                accessibilityRole="link"
+                hitSlop={6}
               >
-                <Text style={[styles.languageButtonText, active && styles.languageButtonTextActive]}>
-                  {item.label}
+                <Text style={styles.footerLink}>
+                  {t('auth.create_account', 'Sign up')}
                 </Text>
               </Pressable>
-            );
-          })}
-        </View>
-      </View>
+            </View>
+
+            <View style={styles.languageSelector}>
+              {LANGS.map((item, i) => {
+                const active = item.code === selectedLanguage;
+                return (
+                  <View key={item.code} style={styles.languageItemWrap}>
+                    {i > 0 ? <View style={styles.languageSeparator} /> : null}
+                    <Pressable
+                      onPress={() => void commitLanguage(item.code)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: active }}
+                      hitSlop={4}
+                      style={styles.languageButton}
+                    >
+                      <Text style={[styles.languageText, active && styles.languageTextActive]}>
+                        {item.label}
+                      </Text>
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
     </Page>
   );
 }
@@ -360,125 +471,192 @@ export default function LoginScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { color: '#E8F8F3', fontSize: 14 },
+  loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  page: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, paddingVertical: 32 },
+  page: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  kbAvoider: { width: '100%', alignItems: 'center' },
 
-  card: {
-    width: '100%',
-    maxWidth: 480,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    backgroundColor: 'rgba(9,16,28,0.72)',
-    padding: 24,
-    gap: 14,
+  // Background glows
+  glowTop: {
+    position: 'absolute',
+    top: -160,
+    width: 420,
+    height: 420,
+    borderRadius: 420,
+    backgroundColor: ACCENT_GLOW,
+    opacity: 0.10,
+  },
+  glowBottom: {
+    position: 'absolute',
+    bottom: -200,
+    right: -100,
+    width: 360,
+    height: 360,
+    borderRadius: 360,
+    backgroundColor: '#5E5CE6', // Apple indigo accent
+    opacity: 0.08,
   },
 
-  // Brand
-  brandSection: { alignItems: 'center', gap: 10, paddingBottom: 6 },
-  appIcon: { width: 88, height: 88, borderRadius: 22 },
-  brandName: { color: '#ECF2F7', fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
-  brandTagline: { color: 'rgba(236,242,247,0.55)', fontSize: 13, textAlign: 'center' },
+  container: { width: '100%', maxWidth: 420, gap: 14 },
 
-  // Field
-  field: { gap: 6 },
-  fieldLabel: { color: 'rgba(236,242,247,0.80)', fontSize: 13, fontWeight: '600', paddingLeft: 2 },
-  inputRow: {
+  // Hero
+  hero: { alignItems: 'center', gap: 10, marginBottom: 8 },
+  iconWrap: {
+    shadowColor: ACCENT_GLOW,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.30,
+    shadowRadius: 24,
+    elevation: 10,
+    marginBottom: 12,
+  },
+  appIcon: { width: 96, height: 96, borderRadius: 22 },
+  appIconCompact: { width: 76, height: 76, borderRadius: 18 },
+  greeting: {
+    color: TEXT_PRIMARY,
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+    textAlign: 'center',
+  },
+  greetingCompact: { fontSize: 26 },
+  subline: {
+    color: TEXT_SECONDARY,
+    fontSize: 15,
+    textAlign: 'center',
+    fontWeight: '400',
+  },
+
+  // Form group (iOS-style grouped rows)
+  formGroup: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: HAIRLINE,
+  },
+  formGroupBg: { backgroundColor: FIELD_BG },
+  fieldRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    minHeight: 56,
+  },
+  fieldIcon: { marginRight: 12, width: 20, alignItems: 'center' },
+  fieldInput: {
+    flex: 1,
+    color: TEXT_PRIMARY,
+    fontSize: 16,
+    paddingVertical: 16,
+    fontWeight: '400',
+    // Remove web outline
+    ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}),
+  },
+  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: HAIRLINE, marginLeft: 48 },
+  eyeButton: { padding: 4, marginLeft: 4 },
+
+  // Inline error
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginTop: -6 },
+  errorText: { color: DESTRUCTIVE, fontSize: 13, fontWeight: '500', flex: 1 },
+
+  // Forgot
+  forgotRow: { alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 4, marginTop: -8 },
+  forgotText: { color: ACCENT, fontSize: 14, fontWeight: '600' },
+
+  // Primary button (Apple-style filled)
+  primaryButton: {
+    minHeight: 54,
     borderRadius: 14,
-    borderWidth: 1.5,
-    paddingHorizontal: 14,
-    minHeight: 52,
-  },
-  inputIconWrap: { marginRight: 10 },
-  inputText: { flex: 1, color: '#ECF2F7', fontSize: 15, paddingVertical: 14 },
-  eyeButton: { padding: 4 },
-  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingLeft: 2 },
-  fieldError: { color: '#F0646E', fontSize: 12, fontWeight: '500' },
-
-  // Error banner
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(240,100,110,0.12)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(240,100,110,0.30)',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  errorBannerText: { color: '#F0A0A6', fontSize: 13, fontWeight: '500', flex: 1 },
-
-  // Sign in button
-  signInButton: {
-    flexDirection: 'row',
+    backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    minHeight: 52,
-    borderRadius: 14,
-    backgroundColor: '#1DB87A',
-    shadowColor: '#1DB87A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowColor: ACCENT_GLOW,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.40,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  signInButtonDisabled: { opacity: 0.45, shadowOpacity: 0 },
-  signInButtonPressed: { opacity: 0.88 },
-  signInText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  primaryButtonDim: { opacity: 0.5, shadowOpacity: 0 },
+  primaryButtonPressed: { opacity: 0.85, transform: [{ scale: 0.985 }] },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
 
-  // Google button
+  // Divider
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.14)' },
+  dividerText: {
+    color: TEXT_TERTIARY,
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+
+  // Google (Apple-style: white-fill secondary)
   googleButton: {
+    minHeight: 54,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    minHeight: 52,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  googleButtonDisabled: { opacity: 0.45 },
-  googleButtonPressed: { backgroundColor: 'rgba(255,255,255,0.10)' },
+  googleButtonDisabled: { opacity: 0.5 },
+  googleButtonPressed: { opacity: 0.92, transform: [{ scale: 0.985 }] },
   googleIconBox: {
-    width: 28,
-    height: 28,
+    width: 22,
+    height: 22,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.96)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  googleGlyph: { color: '#1A73E8', fontSize: 16, fontWeight: '800' },
-  googleText: { color: '#F6FAFC', fontSize: 15, fontWeight: '700' },
-
-  // Divider
-  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.10)' },
-  dividerText: { color: 'rgba(255,255,255,0.30)', fontSize: 12, fontWeight: '600' },
-
-  // Secondary actions
-  secondaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
-  secondaryButton: { flexDirection: 'row', alignItems: 'center', gap: 5, padding: 6, borderRadius: 8 },
-  secondaryButtonPressed: { backgroundColor: 'rgba(255,255,255,0.07)' },
-  secondaryText: { color: '#9FCFC6', fontSize: 13, fontWeight: '600' },
-  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.20)' },
-
-  // Language selector
-  languageSelector: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 8, paddingTop: 2 },
-  languageButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+  googleGlyph: { color: '#1A73E8', fontSize: 17, fontWeight: '900' },
+  googleButtonText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
-  languageButtonActive: { backgroundColor: 'rgba(100,210,175,0.16)', borderColor: 'rgba(100,210,175,0.50)' },
-  languageButtonText: { color: 'rgba(236,242,247,0.60)', fontSize: 12, fontWeight: '600' },
-  languageButtonTextActive: { color: '#9FCFC6' },
+
+  // Ghost (guest)
+  ghostButton: {
+    minHeight: 54,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: HAIRLINE,
+  },
+  ghostButtonPressed: { backgroundColor: 'rgba(255,255,255,0.10)' },
+  ghostButtonText: {
+    color: TEXT_PRIMARY,
+    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: -0.1,
+  },
+
+  // Footer
+  footer: { gap: 16, alignItems: 'center', marginTop: 4 },
+  footerRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' },
+  footerText: { color: TEXT_SECONDARY, fontSize: 14 },
+  footerLink: { color: ACCENT, fontSize: 14, fontWeight: '700' },
+
+  // Language selector — tight inline pill
+  languageSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(118,118,128,0.18)',
+    borderRadius: 999,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  languageItemWrap: { flexDirection: 'row', alignItems: 'center' },
+  languageSeparator: { width: StyleSheet.hairlineWidth, height: 14, backgroundColor: 'rgba(255,255,255,0.10)' },
+  languageButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  languageText: { color: TEXT_SECONDARY, fontSize: 12, fontWeight: '600', letterSpacing: 0.4 },
+  languageTextActive: { color: ACCENT },
 });
