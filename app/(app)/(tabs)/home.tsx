@@ -895,32 +895,81 @@ export default function HomeScreen() {
 
                   return (
                     <Pressable
-                      key={alert.id}
-                      onPress={() => haptics.selection()}
-                      style={({ pressed }) => ({
-                        paddingHorizontal: 14,
-                        paddingVertical: 12,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 12,
-                        borderRadius: 12,
-                        backgroundColor: pressed ? `${c}15` : `${c}08`,
-                        borderWidth: 1,
-                        borderColor: `${c}20`,
-                        borderLeftWidth: 4,
-                        borderLeftColor: c,
-                        opacity: pressed ? 0.9 : 1,
-                      })}
+  key={alert.id}
+  onPress={() => haptics.selection()}
+  style={({ pressed }) => ({
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+
+    backgroundColor: pressed
+      ? 'rgba(15, 23, 42, 0.72)'
+      : 'rgba(15, 23, 42, 0.58)',
+
+    borderWidth: 1,
+    borderColor: `${c}45`,
+    borderLeftWidth: 4,
+    borderLeftColor: c,
+
+    shadowColor: '#000',
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+
+    opacity: pressed ? 0.9 : 1,
+    transform: [{ scale: pressed ? 0.98 : 1 }],
+  })}
                     >
-                      <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: `${c}15`, alignItems: 'center', justifyContent: 'center' }}>
-                        <Ionicons name={iconName} size={18} color={c} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{alert.value}</Text>
-                        <Text style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>{alert.body}</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={14} color={`${c}50`} />
-                    </Pressable>
+                     <View
+    style={{
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: `${c}22`,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}
+  >
+    <Ionicons name={iconName} size={18} color={c} />
+  </View>
+
+  <View style={{ flex: 1 }}>
+    <Text
+      style={{
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: '800',
+        textShadowColor: 'rgba(0,0,0,0.45)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      }}
+      numberOfLines={1}
+    >
+      {alert.value}
+    </Text>
+
+    <Text
+      style={{
+        color: 'rgba(255,255,255,0.78)',
+        fontSize: 11,
+        fontWeight: '600',
+        marginTop: 3,
+        textShadowColor: 'rgba(0,0,0,0.35)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 1.5,
+      }}
+      numberOfLines={2}
+    >
+      {alert.body}
+    </Text>
+  </View>
+
+  <Ionicons name="chevron-forward" size={15} color="rgba(255,255,255,0.45)" />
+</Pressable>
                   );
                 })}
               </View>
@@ -945,10 +994,10 @@ export default function HomeScreen() {
               >
                 <Ionicons name="alert-circle-outline" size={18} color={YELLOW} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>
+                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>
                     {t('food.possibleAllergies')}
                   </Text>
-                  <Text style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>
+                  <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
                     {foodAllergyAlerts.slice(0, 2).map((a) => a.food).join(', ')}
                   </Text>
                 </View>
@@ -961,7 +1010,7 @@ export default function HomeScreen() {
             <Animated.View entering={FadeInDown.duration(260).delay(180)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
               <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>
+                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>
                     {t('vaccine.scheduled')}
                   </Text>
                   <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: `${ACCENT}15` }}>
