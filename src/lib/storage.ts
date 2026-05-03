@@ -97,6 +97,7 @@ export interface AppSettings {
   hydrationGoalMl: number;
   compactHomeCards: boolean;
   buttonOpacity: number;
+  buttonTransparency: number;
   hasImportedLeoData: boolean;
   dashboardMetrics: DashboardMetrics;
   effects: MotionEffects;
@@ -114,6 +115,7 @@ export const defaultAppSettings: AppSettings = {
   hydrationGoalMl: 2500,
   compactHomeCards: false,
   buttonOpacity: 1,
+  buttonTransparency: 1,
   hasImportedLeoData: false,
   dashboardMetrics: {
     dailyStatus: true,
@@ -251,12 +253,16 @@ export async function setModuleVisibility(next: ModuleVisibility) {
 export async function getAppSettings() {
   const parsed = safeParse<Partial<AppSettings>>(await AsyncStorage.getItem(APP_SETTINGS_KEY), defaultAppSettings);
   const parsedButtonOpacity = Number(parsed.buttonOpacity);
+  const parsedButtonTransparency = Number(parsed.buttonTransparency);
   return {
     ...defaultAppSettings,
     ...parsed,
     buttonOpacity: Number.isFinite(parsedButtonOpacity)
       ? Math.max(0.2, Math.min(1, parsedButtonOpacity))
       : defaultAppSettings.buttonOpacity,
+    buttonTransparency: Number.isFinite(parsedButtonTransparency)
+      ? Math.max(0.2, Math.min(1, parsedButtonTransparency))
+      : defaultAppSettings.buttonTransparency,
     dashboardMetrics: {
       ...defaultAppSettings.dashboardMetrics,
       ...(parsed.dashboardMetrics ?? {}),

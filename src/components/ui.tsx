@@ -204,9 +204,10 @@ export function Button({
   style?: any;
 }) {
   const { width } = useWindowDimensions();
-  const { theme, buttonOpacity } = useTheme();
+  const { theme, buttonOpacity, buttonTransparency } = useTheme();
   const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
   const solidOpacity = disabled ? 0.45 : buttonOpacity;
+  const backgroundOpacity = disabled ? 0.45 : buttonTransparency;
   const background =
     variant === 'primary'
       ? theme.accent
@@ -217,8 +218,8 @@ export function Button({
           : 'transparent';
   const color = variant === 'ghost' ? theme.textPrimary : variant === 'primary' ? theme.accentText : '#ffffff';
   const borderColor = variant === 'ghost' ? theme.border : 'transparent';
-  const transparentBackground = withColorOpacity(background, solidOpacity);
-  const transparentBorder = variant === 'ghost' ? borderColor : withColorOpacity(background, Math.min(1, solidOpacity + 0.18));
+  const transparentBackground = withColorOpacity(background, backgroundOpacity);
+  const transparentBorder = variant === 'ghost' ? borderColor : withColorOpacity(background, Math.min(1, backgroundOpacity + 0.18));
   const isSmall = size === 'sm';
 
   return (
@@ -234,9 +235,9 @@ export function Button({
           width: fullWidth ? '100%' : undefined,
           backgroundColor: transparentBackground,
           borderColor: transparentBorder,
-          opacity: pressed ? 0.85 : 1,
+          opacity: pressed ? Math.min(solidOpacity, 0.85) : solidOpacity,
           shadowColor: variant === 'ghost' ? 'transparent' : theme.textPrimary,
-          shadowOpacity: variant === 'ghost' || disabled ? 0 : 0.08 * solidOpacity,
+          shadowOpacity: variant === 'ghost' || disabled ? 0 : 0.08 * backgroundOpacity,
           shadowRadius: 14,
           shadowOffset: { width: 0, height: 8 },
           elevation: variant === 'ghost' ? 0 : 2,

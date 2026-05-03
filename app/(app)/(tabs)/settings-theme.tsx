@@ -15,10 +15,12 @@ export default function ThemeSettings() {
     themeVariant,
     backgroundPhotoUri,
     buttonOpacity,
+    buttonTransparency,
     setThemeVariant,
     setThemeStyle,
     setBackgroundPhotoUri,
     setButtonOpacity,
+    setButtonTransparency,
   } = useTheme();
   const { setThemeMode } = useAuth();
   const normalizeOpacity = (opacity: unknown) => {
@@ -28,6 +30,9 @@ export default function ThemeSettings() {
   const [opacityValue, setOpacityValue] = useState(() => normalizeOpacity(buttonOpacity));
   const [opacityTrackWidth, setOpacityTrackWidth] = useState(0);
   const opacityPercent = ((opacityValue - 0.2) / 0.8) * 100;
+  const [transparencyValue, setTransparencyValue] = useState(() => normalizeOpacity(buttonTransparency));
+  const [transparencyTrackWidth, setTransparencyTrackWidth] = useState(0);
+  const transparencyPercent = ((transparencyValue - 0.2) / 0.8) * 100;
 
   const themes = [
     {
@@ -60,6 +65,10 @@ export default function ThemeSettings() {
     setOpacityValue(normalizeOpacity(buttonOpacity));
   }, [buttonOpacity]);
 
+  useEffect(() => {
+    setTransparencyValue(normalizeOpacity(buttonTransparency));
+  }, [buttonTransparency]);
+
   async function updateButtonOpacity(value: number, persist: boolean) {
     const nextOpacity = normalizeOpacity(value);
     setOpacityValue(nextOpacity);
@@ -77,6 +86,23 @@ export default function ThemeSettings() {
     void updateButtonOpacity(nextOpacity, persist);
   }
 
+  async function updateButtonTransparency(value: number, persist: boolean) {
+    const nextOpacity = normalizeOpacity(value);
+    setTransparencyValue(nextOpacity);
+    if (persist) {
+      await setButtonTransparency(nextOpacity);
+    }
+  }
+
+  function updateTransparencyFromEvent(event: GestureResponderEvent, persist: boolean) {
+    if (!transparencyTrackWidth) return;
+    const locationX = Number(event.nativeEvent.locationX);
+    if (!Number.isFinite(locationX)) return;
+    const ratio = Math.max(0, Math.min(1, locationX / transparencyTrackWidth));
+    const nextOpacity = Math.round((0.2 + ratio * 0.8) * 100) / 100;
+    void updateButtonTransparency(nextOpacity, persist);
+  }
+
   async function handleResetRecommended() {
     try {
       const current = await getAppSettings();
@@ -85,6 +111,7 @@ export default function ThemeSettings() {
         themeVariant: 'sage' as const,
         themeStyle: 'default' as const,
         buttonOpacity: 1,
+        buttonTransparency: 1,
         customTheme: {
           ...current.customTheme,
           enabled: false,
@@ -95,6 +122,7 @@ export default function ThemeSettings() {
       await setThemeStyle('default');
       await setBackgroundPhotoUri('');
       await setButtonOpacity(1);
+      await setButtonTransparency(1);
       await setThemeMode('system');
       Alert.alert('Appearance', 'Recommended appearance restored.');
     } catch (error: any) {
@@ -187,7 +215,7 @@ export default function ThemeSettings() {
 
         <Card>
           <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Button Opacity</Text>
-          <Text style={[styles.sectionBody, { color: theme.textMuted }]}>Adjust how solid primary app buttons look, from 20% to 100%.</Text>
+          <Text style={[styles.sectionBody, { color: theme.textMuted }]}>Adjust the whole button, including text and icons.</Text>
           <View
             onLayout={(event) => setOpacityTrackWidth(event.nativeEvent.layout.width)}
             onStartShouldSetResponder={() => true}
@@ -227,9 +255,52 @@ export default function ThemeSettings() {
             <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>20%</Text>
             <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>100%</Text>
           </View>
+          <Text style={[styles.controlLabel, { color: theme.textPrimary }]}>Button Transparency</Text>
+          <Text style={[styles.sectionBody, { color: theme.textMuted }]}>Adjust only the button background. Text stays readable.</Text>
+          <View
+            onLayout={(event) => setTransparencyTrackWidth(event.nativeEvent.layout.width)}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderGrant={(event) => updateTransparencyFromEvent(event, true)}
+            onResponderMove={(event) => updateTransparencyFromEvent(event, false)}
+            onResponderRelease={(event) => updateTransparencyFromEvent(event, true)}
+            style={[
+              styles.opacityTrack,
+              {
+                backgroundColor: theme.bgCardAlt,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.opacityFill,
+                {
+                  width: `${transparencyPercent}%`,
+                  backgroundColor: theme.accent,
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.opacityThumb,
+                {
+                  left: `${transparencyPercent}%`,
+                  backgroundColor: theme.accent,
+                  borderColor: theme.bgCard,
+                },
+              ]}
+            />
+          </View>
+          <View style={styles.opacityScale}>
+            <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>20%</Text>
+            <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>100%</Text>
+          </View>
           <View style={styles.previewRow}>
             <Button label="Preview" onPress={() => {}} fullWidth={false} />
-            <Text style={[styles.previewText, { color: theme.textMuted }]}>{Math.round(opacityValue * 100)}%</Text>
+            <Text style={[styles.previewText, { color: theme.textMuted }]}>
+              {Math.round(opacityValue * 100)}% / {Math.round(transparencyValue * 100)}%
+            </Text>
           </View>
         </Card>
 
@@ -263,6 +334,7 @@ const styles = StyleSheet.create({
   opacityThumb: { position: 'absolute', width: 22, height: 22, marginLeft: -11, borderRadius: 999, borderWidth: 3 },
   opacityScale: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   opacityScaleText: { fontSize: 11, fontWeight: '700' },
+  controlLabel: { fontSize: 12, fontWeight: '800', marginTop: 16, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
   previewText: { fontSize: 12, fontWeight: '700' },
 });
