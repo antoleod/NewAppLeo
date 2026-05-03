@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button, Card, Page, Segment } from '@/components/ui';
@@ -60,17 +60,21 @@ export default function ThemeSettings() {
     setOpacityValue(normalizeOpacity(buttonOpacity));
   }, [buttonOpacity]);
 
-  async function handleButtonOpacityChange(value: number) {
+  async function updateButtonOpacity(value: number, persist: boolean) {
     const nextOpacity = normalizeOpacity(value);
     setOpacityValue(nextOpacity);
-    await setButtonOpacity(nextOpacity);
+    if (persist) {
+      await setButtonOpacity(nextOpacity);
+    }
   }
 
-  function handleOpacityTrackPress(event: any) {
+  function updateOpacityFromEvent(event: GestureResponderEvent, persist: boolean) {
     if (!opacityTrackWidth) return;
-    const ratio = Math.max(0, Math.min(1, event.nativeEvent.locationX / opacityTrackWidth));
+    const locationX = Number(event.nativeEvent.locationX);
+    if (!Number.isFinite(locationX)) return;
+    const ratio = Math.max(0, Math.min(1, locationX / opacityTrackWidth));
     const nextOpacity = Math.round((0.2 + ratio * 0.8) * 100) / 100;
-    void handleButtonOpacityChange(nextOpacity);
+    void updateButtonOpacity(nextOpacity, persist);
   }
 
   async function handleResetRecommended() {
@@ -184,14 +188,18 @@ export default function ThemeSettings() {
         <Card>
           <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Button Opacity</Text>
           <Text style={[styles.sectionBody, { color: theme.textMuted }]}>Adjust how solid primary app buttons look, from 20% to 100%.</Text>
-          <Pressable
-            onPress={handleOpacityTrackPress}
+          <View
             onLayout={(event) => setOpacityTrackWidth(event.nativeEvent.layout.width)}
-            style={({ pressed }) => [
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderGrant={(event) => updateOpacityFromEvent(event, true)}
+            onResponderMove={(event) => updateOpacityFromEvent(event, false)}
+            onResponderRelease={(event) => updateOpacityFromEvent(event, true)}
+            style={[
               styles.opacityTrack,
               {
                 backgroundColor: theme.bgCardAlt,
-                borderColor: pressed ? theme.accent : theme.border,
+                borderColor: theme.border,
               },
             ]}
           >
@@ -214,7 +222,7 @@ export default function ThemeSettings() {
                 },
               ]}
             />
-          </Pressable>
+          </View>
           <View style={styles.opacityScale}>
             <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>20%</Text>
             <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>100%</Text>
