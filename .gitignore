@@ -12,3 +12,4 @@ Thumbs.db
 .env.*
 !.env.example
 README.local.md
+source-repo/
