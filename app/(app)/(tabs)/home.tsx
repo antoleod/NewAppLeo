@@ -540,6 +540,7 @@ export default function HomeScreen() {
   const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
   const urgentAlerts = smartAlerts.filter((a) => a.tone === 'warning' || a.tone === 'danger');
   const healthStatus = useMemo(() => getHealthStatus(entries), [entries]);
+  const hasHealthData = healthStatus.status !== 'unknown';
   const weightMeasurements = useMemo(() => getWeightMeasurements(entries), [entries]);
   const pinnedVaccines = useMemo(() => getPinnedVaccines(entries), [entries]);
   const vaccineHistory = useMemo(() => getVaccineHistory(entries), [entries]);
@@ -1057,54 +1058,58 @@ export default function HomeScreen() {
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
           {/* 7. Status row - Health + Food today */}
-          <Animated.View entering={FadeInDown.duration(260).delay(220)} style={{ paddingHorizontal: 20, marginBottom: 12, flexDirection: 'row', gap: 8 }}>
-            <Pressable
-              onPress={() => router.push('/entry/temperature')}
-              style={({ pressed }) => ({
-                flex: 1,
-                paddingHorizontal: 12,
-                paddingVertical: 12,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: BORDER,
-                backgroundColor: pressed ? BORDER_SOFT : CARD,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-              })}
-            >
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: healthStatus.color }} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500' }}>{t('health.status')}</Text>
-                <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{healthStatus.label}</Text>
-              </View>
-            </Pressable>
-            {lastFood && (
-              <Pressable
-                onPress={() => router.push('/entry/food')}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: BORDER,
-                  backgroundColor: pressed ? BORDER_SOFT : CARD,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                })}
-              >
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500' }}>{t('food.status')}</Text>
-                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
-                    {foodTodayCount} {t('food.today')}
-                  </Text>
-                </View>
-              </Pressable>
-            )}
-          </Animated.View>
+          {(hasHealthData || lastFood) && (
+            <Animated.View entering={FadeInDown.duration(260).delay(220)} style={{ paddingHorizontal: 20, marginBottom: 12, flexDirection: 'row', gap: 8 }}>
+              {hasHealthData && (
+                <Pressable
+                  onPress={() => router.push('/entry/temperature')}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    paddingHorizontal: 12,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: BORDER,
+                    backgroundColor: pressed ? BORDER_SOFT : CARD,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                  })}
+                >
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: healthStatus.color }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500' }}>{t('health.status')}</Text>
+                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{healthStatus.label}</Text>
+                  </View>
+                </Pressable>
+              )}
+              {lastFood && (
+                <Pressable
+                  onPress={() => router.push('/entry/food')}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    paddingHorizontal: 12,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: BORDER,
+                    backgroundColor: pressed ? BORDER_SOFT : CARD,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                  })}
+                >
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500' }}>{t('food.status')}</Text>
+                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
+                      {foodTodayCount} {t('food.today')}
+                    </Text>
+                  </View>
+                </Pressable>
+              )}
+            </Animated.View>
+          )}
 
           {/* 8. Milk progress today */}
           <Animated.View entering={FadeInDown.duration(260).delay(240)} style={{ paddingHorizontal: 20, marginBottom: 16 }}>
