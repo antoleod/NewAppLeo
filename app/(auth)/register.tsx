@@ -1,107 +1,40 @@
 import { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View, useWindowDimensions, Modal, FlatList, Pressable } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Button, Card, Heading, Input, Page } from '@/components/ui';
-import { useTheme } from '@/context/ThemeContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Button, Input, Page } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
-import { isValidPin, normalizeUsername } from '@/utils/crypto';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import * as Localization from 'expo-localization';
+import { AppLanguage } from '@/types';
+import { normalizeUsername } from '@/utils/crypto';
+import { BabyFlowIcon } from '@/components/BabyFlowIcon';
 
-const COUNTRY_CALLING_CODES: Record<string, string> = {
-  BE: '+32', ES: '+34', US: '+1', FR: '+33', NL: '+31',
-  MX: '+52', AR: '+54', CO: '+57', CL: '+56', PE: '+51',
-  BR: '+55', IT: '+39', DE: '+49', GB: '+44', CA: '+1',
-  UY: '+598', PY: '+595', BO: '+591', EC: '+593', VE: '+58'
-};
-
-const generatePassphrase = () => {
-  const words = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-  const idx1 = Math.floor(Math.random() * words.length);
-  const idx2 = Math.floor(Math.random() * words.length);
-  const sum = (idx1 + 1) + (idx2 + 1);
-  const sumWord = words[sum - 1] || sum.toString();
-  return `${words[idx1]}+${words[idx2]}=${sumWord}`;
-};
-
-const getPasswordStrength = (pwd: string) => {
-  if (!pwd) return 0;
-  let score = 0;
-  if (pwd.length >= 6) score++;
-  if (pwd.length >= 10) score++;
-  if (/[0-9]/.test(pwd)) score++;
-  if (/[^A-Za-z0-9]/.test(pwd)) score++;
-  if (pwd.includes('+') && pwd.includes('=')) score = Math.max(score, 3);
-  return Math.min(score, 4);
-};
-
-const STRENGTH_COLORS = ['#FF3B30', '#FF9500', '#FFCC00', '#34C759'];
+const LANGS: Array<{ code: AppLanguage; label: string }> = [
+  { code: 'en', label: 'English' },
+  { code: 'fr', label: 'Francais' },
+  { code: 'es', label: 'Espanol' },
+  { code: 'nl', label: 'Nederlands' },
+];
 
 export default function RegisterScreen() {
-  const { width } = useWindowDimensions();
-  const { colors } = useTheme();
-  const { language } = useLocale();
+  const { language, setLanguage, t } = useLocale();
   const { register } = useAuth();
-  const isDesktop = width >= 1280;
-  const uiScale = isDesktop ? 0.8 : 1.0;
-  const isTablet = width >= 768;
-  const cardMaxWidth = isDesktop ? 420 : isTablet ? 500 : '100%';
+
+  const [selectedLanguage, setSelectedLanguage] = useState<AppLanguage>(language);
   const [displayName, setDisplayName] = useState('');
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const isEmailOrPhone = /\S+@\S+\.\S+/.test(email.trim()) || /^\+?[0-9]{7,15}$/.test(email.trim());
+  const canSubmit = useMemo(() => {
+    const isEmail = /\S+@\S+\.\S+/.test(email.trim());
+    return displayName.trim().length >= 2 && isEmail && password.trim().length >= 6;
+  }, [displayName, email, password]);
 
-  const [selectedRegion, setSelectedRegion] = useState(Localization.getLocales()[0]?.regionCode || 'BE');
-  const [showCountryPicker, setShowCountryPicker] = useState(false);
-
-  const { phonePlaceholder, countryFlag } = useMemo(() => {
-    const code = COUNTRY_CALLING_CODES[selectedRegion] || '+32';
-    const flag = selectedRegion.toUpperCase().replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397));
-    return {
-      phonePlaceholder: `you@example.com or ${code}12345678`,
-      countryFlag: flag
-    };
-  }, [selectedRegion]);
-
-  const canSubmit =
-    displayName.trim().length >= 2 &&
-    isEmailOrPhone &&
-    password.trim().length >= 6;
-
-  function mapRegisterError(err: any) {
-    const code = String(err?.code ?? '');
-    if (code === 'auth/email-already-in-use') {
-      return {
-        title: 'Email already in use',
-        message: 'This email is already registered. Use Sign in with your password.',
-        emailInUse: true,
-      };
-    }
-    if (code === 'auth/invalid-email') {
-      return {
-        title: 'Invalid email',
-        message: 'Please enter a valid email address.',
-        emailInUse: false,
-      };
-    }
-    if (code === 'auth/weak-password') {
-      return {
-        title: 'Weak password',
-        message: 'Use a stronger password (minimum 6 characters).',
-        emailInUse: false,
-      };
-    }
-    return {
-      title: 'Registration failed',
-      message: err?.message ?? 'Unable to register.',
-      emailInUse: false,
-    };
+  async function commitLanguage(next: AppLanguage) {
+    setSelectedLanguage(next);
+    await setLanguage(next);
   }
 
   async function handleSubmit() {
@@ -109,144 +42,78 @@ export default function RegisterScreen() {
     setError('');
     try {
       await register({
-        displayName,
-        username: normalizeUsername(email.split('@')[0]),
-        email,
+        displayName: displayName.trim(),
+        username: normalizeUsername(email.split('@')[0] || displayName),
+        email: email.trim(),
         password,
         pin: '000000',
       });
       router.replace('/onboarding');
     } catch (err: any) {
-      const mapped = mapRegisterError(err);
-      setError(mapped.message);
-      if (mapped.emailInUse) {
-        Alert.alert(
-          mapped.title,
-          mapped.message,
-          [
-            { text: 'Go to sign in', onPress: () => router.replace('/') },
-            { text: 'Close', style: 'cancel' },
-          ],
-        );
-      } else {
-        Alert.alert(mapped.title, mapped.message);
-      }
+      const message = err?.message ?? 'Unable to register.';
+      setError(message);
+      Alert.alert(t('auth.register_failed', 'Registration failed'), message);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Page>
-      <View style={[styles.shell, { maxWidth: cardMaxWidth, gap: 10 * uiScale }]}>
-        <Heading eyebrow="Get started" title={language === 'fr' ? 'Creer un compte' : 'Create an account'} subtitle={language === 'fr' ? 'Un seul compte suffit pour le foyer.' : 'One account supports both login modes.'} />
-        <Card style={isTablet ? [styles.cardCompact, { gap: 10 * uiScale }] : undefined}>
-          <View style={[styles.formStack, { gap: 8 * uiScale }]}>
-            <Input label="Name" value={displayName} onChangeText={setDisplayName} placeholder="Your full name" textContentType="name" />
-            <Input 
-              label="Email or Phone" 
-              value={email} 
-              onChangeText={setEmail} 
-              placeholder={phonePlaceholder} 
-              iconName={countryFlag}
-              isPulsing={showCountryPicker}
-              onIconPress={() => setShowCountryPicker(true)}
-            />
-            <Input 
-              label="Password or PIN" 
-              value={password} 
-              onChangeText={setPassword} 
-              placeholder="Create a password" 
-              secureTextEntry 
-              onRightAction={() => {
-                setPassword(generatePassphrase());
-                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              }}
-              rightActionIcon="sparkles"
-            />
-          </View>
-          {password.length > 0 && (
-            <View style={{ height: 4 * uiScale, backgroundColor: colors.backgroundAlt, borderRadius: 2 * uiScale, marginTop: -4 * uiScale, overflow: 'hidden' }}>
-              <View 
-                style={{ 
-                  height: '100%', 
-                  width: `${(getPasswordStrength(password) / 4) * 100}%`, 
-                  backgroundColor: STRENGTH_COLORS[getPasswordStrength(password) - 1] || 'transparent' 
-                }} 
-              />
-            </View>
-          )}
-          {password.length > 0 && password.length < 6 && (
-            <Text style={{ color: colors.danger, fontSize: 11 * uiScale, marginLeft: 4 * uiScale, marginTop: -4 * uiScale }}>
-              {language === 'es' ? 'Mínimo 6 caracteres o números' : 'Minimum 6 characters or numbers'}
-            </Text>
-          )}
-          <Text style={[styles.helper, { color: colors.muted, fontSize: 12 * uiScale, lineHeight: 17 * uiScale }]}>
-            PIN sign-in remains available, but email and password are the default path.
-          </Text>
-          {error ? <Text style={{ color: colors.danger, fontSize: 13 * uiScale, textAlign: 'center' }}>{error}</Text> : null}
-          <View style={[styles.actionStack, { gap: 8 * uiScale }]}>
-            <Button label="Create account" onPress={handleSubmit} loading={loading} disabled={!canSubmit} fullWidth />
-            <Button label="Pair device" onPress={() => router.push('/pair')} variant="ghost" fullWidth />
-            <Button label="Back to sign in" onPress={() => router.back()} variant="ghost" fullWidth />
-          </View>
-        </Card>
-      </View>
-
-      <Modal visible={showCountryPicker} animationType="slide" transparent={true} onRequestClose={() => setShowCountryPicker(false)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '80%' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>Select Country</Text>
-              <Pressable onPress={() => setShowCountryPicker(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </Pressable>
-            </View>
-            <FlatList
-              data={Object.keys(COUNTRY_CALLING_CODES)}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => {
-                const flag = item.toUpperCase().replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397));
-                return (
-                  <Pressable 
-                    onPress={() => {
-                      setSelectedRegion(item);
-                      setShowCountryPicker(false);
-                    }}
-                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}
-                  >
-                    <Text style={{ fontSize: 24, marginRight: 15 }}>{flag}</Text>
-                    <Text style={{ fontSize: 16, color: colors.text, flex: 1 }}>{item}</Text>
-                    <Text style={{ fontSize: 16, color: colors.muted }}>{COUNTRY_CALLING_CODES[item]}</Text>
-                  </Pressable>
-                );
-              }}
-            />
+    <Page scroll={false} contentStyle={styles.page}>
+      <LinearGradient colors={['#07111F', '#0B1630', '#101C39']} style={StyleSheet.absoluteFill} />
+      <View style={styles.card}>
+        <View style={styles.brandRow}>
+          <BabyFlowIcon name="people" active />
+          <View>
+            <Text style={styles.brand}>BabyFlow</Text>
+            <Text style={styles.brandSub}>{t('auth.register_subtitle', 'Create your family account')}</Text>
           </View>
         </View>
-      </Modal>
+
+        <Input label={t('auth.name', 'Name')} value={displayName} onChangeText={setDisplayName} placeholder={t('auth.name_placeholder', 'Your full name')} textContentType="name" autoCapitalize="words" />
+
+        <Input label={t('auth.email', 'Email')} value={email} onChangeText={setEmail} placeholder={t('auth.email_placeholder', 'name@email.com')} textContentType="emailAddress" keyboardType="email-address" autoCapitalize="none" />
+
+        <Input label={t('auth.password', 'Password')} value={password} onChangeText={setPassword} placeholder={t('auth.password_placeholder', 'Create a password')} secureTextEntry autoCapitalize="none" textContentType="password" hint={t('auth.password_hint', 'At least 6 characters.')} />
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <Button label={t('auth.create_account', 'Create account')} onPress={handleSubmit} loading={loading} disabled={!canSubmit} fullWidth />
+        <Button label={t('auth.back_to_signin', 'Back to sign in')} onPress={() => router.back()} variant="ghost" fullWidth />
+
+        <View style={styles.languageSelector}>
+          {LANGS.map((item) => {
+            const active = item.code === selectedLanguage;
+            return (
+              <Pressable key={item.code} onPress={() => void commitLanguage(item.code)} style={[styles.languageButton, active && styles.languageButtonActive]}>
+                <Text style={styles.languageButtonText}>{item.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
     </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  shell: {
+  page: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
+  card: {
     width: '100%',
-    alignSelf: 'center',
+    maxWidth: 520,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(9,16,28,0.6)',
+    padding: 20,
     gap: 12,
   },
-  cardCompact: {
-    gap: 10,
-  },
-  formStack: {
-    gap: 8,
-  },
-  actionStack: {
-    gap: 8,
-  },
-  helper: {
-    fontSize: 12,
-    lineHeight: 17,
-    textAlign: 'center',
-  },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
+  brand: { color: '#ECF2F7', fontSize: 24, fontWeight: '800' },
+  brandSub: { color: 'rgba(236,242,247,0.62)', fontSize: 12 },
+  errorText: { color: '#F0959C', textAlign: 'center', fontSize: 13 },
+  languageSelector: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  languageButton: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  languageButtonActive: { backgroundColor: 'rgba(145,215,192,0.18)', borderColor: 'rgba(145,215,192,0.48)' },
+  languageButtonText: { color: '#E8F8F3', fontSize: 12, fontWeight: '600' },
 });

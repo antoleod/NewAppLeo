@@ -98,11 +98,14 @@ export async function scheduleNextFeedingReminder(
   }
 }
 
-export async function scheduleMedicationReminder(entry: EntryRecord, babyName: string = 'Baby') {
+export async function scheduleMedicationReminder(
+  entry: EntryRecord,
+  babyName: string = 'Baby',
+  intervalHours: number = 24,
+) {
   try {
     if (Platform.OS === 'web') return;
-    // Schedule next dose in 24 hours
-    const nextDoseTime = new Date(entry.occurredAt).getTime() + 24 * 60 * 60 * 1000;
+    const nextDoseTime = new Date(entry.occurredAt).getTime() + Math.max(1, intervalHours) * 60 * 60 * 1000;
 
     await Notifications.scheduleNotificationAsync({
       content: {

@@ -14,6 +14,7 @@ import { buildBabyFromProfile } from '@/lib/storage';
 import { DateTimeField } from '@/components/DateTimeField';
 import { useOnboarding, type OnboardingPath } from '@/hooks/useOnboarding';
 import { useTheme } from '@/context/ThemeContext';
+import { useLocale } from '@/context/LocaleContext';
 import ConfettiCannon from 'react-native-confetti-cannon';
 
 const BACKGROUND_IMAGES: Record<string, string> = {
@@ -110,6 +111,7 @@ export default function OnboardingScreen() {
   const { theme, colors } = useTheme();
   const scheme = useColorScheme();
   const { user, profile, guestMode, signInGuest, completeUserOnboarding } = useAuth();
+  const { t } = useLocale();
   const isDesktop = width >= 1280;
   const uiScale = isDesktop ? 0.8 : 1.0;
   const isTablet = width >= 768;
@@ -332,7 +334,7 @@ export default function OnboardingScreen() {
       if (path === 'pin') {
         if (pin.length !== 4 || confirmPin.length !== 4 || pin !== confirmPin) {
           shake.value = withSequence(withTiming(-8, { duration: 70 }), withTiming(8, { duration: 70 }), withTiming(0, { duration: 70 }));
-          Alert.alert('PIN invalide', 'Le PIN doit faire 4 chiffres et correspondre a la confirmation.');
+          Alert.alert(t('auth.register_failed','Registration failed'), t('onboarding.pin_invalid','PIN must be 4 digits and match confirmation.'));
           return;
         }
         await AsyncStorage.setItem('appleo.localPin', pin);
@@ -388,7 +390,7 @@ export default function OnboardingScreen() {
     } catch (error: any) {
       const message = error?.message ?? 'Verifie les champs et recommence.';
       setSubmitError(message);
-      Alert.alert('Configuration impossible', message);
+      Alert.alert(t('auth.register_failed','Registration failed'), message);
     } finally {
       setSaving(false);
     }
@@ -423,7 +425,7 @@ export default function OnboardingScreen() {
           {isObjectivesStep && (
             <Pressable onPress={finishOnboarding} style={{ position: 'absolute', right: -10 * uiScale, padding: 8 }}>
               <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 * uiScale }}>
-                {language === 'nl' ? 'Overslaan' : language === 'es' ? 'Saltar' : language === 'fr' ? 'Passer' : 'Skip'}
+                {t('common.skip', 'Skip')}
               </Text>
             </Pressable>
           )}
@@ -466,7 +468,7 @@ export default function OnboardingScreen() {
                 </Pressable>
               );
             })}
-            <Button label={path === 'guest' ? 'Continuer en invite' : 'Continuer'} onPress={next} />
+            <Button label={t('common.continue', 'Continue')} onPress={next} />
           </Reanimated.View>
             )}
 
@@ -496,7 +498,7 @@ export default function OnboardingScreen() {
                 );
               })}
             </View>
-            <Button label={language === 'nl' ? 'Doorgaan' : 'Continuer'} onPress={next} fullWidth />
+            <Button label={t('common.continue', 'Continue')} onPress={next} fullWidth />
           </Reanimated.View>
             )}
 
@@ -564,12 +566,11 @@ export default function OnboardingScreen() {
 
             <View style={{ gap: 4 * uiScale }}>
               <Input 
-                label={language === 'nl' ? 'Uw naam *' : language === 'es' ? 'Tu nombre *' : 'Votre nom *'} 
+                label={t('onboarding.caregiver_name', 'Your name *')} 
                 value={caregiverName} 
                 onChangeText={setCaregiverName} 
                 placeholder="Andrea" 
-                autoCapitalize="words" 
-                iconName="person-outline"
+                autoCapitalize="words"
                 error={showValidation && !caregiverName.trim() ? '•' : undefined}
               />
               <Input 
@@ -577,9 +578,7 @@ export default function OnboardingScreen() {
                 value={babyName} 
                 onChangeText={setBabyName} 
                 placeholder="Leo" 
-                autoCapitalize="words" 
-                iconName="heart-outline"
-                iconColor="#FF85A2"
+                autoCapitalize="words"
                 error={showValidation && !babyName.trim() ? '•' : undefined}
               />
             </View>
@@ -587,11 +586,9 @@ export default function OnboardingScreen() {
             <View style={{ gap: 4 * uiScale }}>
               <Reanimated.View style={{ transform: [{ translateX: shake }] }}>
                 <DateTimeField 
-                  label={language === 'nl' ? 'Geboortedatum *' : language === 'es' ? 'Fecha de nacimiento *' : 'Date de naissance *'} 
+                  label={t('onboarding.birth_date', 'Birth date *')} 
                   value={babyBirthDate} 
-                  onChange={setBabyBirthDate} 
-                  scale={uiScale}
-                  error={babyBirthDate.getTime() > Date.now()}
+                  onChange={setBabyBirthDate}
                 />
               </Reanimated.View>
               {babyBirthDate.getTime() > Date.now() && (
@@ -683,7 +680,7 @@ export default function OnboardingScreen() {
                   </View>
                </View>
             </View>
-            <Button label={language === 'nl' ? 'Doorgaan' : 'Continuer'} onPress={handleProfileNext} fullWidth />
+            <Button label={t('common.continue', 'Continue')} onPress={handleProfileNext} fullWidth />
           </Reanimated.View>
             )}
 
@@ -693,7 +690,7 @@ export default function OnboardingScreen() {
               <Input label={language === 'nl' ? '4-cijferige pincode' : 'PIN 4 chiffres'} value={pin} onChangeText={setPin} keyboardType="number-pad" inputMode="numeric" />
               <Input label={language === 'nl' ? 'Bevestig pincode' : 'Confirmer le PIN'} value={confirmPin} onChangeText={setConfirmPin} keyboardType="number-pad" inputMode="numeric" />
             </Reanimated.View>
-            <Button label={language === 'nl' ? 'Doorgaan' : 'Continuer'} onPress={next} disabled={pin.length < 4 || confirmPin.length < 4} />
+            <Button label={t('common.continue', 'Continue')} onPress={next} disabled={pin.length < 4 || confirmPin.length < 4} />
           </Reanimated.View>
             )}
 
@@ -705,8 +702,6 @@ export default function OnboardingScreen() {
               onChangeText={setGoalFeedingsPerDay}
               keyboardType="numeric"
               inputMode="numeric"
-              iconName="water"
-              iconColor="#4D96FF"
               hint={`${autoHint} ${autoGoals.feedings}`}
             />
             <Input
@@ -715,8 +710,6 @@ export default function OnboardingScreen() {
               onChangeText={setGoalSleepHoursPerDay}
               keyboardType="numeric"
               inputMode="numeric"
-              iconName="moon"
-              iconColor="#9B59B6"
               hint={`${autoHint} ${autoGoals.sleep}`}
             />
             <Input
@@ -725,12 +718,10 @@ export default function OnboardingScreen() {
               onChangeText={setGoalDiapersPerDay}
               keyboardType="numeric"
               inputMode="numeric"
-              iconName="layers"
-              iconColor="#6BCB77"
               hint={`${autoHint} ${autoGoals.diapers}`}
             />
             {submitError ? <Text style={{ color: colors.danger, textAlign: 'center', fontSize: 13 * uiScale }}>{submitError}</Text> : null}
-            <Button label={language === 'nl' ? 'Klaar!' : 'Tout est pret'} onPress={finishOnboarding} loading={saving} disabled={saving} />
+            <Button label={t('common.continue', 'Continue')} onPress={finishOnboarding} loading={saving} disabled={saving} />
           </Reanimated.View>
             )}
           </View>
@@ -763,3 +754,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 });
+
+
+

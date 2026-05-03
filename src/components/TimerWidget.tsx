@@ -16,6 +16,10 @@ export function TimerWidget({
   side,
   onSideChange,
   largeTouchMode = false,
+  autoStart = false,
+  hideActionButton = false,
+  stopRequestToken = 0,
+  onRunningChange,
 }: {
   label?: string;
   valueMinutes: number;
@@ -24,6 +28,10 @@ export function TimerWidget({
   side?: 'left' | 'right' | 'both';
   onSideChange?: (side: 'left' | 'right' | 'both') => void;
   largeTouchMode?: boolean;
+  autoStart?: boolean;
+  hideActionButton?: boolean;
+  stopRequestToken?: number;
+  onRunningChange?: (running: boolean) => void;
 }) {
   const { colors } = useTheme();
   const [running, setRunning] = useState(false);
@@ -42,6 +50,24 @@ export function TimerWidget({
     }, 1000);
     return () => clearInterval(timer);
   }, [running, startedAt]);
+
+  useEffect(() => {
+    onRunningChange?.(running);
+  }, [onRunningChange, running]);
+
+  useEffect(() => {
+    if (!autoStart || running || startedAt) return;
+    setStartedAt(Date.now());
+    setRunning(true);
+  }, [autoStart, running, startedAt]);
+
+  useEffect(() => {
+    if (!stopRequestToken || !running) return;
+    const elapsed = Math.max(0, Math.round(((Date.now() - (startedAt ?? Date.now())) / 60000) * 10) / 10);
+    onChangeMinutes(Math.max(1, Math.round(elapsed)));
+    setRunning(false);
+    setStartedAt(null);
+  }, [onChangeMinutes, running, startedAt, stopRequestToken]);
 
   const displayMinutes = useMemo(() => {
     if (running) return Math.max(0, Math.round(liveSeconds / 60));
@@ -67,7 +93,7 @@ export function TimerWidget({
         />
       ) : null}
 
-      <View>
+      {!hideActionButton ? <View>
         <Pressable
           onPress={() => {
             if (running) {
@@ -91,7 +117,7 @@ export function TimerWidget({
         >
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>{running ? 'Stop' : 'Start'}</Text>
         </Pressable>
-      </View>
+      </View> : null}
     </View>
   );
 }

@@ -12,15 +12,10 @@ export default function TabsLayout() {
   const isPhoto = themeStyle === 'photo';
   const isDesktopWeb = Platform.OS === 'web' && width >= 1280;
 
-  const tabBarBackground = isPhoto
-    ? (isDark ? 'rgba(10, 14, 20, 0.72)' : 'rgba(255, 255, 255, 0.76)')
-    : isDark
-      ? 'rgba(18, 23, 31, 0.96)'
-      : 'rgba(255, 255, 255, 0.97)';
-
-  const tabBarBorder = isPhoto ? `${theme.border}CC` : theme.border;
-  const activeTint = theme.accent;
-  const inactiveTint = isDark ? theme.textMuted : '#5F6772';
+  const tabBarBackground = isPhoto ? `${theme.navBg}DD` : theme.navBg;
+  const tabBarBorder = isPhoto ? `${theme.navBorder}CC` : theme.navBorder;
+  const activeTint = theme.navActive;
+  const inactiveTint = theme.navInactive;
 
   return (
     <Tabs

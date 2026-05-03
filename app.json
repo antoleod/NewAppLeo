@@ -5,13 +5,23 @@
     "scheme": "appleo",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/branding/app-icon/babyflow-app-icon-1024.png",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
       "**/*"
     ],
     "web": {
       "bundler": "metro",
-      "favicon": "./source-repo/img/icon/icon-square-180.png"
+      "favicon": "./assets/branding/app-icon/babyflow-app-icon-192.png"
+    },
+    "ios": {
+      "icon": "./assets/branding/app-icon/babyflow-app-icon-1024.png"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/branding/app-icon/babyflow-app-icon-512.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "plugins": [
       "expo-router",

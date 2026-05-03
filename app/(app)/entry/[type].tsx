@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, StyleSheet, Text, View, GestureResponderEvent } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Input, Page, Segment } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
@@ -82,63 +83,63 @@ function getRecommendedMealTime(): 'breakfast' | 'lunch' | 'snack' | 'dinner' {
 const typeMeta: Record<
   EntryType,
   {
-    icon: string;
+    icon: keyof typeof Ionicons.glyphMap;
     tone: string;
     toneSoft: string;
   }
 > = {
   feed: {
-    icon: '??',
+    icon: 'water-outline',
     tone: '#C9A227',
     toneSoft: 'rgba(201,162,39,0.16)',
   },
   food: {
-    icon: '??',
+    icon: 'restaurant-outline',
     tone: '#F0B85A',
     toneSoft: 'rgba(240,184,90,0.16)',
   },
   sleep: {
-    icon: '??',
+    icon: 'moon-outline',
     tone: '#58A6FF',
     toneSoft: 'rgba(88,166,255,0.16)',
   },
   diaper: {
-    icon: '??',
+    icon: 'happy-outline',
     tone: '#E74C3C',
     toneSoft: 'rgba(231,76,60,0.16)',
   },
   pump: {
-    icon: '??',
+    icon: 'water',
     tone: '#3FB950',
     toneSoft: 'rgba(63,185,80,0.16)',
   },
   measurement: {
-    icon: '??',
+    icon: 'resize-outline',
     tone: '#A371F7',
     toneSoft: 'rgba(163,113,247,0.16)',
   },
   medication: {
-    icon: '??',
+    icon: 'medkit-outline',
     tone: '#7CC2FF',
     toneSoft: 'rgba(124,194,255,0.16)',
   },
   milestone: {
-    icon: '?',
+    icon: 'sparkles-outline',
     tone: '#D9B97D',
     toneSoft: 'rgba(217,185,125,0.16)',
   },
   symptom: {
-    icon: '??',
+    icon: 'pulse-outline',
     tone: '#8EB5EA',
     toneSoft: 'rgba(142,181,234,0.16)',
   },
   temperature: {
-    icon: '???',
+    icon: 'thermometer-outline',
     tone: '#E74C3C',
     toneSoft: 'rgba(231,76,60,0.16)',
   },
   vaccine: {
-    icon: '??',
+    icon: 'medical-outline',
     tone: '#3FB950',
     toneSoft: 'rgba(63,185,80,0.16)',
   },
@@ -213,6 +214,10 @@ export default function EntryComposerScreen() {
   const [sleepStartedAt, setSleepStartedAt] = useState<number | null>(null);
   const [sleepElapsedSeconds, setSleepElapsedSeconds] = useState(0);
   const [sleepFullscreenVisible, setSleepFullscreenVisible] = useState(false);
+  const [pumpTimerRunning, setPumpTimerRunning] = useState(false);
+  const [pumpStartedAt, setPumpStartedAt] = useState<number | null>(null);
+  const [pumpElapsedSeconds, setPumpElapsedSeconds] = useState(0);
+  const [pumpFullscreenVisible, setPumpFullscreenVisible] = useState(false);
   const [largeTouchMode, setLargeTouchMode] = useState(false);
   const [savedMedicines, setSavedMedicines] = useState<SavedMedicine[]>([]);
   const [vaccineTemp, setVaccineTemp] = useState('');
@@ -263,6 +268,10 @@ export default function EntryComposerScreen() {
       });
     return map;
   }, [entries]);
+  const lastMeasurementEntry = useMemo(
+    () => entries.find((entry) => entry.type === 'measurement'),
+    [entries],
+  );
 
   const seasonalRecommendations = useMemo(() => {
     return getSeasonalRecommendations();
@@ -453,6 +462,23 @@ export default function EntryComposerScreen() {
   }, [sleepStartedAt, sleepTimerRunning, type]);
 
   useEffect(() => {
+    if (type !== 'pump' || editing) return;
+    const startAt = Date.now();
+    setPumpStartedAt(startAt);
+    setPumpElapsedSeconds(0);
+    setPumpFullscreenVisible(true);
+    setPumpTimerRunning(true);
+  }, [editing, type]);
+
+  useEffect(() => {
+    if (type !== 'pump' || !pumpTimerRunning || !pumpStartedAt) return;
+    const timer = setInterval(() => {
+      setPumpElapsedSeconds(Math.max(0, Math.floor((Date.now() - pumpStartedAt) / 1000)));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [pumpStartedAt, pumpTimerRunning, type]);
+
+  useEffect(() => {
     if (type !== 'food' || editing || !foodName || !profile?.babyBirthDate) return;
     const selectedPreset = foodPresets.find((p) => p.label === foodName);
     if (selectedPreset && !quantityGrams) {
@@ -598,6 +624,15 @@ export default function EntryComposerScreen() {
     await handleSave();
   }
 
+  async function handlePumpStop() {
+    if (!pumpStartedAt) return;
+    const elapsedMinutes = Math.max(1, Math.round((Date.now() - pumpStartedAt) / 60000));
+    setDurationMin(String(elapsedMinutes));
+    setPumpTimerRunning(false);
+    setPumpFullscreenVisible(false);
+    await handleSave();
+  }
+
   async function handleSaveReminder() {
     if (!reminderVaccineName.trim()) {
       haptics.warning();
@@ -665,7 +700,7 @@ export default function EntryComposerScreen() {
         <View style={styles.heroTopRow}>
           <View style={styles.heroLeftContent}>
             <View style={[styles.heroIcon, { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-              <Text style={styles.heroIconText}>{meta.icon}</Text>
+              <Ionicons name={meta.icon} size={34} color={meta.tone} />
             </View>
             <Text style={styles.heroEyebrow}>Composer</Text>
             <Text style={styles.heroTitle}>{typeLabels[type]}</Text>
@@ -1033,7 +1068,7 @@ export default function EntryComposerScreen() {
           </View>
         )}
 
-        {type === 'pump' && (
+        {type === 'pump' && editing && (
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.duration')}</Text>
             <TimerWidget label={language === 'fr' ? 'Session (min)' : 'Session (min)'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
@@ -1051,10 +1086,44 @@ export default function EntryComposerScreen() {
 
               return (
                 <>
+                  {lastMeasurementEntry ? (
+                    <View style={[styles.measureMetaStrip, { borderColor: colors.border }]}>
+                      <Text style={[styles.measureMetaText, { color: colors.muted }]}>
+                        {language === 'fr' ? 'Dernière mesure:' : 'Last measurement:'}{' '}
+                        {new Date(lastMeasurementEntry.occurredAt).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}
+                      </Text>
+                    </View>
+                  ) : null}
                   {suggested && (
-                    <View style={[styles.whoSuggestedBox, { borderColor: meta.tone, backgroundColor: `${meta.tone}10` }]}>
+                    <View style={[styles.whoSuggestedBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
                       <Text style={[styles.whoSuggestedTitle, { color: meta.tone }]}>?? {language === 'fr' ? 'Suggestion selon OMS' : 'WHO Suggested Range'}</Text>
-                      <Text style={[styles.whoSuggestedMessage, { color: colors.text }]}>{suggested.message}</Text>
+                      <Text style={[styles.whoSuggestedMessage, { color: colors.muted }]}>{suggested.message}</Text>
+                      <View style={styles.measureQuickActions}>
+                        <Pressable
+                          onPress={() => {
+                            setWeightKg(suggested.weight.value.toFixed(1));
+                            setHeightCm(suggested.height.value.toFixed(1));
+                          }}
+                          style={[styles.measureQuickBtn, { borderColor: meta.tone, backgroundColor: `${meta.tone}12` }]}
+                        >
+                          <Text style={[styles.measureQuickBtnText, { color: meta.tone }]}>
+                            {language === 'fr' ? 'Utiliser suggestion' : 'Use suggestion'}
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => {
+                            setWeightKg('');
+                            setHeightCm('');
+                            setHeadCircCm('');
+                            setTempC('');
+                          }}
+                          style={[styles.measureQuickBtn, { borderColor: colors.border, backgroundColor: 'transparent' }]}
+                        >
+                          <Text style={[styles.measureQuickBtnText, { color: colors.muted }]}>
+                            {language === 'fr' ? 'Effacer' : 'Clear'}
+                          </Text>
+                        </Pressable>
+                      </View>
                       <View style={styles.whoSuggestedRow}>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.whoSuggestedLabel, { color: colors.muted }]}>
@@ -1499,7 +1568,7 @@ export default function EntryComposerScreen() {
       {/* Sticky Footer Actions */}
       <View style={[styles.actionsStickyContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <View style={styles.actions}>
-          {!(type === 'sleep' && !editing) && (
+          {!((type === 'sleep' || type === 'pump') && !editing) && (
             <Button label={editing ? (language === 'fr' ? 'Mettre à jour' : 'Update') : language === 'fr' ? 'Enregistrer' : 'Save'} onPress={() => void handlePrimarySave()} loading={saving} />
           )}
           {editing && <Button label={language === 'fr' ? 'Supprimer' : 'Delete'} onPress={handleDelete} variant="danger" />}
@@ -1515,6 +1584,17 @@ export default function EntryComposerScreen() {
           startedAt={sleepStartedAt}
           elapsedSeconds={sleepElapsedSeconds}
           onStop={() => void handleSleepStop()}
+        />
+      ) : null}
+      {type === 'pump' && !editing && pumpStartedAt ? (
+        <FullscreenTimerModal
+          visible={pumpFullscreenVisible}
+          emoji="🤱"
+          title={language === 'fr' ? 'Tirage' : 'Pump'}
+          subtitlePrefix={language === 'fr' ? 'Tirage' : 'Pump'}
+          startedAt={pumpStartedAt}
+          elapsedSeconds={pumpElapsedSeconds}
+          onStop={() => void handlePumpStop()}
         />
       ) : null}
 
@@ -1956,6 +2036,37 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 10,
     fontWeight: '500',
+  },
+  measureQuickActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  measureQuickBtn: {
+    flex: 1,
+    minHeight: 38,
+    borderWidth: 1,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFFAA',
+  },
+  measureQuickBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  measureMetaStrip: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 10,
+    backgroundColor: 'transparent',
+  },
+  measureMetaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.1,
   },
   whoSuggestedRow: {
     flexDirection: 'row',

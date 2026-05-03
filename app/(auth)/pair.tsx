@@ -34,7 +34,7 @@ export default function PairScreen() {
   return (
     <Page contentStyle={[styles.container, { maxWidth: cardMaxWidth }]}>
       <Heading eyebrow="Pairing" title="Connect a partner device" subtitle="Use a short code to share the same baby session." />
-      <Card gap={10}>
+      <Card>
         <View style={{ gap: 8 * uiScale }}>
           <Text style={{ color: colors.muted, fontSize: 14 * uiScale }}>Share this code with the other device:</Text>
           <Text style={[styles.code, { color: colors.text, fontSize: 32 * uiScale }]}>{session?.code ?? code}</Text>
@@ -58,7 +58,7 @@ export default function PairScreen() {
           />
         </View>
       </Card>
-      <Card gap={10}>
+      <Card>
         <View style={{ gap: 8 * uiScale }}>
           <Input label="Join code" value={code} onChangeText={setCode} placeholder="123456" keyboardType="numeric" inputMode="numeric" />
           <Button
@@ -96,3 +96,4 @@ const styles = StyleSheet.create({
     letterSpacing: 4,
   },
 });
+

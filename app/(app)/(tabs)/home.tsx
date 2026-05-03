@@ -34,6 +34,7 @@ import {
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
 import { NextFeedingCard } from '@/components/NextFeedingCard';
+import { GetEntryIcon } from '@/components/EntryTypeIcons';
 import { haptics } from '@/lib/haptics';
 
 const BG = 'rgba(13, 17, 23, 0.28)';
@@ -346,6 +347,7 @@ export default function HomeScreen() {
   const [quickAmount, setQuickAmount] = useState(150);
   const [quickFeedSide, setQuickFeedSide] = useState<BreastSide>('left');
   const [now, setNow] = useState(Date.now());
+  const [defaultFeedingMode, setDefaultFeedingMode] = useState<'breast' | 'bottle'>('breast');
 
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
   const lastFeed = useMemo(() => feedEntries[0], [feedEntries]);
@@ -503,7 +505,11 @@ export default function HomeScreen() {
   }
 
   function openNextFeedPicker() {
-    setShowNextFeedPicker(true);
+    if (defaultFeedingMode === 'breast') {
+      setShowNextFeedPicker(true);
+    } else {
+      startQuickTimer('bottle');
+    }
   }
 
   function beginNextFeed(mode: 'bottle' | 'breast', side: BreastSide = 'left') {
@@ -638,7 +644,9 @@ export default function HomeScreen() {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontSize: 20 }}>🌡️</Text>
+                <View style={{ width: 20, height: 20 }}>
+                  {GetEntryIcon('temperature', 20, healthStatus.color)}
+                </View>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: MUTED, fontSize: 9, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -680,7 +688,9 @@ export default function HomeScreen() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ fontSize: 20 }}>🍽️</Text>
+                  <View style={{ width: 20, height: 20 }}>
+                    {GetEntryIcon('food', 20, BLUE)}
+                  </View>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: MUTED, fontSize: 9, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -718,7 +728,9 @@ export default function HomeScreen() {
                         })}
                       >
                         <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: `${GREEN}22`, alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ fontSize: 16 }}>💉</Text>
+                          <View style={{ width: 14, height: 14 }}>
+                            {GetEntryIcon('vaccine', 14, GREEN)}
+                          </View>
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{vaccine.payload?.vaccineName}</Text>
@@ -726,9 +738,15 @@ export default function HomeScreen() {
                             {language === 'fr' ? 'Dose ' : 'Dose '}{vaccine.payload?.vaccineDose} • {daysUntil > 0 ? `${daysUntil}d` : 'Overdue'}
                           </Text>
                         </View>
-                        <Text style={{ color: daysUntil <= 7 ? '#F2C86F' : TEXT, fontSize: 11, fontWeight: '600' }}>
-                          {daysUntil > 0 ? (daysUntil <= 7 ? '⚠️' : '›') : '!'}
-                        </Text>
+                        {daysUntil > 0 ? (
+                          daysUntil <= 7 ? (
+                            <Ionicons name="alert-circle" size={14} color={YELLOW} />
+                          ) : (
+                            <Text style={{ color: TEXT, fontSize: 11, fontWeight: '600' }}>›</Text>
+                          )
+                        ) : (
+                          <Text style={{ color: TEXT, fontSize: 11, fontWeight: '600' }}>!</Text>
+                        )}
                       </Pressable>
                     );
                   })}
@@ -762,19 +780,23 @@ export default function HomeScreen() {
           </Animated.View>
 
           {/* Large Gradient Buttons */}
-          <Animated.View entering={FadeInDown.duration(260).delay(180)} style={{ paddingHorizontal: 16, marginBottom: 12, gap: 8 }}>
-            <GradientButton
-              label={t('feeding.breast')}
-              icon="🤱"
-              onPress={openNextFeedPicker}
-              colors={[GOLD, '#A07818']}
-            />
-            <GradientButton
-              label={t('feeding.bottle')}
-              icon="🍼"
-              onPress={() => startQuickTimer('bottle')}
-              colors={['#1A6BB0', '#0D4F8C']}
-            />
+          <Animated.View entering={FadeInDown.duration(260).delay(180)} style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <GradientButton
+                label={t('feeding.breast')}
+                icon="🤱"
+                onPress={openNextFeedPicker}
+                colors={[GOLD, '#A07818']}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <GradientButton
+                label={t('feeding.bottle')}
+                icon="🍼"
+                onPress={() => startQuickTimer('bottle')}
+                colors={['#1A6BB0', '#0D4F8C']}
+              />
+            </View>
           </Animated.View>
 
           {/* Milk Section */}
@@ -847,7 +869,7 @@ export default function HomeScreen() {
                 }}
                 blur={false}
               >
-                <Text style={{ fontSize: 18 }}>⚠️</Text>
+                <Ionicons name="alert-circle" size={20} color={YELLOW} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>
                     {t('food.possibleAllergies')}
@@ -864,34 +886,202 @@ export default function HomeScreen() {
           <Animated.View entering={FadeInDown.duration(260).delay(360)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
               <View style={{ flex: 1 }}>
-                <ActionButton label={t('entry.diaper')} icon="💚" onPress={() => router.push('/entry/diaper')} color={GREEN} />
+                <Pressable
+                  onPress={() => router.push('/entry/diaper')}
+                  style={({ pressed }) => [
+                    {
+                      height: 56,
+                      paddingHorizontal: 14,
+                      borderRadius: 12,
+                      backgroundColor: pressed ? `${GREEN}22` : CARD,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      opacity: pressed ? 0.92 : 1,
+                    },
+                  ]}
+                >
+                  <View style={{ width: 24, height: 24 }}>
+                    {GetEntryIcon('diaper', 24, GREEN)}
+                  </View>
+                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{t('entry.diaper')}</Text>
+                </Pressable>
               </View>
               <View style={{ flex: 1 }}>
-                <ActionButton label={t('entry.temperature')} icon="🌡️" onPress={() => router.push('/entry/temperature')} color={RED} />
+                <Pressable
+                  onPress={() => router.push('/entry/temperature')}
+                  style={({ pressed }) => [
+                    {
+                      height: 56,
+                      paddingHorizontal: 14,
+                      borderRadius: 12,
+                      backgroundColor: pressed ? `${RED}22` : CARD,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      opacity: pressed ? 0.92 : 1,
+                    },
+                  ]}
+                >
+                  <View style={{ width: 24, height: 24 }}>
+                    {GetEntryIcon('temperature', 24, RED)}
+                  </View>
+                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{t('entry.temperature')}</Text>
+                </Pressable>
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
               <View style={{ flex: 1 }}>
-                <ActionButton label={t('entry.vaccine')} icon="💉" onPress={() => router.push('/entry/vaccine')} color={GREEN} />
+                <Pressable
+                  onPress={() => router.push('/entry/vaccine')}
+                  style={({ pressed }) => [
+                    {
+                      height: 56,
+                      paddingHorizontal: 14,
+                      borderRadius: 12,
+                      backgroundColor: pressed ? `${GREEN}22` : CARD,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      opacity: pressed ? 0.92 : 1,
+                    },
+                  ]}
+                >
+                  <View style={{ width: 24, height: 24 }}>
+                    {GetEntryIcon('vaccine', 24, GREEN)}
+                  </View>
+                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{t('entry.vaccine')}</Text>
+                </Pressable>
               </View>
               <View style={{ flex: 1 }}>
-                <ActionButton label={t('entry.symptoms')} icon="🩺" onPress={() => router.push('/entry/symptom')} color={BLUE} />
+                <Pressable
+                  onPress={() => router.push('/entry/symptom')}
+                  style={({ pressed }) => [
+                    {
+                      height: 56,
+                      paddingHorizontal: 14,
+                      borderRadius: 12,
+                      backgroundColor: pressed ? `${BLUE}22` : CARD,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      opacity: pressed ? 0.92 : 1,
+                    },
+                  ]}
+                >
+                  <View style={{ width: 24, height: 24 }}>
+                    {GetEntryIcon('symptom', 24, BLUE)}
+                  </View>
+                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{t('entry.symptoms')}</Text>
+                </Pressable>
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
               <View style={{ flex: 1 }}>
-                <ActionButton label={t('entry.food')} icon="🍽️" onPress={() => router.push('/entry/food')} color={BLUE} />
+                <Pressable
+                  onPress={() => router.push('/entry/food')}
+                  style={({ pressed }) => [
+                    {
+                      height: 56,
+                      paddingHorizontal: 14,
+                      borderRadius: 12,
+                      backgroundColor: pressed ? `${BLUE}22` : CARD,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      opacity: pressed ? 0.92 : 1,
+                    },
+                  ]}
+                >
+                  <View style={{ width: 24, height: 24 }}>
+                    {GetEntryIcon('food', 24, BLUE)}
+                  </View>
+                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{t('entry.food')}</Text>
+                </Pressable>
               </View>
               <View style={{ flex: 1 }}>
-                <ActionButton label={t('entry.medicine')} icon="💊" onPress={() => router.push('/entry/medication')} color={GREEN} />
+                <Pressable
+                  onPress={() => router.push('/entry/medication')}
+                  style={({ pressed }) => [
+                    {
+                      height: 56,
+                      paddingHorizontal: 14,
+                      borderRadius: 12,
+                      backgroundColor: pressed ? `${GREEN}22` : CARD,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      opacity: pressed ? 0.92 : 1,
+                    },
+                  ]}
+                >
+                  <View style={{ width: 24, height: 24 }}>
+                    {GetEntryIcon('medication', 24, GREEN)}
+                  </View>
+                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{t('entry.medicine')}</Text>
+                </Pressable>
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1 }}>
-                <ActionButton label={t('entry.measurement')} icon="📏" onPress={() => router.push('/entry/measurement')} color={BLUE} />
+                <Pressable
+                  onPress={() => router.push('/entry/measurement')}
+                  style={({ pressed }) => [
+                    {
+                      height: 56,
+                      paddingHorizontal: 14,
+                      borderRadius: 12,
+                      backgroundColor: pressed ? `${BLUE}22` : CARD,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      opacity: pressed ? 0.92 : 1,
+                    },
+                  ]}
+                >
+                  <View style={{ width: 24, height: 24 }}>
+                    {GetEntryIcon('measurement', 24, BLUE)}
+                  </View>
+                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{t('entry.measurement')}</Text>
+                </Pressable>
               </View>
               <View style={{ flex: 1 }}>
-                <ActionButton label={t('entry.sleep')} icon="😴" onPress={() => router.push('/entry/sleep')} color={BLUE} />
+                <Pressable
+                  onPress={() => router.push('/entry/sleep')}
+                  style={({ pressed }) => [
+                    {
+                      height: 56,
+                      paddingHorizontal: 14,
+                      borderRadius: 12,
+                      backgroundColor: pressed ? `${BLUE}22` : CARD,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      opacity: pressed ? 0.92 : 1,
+                    },
+                  ]}
+                >
+                  <View style={{ width: 24, height: 24 }}>
+                    {GetEntryIcon('sleep', 24, BLUE)}
+                  </View>
+                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{t('entry.sleep')}</Text>
+                </Pressable>
               </View>
             </View>
           </Animated.View>
@@ -966,8 +1156,14 @@ export default function HomeScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{vaccine.payload?.vaccineName}</Text>
                         <Text style={{ color: MUTED, fontSize: 11 }}>
-                          {t('vaccine.dose')}{vaccine.payload?.vaccineDose}{vaccine.payload?.hasReminder ? ' • 🔔 ' + t('vaccine.reminder') : ''}
+                          {t('vaccine.dose')}{vaccine.payload?.vaccineDose}{vaccine.payload?.hasReminder ? ' • ' : ''}
                         </Text>
+                        {vaccine.payload?.hasReminder && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Ionicons name="notifications" size={12} color={MUTED} />
+                            <Text style={{ color: MUTED, fontSize: 11 }}>{t('vaccine.reminder')}</Text>
+                          </View>
+                        )}
                       </View>
                       <Text style={{ color: MUTED, fontSize: 11 }}>{formatClock(vaccine.occurredAt, locale)}</Text>
                     </Pressable>
@@ -1009,7 +1205,7 @@ export default function HomeScreen() {
                     >
                       <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: `${BLUE}22`, alignItems: 'center', justifyContent: 'center' }}>
                         {(food.payload?.foodAllergies?.length ?? 0) > 0 ? (
-                          <Text style={{ fontSize: 14 }}>⚠️</Text>
+                          <Ionicons name="alert-circle" size={16} color={YELLOW} />
                         ) : (
                           <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: BLUE }} />
                         )}
@@ -1205,7 +1401,32 @@ export default function HomeScreen() {
                 );
               })}
             </View>
-            <View style={{ gap: 8 }}>
+
+            <View style={{ gap: 6, marginTop: 12, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 12 }}>
+              <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>
+                {language === 'fr' ? 'Prise par défaut' : 'Default feeding'}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    label="🤱 Sein"
+                    onPress={() => setDefaultFeedingMode('breast')}
+                    variant={defaultFeedingMode === 'breast' ? 'secondary' : 'ghost'}
+                    size="sm"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    label="🍼 Biberon"
+                    onPress={() => setDefaultFeedingMode('bottle')}
+                    variant={defaultFeedingMode === 'bottle' ? 'secondary' : 'ghost'}
+                    size="sm"
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={{ gap: 8, marginTop: 12 }}>
               <Button label={t('modal.restoreAll')} onPress={() => void restoreHomeCustomization()} variant="secondary" />
               <Button label={t('common.close')} onPress={() => setShowHomeCustomizer(false)} variant="ghost" />
             </View>

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Nurofen",
+    "defaultDosage": "2.5 ml",
+    "dosingByKg": [
+      { "maxKg": 4.9, "dosage": "1.25 ml" },
+      { "maxKg": 7.9, "dosage": "2.5 ml" },
+      { "maxKg": 11.9, "dosage": "3.75 ml" },
+      { "maxKg": 15.9, "dosage": "5 ml" },
+      { "maxKg": 100, "dosage": "7.5 ml" }
+    ]
+  },
+  {
+    "name": "Paracetamol",
+    "defaultDosage": "5 ml",
+    "dosingByKg": [
+      { "maxKg": 5.9, "dosage": "2.5 ml" },
+      { "maxKg": 9.9, "dosage": "5 ml" },
+      { "maxKg": 15.9, "dosage": "7.5 ml" },
+      { "maxKg": 100, "dosage": "10 ml" }
+    ]
+  },
+  {
+    "name": "Ibuprofen",
+    "defaultDosage": "2.5 ml",
+    "dosingByKg": [
+      { "maxKg": 7.9, "dosage": "2.5 ml" },
+      { "maxKg": 15.9, "dosage": "5 ml" },
+      { "maxKg": 100, "dosage": "7.5 ml" }
+    ]
+  }
+]
