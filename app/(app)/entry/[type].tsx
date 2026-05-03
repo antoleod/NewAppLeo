@@ -13,12 +13,14 @@ import { TimerWidget } from '@/components/TimerWidget';
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { DateTimeField } from '@/components/DateTimeField';
 import { VaccineReminderModal } from '@/components/VaccineReminderModal';
+import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
 import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
 import commonMedications from '@/data/common-medications.json';
 import * as ImagePicker from 'expo-image-picker';
 import { scheduleVaccineReminder } from '@/lib/notifications';
 import { scheduleMedicationReminder } from '@/lib/notifications';
 import { getSuggestedValues, getWeightCategory, getHeightCategory } from '@/lib/who-recommendations';
+import { getRecommendedQuantity, getFoodRecommendationMessage } from '@/lib/food-recommendations';
 import { haptics } from '@/lib/haptics';
 import { useToast } from '@/components/Toast';
 
@@ -207,6 +209,9 @@ export default function EntryComposerScreen() {
   const [saving, setSaving] = useState(false);
   const [sleepTimerRunning, setSleepTimerRunning] = useState(false);
   const [sleepStopToken, setSleepStopToken] = useState(0);
+  const [sleepStartedAt, setSleepStartedAt] = useState<number | null>(null);
+  const [sleepElapsedSeconds, setSleepElapsedSeconds] = useState(0);
+  const [sleepFullscreenVisible, setSleepFullscreenVisible] = useState(false);
   const [largeTouchMode, setLargeTouchMode] = useState(false);
   const [savedMedicines, setSavedMedicines] = useState<SavedMedicine[]>([]);
   const [vaccineTemp, setVaccineTemp] = useState('');
@@ -406,15 +411,32 @@ export default function EntryComposerScreen() {
   }, [editing, presetAmount, presetMode, presetSide]);
 
   useEffect(() => {
-    if (type !== 'food' || editing || !foodName) return;
+    if (type !== 'sleep' || editing) return;
+    const startAt = Date.now();
+    setSleepStartedAt(startAt);
+    setSleepElapsedSeconds(0);
+    setSleepFullscreenVisible(true);
+    setSleepTimerRunning(true);
+  }, [editing, type]);
+
+  useEffect(() => {
+    if (type !== 'sleep' || !sleepTimerRunning || !sleepStartedAt) return;
+    const timer = setInterval(() => {
+      setSleepElapsedSeconds(Math.max(0, Math.floor((Date.now() - sleepStartedAt) / 1000)));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [sleepStartedAt, sleepTimerRunning, type]);
+
+  useEffect(() => {
+    if (type !== 'food' || editing || !foodName || !profile?.babyBirthDate) return;
     const selectedPreset = foodPresets.find((p) => p.label === foodName);
     if (selectedPreset && !quantityGrams) {
-      const defaultQty = foodDefaultQuantities[selectedPreset.value];
-      if (defaultQty) {
-        setQuantityGrams(String(defaultQty));
+      const recommendedQty = getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value);
+      if (recommendedQty) {
+        setQuantityGrams(String(recommendedQty));
       }
     }
-  }, [foodName, editing, type, quantityGrams]);
+  }, [foodName, editing, type, quantityGrams, profile?.babyBirthDate]);
 
   function buildPayload(): EntryPayload {
     switch (type) {
@@ -539,6 +561,15 @@ export default function EntryComposerScreen() {
       }, 40);
       return;
     }
+    await handleSave();
+  }
+
+  async function handleSleepStop() {
+    if (!sleepStartedAt) return;
+    const elapsedMinutes = Math.max(1, Math.round((Date.now() - sleepStartedAt) / 60000));
+    setDurationMin(String(elapsedMinutes));
+    setSleepTimerRunning(false);
+    setSleepFullscreenVisible(false);
     await handleSave();
   }
 
@@ -795,21 +826,42 @@ export default function EntryComposerScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
                   {language === 'fr' ? 'Quantité (g)' : 'Quantity (g)'}
                 </Text>
-                {foodName && foodDefaultQuantities[foodPresets.find((p) => p.label === foodName)?.value || ''] && (
-                  <Text style={[styles.sectionBody, { color: colors.muted, fontSize: 10, fontStyle: 'italic' }]}>
-                    {language === 'fr' ? 'Suggéré' : 'Suggested'}: {foodDefaultQuantities[foodPresets.find((p) => p.label === foodName)?.value || '']}g
-                  </Text>
-                )}
+                {foodName && profile?.babyBirthDate && (() => {
+                  const selectedPreset = foodPresets.find((p) => p.label === foodName);
+                  const recommendedQty = selectedPreset ? getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value) : null;
+                  return recommendedQty ? (
+                    <Text style={[styles.sectionBody, { color: colors.muted, fontSize: 10, fontStyle: 'italic' }]}>
+                      {language === 'fr' ? 'Suggéré pour age' : 'Suggested for age'}: {recommendedQty}g
+                    </Text>
+                  ) : null;
+                })()}
               </View>
               <Input
                 label=""
                 value={quantityGrams}
                 onChangeText={setQuantityGrams}
                 keyboardType="decimal-pad"
-                placeholder={foodName ? String(foodDefaultQuantities[foodPresets.find((p) => p.label === foodName)?.value || '50']) : '50'}
+                placeholder={foodName && profile?.babyBirthDate ? String((() => {
+                  const selectedPreset = foodPresets.find((p) => p.label === foodName);
+                  return selectedPreset ? getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value) : '50';
+                })()) : '50'}
               />
               <View style={styles.quantityQuickButtons}>
-                {[20, 50, 100, 150].map((g) => (
+                {(() => {
+                  if (!profile?.babyBirthDate) {
+                    return [20, 50, 100, 150];
+                  }
+                  const selectedPreset = foodPresets.find((p) => p.label === foodName);
+                  if (!selectedPreset) {
+                    return [20, 50, 100, 150];
+                  }
+                  const recommendedQty = getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value);
+                  const baseOptions = [recommendedQty - 20, recommendedQty, recommendedQty + 20, recommendedQty + 40]
+                    .filter((v) => v > 0)
+                    .map((v) => Math.round(v))
+                    .filter((v, i, a) => a.indexOf(v) === i);
+                  return baseOptions.length >= 3 ? baseOptions : [20, 50, 100, 150];
+                })().map((g) => (
                   <Pressable
                     key={g}
                     onPress={() => setQuantityGrams(String(g))}
@@ -891,7 +943,7 @@ export default function EntryComposerScreen() {
           </View>
         )}
 
-        {type === 'sleep' && (
+        {type === 'sleep' && editing && (
           <View style={styles.sectionCard}>
             <TimerWidget
               label={language === 'fr' ? 'Durée (min)' : 'Duration (min)'}
@@ -1368,10 +1420,24 @@ export default function EntryComposerScreen() {
       {/* Sticky Footer Actions */}
       <View style={[styles.actionsStickyContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <View style={styles.actions}>
-          <Button label={editing ? (language === 'fr' ? 'Mettre à jour' : 'Update') : language === 'fr' ? 'Enregistrer' : 'Save'} onPress={() => void handlePrimarySave()} loading={saving} />
+          {!(type === 'sleep' && !editing) && (
+            <Button label={editing ? (language === 'fr' ? 'Mettre à jour' : 'Update') : language === 'fr' ? 'Enregistrer' : 'Save'} onPress={() => void handlePrimarySave()} loading={saving} />
+          )}
           {editing && <Button label={language === 'fr' ? 'Supprimer' : 'Delete'} onPress={handleDelete} variant="danger" />}
         </View>
       </View>
+
+      {type === 'sleep' && !editing && sleepStartedAt ? (
+        <FullscreenTimerModal
+          visible={sleepFullscreenVisible}
+          emoji="😴"
+          title={language === 'fr' ? 'Sommeil' : 'Sleep'}
+          subtitlePrefix={language === 'fr' ? 'Sommeil' : 'Sleep'}
+          startedAt={sleepStartedAt}
+          elapsedSeconds={sleepElapsedSeconds}
+          onStop={() => void handleSleepStop()}
+        />
+      ) : null}
 
       {type === 'vaccine' && (
         <VaccineReminderModal
