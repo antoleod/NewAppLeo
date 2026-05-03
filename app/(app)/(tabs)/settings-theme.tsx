@@ -100,7 +100,7 @@ export default function ThemeSettings() {
       </Card>
 
       <Card>
-        <SectionHeader title="Style" />
+        <SectionHeader title="Background Style" />
         <View style={{ transform: [{ scale: 0.94 }], marginVertical: -8 }}>
           <ThemeSurfaceSelector
             value={themeStyle}

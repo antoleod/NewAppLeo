@@ -197,28 +197,30 @@ function applySurfaceStyle(theme: Theme, paletteMode: ThemePaletteMode, surfaceM
   }
 
   if (photoMode) {
+    // "Portrait" — photo is vivid & prominent, cards have enough contrast to be readable
     return {
       ...theme,
-      bg: isDark ? 'rgba(8, 10, 14, 0.18)' : 'rgba(255, 255, 255, 0.10)',
-      bgCard: isDark ? 'rgba(18, 24, 31, 0.34)' : 'rgba(255, 255, 255, 0.44)',
-      bgCardAlt: isDark ? 'rgba(27, 34, 43, 0.24)' : 'rgba(255, 255, 255, 0.28)',
-      border: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.22)',
-      navBg: isDark ? 'rgba(15, 20, 26, 0.48)' : 'rgba(255, 255, 255, 0.50)',
-      pillBg: isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.26)',
-      progressBg: isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.18)',
+      bg: isDark ? 'rgba(6, 8, 12, 0.12)' : 'rgba(255, 255, 255, 0.06)',
+      bgCard: isDark ? 'rgba(10, 14, 20, 0.58)' : 'rgba(255, 255, 255, 0.60)',
+      bgCardAlt: isDark ? 'rgba(18, 22, 30, 0.44)' : 'rgba(255, 255, 255, 0.42)',
+      border: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.32)',
+      navBg: isDark ? 'rgba(8, 12, 18, 0.66)' : 'rgba(255, 255, 255, 0.62)',
+      pillBg: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.32)',
+      progressBg: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.24)',
     } as Theme;
   }
 
   if (defaultMode) {
+    // "Frosted Glass" — photo visible through a professional frosted blur, like Apple's vibrancy
     return {
       ...theme,
-      bg: isDark ? '#0B0F15' : 'rgba(245, 245, 240, 0.92)',
-      bgCard: isDark ? 'rgba(22, 27, 34, 0.86)' : 'rgba(255, 255, 255, 0.92)',
-      bgCardAlt: isDark ? 'rgba(28, 33, 40, 0.76)' : 'rgba(240, 239, 233, 0.82)',
-      border: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(224, 221, 213, 0.86)',
-      navBg: isDark ? 'rgba(22, 27, 34, 0.90)' : 'rgba(255, 255, 255, 0.90)',
-      pillBg: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(232, 230, 223, 0.88)',
-      progressBg: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(224, 221, 213, 0.86)',
+      bg: isDark ? 'rgba(6, 8, 12, 0.08)' : 'rgba(255, 255, 255, 0.06)',
+      bgCard: isDark ? 'rgba(18, 24, 32, 0.66)' : 'rgba(255, 255, 255, 0.72)',
+      bgCardAlt: isDark ? 'rgba(26, 32, 42, 0.52)' : 'rgba(248, 246, 240, 0.58)',
+      border: isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.38)',
+      navBg: isDark ? 'rgba(14, 18, 26, 0.76)' : 'rgba(255, 255, 255, 0.78)',
+      pillBg: isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(255, 255, 255, 0.36)',
+      progressBg: isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(255, 255, 255, 0.28)',
     } as Theme;
   }
 

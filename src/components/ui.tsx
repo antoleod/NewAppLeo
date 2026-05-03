@@ -12,6 +12,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { usePathname } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
@@ -34,7 +36,7 @@ export function Page({
   const backdropSource = backgroundPhotoUri
     ? ({ uri: backgroundPhotoUri } as const)
     : require('../../assets/img/baby1.f57cad83ec056a25eac37625af9c68fb.jpg');
-  const backdropBlur = themeStyle === 'photo' ? 0 : Platform.OS === 'web' ? 0 : 4;
+  const backdropBlur = themeStyle === 'photo' ? 2 : Platform.OS === 'web' ? 0 : 12;
   const content = (
     <View style={[styles.pageInner, { maxWidth: pageMaxWidth }, contentStyle]}>
       {children}
@@ -51,23 +53,18 @@ export function Page({
           style={styles.photoBackdrop}
           imageStyle={[
             styles.photoBackdropImage,
-            themeStyle === 'photo' ? null : styles.photoBackdropImageMuted,
             themeStyle === 'photo' ? styles.photoBackdropImagePunch : null,
             Platform.OS === 'web' ? ({ objectPosition: 'center center' } as any) : null,
           ]}
         >
           <LinearGradient colors={gradients.page as [string, string, ...string[]]} style={StyleSheet.absoluteFill} />
           <LinearGradient
-            colors={themeStyle === 'photo' ? ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.22)'] : ['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.28)']}
+            colors={themeStyle === 'photo'
+              ? ['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.28)']
+              : ['rgba(0,0,0,0.04)', 'rgba(0,0,0,0.14)']}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={StyleSheet.absoluteFill}
-          />
-          <View
-            style={[
-              StyleSheet.absoluteFillObject,
-              { backgroundColor: themeStyle === 'photo' ? 'rgba(6, 8, 12, 0.00)' : 'rgba(8, 10, 14, 0.05)' },
-            ]}
           />
         </ImageBackground>
       ) : (
@@ -122,31 +119,44 @@ export function Heading({
   align?: 'left' | 'center';
 }) {
   const { theme } = useTheme();
+  const pathname = usePathname();
   const { width } = useWindowDimensions();
   const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
   const shouldStack = width < 680;
   const scale = isDesktopWeb ? 0.9 : width >= 900 ? 0.98 : width >= 700 ? 1 : 1;
+  const iconName =
+    pathname.includes('settings-theme') ? 'color-palette-outline' :
+    pathname.includes('/profile') ? 'person-circle-outline' :
+    pathname.includes('/history') ? 'time-outline' :
+    pathname.includes('/insights') ? 'analytics-outline' :
+    pathname.includes('/home') ? 'home-outline' :
+    pathname.includes('/onboarding') ? 'sparkles-outline' :
+    'ellipse-outline';
   return (
     <View style={[styles.headingRow, shouldStack && styles.headingStacked, align === 'center' && styles.headingCentered]}>
       <View style={{ flex: 1, alignItems: align === 'center' ? 'center' : 'flex-start' }}>
-        <Text
-          numberOfLines={1}
-          style={[
-            styles.title,
-            { color: theme.textPrimary, fontSize: 16 * scale },
-            align === 'center' && { textAlign: 'center' },
-          ]}
-        >
-          {eyebrow ? `${eyebrow} · ` : ''}
-          {title}
-          {subtitle ? ` · ${subtitle}` : ''}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '100%' }}>
+          <Ionicons name={iconName as any} size={15} color={theme.accent} />
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={[
+              styles.title,
+              { color: theme.textPrimary, fontSize: 15 * scale, fontWeight: '700' },
+              align === 'center' && { textAlign: 'center' },
+            ]}
+          >
+            {eyebrow ? <Text style={{ color: theme.accent, fontSize: 11 * scale, fontWeight: '700', letterSpacing: 0.6 }}>{eyebrow.toUpperCase()}</Text> : null}
+            {eyebrow ? <Text style={{ color: theme.textMuted }}>{' - '}</Text> : null}
+            <Text style={{ color: theme.textPrimary, fontSize: 15 * scale, fontWeight: '700' }}>{title}</Text>
+            {subtitle ? <Text style={{ color: theme.textMuted, fontSize: 12 * scale, fontWeight: '500' }}>{` - ${subtitle}`}</Text> : null}
+          </Text>
+        </View>
       </View>
       {action}
     </View>
   );
 }
-
 export function Button({
   label,
   onPress,
@@ -763,3 +773,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
 });
+
+
+
+

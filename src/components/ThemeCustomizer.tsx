@@ -212,21 +212,25 @@ export function ThemeSurfaceSelector({
     value: 'classic' | 'default' | 'photo';
     label: string;
     description: string;
+    emoji: string;
   }> = [
     {
       value: 'classic',
-      label: 'Dark Classic',
-      description: 'Solid, clean backgrounds',
+      emoji: '◼',
+      label: 'Solid',
+      description: 'Clean solid colors, no photo',
     },
     {
       value: 'default',
-      label: 'AppLeo Default',
-      description: 'Subtle gradients & depth',
+      emoji: '🔮',
+      label: 'Frosted Glass',
+      description: 'Photo visible behind elegant blur — professional & modern',
     },
     {
       value: 'photo',
-      label: 'Transparent Photo',
-      description: 'Blurred photo backdrop',
+      emoji: '📸',
+      label: 'Portrait',
+      description: 'Your photo vivid & prominent in the background',
     },
   ];
 
@@ -247,9 +251,15 @@ export function ThemeSurfaceSelector({
               },
             ]}
           >
-            <Text style={[styles.surfaceLabel, { color: theme.textPrimary }]}>
-              {option.label}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 14 }}>{option.emoji}</Text>
+              <Text style={[styles.surfaceLabel, { color: theme.textPrimary }]}>
+                {option.label}
+              </Text>
+              {isSelected && (
+                <View style={[styles.selectedDot, { backgroundColor: theme.accent, marginLeft: 'auto' }]} />
+              )}
+            </View>
             <Text style={[styles.surfaceDescription, { color: theme.textMuted }]}>
               {option.description}
             </Text>
