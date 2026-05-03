@@ -19,11 +19,11 @@
       "manifest": {
         "name": "App Leo",
         "short_name": "App Leo",
-        "start_url": ".",
+        "start_url": "/NewAppLeo/",
         "display": "standalone",
         "background_color": "#ffffff",
         "theme_color": "#ffffff",
-        "scope": ".",
+        "scope": "/NewAppLeo/",
         "description": "App Leo - cuidado y seguimiento para bebés desde la web o PWA.",
         "icons": [
           {
