@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Text, View, useWindowDimensions, StyleSheet } from 'react-native';
+import { Text, View, useWindowDimensions, StyleSheet, Image, Platform } from 'react-native';
 import { router } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { Button, Card, Heading, Input, Page } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -22,8 +23,33 @@ export default function PairScreen() {
   const [session, setSession] = useState<PairingSession | null>(null);
   const isTablet = width >= 768;
   const isDesktop = width >= 1280;
-  const uiScale = isDesktop ? 0.8 : 1.0;
-  const cardMaxWidth = isDesktop ? 400 : isTablet ? 480 : '100%';
+  const uiScale = isDesktop ? 0.9 : 1.0;
+  const cardMaxWidth = isDesktop ? 460 : isTablet ? 520 : '100%';
+  const sessionCode = session?.code ?? code;
+  const normalizedCode = sessionCode.replace(/\D/g, '').slice(0, 6);
+  const webPairUrl =
+    Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.origin}/pair?code=${normalizedCode}` : null;
+  const pairingPayload = webPairUrl ?? `appleo://pair?code=${normalizedCode}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(pairingPayload)}`;
+
+  const applyCodeFromUrl = async (urlValue: string | null | undefined) => {
+    if (!urlValue) return;
+    const parsed = Linking.parse(urlValue);
+    const incoming = String(parsed.queryParams?.code ?? '')
+      .replace(/\D/g, '')
+      .slice(0, 6);
+    if (!incoming || incoming.length < 6) return;
+    setCode(incoming);
+    toast.success(`Pairing code detected: ${incoming}`);
+    try {
+      const next = await joinPairingSession(incoming, user?.uid ?? 'anonymous');
+      setSession(next);
+      haptics.success();
+      toast.success(`Joined session ${next.code} (${next.status}).`);
+    } catch {
+      // Keep code prefilled even if join requires manual retry.
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -31,38 +57,58 @@ export default function PairScreen() {
     })();
   }, []);
 
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      void applyCodeFromUrl(url);
+    });
+    void Linking.getInitialURL().then((url) => applyCodeFromUrl(url));
+    return () => sub.remove();
+  }, [user?.uid]);
+
   return (
     <Page contentStyle={[styles.container, { maxWidth: cardMaxWidth }]}>
-      <Heading eyebrow="Pairing" title="Connect a partner device" subtitle="Share the same baby session." />
-      <Card>
-        <View style={{ gap: 8 * uiScale }}>
-          <Text style={{ color: colors.muted, fontSize: 14 * uiScale }}>Share this code with the other device:</Text>
-          <Text style={[styles.code, { color: colors.text, fontSize: 32 * uiScale }]}>{session?.code ?? code}</Text>
-          <Text style={{ color: colors.muted, fontSize: 13 * uiScale }}>Status: {session?.status ?? 'local only'}</Text>
-          <Button
-            label="Create new code"
-            onPress={async () => {
-              const next = await createPairingSession(user?.uid ?? 'anonymous');
-              setSession(next);
-              setCode(next.code);
-              haptics.success();
-              toast.success(`Pairing code: ${next.code}`);
-            }}
-            fullWidth
-          />
-          <Button
-            label="Copy code"
-            onPress={() => toast.info(`Pairing code: ${session?.code ?? code}`)}
-            variant="ghost"
-            fullWidth
-          />
+      <Heading eyebrow="PAIR LINK" title="Connect Device" subtitle="Secure one-step pairing." />
+      <Card style={[styles.heroCard, { borderColor: colors.border }]}>
+        <View style={{ gap: 12 * uiScale }}>
+          <View style={styles.statusRow}>
+            <Text style={[styles.label, { color: colors.muted }]}>Pairing code</Text>
+            <View style={[styles.statusPill, { borderColor: colors.border }]}>
+              <Text style={[styles.statusText, { color: colors.text }]}>{session?.status ?? 'local only'}</Text>
+            </View>
+          </View>
+          <Text style={[styles.code, { color: colors.text, fontSize: 40 * uiScale }]}>{sessionCode}</Text>
+          <View style={[styles.qrWrap, { borderColor: colors.border }]}>
+            <Image source={{ uri: qrUrl }} style={styles.qrImage} accessibilityLabel="Pairing QR code" />
+          </View>
+          <Text style={{ color: colors.muted, fontSize: 12 * uiScale, textAlign: 'center', lineHeight: 18 }}>
+            Scan to prefill instantly on the second device.
+          </Text>
+          <View style={styles.actionsRow}>
+            <Button
+              label="New code"
+              onPress={async () => {
+                const next = await createPairingSession(user?.uid ?? 'anonymous');
+                setSession(next);
+                setCode(next.code);
+                haptics.success();
+                toast.success(`Pairing code: ${next.code}`);
+              }}
+              fullWidth
+            />
+            <Button
+              label="Copy"
+              onPress={() => toast.info(`Pairing code: ${sessionCode}`)}
+              variant="ghost"
+              fullWidth
+            />
+          </View>
         </View>
       </Card>
-      <Card>
-        <View style={{ gap: 8 * uiScale }}>
+      <Card style={[styles.joinCard, { borderColor: colors.border }]}>
+        <View style={{ gap: 10 * uiScale }}>
           <Input label="Join code" value={code} onChangeText={setCode} placeholder="123456" keyboardType="numeric" inputMode="numeric" />
           <Button
-            label="Join session"
+            label="Join"
             onPress={async () => {
               try {
                 const next = await joinPairingSession(code, user?.uid ?? 'anonymous');
@@ -87,13 +133,59 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     width: '100%',
-    padding: 20,
-    gap: 16,
+    padding: 18,
+    gap: 14,
+  },
+  heroCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+  },
+  joinCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+  },
+  label: {
+    fontSize: 12,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    fontWeight: '700',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  statusPill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  statusText: {
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    fontWeight: '700',
   },
   code: {
     fontWeight: '900',
     textAlign: 'center',
-    letterSpacing: 4,
+    letterSpacing: 6,
+  },
+  qrWrap: {
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    backgroundColor: '#fff',
+  },
+  qrImage: {
+    width: 186,
+    height: 186,
+  },
+  actionsRow: {
+    gap: 8,
   },
 });
 
