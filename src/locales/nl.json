@@ -151,6 +151,21 @@
     "show": "Tonen",
     "restoreAll": "Alles herstellen"
   },
+  "home": {
+    "addEntry": "Toevoegen",
+    "defaultFeeding": "Standaard voeding",
+    "openProfile": "Profiel openen",
+    "switcherSubtitle": "Kies het actieve profiel voor dit dashboard.",
+    "activeLabel": "Actief",
+    "noChildTitle": "Nog geen kindprofiel",
+    "noChildBody": "Ga naar Profiel om een kind aan te maken, kom dan hier terug om het actief te zetten.",
+    "measurements": "metingen",
+    "ageMonth": "m ",
+    "ageDay": "d",
+    "bottleComplete": "Fles klaar",
+    "feedComplete": "klaar",
+    "feedStartedAt": "gestart om"
+  },
   "insights": {
     "eyebrow": "INZICHTEN",
     "title": "Groei Analyse",

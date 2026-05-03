@@ -151,6 +151,21 @@
     "show": "Mostrar",
     "restoreAll": "Restaurar todo"
   },
+  "home": {
+    "addEntry": "Añadir",
+    "defaultFeeding": "Alimentación por defecto",
+    "openProfile": "Abrir Perfil",
+    "switcherSubtitle": "Elige el perfil activo para este panel.",
+    "activeLabel": "Activo",
+    "noChildTitle": "Sin perfil de hijo/a",
+    "noChildBody": "Ve a Perfil para crear uno y regresa aquí para activarlo.",
+    "measurements": "medidas",
+    "ageMonth": "m ",
+    "ageDay": "d",
+    "bottleComplete": "Biberón completado",
+    "feedComplete": "completado",
+    "feedStartedAt": "iniciado a"
+  },
   "insights": {
     "eyebrow": "PERSPECTIVAS",
     "title": "Análisis de Crecimiento",

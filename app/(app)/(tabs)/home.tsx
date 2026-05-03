@@ -214,10 +214,10 @@ export default function HomeScreen() {
   const getHealthStatus = (entries: EntryRecord[]) => {
     const lastTemp = entries.find((e) => e.type === 'temperature' || (e.type === 'measurement' && e.payload?.tempC));
     const tempC = lastTemp?.payload?.tempC;
-    if (!tempC) return { status: 'unknown', color: MUTED, label: 'No data' };
-    if (tempC < 37.5) return { status: 'normal', color: GREEN, label: 'Normal' };
-    if (tempC < 38) return { status: 'fever_low', color: YELLOW, label: 'Febrícula' };
-    return { status: 'fever', color: RED, label: 'Fiebre' };
+    if (!tempC) return { status: 'unknown', color: MUTED, label: t('health.noData') };
+    if (tempC < 37.5) return { status: 'normal', color: GREEN, label: t('health.normal') };
+    if (tempC < 38) return { status: 'fever_low', color: YELLOW, label: t('health.feverLow') };
+    return { status: 'fever', color: RED, label: t('health.fever') };
   };
 
   const alertToneColor = (tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger') => {
@@ -532,16 +532,10 @@ export default function HomeScreen() {
   const milkTargetPercent = Math.max(0, Math.min(100, (totalMilkToday / milkGoalMax) * 100));
   const milkStatus =
     totalMilkToday < milkGoalMin
-      ? language === 'fr'
-        ? 'Encore sous le repère'
-        : 'Below target'
+      ? t('milk.belowTarget')
       : totalMilkToday > milkGoalMax
-        ? language === 'fr'
-          ? 'Au dessus de la zone'
-          : 'Above target'
-        : language === 'fr'
-          ? 'Dans la zone'
-          : 'In target';
+        ? t('milk.aboveTarget')
+        : t('milk.inTarget');
 
   const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
   const urgentAlerts = smartAlerts.filter((a) => a.tone === 'warning' || a.tone === 'danger');
@@ -691,27 +685,27 @@ export default function HomeScreen() {
 
   const lastFeedTime = lastFeed ? formatClock(lastFeed.occurredAt, locale) : '--:--';
   const lastFeedAmount = lastFeed?.payload?.amountMl ?? lastFeed?.payload?.durationMin ?? 0;
-  const lastFeedType = lastFeed?.payload?.mode === 'bottle' ? 'Biberon' : 'Sein';
+  const lastFeedType = lastFeed?.payload?.mode === 'bottle' ? t('feeding.bottle') : t('feeding.breast');
   const timeSinceLastFeed = formatRelative(lastFeed?.occurredAt, locale);
 
   const recentEntries = entries.slice(0, 4);
 
   const activeFeedTitle =
     quickTimerMode === 'bottle'
-      ? 'Biberon'
+      ? t('feeding.bottle')
       : quickFeedSide === 'both'
-        ? 'Sein des deux'
+        ? t('modal.bothSides')
         : quickFeedSide === 'right'
-          ? 'Sein droit'
-          : 'Sein gauche';
+          ? t('modal.rightBreast')
+          : t('modal.leftBreast');
   const activeFeedSubtitlePrefix =
     quickTimerMode === 'bottle'
-      ? 'Biberon'
+      ? t('feeding.bottle')
       : quickFeedSide === 'both'
-        ? 'Les deux'
+        ? t('modal.bothSides')
         : quickFeedSide === 'right'
-          ? 'Droite'
-          : 'Gauche';
+          ? t('modal.rightBreast')
+          : t('modal.leftBreast');
 
   if (loading && entries.length === 0) {
     return (
@@ -802,7 +796,7 @@ export default function HomeScreen() {
                 <Text style={{ color: TEXT, fontSize: 14, fontWeight: '600' }}>{activeBabyName}</Text>
                 {babyAge && (
                   <Text style={{ color: MUTED, fontSize: 11, marginTop: 1 }}>
-                    {babyAge.months}{language === 'fr' ? 'm ' : 'mo '}{babyAge.days}{language === 'fr' ? 'j' : 'd'}
+                    {babyAge.months}{t('home.ageMonth')}{babyAge.days}{t('home.ageDay')}
                     {lastMeasurement?.payload?.weightKg && ` · ${lastMeasurement.payload.weightKg} kg`}
                     {lastMeasurement?.payload?.heightCm && ` · ${lastMeasurement.payload.heightCm} cm`}
                   </Text>
@@ -1074,7 +1068,7 @@ export default function HomeScreen() {
           {/* 9. Quick add grid - exactly 2 rows × 4 buttons */}
           <Animated.View entering={FadeInDown.duration(260).delay(260)} style={{ paddingHorizontal: 20, marginBottom: 16 }}>
             <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 10, paddingHorizontal: 2 }}>
-              {language === 'fr' ? 'Ajouter' : language === 'es' ? 'Añadir' : 'Add'}
+              {t('home.addEntry')}
             </Text>
             {(() => {
               const actions = [
@@ -1279,7 +1273,7 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                   <Text style={{ color: SOFT, fontSize: 11, fontWeight: '500' }}>
-                    {weightMeasurements.length} {language === 'fr' ? 'mesures' : 'measurements'}
+                    {weightMeasurements.length} {t('home.measurements')}
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 44 }}>
@@ -1442,12 +1436,12 @@ export default function HomeScreen() {
 
             <View style={{ gap: 6, marginTop: 12, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 12 }}>
               <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>
-                {language === 'fr' ? 'Prise par défaut' : 'Default feeding'}
+                {t('home.defaultFeeding')}
               </Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <View style={{ flex: 1 }}>
                   <Button
-                    label="🤱 Sein"
+                    label={`🤱 ${t('feeding.breast')}`}
                     onPress={() => setDefaultFeedingMode('breast')}
                     variant={defaultFeedingMode === 'breast' ? 'secondary' : 'ghost'}
                     size="sm"
@@ -1455,7 +1449,7 @@ export default function HomeScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Button
-                    label="🍼 Biberon"
+                    label={`🍼 ${t('feeding.bottle')}`}
                     onPress={() => setDefaultFeedingMode('bottle')}
                     variant={defaultFeedingMode === 'bottle' ? 'secondary' : 'ghost'}
                     size="sm"
@@ -1481,7 +1475,7 @@ export default function HomeScreen() {
               <View>
                 <Text style={styles.switcherTitle}>{t('header.switchChild')}</Text>
                 <Text style={styles.switcherSubtitle}>
-                  {language === 'fr' ? 'Choisis le profil actif pour ce tableau de bord.' : 'Choose the active profile for this dashboard.'}
+                  {t('home.switcherSubtitle')}
                 </Text>
               </View>
               <View style={styles.switcherBadge}>
@@ -1520,13 +1514,12 @@ export default function HomeScreen() {
                           }}
                         >
                           <Text style={{ color: active ? GOLD : MUTED, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>
-                            {active ? (language === 'fr' ? 'Actif' : 'Active') : t('common.add')}
+                            {active ? t('home.activeLabel') : t('common.add')}
                           </Text>
                         </View>
                       </View>
                       <Text style={{ color: MUTED, fontSize: 12 }}>
-                        {language === 'fr' ? 'Naissance: ' : 'Birth: '}
-                        {baby.birthDate}
+                        {t('header.birth')}{baby.birthDate}
                       </Text>
                     </Pressable>
                   );
@@ -1536,16 +1529,14 @@ export default function HomeScreen() {
                   <View style={styles.emptyIconWrap}>
                     <Ionicons name="people-outline" size={18} color={MUTED} />
                   </View>
-                  <Text style={styles.emptySwitcherTitle}>{language === 'fr' ? "Aucun profil d'enfant" : 'No child profile yet'}</Text>
-                  <Text style={styles.emptySwitcherSubtitle}>
-                    {language === 'fr' ? "Va dans Profil pour creer un enfant, puis reviens ici pour l'activer." : 'Go to Profile to create one, then return here to set it active.'}
-                  </Text>
+                  <Text style={styles.emptySwitcherTitle}>{t('home.noChildTitle')}</Text>
+                  <Text style={styles.emptySwitcherSubtitle}>{t('home.noChildBody')}</Text>
                 </View>
               )}
             </ScrollView>
             <View style={styles.switcherFooter}>
               <Button
-                label={language === 'fr' ? 'Ouvrir Profil' : 'Open Profile'}
+                label={t('home.openProfile')}
                 onPress={() => {
                   setShowBabySwitcher(false);
                   router.push('/profile');
@@ -1574,10 +1565,10 @@ export default function HomeScreen() {
           <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
             <View style={styles.sheetCard}>
               <Text style={styles.sheetTitle}>
-                {quickTimerMode === 'bottle' ? (language === 'fr' ? 'Biberon terminé' : 'Bottle complete') : `${activeFeedTitle} ${language === 'fr' ? 'terminé' : 'complete'}`}
+                {quickTimerMode === 'bottle' ? t('home.bottleComplete') : `${activeFeedTitle} ${t('home.feedComplete')}`}
               </Text>
               <Text style={styles.sheetSubtitle}>
-                {language === 'fr' ? 'Durée ' : 'Duration '}{Math.max(1, Math.round(timerElapsedSeconds / 60))} min -{language === 'fr' ? ' commence à ' : ' started at '}{formatClock(timerStartedAt ? new Date(timerStartedAt).toISOString() : undefined, locale)}
+                {t('entry.duration')} {Math.max(1, Math.round(timerElapsedSeconds / 60))} min · {t('home.feedStartedAt')} {formatClock(timerStartedAt ? new Date(timerStartedAt).toISOString() : undefined, locale)}
               </Text>
               <QuantityPicker value={quickAmount} onChange={setQuickAmount} largeTouchMode={appSettings.largeTouchMode} />
               <View style={styles.sheetActions}>

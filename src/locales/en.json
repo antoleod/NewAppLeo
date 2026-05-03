@@ -151,6 +151,21 @@
     "show": "Show",
     "restoreAll": "Restore all"
   },
+  "home": {
+    "addEntry": "Add",
+    "defaultFeeding": "Default feeding",
+    "openProfile": "Open Profile",
+    "switcherSubtitle": "Choose the active profile for this dashboard.",
+    "activeLabel": "Active",
+    "noChildTitle": "No child profile yet",
+    "noChildBody": "Go to Profile to create one, then return here to set it active.",
+    "measurements": "measurements",
+    "ageMonth": "mo ",
+    "ageDay": "d",
+    "bottleComplete": "Bottle complete",
+    "feedComplete": "complete",
+    "feedStartedAt": "started at"
+  },
   "insights": {
     "eyebrow": "INSIGHTS",
     "title": "Growth Analysis",

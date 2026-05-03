@@ -197,30 +197,36 @@ function applySurfaceStyle(theme: Theme, paletteMode: ThemePaletteMode, surfaceM
   }
 
   if (photoMode) {
-    // "Portrait" — photo is vivid & prominent, cards have enough contrast to be readable
+    // "Portrait" — photo visible, cards with sufficient contrast for readability
     return {
       ...theme,
       bg: isDark ? 'rgba(6, 8, 12, 0.12)' : 'rgba(255, 255, 255, 0.06)',
-      bgCard: isDark ? 'rgba(10, 14, 20, 0.58)' : 'rgba(255, 255, 255, 0.60)',
-      bgCardAlt: isDark ? 'rgba(18, 22, 30, 0.44)' : 'rgba(255, 255, 255, 0.42)',
-      border: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.32)',
-      navBg: isDark ? 'rgba(8, 12, 18, 0.66)' : 'rgba(255, 255, 255, 0.62)',
-      pillBg: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.32)',
-      progressBg: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.24)',
+      bgCard: isDark ? 'rgba(10, 14, 20, 0.72)' : 'rgba(255, 255, 255, 0.76)',
+      bgCardAlt: isDark ? 'rgba(18, 22, 30, 0.58)' : 'rgba(255, 255, 255, 0.58)',
+      border: isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(200, 200, 200, 0.40)',
+      navBg: isDark ? 'rgba(8, 12, 18, 0.78)' : 'rgba(255, 255, 255, 0.76)',
+      pillBg: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.40)',
+      progressBg: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.32)',
+      textSecondary: isDark ? '#E2E8F0' : '#1A202C',
+      textMuted: isDark ? '#C4CDD8' : '#2D3748',
+      muted: isDark ? '#C4CDD8' : '#2D3748',
     } as Theme;
   }
 
   if (defaultMode) {
-    // "Frosted Glass" — photo visible through a professional frosted blur, like Apple's vibrancy
+    // "Frosted Glass" — professional blur effect with improved text contrast
     return {
       ...theme,
       bg: isDark ? 'rgba(6, 8, 12, 0.08)' : 'rgba(255, 255, 255, 0.06)',
-      bgCard: isDark ? 'rgba(18, 24, 32, 0.66)' : 'rgba(255, 255, 255, 0.72)',
-      bgCardAlt: isDark ? 'rgba(26, 32, 42, 0.52)' : 'rgba(248, 246, 240, 0.58)',
-      border: isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.38)',
-      navBg: isDark ? 'rgba(14, 18, 26, 0.76)' : 'rgba(255, 255, 255, 0.78)',
-      pillBg: isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(255, 255, 255, 0.36)',
-      progressBg: isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(255, 255, 255, 0.28)',
+      bgCard: isDark ? 'rgba(18, 24, 32, 0.78)' : 'rgba(255, 255, 255, 0.84)',
+      bgCardAlt: isDark ? 'rgba(26, 32, 42, 0.64)' : 'rgba(248, 246, 240, 0.70)',
+      border: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(200, 200, 200, 0.42)',
+      navBg: isDark ? 'rgba(14, 18, 26, 0.84)' : 'rgba(255, 255, 255, 0.88)',
+      pillBg: isDark ? 'rgba(255, 255, 255, 0.11)' : 'rgba(255, 255, 255, 0.44)',
+      progressBg: isDark ? 'rgba(255, 255, 255, 0.11)' : 'rgba(230, 228, 220, 0.60)',
+      textSecondary: isDark ? '#E2E8F0' : '#1A202C',
+      textMuted: isDark ? '#C4CDD8' : '#2D3748',
+      muted: isDark ? '#C4CDD8' : '#2D3748',
     } as Theme;
   }
 
