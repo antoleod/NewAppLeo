@@ -28,19 +28,23 @@ jobs:
       - name: Get current version
         id: version
         run: |
-          CURRENT_VERSION=$(grep '"version"' package.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          INPUT_VERSION="${{ github.event.inputs.version }}"
+          PACKAGE_VERSION=$(grep '"version"' package.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+          CURRENT_VERSION="${INPUT_VERSION:-$PACKAGE_VERSION}"
+          RELEASE_TAG="v$CURRENT_VERSION"
 
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
-          if [ "$CURRENT_VERSION" != "$LAST_TAG" ] && [ ! -z "$CURRENT_VERSION" ]; then
-            echo "should-release=true" >> $GITHUB_OUTPUT
-          else
+          if [ -z "$CURRENT_VERSION" ]; then
             echo "should-release=false" >> $GITHUB_OUTPUT
+          elif git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "should-release=false" >> $GITHUB_OUTPUT
+          else
+            echo "should-release=true" >> $GITHUB_OUTPUT
           fi
 
           echo "Current version: $CURRENT_VERSION"
-          echo "Last tag: $LAST_TAG"
+          echo "Release tag: $RELEASE_TAG"
 
   create-release:
     needs: check-version
@@ -67,3 +71,4 @@ jobs:
             **Deployment**: Automatic deploy to GitHub Pages will start shortly.
           draft: false
           prerelease: false
+          allowUpdates: true
