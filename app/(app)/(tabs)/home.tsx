@@ -887,26 +887,40 @@ export default function HomeScreen() {
               <View style={{ gap: 6 }}>
                 {urgentAlerts.slice(0, 2).map((alert) => {
                   const c = alertToneColor(alert.tone);
+                  const iconName = 
+                    alert.tone === 'danger' ? 'alert-circle' : 
+                    alert.tone === 'warning' ? 'warning' : 
+                    alert.tone === 'success' ? 'checkmark-circle' : 
+                    'notifications';
+
                   return (
-                    <View
+                    <Pressable
                       key={alert.id}
-                      style={{
+                      onPress={() => haptics.selection()}
+                      style={({ pressed }) => ({
                         paddingHorizontal: 14,
                         paddingVertical: 12,
                         flexDirection: 'row',
                         alignItems: 'center',
                         gap: 12,
                         borderRadius: 12,
-                        backgroundColor: `${c}10`,
-                        borderLeftWidth: 3,
+                        backgroundColor: pressed ? `${c}15` : `${c}08`,
+                        borderWidth: 1,
+                        borderColor: `${c}20`,
+                        borderLeftWidth: 4,
                         borderLeftColor: c,
-                      }}
+                        opacity: pressed ? 0.9 : 1,
+                      })}
                     >
+                      <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: `${c}15`, alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name={iconName} size={18} color={c} />
+                      </View>
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{alert.value}</Text>
                         <Text style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>{alert.body}</Text>
                       </View>
-                    </View>
+                      <Ionicons name="chevron-forward" size={14} color={`${c}50`} />
+                    </Pressable>
                   );
                 })}
               </View>
@@ -1090,20 +1104,37 @@ export default function HomeScreen() {
                       style={({ pressed }) => ({
                         flex: 1,
                         aspectRatio: 1,
-                        borderRadius: 14,
-                        backgroundColor: pressed ? BORDER_SOFT : CARD,
+                        borderRadius: 16,
+                        backgroundColor: pressed ? `${action.color}12` : CARD,
                         borderWidth: 1,
-                        borderColor: BORDER,
+                        borderColor: pressed ? `${action.color}55` : BORDER,
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: 6,
-                        paddingHorizontal: 4,
+                        gap: 7,
+                        paddingHorizontal: 5,
+                        shadowColor: '#000',
+                        shadowOpacity: pressed ? 0.08 : 0.14,
+                        shadowRadius: pressed ? 8 : 12,
+                        shadowOffset: { width: 0, height: pressed ? 2 : 4 },
+                        elevation: pressed ? 1 : 3,
+                        transform: [{ scale: pressed ? 0.98 : 1 }],
                       })}
                     >
-                      <View style={{ width: 29, height: 29 }}>
+                      <View
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: 14,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: `${action.color}14`,
+                          borderWidth: 1,
+                          borderColor: `${action.color}22`,
+                        }}
+                      >
                         {GetEntryIcon(action.type, 29, action.color)}
                       </View>
-                      <Text style={{ color: TEXT_SECONDARY, fontSize: 10, fontWeight: '500', textAlign: 'center' }} numberOfLines={1}>{action.label}</Text>
+                      <Text style={{ color: TEXT_SECONDARY, fontSize: 10.5, fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{action.label}</Text>
                     </Pressable>
                   ))}
                 </View>
