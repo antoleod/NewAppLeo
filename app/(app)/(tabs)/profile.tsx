@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { Alert, AppState, Image, Pressable, Text, View } from 'react-native';
+import { AppState, Image, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Button, Card, EmptyState, Heading, Input, Page, Segment } from '@/components/ui';
@@ -10,6 +10,8 @@ import { useLocale } from '@/context/LocaleContext';
 import { getActiveBaby, getBabies, saveBaby, setActiveBabyId, removeBaby } from '@/lib/storage';
 import { getLocalPairingSession } from '@/services/pairingService';
 import { flushQueuedOperations, loadQueuedOperations } from '@/lib/sync';
+import { useToast } from '@/components/Toast';
+import { haptics } from '@/lib/haptics';
 
 const languageOptions = [
   { label: 'FR', value: 'fr' },
@@ -23,6 +25,7 @@ export default function ProfileScreen() {
   const { t } = useTranslation();
   const { setLanguage: setContextLanguage } = useLocale();
   const { profile, guestMode, saveProfile, signOut } = useAuth();
+  const toast = useToast();
 
   const [caregiverName, setCaregiverName] = useState(profile?.caregiverName ?? '');
   const [babyName, setBabyName] = useState(profile?.babyName ?? 'Leo');
@@ -64,12 +67,17 @@ export default function ProfileScreen() {
 
   async function handleSave() {
     await saveProfile({ caregiverName: caregiverName.trim(), babyName: babyName.trim(), babyBirthDate: babyBirthDate.trim(), birthWeightKg: Number(birthWeightKg) || undefined, currentWeightKg: Number(currentWeightKg) || undefined, heightCm: Number(heightCm) || undefined, babyNotes: babyNotes.trim() || undefined, babyPhotoUri: babyPhotoUri || undefined });
-    Alert.alert(t('profile.profileUpdated'), t('profile.profileSyncMessage'));
+    haptics.success();
+    toast.success(t('profile.profileUpdated'));
   }
 
   async function handlePickPhoto() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return Alert.alert(t('profile.permissionRequired'), t('profile.allowPhotoAccess'));
+    if (!permission.granted) {
+      haptics.warning();
+      toast.warning(t('profile.allowPhotoAccess'));
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8, allowsEditing: true, aspect: [1, 1] });
     if (!result.canceled && result.assets[0]?.uri) setBabyPhotoUri(result.assets[0].uri);
   }
@@ -86,9 +94,11 @@ export default function ProfileScreen() {
       if (!profile) throw new Error('You must be signed in.');
       const result = await flushQueuedOperations(profile.uid);
       setQueuedSyncCount(0);
-      Alert.alert(t('profile.syncComplete'), t('profile.syncFlushed').replace('{count}', String(result.flushed)));
+      haptics.success();
+      toast.success(t('profile.syncFlushed').replace('{count}', String(result.flushed)));
     } catch (error: any) {
-      Alert.alert(t('profile.syncFailed'), error?.message ?? t('profile.syncError'));
+      haptics.error();
+      toast.error(error?.message ?? t('profile.syncError'));
     }
   }
 
@@ -137,7 +147,7 @@ export default function ProfileScreen() {
                 <View style={{ flex: 1 }}><Button label="Remove" onPress={() => removeBaby(baby.id).then(async () => { setBabies(await getBabies()); setBabyActiveId((await getActiveBaby())?.id ?? null); })} variant="ghost" /></View>
               </View>
             </View>
-          )) : <EmptyState title="No profiles yet" body="Create your first child profile." action={<Button label="Add" onPress={handleAddBaby} />} />
+          )) : <EmptyState icon="person-add-outline" title="No profiles yet" body="Create your first child profile." action={<Button label="Add" onPress={handleAddBaby} />} />
         ) : null}
         {showChildren && babies.length ? <Button label="Add profile" onPress={handleAddBaby} variant="ghost" /> : null}
       </Card>

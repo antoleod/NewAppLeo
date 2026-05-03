@@ -16,6 +16,8 @@ import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedic
 import * as ImagePicker from 'expo-image-picker';
 import { scheduleVaccineReminder } from '@/lib/notifications';
 import { getSuggestedValues, getWeightCategory, getHeightCategory } from '@/lib/who-recommendations';
+import { haptics } from '@/lib/haptics';
+import { useToast } from '@/components/Toast';
 
 const typeLabels: Record<EntryType, string> = {
   feed: 'Feed',
@@ -138,6 +140,7 @@ export default function EntryComposerScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string }>();
   const { addEntry, updateEntry, deleteEntry, entryById } = useAppData();
+  const toast = useToast();
   const type = (params.type as EntryType) || 'feed';
   const editing = params.id ? entryById(String(params.id)) : undefined;
   const presetAmount = typeof params.presetAmount === 'string' ? Number(params.presetAmount) : undefined;
@@ -348,9 +351,11 @@ export default function EntryComposerScreen() {
         setSavedMedicines(await upsertSavedMedicine({ name, dosage }));
       }
 
+      haptics.success();
       router.back();
     } catch (error: any) {
-      Alert.alert('Save failed', error?.message ?? 'Could not save this record.');
+      haptics.error();
+      toast.error(error?.message ?? 'Could not save this record.');
     } finally {
       setSaving(false);
     }
@@ -358,8 +363,8 @@ export default function EntryComposerScreen() {
 
   async function handleSaveReminder() {
     if (!reminderVaccineName.trim()) {
-      Alert.alert(
-        language === 'fr' ? 'Vaccin requis' : 'Vaccine required',
+      haptics.warning();
+      toast.warning(
         language === 'fr' ? 'Sélectionnez ou entrez un nom de vaccin.' : 'Please select or enter a vaccine name.'
       );
       return;
@@ -389,11 +394,11 @@ export default function EntryComposerScreen() {
         console.error('Failed to schedule vaccine reminder:', error);
       }
 
-      Alert.alert(
-        language === 'fr' ? 'Rappel créé!' : 'Reminder created!',
+      haptics.success();
+      toast.success(
         language === 'fr'
-          ? `${reminderVaccineName} - Vous recevrez un rappel 7 jours avant.`
-          : `${reminderVaccineName} - You'll get a reminder 7 days before.`
+          ? `Rappel créé : ${reminderVaccineName} (7 jours avant).`
+          : `Reminder created: ${reminderVaccineName} (7 days before).`
       );
 
       setShowReminderFlow(false);
@@ -402,7 +407,8 @@ export default function EntryComposerScreen() {
       setReminderVaccineDate(new Date());
       router.back();
     } catch (error: any) {
-      Alert.alert('Save failed', error?.message ?? 'Could not save this record.');
+      haptics.error();
+      toast.error(error?.message ?? 'Could not save this record.');
     } finally {
       setSaving(false);
     }
@@ -1012,19 +1018,19 @@ export default function EntryComposerScreen() {
                   label={language === 'fr' ? 'Créer le rappel' : 'Create reminder'}
                   onPress={() => {
                     if (!reminderMedicationName.trim()) {
-                      Alert.alert(
-                        language === 'fr' ? 'Médicament requis' : 'Medication required',
+                      haptics.warning();
+                      toast.warning(
                         language === 'fr' ? 'Entrez le nom du médicament.' : 'Please enter medication name.'
                       );
                       return;
                     }
                     // Schedule reminder (24h before)
                     const reminderTime = new Date(reminderMedicationDate.getTime() - 24 * 60 * 60 * 1000);
-                    Alert.alert(
-                      language === 'fr' ? 'Rappel créé!' : 'Reminder created!',
+                    haptics.success();
+                    toast.success(
                       language === 'fr'
-                        ? `${reminderMedicationName} - Rappel programmé pour ${reminderTime.toLocaleDateString('fr-FR')}`
-                        : `${reminderMedicationName} - Reminder set for ${reminderTime.toLocaleDateString('en-US')}`
+                        ? `Rappel créé : ${reminderMedicationName} pour ${reminderTime.toLocaleDateString('fr-FR')}`
+                        : `Reminder set: ${reminderMedicationName} for ${reminderTime.toLocaleDateString('en-US')}`
                     );
                     setShowMedicationReminderFlow(false);
                     setReminderMedicationName('');

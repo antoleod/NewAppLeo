@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Button, Card, EmptyState, Heading, Page } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
@@ -9,6 +11,7 @@ import { generateWeeklyPdf } from '@/lib/pdf';
 import { dateKey, formatLongDate, formatTime, isSameDay, startOfDay, subtractDays, toDate } from '@/utils/date';
 import { getOmsRow, interpolatePercentileBand, omsBySex, type OmsSex } from '@/lib/omsData';
 import { useWideWeb } from '@/hooks/useWideWeb';
+import { useToast } from '@/components/Toast';
 
 const BG = '#0D1117';
 const CARD = '#161B22';
@@ -286,7 +289,10 @@ export default function HistoryScreen() {
   const { isWideWeb } = useWideWeb();
   const { entries, deleteEntry, addEntry } = useAppData();
   const { profile } = useAuth();
+  const toast = useToast();
   const [filter, setFilter] = useState<EntryType | 'all'>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showOmsTable, setShowOmsTable] = useState(false);
@@ -316,10 +322,32 @@ export default function HistoryScreen() {
     setSelectedDate(latestEntryDate);
   }, [dayEntries.length, entries.length, latestEntryDate]);
 
-  const timelineEntries = useMemo(
-    () => entries.filter((entry) => filter === 'all' || entry.type === filter).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
-    [entries, filter],
-  );
+  useEffect(() => {
+    const handle = setTimeout(() => setSearchQuery(searchInput.trim().toLowerCase()), 300);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
+
+  const timelineEntries = useMemo(() => {
+    const filtered = entries
+      .filter((entry) => filter === 'all' || entry.type === filter)
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+    if (!searchQuery) return filtered;
+    return filtered.filter((entry) => {
+      const haystack = [
+        entry.title,
+        entry.notes,
+        entry.type,
+        getDetail(entry),
+        entry.payload?.foodName,
+        entry.payload?.name,
+        ...(entry.payload?.tags ?? []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(searchQuery);
+    });
+  }, [entries, filter, searchQuery]);
   const unifiedTimeline = useMemo(() => groupByDay(timelineEntries), [timelineEntries]);
   const yesterdayEntries = useMemo(
     () => entries.filter((entry) => isSameDay(entry.occurredAt, subtractDays(selectedDate, 1))),
@@ -381,7 +409,7 @@ export default function HistoryScreen() {
   async function exportCsv() {
     if (globalThis.navigator?.clipboard?.writeText && Platform.OS === 'web') {
       await globalThis.navigator.clipboard.writeText(currentCsv);
-      Alert.alert('CSV', 'Export du jour copie dans le presse-papiers.');
+      toast.success('Export du jour copie dans le presse-papiers.');
       return;
     }
     await Share.share({ message: currentCsv, title: 'AppLeo CSV' });
@@ -389,7 +417,7 @@ export default function HistoryScreen() {
 
   async function exportPdf() {
     const pdf = await generateWeeklyPdf(dayEntries);
-    Alert.alert('PDF', pdf.summary);
+    toast.info(pdf.summary);
   }
 
   async function shareDay() {
@@ -485,6 +513,46 @@ export default function HistoryScreen() {
               </Pressable>
             ))}
           </View>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: BORDER,
+              backgroundColor: BG,
+            }}
+          >
+            <Ionicons name="search" size={16} color={MUTED} />
+            <TextInput
+              value={searchInput}
+              onChangeText={setSearchInput}
+              placeholder="Rechercher (notes, type, aliment...)"
+              placeholderTextColor={MUTED}
+              style={{ flex: 1, color: TEXT, fontSize: 14, paddingVertical: 4 }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {searchInput.length > 0 ? (
+              <Pressable
+                onPress={() => setSearchInput('')}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Effacer la recherche"
+              >
+                <Ionicons name="close-circle" size={18} color={MUTED} />
+              </Pressable>
+            ) : null}
+          </View>
+          {searchQuery && timelineEntries.length === 0 ? (
+            <Text style={{ color: MUTED, fontSize: 12, marginTop: 4, fontStyle: 'italic' }}>
+              Aucun resultat pour "{searchInput}"
+            </Text>
+          ) : null}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 6 }}>
             {FILTERS.map((item) => {
               const active = filter === item.value;
@@ -622,11 +690,15 @@ export default function HistoryScreen() {
             <Card key={day} style={{ backgroundColor: CARD, borderColor: BORDER }}>
               <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700' }}>{formatLongDate(day)}</Text>
               <View style={{ gap: 10 }}>
-                {items.map((entry) => {
+                {items.map((entry, idx) => {
                   const expanded = expandedId === entry.id;
                   return (
-                    <Pressable
+                    <Animated.View
                       key={entry.id}
+                      entering={FadeInDown.duration(220).delay(Math.min(idx * 30, 240))}
+                      layout={LinearTransition.springify().damping(18)}
+                    >
+                    <Pressable
                       onPress={() => setExpandedId((current) => (current === entry.id ? null : entry.id))}
                       style={{
                         padding: 14,
@@ -655,13 +727,19 @@ export default function HistoryScreen() {
                         </View>
                       ) : null}
                     </Pressable>
+                    </Animated.View>
                   );
                 })}
               </View>
             </Card>
           ))
         ) : (
-          <EmptyState title="Aucune entree" body="Aucune entree ne correspond au filtre pour cette date." action={<Button label="Ajouter une entree" onPress={() => router.push('/entry/feed')} />} />
+          <EmptyState
+            icon="time-outline"
+            title="Aucune entree"
+            body="Aucune entree ne correspond au filtre pour cette date."
+            action={<Button label="Ajouter une entree" onPress={() => router.push('/entry/feed')} />}
+          />
         )}
     </>
   );

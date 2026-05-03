@@ -104,6 +104,7 @@ export default function InsightsScreen() {
       <Page contentStyle={{ width: '100%' }}>
         <Heading eyebrow={t('insights.eyebrow')} title={t('insights.title')} subtitle={t('insights.subtitle.none')} />
         <EmptyState
+          icon="bar-chart-outline"
           title={t('insights.noDataTitle')}
           body={t('insights.noDataBody')}
           action={<Button label={t('insights.createFeed')} onPress={() => router.push('/entry/feed')} />}

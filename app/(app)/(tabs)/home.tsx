@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, Page } from '@/components/ui';
+import { Button, Page, SkeletonCard } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
@@ -34,6 +34,7 @@ import {
 import { QuantityPicker } from '@/components/QuantityPicker';
 import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
 import { NextFeedingCard } from '@/components/NextFeedingCard';
+import { haptics } from '@/lib/haptics';
 
 const BG = 'rgba(13, 17, 23, 0.28)';
 const CARD = 'rgba(18, 24, 34, 0.72)';
@@ -329,7 +330,7 @@ export default function HomeScreen() {
   const locale = localeTag(language);
   const { t } = useTranslation();
   const { profile } = useAuth();
-  const { entries, summary, addEntry } = useAppData();
+  const { entries, summary, addEntry, loading } = useAppData();
   const [hydration, setHydration] = useState(0);
   const [babyId, setBabyId] = useState<string | null>(null);
   const [babies, setBabies] = useState<Array<{ id: string; name: string; birthDate: string }>>([]);
@@ -430,6 +431,7 @@ export default function HomeScreen() {
 
   function startQuickTimer(mode: 'breast' | 'bottle', side: BreastSide = 'left') {
     const startedAt = Date.now();
+    haptics.medium();
     setQuickTimerMode(mode);
     setQuickFeedSide(side);
     setTimerStartedAt(startedAt);
@@ -464,6 +466,7 @@ export default function HomeScreen() {
               durationMin: Math.max(1, Math.round(timerElapsedSeconds / 60)),
             },
     });
+    haptics.success();
     setQuickTimerMode(null);
     setShowSaveSheet(false);
     setTimerStartedAt(null);
@@ -535,6 +538,22 @@ export default function HomeScreen() {
         : quickFeedSide === 'right'
           ? 'Droite'
           : 'Gauche';
+
+  if (loading && entries.length === 0) {
+    return (
+      <Page contentStyle={styles.pageContent}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 24, gap: 14 }}>
+          <SkeletonCard lines={2} />
+          <SkeletonCard lines={3} />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}><SkeletonCard lines={1} /></View>
+            <View style={{ flex: 1 }}><SkeletonCard lines={1} /></View>
+          </View>
+          <SkeletonCard lines={4} />
+        </View>
+      </Page>
+    );
+  }
 
   return (
     <Page contentStyle={styles.pageContent}>

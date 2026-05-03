@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, Text, View, useWindowDimensions, StyleSheet } from 'react-native';
+import { Text, View, useWindowDimensions, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Card, Heading, Input, Page } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { createPairingSession, joinPairingSession, getLocalPairingSession, type PairingSession } from '@/services/pairingService';
+import { useToast } from '@/components/Toast';
+import { haptics } from '@/lib/haptics';
 
 function makeCode() {
   const raw = globalThis.crypto?.getRandomValues ? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(3))) : [1, 2, 3];
@@ -15,6 +17,7 @@ export default function PairScreen() {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const { user } = useAuth();
+  const toast = useToast();
   const [code, setCode] = useState(makeCode);
   const [session, setSession] = useState<PairingSession | null>(null);
   const isTablet = width >= 768;
@@ -42,13 +45,14 @@ export default function PairScreen() {
               const next = await createPairingSession(user?.uid ?? 'anonymous');
               setSession(next);
               setCode(next.code);
-              Alert.alert('Pairing code created', next.code);
+              haptics.success();
+              toast.success(`Pairing code: ${next.code}`);
             }}
             fullWidth
           />
           <Button
             label="Copy code"
-            onPress={() => Alert.alert('Pairing code', session?.code ?? code)}
+            onPress={() => toast.info(`Pairing code: ${session?.code ?? code}`)}
             variant="ghost"
             fullWidth
           />
@@ -63,9 +67,11 @@ export default function PairScreen() {
               try {
                 const next = await joinPairingSession(code, user?.uid ?? 'anonymous');
                 setSession(next);
-                Alert.alert('Joined', `Session ${next.code} is now ${next.status}.`);
+                haptics.success();
+                toast.success(`Joined session ${next.code} (${next.status}).`);
               } catch (error: any) {
-                Alert.alert('Pairing failed', error?.message ?? 'Could not join the session.');
+                haptics.error();
+                toast.error(error?.message ?? 'Could not join the session.');
               }
             }}
             fullWidth

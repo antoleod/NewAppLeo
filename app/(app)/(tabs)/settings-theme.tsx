@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button, Card, Heading, Page, SectionHeader, Segment, ColorSwatch } from '@/components/ui';
@@ -8,10 +8,12 @@ import { BackgroundPhotoSelector } from '@/components/BackgroundPhotoSelector';
 import { DataImporter } from '@/components/DataImporter';
 import { spacing } from '@/theme';
 import { getAppSettings, updateAppSettings } from '@/lib/storage';
+import { useToast } from '@/components/Toast';
 
 export default function ThemeSettings() {
   const { colors, paletteMode, themeMode, themeVariant, themeStyle, backgroundPhotoUri, setThemeVariant, setThemeStyle, setBackgroundPhotoUri, setCustomTheme, toggleTheme } = useTheme();
   const { setThemeMode } = useAuth();
+  const toast = useToast();
 
   const [customPrimary, setCustomPrimary] = useState('');
   const [customSecondary, setCustomSecondary] = useState('');
@@ -38,7 +40,7 @@ export default function ThemeSettings() {
       await updateAppSettings({ backgroundPhotoUri: uri });
       await setBackgroundPhotoUri(uri);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save photo');
+      toast.error(error.message || 'Failed to save photo');
     } finally {
       setUploadingPhoto(false);
     }
@@ -50,7 +52,7 @@ export default function ThemeSettings() {
       await updateAppSettings({ backgroundPhotoUri: '' });
       await setBackgroundPhotoUri('');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to remove photo');
+      toast.error(error.message || 'Failed to remove photo');
     } finally {
       setUploadingPhoto(false);
     }
@@ -143,7 +145,7 @@ export default function ThemeSettings() {
 
       <DataImporter
         onImportComplete={(count) => {
-          Alert.alert('Import Complete', `${count} entries imported successfully`);
+          toast.success(`${count} entries imported successfully`);
         }}
       />
     </Page>

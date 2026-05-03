@@ -16,6 +16,7 @@ import { LocaleProvider } from '@/context/LocaleContext';
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from '@/components/ui';
+import { ToastProvider } from '@/components/Toast';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -112,6 +113,7 @@ export default function RootLayout() {
         <AuthProvider>
           <LocaleProvider>
             <ThemeProvider>
+              <ToastProvider>
               <AppDataProvider>
                 <View style={{ flex: 1 }}>
                   <AuthGuard />
@@ -140,6 +142,7 @@ export default function RootLayout() {
                   )}
                 </View>
               </AppDataProvider>
+              </ToastProvider>
             </ThemeProvider>
           </LocaleProvider>
         </AuthProvider>
