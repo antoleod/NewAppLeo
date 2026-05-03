@@ -1,10 +1,12 @@
-const CACHE_NAME = 'appleo-pwa-v1';
+const CACHE_NAME = 'appleo-pwa-v2';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/assets/branding/app-icon/babyflow-app-icon-192.png',
-  '/assets/branding/app-icon/babyflow-app-icon-512.png'
+  './',
+  './index.html',
+  './manifest.json',
+  './favicon.png',
+  './apple-touch-icon.png',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', event => {
