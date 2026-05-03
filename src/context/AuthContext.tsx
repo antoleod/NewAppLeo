@@ -9,7 +9,7 @@ import {
   updateThemeMode,
   watchProfile,
 } from '@/services/userProfileService';
-import { registerAccount, signInWithEmail, signInWithGoogle, signInWithUsernamePin, signOutUser } from '@/services/authService';
+import { consumeGoogleRedirectResult, registerAccount, signInWithEmail, signInWithGoogle, signInWithUsernamePin, signOutUser } from '@/services/authService';
 import { clearGuestProfile, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
 import { sendPasswordResetEmail } from 'firebase/auth';
 
@@ -44,6 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let unsubscribeProfile: (() => void) | undefined;
     let alive = true;
+
+    // If we just came back from a Google redirect, finalise the profile.
+    // The auth state listener below will then pick up the user normally.
+    void consumeGoogleRedirectResult();
 
     const restoreGuestSession = async () => {
       const guestProfile = await getGuestProfile();
