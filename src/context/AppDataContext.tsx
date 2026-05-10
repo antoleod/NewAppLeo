@@ -38,7 +38,7 @@ export interface AppDataContextValue {
   entries: EntryRecord[];
   loading: boolean;
   summary: ReturnType<typeof getTodaySummary>;
-  addEntry: (input: { type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }) => Promise<void>;
+  addEntry: (input: { type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }) => Promise<string>;
   updateEntry: (id: string, patch: Partial<EntryRecord>) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
   seedDemoData: () => Promise<void>;
@@ -276,6 +276,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       void queueUpserts([nextEntry]);
     }
     setEntries((current) => [nextEntry, ...current.filter((entry) => entry.id !== nextEntry.id)].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)));
+    return nextEntry.id;
   }
 
   async function updateEntry(id: string, patch: Partial<EntryRecord>) {

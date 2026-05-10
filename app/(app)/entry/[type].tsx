@@ -251,7 +251,10 @@ export default function EntryComposerScreen() {
   const [amountEaten, setAmountEaten] = useState<'all' | 'half' | 'little' | 'none' | null>(null);
   const [mealTime, setMealTime] = useState<'breakfast' | 'lunch' | 'snack' | 'dinner' | ''>(type === 'food' && !editing ? getRecommendedMealTime() : '');
   const [showFoodDoneModal, setShowFoodDoneModal] = useState(false);
-  const [lastSavedFood, setLastSavedFood] = useState<{ name: string; grams: string }>({ name: '', grams: '' });
+  const [lastSavedFood, setLastSavedFood] = useState<{ name: string; grams: string; mealTimeVal: string }>({ name: '', grams: '', mealTimeVal: '' });
+  const [lastSavedFoodEntryId, setLastSavedFoodEntryId] = useState<string | null>(null);
+  const [feedbackSelectedEmoji, setFeedbackSelectedEmoji] = useState<string | null>(null);
+  const [foodMoreOpen, setFoodMoreOpen] = useState(false);
   const [quantityGrams, setQuantityGrams] = useState('');
   const meta = typeMeta[type];
   const { profile, saveProfile } = useAuth();
@@ -524,6 +527,9 @@ export default function EntryComposerScreen() {
     setMealTime(getRecommendedMealTime());
     setNotes('');
     setOccurredAt(new Date());
+    setFeedbackSelectedEmoji(null);
+    setLastSavedFoodEntryId(null);
+    setFoodMoreOpen(false);
   }
 
   function buildPayload(durationMinOverride?: number): EntryPayload {
@@ -621,10 +627,11 @@ export default function EntryComposerScreen() {
         payload,
       } as any;
 
+      let savedEntryId = editing?.id ?? '';
       if (editing) {
         await updateEntry(editing.id, { type, title: titleValue, notes, occurredAt: timestamp, payload } as any);
       } else {
-        await addEntry({ type, title: titleValue, notes, occurredAt: timestamp, payload });
+        savedEntryId = await addEntry({ type, title: titleValue, notes, occurredAt: timestamp, payload });
       }
       if (type === 'medication' && name.trim()) {
         setSavedMedicines(await upsertSavedMedicine({ name, dosage }));
@@ -643,7 +650,9 @@ export default function EntryComposerScreen() {
 
       // Food: show "Add another / Go Home" modal instead of share prompt
       if (type === 'food' && !editing) {
-        setLastSavedFood({ name: foodName, grams: quantityGrams });
+        setLastSavedFoodEntryId(savedEntryId);
+        setLastSavedFood({ name: foodName, grams: quantityGrams, mealTimeVal: mealTime || getRecommendedMealTime() });
+        setFeedbackSelectedEmoji(null);
         setShowFoodDoneModal(true);
         setSaving(false);
         return;
@@ -860,7 +869,6 @@ export default function EntryComposerScreen() {
         {type === 'food' && (() => {
           const lang = language as 'fr' | 'en' | 'es' | 'nl';
           const getFoodLabel = (preset: typeof foodPresets[number]) => preset.labels[lang] ?? preset.labels.en;
-          const getMealLabel = (meal: typeof mealTimes[number]) => meal.labels[lang] ?? meal.labels.en;
           const selectedPreset = foodPresets.find((p) => p.value === foodName || Object.values(p.labels).includes(foodName));
           const recommendedQty = selectedPreset && profile?.babyBirthDate
             ? getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value)
@@ -871,11 +879,6 @@ export default function EntryComposerScreen() {
             const base = recommendedQty ?? 50;
             return [Math.max(5, base - 20), base, base + 20, base + 40].map(Math.round).filter((v, i, a) => a.indexOf(v) === i);
           })();
-          const likedLabels = {
-            yes: { fr: 'Adoré !', en: 'Loved it!', es: '¡Le encantó!', nl: 'Heerlijk!' },
-            neutral: { fr: 'Bof', en: 'So-so', es: 'Más o menos', nl: 'Gaat wel' },
-            no: { fr: 'Refusé', en: 'Refused', es: 'Lo rechazó', nl: 'Geweigerd' },
-          };
           const reactionOptions = [
             { emoji: '🤧', value: 'allergy', labels: { fr: 'Allergie', en: 'Allergy', es: 'Alergia', nl: 'Allergie' } },
             { emoji: '😬', value: 'intolerance', labels: { fr: 'Intolérance', en: 'Intolerance', es: 'Intolerancia', nl: 'Intolerantie' } },
@@ -883,325 +886,151 @@ export default function EntryComposerScreen() {
             { emoji: '🤮', value: 'vomit', labels: { fr: 'Vomissement', en: 'Vomit', es: 'Vómito', nl: 'Braken' } },
             { emoji: '💩', value: 'diarrhea', labels: { fr: 'Diarrhée', en: 'Diarrhea', es: 'Diarrea', nl: 'Diarree' } },
           ];
-          const sectionLabel = { fr: 'Choisir un aliment', en: 'Choose food', es: 'Elige alimento', nl: 'Kies voedsel' };
-          const mealTimeLabel = { fr: 'Moment du repas', en: 'Meal time', es: 'Momento', nl: 'Maaltijd' };
-          const quantityLabel = { fr: 'Quantité (g)', en: 'Quantity (g)', es: 'Cantidad (g)', nl: 'Hoeveelheid (g)' };
-          const reactionLabel = { fr: 'Réaction ?', en: 'Any reaction?', es: '¿Alguna reacción?', nl: 'Reactie?' };
-          const likedLabel = { fr: 'Comment ça s\'est passé ?', en: 'How did it go?', es: '¿Cómo fue?', nl: 'Hoe ging het?' };
-          const recentLabel = { fr: 'Récents & Favoris', en: 'Recent & Favorites', es: 'Recientes y favoritos', nl: 'Recent & Favorieten' };
-          const foodNameLabel = { fr: 'Autre aliment', en: 'Other food', es: 'Otro alimento', nl: 'Ander voedsel' };
-          const suggestedLabel = { fr: 'Suggéré pour l\'âge', en: 'Suggested for age', es: 'Sugerido por edad', nl: 'Aanbevolen voor leeftijd' };
           const firstTryLabel = { fr: '✨ Premier essai', en: '✨ First try!', es: '✨ ¡Primera vez!', nl: '✨ Eerste keer!' };
           const mealTimeIcons: Record<string, string> = { breakfast: '🌅', lunch: '🌞', snack: '🍪', dinner: '🌙' };
-          const amountEatenConfig = [
-            { value: 'all' as const, emoji: '🍽️', color: '#3FB950', label: t('food.amountAll') },
-            { value: 'half' as const, emoji: '🥗', color: '#F0B85A', label: t('food.amountHalf') },
-            { value: 'little' as const, emoji: '🥄', color: '#58A6FF', label: t('food.amountLittle') },
-            { value: 'none' as const, emoji: '🚫', color: '#888888', label: t('food.amountNone') },
-          ];
+          const moreLabel = { fr: 'Réaction, allergie…', en: 'Reaction, allergy…', es: 'Reacción, alergia…', nl: 'Reactie, allergie…' };
+          const lessLabel = { fr: 'Masquer', en: 'Hide', es: 'Ocultar', nl: 'Verbergen' };
+          const activeMealTime = mealTime || getRecommendedMealTime();
 
           return (
             <View style={styles.sectionCard}>
-              {/* Today's meals summary strip */}
-              {!editing && (
-                <View style={{ marginBottom: 16 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }}>
-                      {t('food.todayMeals').toUpperCase()}
-                    </Text>
-                    <Text style={{ color: meta.tone, fontSize: 12, fontWeight: '600' }}>
-                      {todayFoodEntries.length > 0 ? `${todayFoodEntries.length}×` : ''}
-                    </Text>
-                  </View>
-                  {todayFoodEntries.length === 0 ? (
-                    <View style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed', alignItems: 'center' }}>
-                      <Text style={{ color: colors.muted, fontSize: 12 }}>{t('food.noFoodYet')}</Text>
-                    </View>
-                  ) : (
-                    <View style={{ gap: 6 }}>
-                      {todayFoodEntries.slice(0, 4).map((entry) => {
-                        const fn = entry.payload?.foodName ?? '';
-                        const grams = entry.payload?.quantityGrams;
-                        const ml = entry.payload?.mealTime;
-                        const ae = entry.payload?.amountEaten;
-                        const aeEmoji = ae === 'all' ? '🍽️' : ae === 'half' ? '🥗' : ae === 'little' ? '🥄' : ae === 'none' ? '🚫' : '';
-                        const timeStr = new Date(entry.occurredAt).toLocaleTimeString(
-                          lang === 'fr' ? 'fr-FR' : lang === 'nl' ? 'nl-BE' : lang === 'es' ? 'es-ES' : 'en-US',
-                          { hour: '2-digit', minute: '2-digit' },
-                        );
-                        return (
-                          <View key={entry.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: `${meta.tone}0D` }}>
-                            <Text style={{ fontSize: 13 }}>{ml ? mealTimeIcons[ml] : '🍴'}</Text>
-                            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600', flex: 1 }} numberOfLines={1}>{fn}</Text>
-                            {grams ? <Text style={{ color: colors.muted, fontSize: 11 }}>{grams}g</Text> : null}
-                            {aeEmoji ? <Text style={{ fontSize: 12 }}>{aeEmoji}</Text> : null}
-                            <Text style={{ color: colors.muted, fontSize: 11 }}>{timeStr}</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-                </View>
-              )}
 
-              {/* Age warning */}
-              {profile?.babyBirthDate && (() => {
-                const ageMonths = (Date.now() - new Date(profile.babyBirthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44);
-                if (ageMonths >= 6) return null;
-                return (
-                  <View style={[styles.ageWarningBox, { borderColor: '#F0B85A', backgroundColor: 'rgba(240,184,90,0.1)', marginBottom: 14 }]}>
-                    <Text style={[styles.ageWarningText, { color: '#F0B85A' }]}>
-                      {language === 'fr' ? '⚠️ Aliments solides recommandés à partir de 6 mois'
-                        : language === 'es' ? '⚠️ Alimentos sólidos recomendados desde los 6 meses'
-                        : language === 'nl' ? '⚠️ Vast voedsel aanbevolen vanaf 6 maanden'
-                        : '⚠️ Solid foods recommended from 6 months'}
+              {/* Row 1: today count badge + compact meal time icon chips */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                {!editing ? (
+                  <View style={[styles.todayCountBadge, { backgroundColor: `${meta.tone}18`, borderColor: `${meta.tone}40` }]}>
+                    <Text style={{ color: meta.tone, fontSize: 11, fontWeight: '700' }}>
+                      {todayFoodEntries.length === 0
+                        ? (lang === 'fr' ? 'Premier repas' : lang === 'es' ? 'Primera comida' : lang === 'nl' ? 'Eerste maaltijd' : 'First meal')
+                        : `${todayFoodEntries.length} ${lang === 'fr' ? 'repas' : lang === 'es' ? (todayFoodEntries.length > 1 ? 'comidas' : 'comida') : lang === 'nl' ? (todayFoodEntries.length > 1 ? 'maaltijden' : 'maaltijd') : (todayFoodEntries.length > 1 ? 'meals' : 'meal')}`}
                     </Text>
                   </View>
-                );
-              })()}
-
-              {/* Seasonal banner */}
-              {seasonalRecommendations && (
-                <View style={[styles.seasonalBox, { borderColor: meta.tone, backgroundColor: `${meta.tone}10`, marginBottom: 14 }]}>
-                  <Text style={[styles.seasonalTitle, { color: meta.tone }]}>
-                    {seasonalRecommendations.emoji} {language === 'fr' ? seasonalRecommendations.season_fr : seasonalRecommendations.season_en}
-                  </Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                    {[...seasonalRecommendations.fruits, ...seasonalRecommendations.vegetables].slice(0, 6).map((item) => (
-                      <Pressable
-                        key={item.name}
-                        onPress={() => setFoodName(item.name)}
-                        style={[styles.seasonalFoodTag, { backgroundColor: foodName === item.name ? meta.toneSoft : `${meta.tone}15`, borderColor: meta.tone, borderWidth: foodName === item.name ? 1.5 : 0 }]}
-                      >
-                        <Text style={{ color: meta.tone, fontSize: 12 }}>{item.icon} {item.name}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {/* Food preset chips */}
-              <View style={{ marginBottom: 14 }}>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
-                  {sectionLabel[lang] ?? sectionLabel.en}
-                </Text>
-                <View style={styles.chipRow}>
-                  {foodPresets.map((preset) => {
-                    const label = getFoodLabel(preset);
-                    const active = selectedPreset?.value === preset.value;
-                    return (
-                      <Pressable
-                        key={preset.value}
-                        onPress={() => setFoodName(preset.value)}
-                        style={[styles.quickChip, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
-                      >
-                        <Text style={[styles.quickChipText, active && { color: meta.tone, fontWeight: '900' }]}>
-                          {preset.icon} {label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Recent & favorites */}
-              {recentFoodEntries.length > 0 && (
-                <View style={{ marginBottom: 14 }}>
-                  <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>
-                    {recentLabel[lang] ?? recentLabel.en}
-                  </Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {recentFoodEntries.map((entry) => {
-                      const fn = (entry.payload as any).foodName as string;
-                      const prefs = foodPreferencesMap[fn];
-                      const badge = prefs
-                        ? prefs.liked > prefs.disliked + prefs.neutral ? '❤️ '
-                          : prefs.disliked > prefs.liked + prefs.neutral ? '😕 ' : ''
-                        : '';
-                      return (
-                        <Pressable
-                          key={entry.id}
-                          onPress={() => setFoodName(fn)}
-                          style={[styles.recentFoodChip, foodName === fn && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
-                        >
-                          <Text style={[styles.recentFoodChipText, foodName === fn && { color: meta.tone, fontWeight: '900' }]}>
-                            {badge}{fn}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
-
-              {/* Free-text food name */}
-              <View style={{ marginBottom: 14 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{foodNameLabel[lang] ?? foodNameLabel.en}</Text>
-                  {isFirstTry && (
-                    <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: `${meta.tone}22`, borderWidth: 1, borderColor: meta.tone }}>
-                      <Text style={{ color: meta.tone, fontSize: 11, fontWeight: '700' }}>{firstTryLabel[lang] ?? firstTryLabel.en}</Text>
-                    </View>
-                  )}
-                </View>
-                <Input
-                  label=""
-                  value={foodName}
-                  onChangeText={setFoodName}
-                  placeholder={language === 'fr' ? 'Pomme, compote, quinoa...' : language === 'es' ? 'Manzana, compota...' : language === 'nl' ? 'Appel, compote...' : 'Apple, compote, quinoa...'}
-                />
-              </View>
-
-              {/* Meal time */}
-              <View style={{ marginBottom: 14 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{mealTimeLabel[lang] ?? mealTimeLabel.en}</Text>
-                  <Text style={{ color: colors.muted, fontSize: 11 }}>
-                    {new Date().toLocaleTimeString(lang === 'fr' ? 'fr-FR' : lang === 'nl' ? 'nl-BE' : lang === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                </View>
-                <View style={styles.chipRow}>
+                ) : <View />}
+                <View style={{ flexDirection: 'row', gap: 5 }}>
                   {mealTimes.map((meal) => {
-                    const isAuto = getRecommendedMealTime() === meal.value && !mealTime;
-                    const active = mealTime === meal.value || isAuto;
+                    const active = activeMealTime === meal.value;
                     return (
                       <Pressable
                         key={meal.value}
-                        onPress={() => setMealTime(meal.value as any)}
-                        style={[styles.quickChip, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: isAuto ? 2 : 1 }]}
+                        onPress={() => setMealTime(mealTime === meal.value ? '' : meal.value as any)}
+                        style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: active ? 2 : 1, borderColor: active ? meta.tone : colors.border, backgroundColor: active ? meta.toneSoft : 'transparent' }}
                       >
-                        <Text style={[styles.quickChipText, active && { color: meta.tone, fontWeight: '900' }]}>
-                          {getMealLabel(meal)}{isAuto ? ' ✓' : ''}
-                        </Text>
+                        <Text style={{ fontSize: 16 }}>{mealTimeIcons[meal.value]}</Text>
                       </Pressable>
                     );
                   })}
                 </View>
               </View>
 
-              {/* Quantity */}
-              <View style={{ marginBottom: 14 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{quantityLabel[lang] ?? quantityLabel.en}</Text>
-                  {recommendedQty ? (
-                    <Text style={{ color: meta.tone, fontSize: 10, fontWeight: '600' }}>
-                      {suggestedLabel[lang] ?? suggestedLabel.en}: {recommendedQty}g
-                    </Text>
-                  ) : null}
-                </View>
-                <Input
-                  label=""
-                  value={quantityGrams}
-                  onChangeText={setQuantityGrams}
-                  keyboardType="decimal-pad"
-                  placeholder={String(recommendedQty ?? 50)}
-                />
-                <View style={styles.quantityQuickButtons}>
-                  {quantityOptions.map((g) => (
+              {/* Row 2: first-try badge + food name input (hero) */}
+              {isFirstTry && (
+                <Text style={{ color: meta.tone, fontSize: 11, fontWeight: '700', marginBottom: 6 }}>
+                  {firstTryLabel[lang] ?? firstTryLabel.en}
+                </Text>
+              )}
+              <Input
+                label=""
+                value={foodName}
+                onChangeText={setFoodName}
+                placeholder={lang === 'fr' ? 'Pomme, compote, quinoa…' : lang === 'es' ? 'Manzana, compota…' : lang === 'nl' ? 'Appel, compote…' : 'Apple, compote, quinoa…'}
+              />
+
+              {/* Row 3: Preset chips (compact icon + label) */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+                {foodPresets.map((preset) => {
+                  const active = selectedPreset?.value === preset.value;
+                  return (
                     <Pressable
-                      key={g}
-                      onPress={() => setQuantityGrams(String(g))}
-                      style={[styles.quickQuantityBtn, quantityGrams === String(g) && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                      key={preset.value}
+                      onPress={() => setFoodName(active ? '' : preset.value)}
+                      style={[styles.foodPresetPill, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
                     >
-                      <Text style={[styles.quickQuantityText, quantityGrams === String(g) && { color: meta.tone, fontWeight: '900' }]}>
-                        {g}g
+                      <Text style={{ fontSize: 14 }}>{preset.icon}</Text>
+                      <Text style={[styles.foodPresetLabel, active && { color: meta.tone, fontWeight: '800' }]}>
+                        {getFoodLabel(preset)}
                       </Text>
                     </Pressable>
-                  ))}
-                </View>
+                  );
+                })}
               </View>
 
-              {/* How much was eaten? */}
-              <View style={{ marginBottom: 14 }}>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
-                  {t('food.howMuch')}
-                </Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {amountEatenConfig.map(({ value, emoji, color, label }) => {
-                    const active = amountEaten === value;
+              {/* Row 4: Recent chips (compact, no title) */}
+              {recentFoodEntries.length > 0 && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {recentFoodEntries.map((entry) => {
+                    const fn = (entry.payload as any).foodName as string;
+                    const prefs = foodPreferencesMap[fn];
+                    const heart = prefs && prefs.liked > prefs.disliked + prefs.neutral ? '❤️ ' : '';
+                    const active = foodName === fn;
                     return (
                       <Pressable
-                        key={value}
-                        onPress={() => setAmountEaten(active ? null : value)}
-                        style={{ flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center', gap: 5, borderWidth: active ? 2 : 1, borderColor: active ? color : colors.border, backgroundColor: active ? `${color}20` : 'transparent' }}
+                        key={entry.id}
+                        onPress={() => setFoodName(fn)}
+                        style={[styles.recentFoodChip, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
                       >
-                        <Text style={{ fontSize: 24 }}>{emoji}</Text>
-                        <Text style={{ color: active ? color : colors.muted, fontSize: 10, fontWeight: active ? '800' : '400', textAlign: 'center' }}>
-                          {label}
+                        <Text style={[styles.recentFoodChipText, active && { color: meta.tone }]}>
+                          {heart}{fn}
                         </Text>
                       </Pressable>
                     );
                   })}
                 </View>
+              )}
+
+              {/* Row 5: Quantity preset chips (compact, no input field) */}
+              <View style={{ flexDirection: 'row', gap: 6, marginTop: 14, alignItems: 'center' }}>
+                <Text style={{ color: colors.muted, fontSize: 11, fontWeight: '600' }}>g</Text>
+                {quantityOptions.map((g) => {
+                  const active = quantityGrams === String(g);
+                  return (
+                    <Pressable
+                      key={g}
+                      onPress={() => setQuantityGrams(active ? '' : String(g))}
+                      style={[styles.qtyChip, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
+                    >
+                      <Text style={[styles.qtyChipText, active && { color: meta.tone, fontWeight: '800' }]}>{g}</Text>
+                    </Pressable>
+                  );
+                })}
+                {recommendedQty && !quantityOptions.includes(recommendedQty) && (
+                  <Pressable
+                    onPress={() => setQuantityGrams(String(recommendedQty))}
+                    style={[styles.qtyChip, { borderStyle: 'dashed' }, quantityGrams === String(recommendedQty) && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
+                  >
+                    <Text style={[styles.qtyChipText, quantityGrams === String(recommendedQty) && { color: meta.tone, fontWeight: '800' }]}>{recommendedQty}✓</Text>
+                  </Pressable>
+                )}
               </View>
 
-              {/* How did it go? */}
-              <View style={{ marginBottom: 14 }}>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
-                  {likedLabel[lang] ?? likedLabel.en}
+              {/* Row 6: Expandable "more" — reactions / allergies */}
+              <Pressable
+                onPress={() => setFoodMoreOpen((v) => !v)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingVertical: 8 }}
+              >
+                <Ionicons name={foodMoreOpen ? 'chevron-up-outline' : 'chevron-down-outline'} size={13} color={foodAllergies.length > 0 ? '#E74C3C' : colors.muted} />
+                <Text style={{ color: foodAllergies.length > 0 ? '#E74C3C' : colors.muted, fontSize: 12, fontWeight: foodAllergies.length > 0 ? '700' : '400' }}>
+                  {foodMoreOpen ? (lessLabel[lang] ?? lessLabel.en) : (foodAllergies.length > 0 ? `⚠️ ${foodAllergies.length}` : (moreLabel[lang] ?? moreLabel.en))}
                 </Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {(['yes', 'neutral', 'no'] as const).map((val) => {
-                    const active = foodLiked === val;
-                    const emoji = val === 'yes' ? '😍' : val === 'neutral' ? '😐' : '😣';
-                    return (
-                      <Pressable
-                        key={val}
-                        onPress={() => setFoodLiked(active ? null : val)}
-                        style={{
-                          flex: 1,
-                          paddingVertical: 14,
-                          borderRadius: 12,
-                          alignItems: 'center',
-                          gap: 4,
-                          borderWidth: active ? 2 : 1,
-                          borderColor: active ? meta.tone : colors.border,
-                          backgroundColor: active ? meta.toneSoft : 'transparent',
-                        }}
-                      >
-                        <Text style={{ fontSize: 24 }}>{emoji}</Text>
-                        <Text style={{ color: active ? meta.tone : colors.muted, fontSize: 11, fontWeight: active ? '700' : '400' }}>
-                          {likedLabels[val][lang] ?? likedLabels[val].en}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Reactions */}
-              <View>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
-                  {reactionLabel[lang] ?? reactionLabel.en}
-                </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              </Pressable>
+              {foodMoreOpen && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
                   {reactionOptions.map(({ emoji, value, labels }) => {
                     const active = foodAllergies.includes(value);
                     return (
                       <Pressable
                         key={value}
                         onPress={() => setFoodAllergies(active ? foodAllergies.filter((a) => a !== value) : [...foodAllergies, value])}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 6,
-                          paddingHorizontal: 12,
-                          paddingVertical: 10,
-                          borderRadius: 10,
-                          borderWidth: active ? 2 : 1,
-                          borderColor: active ? '#E74C3C' : colors.border,
-                          backgroundColor: active ? 'rgba(231,76,60,0.12)' : 'transparent',
-                        }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 20, minHeight: 36, borderWidth: active ? 2 : 1, borderColor: active ? '#E74C3C' : colors.border, backgroundColor: active ? 'rgba(231,76,60,0.12)' : 'transparent' }}
                       >
-                        <Text style={{ fontSize: 16 }}>{emoji}</Text>
-                        <Text style={{ color: active ? '#E74C3C' : colors.muted, fontWeight: active ? '700' : '500', fontSize: 13 }}>
+                        <Text style={{ fontSize: 13 }}>{emoji}</Text>
+                        <Text style={{ color: active ? '#E74C3C' : colors.muted, fontSize: 12, fontWeight: active ? '700' : '400' }}>
                           {labels[lang] ?? labels.en}
                         </Text>
                       </Pressable>
                     );
                   })}
                 </View>
-              </View>
+              )}
             </View>
           );
         })()}
@@ -1846,42 +1675,73 @@ export default function EntryComposerScreen() {
         />
       )}
 
-      {/* Food "Add another / Go Home" modal */}
+      {/* Food done sheet — lightweight with optional emoji feedback */}
       <Modal visible={showFoodDoneModal} animationType="slide" transparent statusBarTranslucent>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' }}>
-          <View style={{ backgroundColor: theme.bgCard, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 28, paddingBottom: Math.max(44, insets.bottom + 24), gap: 0 }}>
-            <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: `${meta.tone}22`, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <Text style={{ fontSize: 36 }}>🍽️</Text>
-              </View>
-              <Text style={{ color: theme.textPrimary, fontSize: 22, fontWeight: '800', textAlign: 'center', letterSpacing: -0.3 }}>
-                {t('food.savedTitle')}
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' }}>
+          <View style={{ backgroundColor: theme.bgCard, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 24, paddingBottom: Math.max(44, insets.bottom + 20) }}>
+            {/* Saved header */}
+            <View style={{ marginBottom: 18 }}>
+              <Text style={{ color: theme.textPrimary, fontSize: 16, fontWeight: '800', letterSpacing: -0.2 }}>
+                {'✅ '}{lastSavedFood.name || t('food.savedTitle')}
               </Text>
-              {(lastSavedFood.name || lastSavedFood.grams) ? (
-                <Text style={{ color: theme.textMuted, fontSize: 14, textAlign: 'center', marginTop: 6 }}>
-                  {[lastSavedFood.name, lastSavedFood.grams ? `${lastSavedFood.grams}g` : ''].filter(Boolean).join(' · ')}
+              {(lastSavedFood.grams || lastSavedFood.mealTimeVal) ? (
+                <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 3 }}>
+                  {[lastSavedFood.grams ? `${lastSavedFood.grams}g` : '', lastSavedFood.mealTimeVal ? ({'breakfast':'🌅','lunch':'🌞','snack':'🍪','dinner':'🌙'} as Record<string,string>)[lastSavedFood.mealTimeVal] ?? '' : ''].filter(Boolean).join('  ')}
                 </Text>
-              ) : (
-                <Text style={{ color: theme.textMuted, fontSize: 14, textAlign: 'center', marginTop: 6 }}>
-                  {t('food.savedSubtitle')}
-                </Text>
-              )}
+              ) : null}
             </View>
+
+            {/* Emoji feedback — optional, non-intrusive */}
+            <Text style={{ color: theme.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 10 }}>
+              {language === 'fr' ? 'Comment c\'était ?' : language === 'es' ? '¿Cómo estuvo?' : language === 'nl' ? 'Hoe was het?' : 'How was it?'}
+            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 22 }}>
+              {([
+                { emoji: '😋', foodLiked: 'yes' as const, amountEaten: 'all' as const },
+                { emoji: '😊', foodLiked: 'yes' as const, amountEaten: 'half' as const },
+                { emoji: '😐', foodLiked: 'neutral' as const, amountEaten: 'half' as const },
+                { emoji: '😕', foodLiked: 'no' as const, amountEaten: 'little' as const },
+                { emoji: '🤢', foodLiked: 'no' as const, amountEaten: 'none' as const },
+              ]).map(({ emoji, foodLiked: fl, amountEaten: ae }) => {
+                const selected = feedbackSelectedEmoji === emoji;
+                return (
+                  <Pressable
+                    key={emoji}
+                    onPress={() => {
+                      setFeedbackSelectedEmoji(emoji);
+                      if (lastSavedFoodEntryId) {
+                        const entry = entries.find((e) => e.id === lastSavedFoodEntryId);
+                        if (entry) {
+                          void updateEntry(lastSavedFoodEntryId, { payload: { ...entry.payload, foodLiked: fl, amountEaten: ae } });
+                        }
+                      }
+                    }}
+                    style={({ pressed }) => ({
+                      width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: selected ? `${meta.tone}28` : 'transparent',
+                      borderWidth: selected ? 2 : 0,
+                      borderColor: meta.tone,
+                      transform: [{ scale: pressed ? 0.88 : selected ? 1.12 : 1 }],
+                    })}
+                  >
+                    <Text style={{ fontSize: 26 }}>{emoji}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Actions */}
             <Pressable
               onPress={() => { setShowFoodDoneModal(false); resetFoodForm(); }}
-              style={{ backgroundColor: meta.tone, borderRadius: 18, paddingVertical: 17, alignItems: 'center', marginBottom: 10 }}
+              style={({ pressed }) => ({ backgroundColor: meta.tone, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginBottom: 8, opacity: pressed ? 0.88 : 1 })}
             >
-              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 16, letterSpacing: 0.2 }}>
-                + {t('food.addAnother')}
-              </Text>
+              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 15 }}>+ {t('food.addAnother')}</Text>
             </Pressable>
             <Pressable
               onPress={() => { setShowFoodDoneModal(false); router.back(); }}
-              style={{ borderRadius: 18, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: theme.border }}
+              style={({ pressed }) => ({ borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: theme.border, opacity: pressed ? 0.7 : 1 })}
             >
-              <Text style={{ color: theme.textPrimary, fontWeight: '600', fontSize: 16 }}>
-                {t('food.goHome')}
-              </Text>
+              <Text style={{ color: theme.textPrimary, fontWeight: '600', fontSize: 15 }}>{t('food.goHome')}</Text>
             </Pressable>
           </View>
         </View>
@@ -2592,11 +2452,52 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#21262D',
     backgroundColor: '#1C2128',
+    minHeight: 36,
+    justifyContent: 'center',
   },
   recentFoodChipText: {
     color: '#F0F6FC',
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  foodPresetPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+    minHeight: 36,
+  },
+  foodPresetLabel: {
+    color: '#F0F6FC',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  qtyChip: {
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#21262D',
+    backgroundColor: '#1C2128',
+    minHeight: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qtyChipText: {
+    color: '#F0F6FC',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  todayCountBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
   },
   quantityQuickButtons: {
     flexDirection: 'row',
