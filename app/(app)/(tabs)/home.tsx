@@ -944,37 +944,107 @@ export default function HomeScreen() {
             </Pressable>
           </Animated.View>
 
-          {/* 3. Quick context - Last feed stats */}
-          <Animated.View entering={FadeInDown.duration(260).delay(100)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1, paddingHorizontal: 14, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
-                <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 6 }}>
-                  {t('feeding.lastFeeding')}
-                </Text>
-                <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700', letterSpacing: -0.5, marginBottom: 4 }}>{lastFeedTime}</Text>
-                <Text style={{ color: SOFT, fontSize: 11 }}>
-                  {lastFeedAmount} {lastFeed?.payload?.mode === 'bottle' ? 'ml' : 'min'} · {lastFeedType}
-                </Text>
-                {nightFeeds.length > 0 && (
-                  <Text style={{ color: BLUE, fontSize: 11, fontWeight: '700', marginTop: 5 }}>
-                    🌙 {nightFeeds.length} {t('feeding.nightFeeds')}
-                  </Text>
-                )}
-              </View>
-              <View style={{ flex: 1, paddingHorizontal: 14, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: elapsedHours !== null && elapsedHours >= 3 ? `${RED}55` : BORDER, backgroundColor: CARD }}>
-                <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 6 }}>
-                  {t('feeding.timeSinceLast')}
-                </Text>
-                <Text style={{ color: elapsedColor, fontSize: 22, fontWeight: '700', letterSpacing: -0.5, marginBottom: 4 }}>{timeSinceLastFeed}</Text>
-                <Text style={{ color: SOFT, fontSize: 11 }}>
-                  {nextFeedDueIn !== null
-                    ? nextFeedDueIn > 0
-                      ? `${t('feeding.nextIn')} ${formatRelative(new Date(Date.now() + nextFeedDueIn).toISOString(), locale)}`
-                      : t('feeding.feedNow')
-                    : t('feeding.elapsed')}
-                </Text>
-              </View>
+          {/* 3. Today at a glance — compact 3-metric strip */}
+          <Animated.View entering={FadeInDown.duration(260).delay(100)} style={{ paddingHorizontal: 20, marginBottom: 14 }}>
+            <View style={{ flexDirection: 'row', borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD, overflow: 'hidden' }}>
+              {[
+                { emoji: '🍼', value: summary.today.feedCount > 0 ? String(summary.today.feedCount) : '–', label: t('insights.feeds') },
+                {
+                  emoji: '😴',
+                  value: summary.today.sleepMinutes > 0
+                    ? Math.floor(summary.today.sleepMinutes / 60) > 0
+                      ? `${Math.floor(summary.today.sleepMinutes / 60)}h`
+                      : `${summary.today.sleepMinutes}m`
+                    : '–',
+                  label: t('insights.sleep'),
+                },
+                { emoji: '🧷', value: summary.today.diaperCount > 0 ? String(summary.today.diaperCount) : '–', label: t('insights.diapers') },
+              ].map((item, idx, arr) => (
+                <View
+                  key={item.label}
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    borderRightWidth: idx < arr.length - 1 ? 1 : 0,
+                    borderRightColor: BORDER,
+                  }}
+                >
+                  <Text style={{ fontSize: 18, marginBottom: 2 }}>{item.emoji}</Text>
+                  <Text style={{ color: TEXT, fontSize: 17, fontWeight: '700', letterSpacing: -0.3 }}>{item.value}</Text>
+                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500', marginTop: 1 }}>{item.label}</Text>
+                </View>
+              ))}
             </View>
+          </Animated.View>
+
+          {/* 4. Quick-add grid — above fold for instant access */}
+          <Animated.View entering={FadeInDown.duration(260).delay(120)} style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+            <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 10, paddingHorizontal: 2 }}>
+              {t('home.addEntry')}
+            </Text>
+            {(() => {
+              const actions = [
+                { type: 'diaper', label: t('entry.diaper'), color: '#F59E0B' },
+                { type: 'temperature', label: t('entry.temperature'), color: '#EF4444' },
+                { type: 'vaccine', label: t('entry.vaccine'), color: '#22C55E' },
+                { type: 'symptom', label: t('entry.symptoms'), color: '#EC4899' },
+                { type: 'food', label: t('entry.food'), color: '#D97706' },
+                { type: 'medication', label: t('entry.medicine'), color: '#06B6D4' },
+                { type: 'measurement', label: t('entry.measurement'), color: '#8B5CF6' },
+                { type: 'sleep', label: t('entry.sleep'), color: '#3B82F6' },
+              ];
+              const renderRow = (rowItems: typeof actions, isFirst: boolean) => (
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: isFirst ? 0 : 8 }}>
+                  {rowItems.map((action) => (
+                    <Pressable
+                      key={action.type}
+                      onPress={() => router.push(`/entry/${action.type}` as any)}
+                      style={({ pressed }) => ({
+                        flex: 1,
+                        aspectRatio: 1,
+                        borderRadius: 16,
+                        backgroundColor: pressed ? `${action.color}12` : CARD,
+                        borderWidth: 1,
+                        borderColor: pressed ? `${action.color}55` : BORDER,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 7,
+                        paddingHorizontal: 5,
+                        shadowColor: '#000',
+                        shadowOpacity: pressed ? 0.08 : 0.14,
+                        shadowRadius: pressed ? 8 : 12,
+                        shadowOffset: { width: 0, height: pressed ? 2 : 4 },
+                        elevation: pressed ? 1 : 3,
+                        transform: [{ scale: pressed ? 0.98 : 1 }],
+                      })}
+                    >
+                      <View
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: 14,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: `${action.color}14`,
+                          borderWidth: 1,
+                          borderColor: `${action.color}22`,
+                        }}
+                      >
+                        {GetEntryIcon(action.type, 29, action.color)}
+                      </View>
+                      <Text style={{ color: TEXT_SECONDARY, fontSize: 10.5, fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{action.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              );
+              return (
+                <>
+                  {renderRow(actions.slice(0, 4), true)}
+                  {renderRow(actions.slice(4, 8), false)}
+                </>
+              );
+            })()}
           </Animated.View>
 
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
@@ -1275,80 +1345,7 @@ export default function HomeScreen() {
           </Animated.View>
 
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {/* ZONE 4 — QUICK ADD (secondary entries)                 */}
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-
-          {/* 9. Quick add grid - exactly 2 rows × 4 buttons */}
-          <Animated.View entering={FadeInDown.duration(260).delay(260)} style={{ paddingHorizontal: 20, marginBottom: 16 }}>
-            <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 10, paddingHorizontal: 2 }}>
-              {t('home.addEntry')}
-            </Text>
-            {(() => {
-              const actions = [
-                { type: 'diaper', label: t('entry.diaper'), color: '#F59E0B' },
-                { type: 'temperature', label: t('entry.temperature'), color: '#EF4444' },
-                { type: 'vaccine', label: t('entry.vaccine'), color: '#22C55E' },
-                { type: 'symptom', label: t('entry.symptoms'), color: '#EC4899' },
-                { type: 'food', label: t('entry.food'), color: '#D97706' },
-                { type: 'medication', label: t('entry.medicine'), color: '#06B6D4' },
-                { type: 'measurement', label: t('entry.measurement'), color: '#8B5CF6' },
-                { type: 'sleep', label: t('entry.sleep'), color: '#3B82F6' },
-              ];
-              const renderRow = (rowItems: typeof actions, isFirst: boolean) => (
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: isFirst ? 0 : 8 }}>
-                  {rowItems.map((action) => (
-                    <Pressable
-                      key={action.type}
-                      onPress={() => router.push(`/entry/${action.type}` as any)}
-                      style={({ pressed }) => ({
-                        flex: 1,
-                        aspectRatio: 1,
-                        borderRadius: 16,
-                        backgroundColor: pressed ? `${action.color}12` : CARD,
-                        borderWidth: 1,
-                        borderColor: pressed ? `${action.color}55` : BORDER,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 7,
-                        paddingHorizontal: 5,
-                        shadowColor: '#000',
-                        shadowOpacity: pressed ? 0.08 : 0.14,
-                        shadowRadius: pressed ? 8 : 12,
-                        shadowOffset: { width: 0, height: pressed ? 2 : 4 },
-                        elevation: pressed ? 1 : 3,
-                        transform: [{ scale: pressed ? 0.98 : 1 }],
-                      })}
-                    >
-                      <View
-                        style={{
-                          width: 38,
-                          height: 38,
-                          borderRadius: 14,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: `${action.color}14`,
-                          borderWidth: 1,
-                          borderColor: `${action.color}22`,
-                        }}
-                      >
-                        {GetEntryIcon(action.type, 29, action.color)}
-                      </View>
-                      <Text style={{ color: TEXT_SECONDARY, fontSize: 10.5, fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{action.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              );
-              return (
-                <>
-                  {renderRow(actions.slice(0, 4), true)}
-                  {renderRow(actions.slice(4, 8), false)}
-                </>
-              );
-            })()}
-          </Animated.View>
-
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {/* ZONE 5 — HISTORY & REFERENCE (scroll for details)      */}
+          {/* ZONE 4 — HISTORY & REFERENCE (scroll for details)      */}
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
           {/* 10. Recent activity - unified timeline (most useful history) */}

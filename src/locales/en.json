@@ -321,6 +321,7 @@
     "emailLabel": "Email",
     "emailUnknown": "No email available",
     "profileSyncMessage": "Local family data is now in sync across the app.",
+    "summaryScheduled": "Daily summary scheduled",
     "summaryNotificationId": "Notification ID: ",
     "couldNotSchedule": "Could not schedule summary",
     "checkNotifications": "Please check notification permissions.",

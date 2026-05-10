@@ -321,6 +321,7 @@
     "emailLabel": "Correo electrónico",
     "emailUnknown": "Correo no disponible",
     "profileSyncMessage": "Los datos familiares locales ahora están sincronizados en toda la aplicación.",
+    "summaryScheduled": "Resumen diario programado",
     "summaryNotificationId": "ID de notificación: ",
     "couldNotSchedule": "No se pudo programar el resumen",
     "checkNotifications": "Por favor verifica los permisos de notificación.",
