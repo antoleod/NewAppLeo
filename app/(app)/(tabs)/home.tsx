@@ -11,7 +11,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Page, SkeletonCard } from '@/components/ui';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
@@ -208,6 +208,7 @@ export default function HomeScreen() {
   const { profile, user } = useAuth();
   const { entries, summary, addEntry, loading } = useAppData();
   const { theme, colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const BG = colors.background;
   const CARD = theme.bgCard;
@@ -821,7 +822,7 @@ export default function HomeScreen() {
   return (
     <Page contentStyle={styles.pageContent}>
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-        <View style={{ paddingBottom: 80 }}>
+        <View style={{ paddingBottom: Math.max(100, insets.bottom + 80) }}>
           {/* Premium Compact Header */}
           <Animated.View entering={FadeIn.duration(300)} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 }}>
             {/* Top row: greeting + settings */}
@@ -836,16 +837,20 @@ export default function HomeScreen() {
               </View>
               <Pressable
                 onPress={() => setShowHomeCustomizer(true)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
                   borderWidth: 1,
                   borderColor: BORDER,
                   backgroundColor: pressed ? BORDER_SOFT : CARD,
                   alignItems: 'center',
                   justifyContent: 'center',
+                  transform: [{ scale: pressed ? 0.92 : 1 }],
                 })}
+                accessibilityRole="button"
+                accessibilityLabel="Settings"
               >
                 <Ionicons name="settings-outline" size={18} color={TEXT_SECONDARY} />
               </Pressable>
@@ -896,40 +901,46 @@ export default function HomeScreen() {
           <Animated.View entering={FadeInDown.duration(260).delay(80)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
             <Pressable
               onPress={() => startQuickTimer('bottle')}
+              accessibilityRole="button"
               style={({ pressed }) => ({
                 width: '100%',
-                height: 62,
-                borderRadius: 16,
-                backgroundColor: pressed ? `${TEXT}CC` : TEXT,
+                height: 64,
+                borderRadius: 18,
+                backgroundColor: pressed ? `${TEXT}D9` : TEXT,
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexDirection: 'row',
                 gap: 10,
-                marginBottom: 8,
+                marginBottom: 10,
                 shadowColor: '#000',
-                shadowOpacity: 0.18,
-                shadowRadius: 12,
-                shadowOffset: { width: 0, height: 4 },
-                elevation: 5,
+                shadowOpacity: 0.22,
+                shadowRadius: 14,
+                shadowOffset: { width: 0, height: 5 },
+                elevation: 6,
+                transform: [{ scale: pressed ? 0.97 : 1 }],
               })}
             >
-              <Text style={{ fontSize: 22 }}>🍼</Text>
-              <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', letterSpacing: 0.2 }}>{t('feeding.bottle')}</Text>
-              <View style={{ position: 'absolute', right: 16 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, fontWeight: '600' }}>{quickAmount} ml</Text>
+              <Text style={{ fontSize: 24 }}>🍼</Text>
+              <Text style={{ color: '#0D1117', fontSize: 17, fontWeight: '800', letterSpacing: 0.1 }}>{t('feeding.bottle')}</Text>
+              <View style={{ position: 'absolute', right: 16, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={{ color: 'rgba(0,0,0,0.45)', fontSize: 13, fontWeight: '700' }}>{quickAmount} ml</Text>
               </View>
             </Pressable>
             <Pressable
               onPress={() => setShowNextFeedPicker(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
               style={({ pressed }) => ({
                 alignSelf: 'center',
-                paddingHorizontal: 14,
-                paddingVertical: 5,
-                borderRadius: 10,
-                opacity: pressed ? 0.4 : 0.55,
+                paddingHorizontal: 18,
+                paddingVertical: 9,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: pressed ? ACCENT + '66' : BORDER,
+                backgroundColor: pressed ? ACCENT + '10' : 'transparent',
               })}
+              accessibilityRole="button"
             >
-              <Text style={{ color: MUTED, fontSize: 12, fontWeight: '600' }}>🤱 {t('feeding.breast')}</Text>
+              <Text style={{ color: MUTED, fontSize: 13, fontWeight: '600' }}>🤱 {t('feeding.breast')}</Text>
             </Pressable>
           </Animated.View>
 

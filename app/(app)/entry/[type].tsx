@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
@@ -186,6 +187,7 @@ function DiaperVolumeSlider({ emoji, value, onChange, color }: DiaperVolumeSlide
 export default function EntryComposerScreen() {
   const { colors, theme } = useTheme();
   const { language } = useLocale();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string }>();
   const { entries, addEntry, updateEntry, deleteEntry, entryById } = useAppData();
@@ -774,18 +776,25 @@ export default function EntryComposerScreen() {
   const showDateTime = type !== 'diaper';
 
   return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
     <Page>
       <View style={styles.heroCard}>
         <View style={styles.heroTopRow}>
           <View style={styles.heroLeftContent}>
             <View style={[styles.heroIcon, { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-              <Ionicons name={meta.icon} size={34} color={meta.tone} />
+              <Ionicons name={meta.icon} size={28} color={meta.tone} />
             </View>
-            <Text style={styles.heroEyebrow}>Composer</Text>
+            <Text style={styles.heroEyebrow}>{t('entry.composer')}</Text>
             <Text style={styles.heroTitle}>{typeLabels[type]}</Text>
           </View>
-          <Pressable onPress={() => router.back()} style={styles.closeButton}>
-            <Text style={styles.closeButtonLabel}>?</Text>
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={({ pressed }) => [styles.closeButton, { opacity: pressed ? 0.6 : 1, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <Ionicons name="close" size={20} color={colors.text} />
           </Pressable>
         </View>
       </View>
@@ -1220,9 +1229,9 @@ export default function EntryComposerScreen() {
         {type === 'diaper' && (
           <View style={styles.sectionCard}>
             <View style={styles.diaperMinimalStack}>
-              <DiaperVolumeSlider emoji="??" value={Number(pee)} onChange={(val) => setPee(String(val))} color="#58A6FF" />
-              <DiaperVolumeSlider emoji="??" value={Number(poop)} onChange={(val) => setPoop(String(val))} color="#A371F7" />
-              <DiaperVolumeSlider emoji="??" value={Number(vomit)} onChange={(val) => setVomit(String(val))} color="#F0B85A" />
+              <DiaperVolumeSlider emoji="\u{1F4A7}" value={Number(pee)} onChange={(val) => setPee(String(val))} color="#58A6FF" />
+              <DiaperVolumeSlider emoji="\u{1F4A9}" value={Number(poop)} onChange={(val) => setPoop(String(val))} color="#A371F7" />
+              <DiaperVolumeSlider emoji="\u{1F92E}" value={Number(vomit)} onChange={(val) => setVomit(String(val))} color="#F0B85A" />
             </View>
           </View>
         )}
@@ -1619,15 +1628,15 @@ export default function EntryComposerScreen() {
               <View style={styles.tempStatusContainer}>
                 {Number(vaccineTemp) < 37.5 ? (
                   <View style={[styles.tempStatus, { backgroundColor: 'rgba(63,185,80,0.16)', borderColor: '#3FB950' }]}>
-                    <Text style={[styles.tempStatusText, { color: '#3FB950' }]}>? {language === 'fr' ? 'Normal' : 'Normal'}</Text>
+                    <Text style={[styles.tempStatusText, { color: '#3FB950' }]}>{"✅"} Normal</Text>
                   </View>
                 ) : Number(vaccineTemp) < 38 ? (
                   <View style={[styles.tempStatus, { backgroundColor: 'rgba(242,200,111,0.16)', borderColor: '#F2C86F' }]}>
-                    <Text style={[styles.tempStatusText, { color: '#F2C86F' }]}>? {language === 'fr' ? 'Febrícula' : 'Mild fever'}</Text>
+                    <Text style={[styles.tempStatusText, { color: '#F2C86F' }]}>{"⚠️"} {language === 'fr' ? 'Fébricule' : language === 'es' ? 'Febrícula' : language === 'nl' ? 'Lichte koorts' : 'Mild fever'}</Text>
                   </View>
                 ) : (
                   <View style={[styles.tempStatus, { backgroundColor: 'rgba(231,76,60,0.16)', borderColor: '#E74C3C' }]}>
-                    <Text style={[styles.tempStatusText, { color: '#E74C3C' }]}>?? {language === 'fr' ? 'Fievre' : 'Fever'}</Text>
+                    <Text style={[styles.tempStatusText, { color: '#E74C3C' }]}>{"🔥"} {language === 'fr' ? 'Fièvre' : language === 'es' ? 'Fiebre' : language === 'nl' ? 'Koorts' : 'Fever'}</Text>
                   </View>
                 )}
               </View>
@@ -1725,7 +1734,7 @@ export default function EntryComposerScreen() {
       </Card>
 
       {/* Sticky Footer Actions */}
-      <View style={[styles.actionsStickyContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+      <View style={[styles.actionsStickyContainer, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Math.max(20, insets.bottom + 10) }]}>
         {!((type === 'sleep' || type === 'pump') && !editing) && (
           <Pressable
             onPress={saving ? undefined : () => void handlePrimarySave()}
@@ -1840,7 +1849,7 @@ export default function EntryComposerScreen() {
       {/* Food "Add another / Go Home" modal */}
       <Modal visible={showFoodDoneModal} animationType="slide" transparent statusBarTranslucent>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' }}>
-          <View style={{ backgroundColor: theme.bgCard, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 44, gap: 0 }}>
+          <View style={{ backgroundColor: theme.bgCard, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 28, paddingBottom: Math.max(44, insets.bottom + 24), gap: 0 }}>
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
               <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: `${meta.tone}22`, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
                 <Text style={{ fontSize: 36 }}>🍽️</Text>
@@ -1893,6 +1902,7 @@ export default function EntryComposerScreen() {
         </View>
       )}
     </Page>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1929,9 +1939,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   heroEyebrow: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.8,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
     color: '#8B949E',
     flexShrink: 0,
@@ -1943,9 +1953,9 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#1C2128',
@@ -2098,25 +2108,31 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   quickChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#21262D',
     backgroundColor: '#1C2128',
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   quickChipText: {
     color: '#F0F6FC',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
   symptomChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#21262D',
     backgroundColor: '#1C2128',
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   symptomChipText: {
     color: '#F0F6FC',
@@ -2426,11 +2442,13 @@ const styles = StyleSheet.create({
   tempPreset: {
     flex: 1,
     paddingVertical: 10,
+    minHeight: 44,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#21262D',
     backgroundColor: '#1C2128',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   tempPresetText: {
     color: '#F0F6FC',
@@ -2549,8 +2567,11 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   notesToggle: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   ageWarningBox: {
     paddingHorizontal: 12,
