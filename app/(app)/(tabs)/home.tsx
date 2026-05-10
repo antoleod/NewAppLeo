@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -67,7 +68,7 @@ function hoursSince(timestamp?: string) {
   return Math.max(0, (Date.now() - new Date(timestamp).getTime()) / 36e5);
 }
 
-function formatRelative(timestamp: string | undefined, _locale: string) {
+function formatRelative(timestamp: string | undefined, locale: string) {
   const hours = hoursSince(timestamp);
   if (hours === null) return '--';
   if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} min`;
@@ -76,7 +77,8 @@ function formatRelative(timestamp: string | undefined, _locale: string) {
     const m = Math.round((hours - h) * 60);
     return `${h}h${String(m).padStart(2, '0')}`;
   }
-  return `${Math.round(hours / 24)} j`;
+  const dayAbbr = locale.startsWith('fr') ? 'j' : 'd';
+  return `${Math.round(hours / 24)} ${dayAbbr}`;
 }
 
 function formatClock(timestamp: string | undefined, locale: string) {
@@ -117,13 +119,6 @@ function getPinnedVaccines(entries: EntryRecord[]) {
       return dateA - dateB;
     })
     .slice(0, 3);
-}
-
-function getVaccineHistory(entries: EntryRecord[]) {
-  return entries
-    .filter((e) => e.type === 'vaccine')
-    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
-    .slice(0, 5);
 }
 
 function getLastFood(entries: EntryRecord[]) {
@@ -296,7 +291,7 @@ export default function HomeScreen() {
   const GREEN = theme.green;
   const BLUE = theme.blue;
   const RED = theme.red;
-  const YELLOW = theme.red;
+  const YELLOW = '#F2C86F';
 
   const getHealthStatus = (entries: EntryRecord[]) => {
     const lastTemp = entries.find((e) => e.type === 'temperature' || (e.type === 'measurement' && e.payload?.tempC));
@@ -551,7 +546,6 @@ export default function HomeScreen() {
   const hasHealthData = healthStatus.status !== 'unknown';
   const weightMeasurements = useMemo(() => getWeightMeasurements(entries), [entries]);
   const pinnedVaccines = useMemo(() => getPinnedVaccines(entries), [entries]);
-  const vaccineHistory = useMemo(() => getVaccineHistory(entries), [entries]);
   const lastFood = useMemo(() => getLastFood(entries), [entries]);
   const foodTodayCount = useMemo(() => getFoodTodayCount(entries), [entries]);
   const foodAllergyAlerts = useMemo(() => getFoodAllergyAlerts(entries), [entries]);
@@ -574,7 +568,7 @@ export default function HomeScreen() {
   const weeklyBottleTrend = useMemo(() => {
     const now = Date.now();
     const weekMs = 7 * 24 * 60 * 60 * 1000;
-    const bottleFeeds = feedEntries.filter((e) => e.payload?.mode === 'bottle' || e.type === 'feed');
+    const bottleFeeds = feedEntries.filter((e) => e.payload?.mode === 'bottle');
     const thisWeek = bottleFeeds.filter((e) => now - new Date(e.occurredAt).getTime() < weekMs);
     const lastWeek = bottleFeeds.filter((e) => {
       const age = now - new Date(e.occurredAt).getTime();
@@ -615,9 +609,25 @@ export default function HomeScreen() {
       const activeBaby = await getActiveBaby();
       if (!activeBaby) return;
       setBabyId(activeBaby.id);
-      setHydration(await getMomHydration(activeBaby.id));
+      const hydrationDateKey = `appleo.momHydrationDate:${activeBaby.id}`;
+      const storedHydrationDate = await AsyncStorage.getItem(hydrationDateKey);
+      const todayDate = new Date().toISOString().slice(0, 10);
+      let currentHydration: number;
+      if (storedHydrationDate !== todayDate) {
+        currentHydration = 0;
+        await setMomHydration(activeBaby.id, 0);
+        await AsyncStorage.setItem(hydrationDateKey, todayDate);
+      } else {
+        currentHydration = await getMomHydration(activeBaby.id);
+      }
+      setHydration(currentHydration);
       setVisibility(await getModuleVisibility());
-      setAppSettingsState(await getAppSettings());
+      const settings = await getAppSettings();
+      setAppSettingsState(settings);
+      const storedFeedingMode = (settings as any).defaultFeedingMode;
+      if (storedFeedingMode === 'breast' || storedFeedingMode === 'bottle') {
+        setDefaultFeedingMode(storedFeedingMode);
+      }
       setDeviceDisplayName(await getDeviceDisplayName());
       setQuickAmount(await getLastBottleAmount());
     };
@@ -658,14 +668,7 @@ export default function HomeScreen() {
     if (!timerStartedAt) return;
     await addEntry({
       type: 'feed',
-      title:
-        quickTimerMode === 'breast'
-          ? quickFeedSide === 'both'
-            ? 'Breast feed both'
-            : quickFeedSide === 'right'
-              ? 'Breast feed right'
-              : 'Breast feed left'
-          : 'Bottle feed',
+      title: quickTimerMode === 'breast' ? t('entry.titleFeedBreast') : t('entry.titleFeedBottle'),
       occurredAt: new Date(timerStartedAt).toISOString(),
       payload:
         quickTimerMode === 'breast'
@@ -881,6 +884,8 @@ export default function HomeScreen() {
             {/* Baby chip - compact and premium */}
             <Pressable
               onPress={() => setShowBabySwitcher(true)}
+              accessibilityRole="button"
+              accessibilityLabel={activeBabyName}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -1027,6 +1032,8 @@ export default function HomeScreen() {
                     <Pressable
                       key={action.type}
                       onPress={() => router.push(`/entry/${action.type}` as any)}
+                      accessibilityRole="button"
+                      accessibilityLabel={action.label}
                       style={({ pressed }) => ({
                         flex: 1,
                         aspectRatio: 1,
@@ -1164,8 +1171,6 @@ export default function HomeScreen() {
       {alert.body}
     </Text>
   </View>
-
-  <Ionicons name="chevron-forward" size={15} color="rgba(255,255,255,0.45)" />
 </Pressable>
                   );
                 })}
@@ -1267,11 +1272,11 @@ export default function HomeScreen() {
                         <View style={{ flex: 1 }}>
                           <Text style={{ color: TEXT, fontSize: 13, fontWeight: '500' }}>{vaccine.payload?.vaccineName}</Text>
                           <Text style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>
-                            {language === 'fr' ? 'Dose ' : 'Dose '}{vaccine.payload?.vaccineDose}
+                            {t('vaccine.dose')}{vaccine.payload?.vaccineDose}
                           </Text>
                         </View>
                         <Text style={{ color: isUrgent ? YELLOW : SOFT, fontSize: 12, fontWeight: '600' }}>
-                          {daysUntil > 0 ? `${daysUntil}d` : 'Overdue'}
+                          {daysUntil > 0 ? `${daysUntil}d` : t('vaccine.overdue')}
                         </Text>
                       </Pressable>
                     );
@@ -1423,43 +1428,6 @@ export default function HomeScreen() {
                       </Pressable>
                     );
                   })}
-                </View>
-              </View>
-            </Animated.View>
-          )}
-
-          {/* 11. Vaccine history - past vaccinations */}
-          {vaccineHistory.length > 0 && (
-            <Animated.View entering={FadeInDown.duration(260).delay(405)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-              <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
-                <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600', marginBottom: 10 }}>
-                  {t('vaccine.history')}
-                </Text>
-                <View>
-                  {vaccineHistory.map((vaccine, idx) => (
-                    <Pressable
-                      key={vaccine.id}
-                      onPress={() => router.push({ pathname: '/entry/[type]', params: { type: 'vaccine', id: vaccine.id } })}
-                      style={({ pressed }) => ({
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 12,
-                        paddingVertical: 10,
-                        borderTopWidth: idx > 0 ? 1 : 0,
-                        borderTopColor: BORDER_SOFT,
-                        opacity: pressed ? 0.6 : 1,
-                      })}
-                    >
-                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT }} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '500' }}>{vaccine.payload?.vaccineName}</Text>
-                        <Text style={{ color: MUTED, fontSize: 11, marginTop: 1 }}>
-                          {t('vaccine.dose')}{vaccine.payload?.vaccineDose}
-                        </Text>
-                      </View>
-                      <Text style={{ color: SOFT, fontSize: 11, fontWeight: '500' }}>{formatClock(vaccine.occurredAt, locale)}</Text>
-                    </Pressable>
-                  ))}
                 </View>
               </View>
             </Animated.View>
@@ -1757,7 +1725,10 @@ export default function HomeScreen() {
                 <View style={{ flex: 1 }}>
                   <Button
                     label={`🤱 ${t('feeding.breast')}`}
-                    onPress={() => setDefaultFeedingMode('breast')}
+                    onPress={() => {
+                      setDefaultFeedingMode('breast');
+                      void updateAppSettings({ defaultFeedingMode: 'breast' } as any);
+                    }}
                     variant={defaultFeedingMode === 'breast' ? 'secondary' : 'ghost'}
                     size="sm"
                   />
@@ -1765,7 +1736,10 @@ export default function HomeScreen() {
                 <View style={{ flex: 1 }}>
                   <Button
                     label={`🍼 ${t('feeding.bottle')}`}
-                    onPress={() => setDefaultFeedingMode('bottle')}
+                    onPress={() => {
+                      setDefaultFeedingMode('bottle');
+                      void updateAppSettings({ defaultFeedingMode: 'bottle' } as any);
+                    }}
                     variant={defaultFeedingMode === 'bottle' ? 'secondary' : 'ghost'}
                     size="sm"
                   />
@@ -1892,11 +1866,24 @@ export default function HomeScreen() {
                   label={t('common.cancel')}
                   variant="ghost"
                   onPress={() => {
-                    setQuickTimerMode(null);
-                    setShowSaveSheet(false);
-                    setTimerStartedAt(null);
-                    setTimerElapsedSeconds(0);
-                    setQuickAmount(150);
+                    Alert.alert(
+                      t('common.cancel'),
+                      t('entry.discardSession'),
+                      [
+                        { text: t('entry.keepSession'), style: 'cancel' },
+                        {
+                          text: t('entry.discardConfirm'),
+                          style: 'destructive',
+                          onPress: () => {
+                            setQuickTimerMode(null);
+                            setShowSaveSheet(false);
+                            setTimerStartedAt(null);
+                            setTimerElapsedSeconds(0);
+                            setQuickAmount(150);
+                          },
+                        },
+                      ]
+                    );
                   }}
                 />
               </View>

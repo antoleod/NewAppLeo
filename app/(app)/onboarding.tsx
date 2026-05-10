@@ -53,29 +53,43 @@ const getZodiacSign = (date: Date, lang: string) => {
 };
 
 const pathCards: Array<{ key: OnboardingPath; title: string; body: string }> = [
-  { key: 'guest', title: 'Guest', body: 'Start quickly and keep everything local.' },
-  { key: 'pin', title: 'PIN', body: 'Quick access to the home with a local code.' },
-  { key: 'account', title: 'Account', body: 'Classic profile with local data.' },
+  { key: 'guest', title: 'Guest', body: 'No code needed. Data stays on this device.' },
+  { key: 'pin', title: 'PIN', body: 'Protect your data with a 4-digit code. Works offline.' },
+  { key: 'account', title: 'Account', body: 'Sync across devices with a cloud account.' },
 ];
 
-const getPathCards = (lang: string) => pathCards.map(p => {
-  let title = p.title;
-  let body = p.body;
-  if (lang === 'fr') {
-    if (p.key === 'guest') title = 'Invité';
-    if (p.key === 'account') title = 'Compte';
-    body = 'Commencer vite et tout garder en local.';
-  } else if (lang === 'nl') {
-    if (p.key === 'guest') title = 'Gast';
-    if (p.key === 'account') title = 'Account';
-    body = 'Begin snel en bewaar alles lokaal.';
-  } else if (lang === 'es') {
-    if (p.key === 'guest') title = 'Invitado';
-    if (p.key === 'account') title = 'Cuenta';
-    body = 'Empieza rápido y guarda todo localmente.';
-  }
-  return { ...p, title, body };
-});
+const pathBodies: Record<string, Record<string, string>> = {
+  guest: {
+    en: 'No code needed. Data stays on this device.',
+    fr: 'Aucun code requis. Données stockées sur cet appareil.',
+    nl: 'Geen code nodig. Gegevens blijven op dit apparaat.',
+    es: 'Sin código. Los datos se guardan en este dispositivo.',
+  },
+  pin: {
+    en: 'Protect your data with a 4-digit code. Works offline.',
+    fr: 'Protège tes données avec un code à 4 chiffres. Fonctionne hors ligne.',
+    nl: 'Bescherm je gegevens met een 4-cijferige code. Werkt offline.',
+    es: 'Protege tus datos con un código de 4 dígitos. Funciona sin conexión.',
+  },
+  account: {
+    en: 'Sync across devices with a cloud account.',
+    fr: 'Synchronise sur plusieurs appareils avec un compte cloud.',
+    nl: 'Synchroniseer op meerdere apparaten met een cloudaccount.',
+    es: 'Sincroniza entre dispositivos con una cuenta en la nube.',
+  },
+};
+
+const pathTitles: Record<string, Record<string, string>> = {
+  guest: { en: 'Guest', fr: 'Invité', nl: 'Gast', es: 'Invitado' },
+  pin: { en: 'PIN', fr: 'PIN', nl: 'PIN', es: 'PIN' },
+  account: { en: 'Account', fr: 'Compte', nl: 'Account', es: 'Cuenta' },
+};
+
+const getPathCards = (lang: string) => pathCards.map(p => ({
+  ...p,
+  title: pathTitles[p.key]?.[lang] ?? p.title,
+  body: pathBodies[p.key]?.[lang] ?? p.body,
+}));
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -334,7 +348,7 @@ export default function OnboardingScreen() {
       if (path === 'pin') {
         if (pin.length !== 4 || confirmPin.length !== 4 || pin !== confirmPin) {
           shake.value = withSequence(withTiming(-8, { duration: 70 }), withTiming(8, { duration: 70 }), withTiming(0, { duration: 70 }));
-          Alert.alert(t('auth.register_failed','Registration failed'), t('onboarding.pin_invalid','PIN must be 4 digits and match confirmation.'));
+          Alert.alert(t('auth.register_failed','Registration failed'), t('onboarding.pin_invalid'));
           return;
         }
         await AsyncStorage.setItem('appleo.localPin', pin);
@@ -425,7 +439,7 @@ export default function OnboardingScreen() {
           {isObjectivesStep && (
             <Pressable onPress={finishOnboarding} style={{ position: 'absolute', right: -10 * uiScale, padding: 8 }}>
               <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 * uiScale }}>
-                {t('common.skip', 'Skip')}
+                {t('common.skip')}
               </Text>
             </Pressable>
           )}
@@ -468,7 +482,7 @@ export default function OnboardingScreen() {
                 </Pressable>
               );
             })}
-            <Button label={t('common.continue', 'Continue')} onPress={next} />
+            <Button label={t('common.continue')} onPress={next} />
           </Reanimated.View>
             )}
 
@@ -498,7 +512,7 @@ export default function OnboardingScreen() {
                 );
               })}
             </View>
-            <Button label={t('common.continue', 'Continue')} onPress={next} fullWidth />
+            <Button label={t('common.continue')} onPress={next} fullWidth />
           </Reanimated.View>
             )}
 
@@ -566,7 +580,7 @@ export default function OnboardingScreen() {
 
             <View style={{ gap: 4 * uiScale }}>
               <Input 
-                label={t('onboarding.caregiver_name', 'Your name *')} 
+                label={t('onboarding.caregiver_name')} 
                 value={caregiverName} 
                 onChangeText={setCaregiverName} 
                 placeholder="Andrea" 
@@ -586,7 +600,7 @@ export default function OnboardingScreen() {
             <View style={{ gap: 4 * uiScale }}>
               <Reanimated.View style={{ transform: [{ translateX: shake }] }}>
                 <DateTimeField 
-                  label={t('onboarding.birth_date', 'Birth date *')} 
+                  label={t('onboarding.birth_date')} 
                   value={babyBirthDate} 
                   onChange={setBabyBirthDate}
                 />
@@ -680,7 +694,7 @@ export default function OnboardingScreen() {
                   </View>
                </View>
             </View>
-            <Button label={t('common.continue', 'Continue')} onPress={handleProfileNext} fullWidth />
+            <Button label={t('common.continue')} onPress={handleProfileNext} fullWidth />
           </Reanimated.View>
             )}
 
@@ -690,7 +704,7 @@ export default function OnboardingScreen() {
               <Input label={language === 'nl' ? '4-cijferige pincode' : 'PIN 4 chiffres'} value={pin} onChangeText={setPin} keyboardType="number-pad" inputMode="numeric" />
               <Input label={language === 'nl' ? 'Bevestig pincode' : 'Confirmer le PIN'} value={confirmPin} onChangeText={setConfirmPin} keyboardType="number-pad" inputMode="numeric" />
             </Reanimated.View>
-            <Button label={t('common.continue', 'Continue')} onPress={next} disabled={pin.length < 4 || confirmPin.length < 4} />
+            <Button label={t('common.continue')} onPress={next} disabled={pin.length < 4 || confirmPin.length < 4} />
           </Reanimated.View>
             )}
 
@@ -721,7 +735,7 @@ export default function OnboardingScreen() {
               hint={`${autoHint} ${autoGoals.diapers}`}
             />
             {submitError ? <Text style={{ color: colors.danger, textAlign: 'center', fontSize: 13 * uiScale }}>{submitError}</Text> : null}
-            <Button label={t('common.continue', 'Continue')} onPress={finishOnboarding} loading={saving} disabled={saving} />
+            <Button label={t('common.continue')} onPress={finishOnboarding} loading={saving} disabled={saving} />
           </Reanimated.View>
             )}
           </View>

@@ -11,7 +11,9 @@
     "yes": "Sí",
     "no": "No",
     "ok": "OK",
-    "loading": "Cargando App Leo"
+    "loading": "Cargando App Leo",
+    "skip": "Omitir",
+    "continue": "Continuar"
   },
   "greeting": {
     "morning": "Buenos días",
@@ -148,7 +150,22 @@
     "headCirc": "PC (cm)",
     "temperatureLabel": "Temperatura",
     "errorSaveFailed": "Error al guardar",
-    "errorCouldNotSave": "No se pudo guardar este registro"
+    "errorCouldNotSave": "No se pudo guardar este registro",
+    "discardSession": "¿Descartar esta sesión?",
+    "keepSession": "Mantener",
+    "discardConfirm": "Descartar",
+    "titleFeedBottle": "Toma biberón",
+    "titleFeedBreast": "Toma pecho",
+    "titleFoodDefault": "Diario de comidas",
+    "titleSleep": "Sesión de sueño",
+    "titlePump": "Sesión de extracción",
+    "titleMilestone": "Hito",
+    "titleTemperatureReading": "Lectura de temperatura"
+  },
+  "onboarding": {
+    "caregiver_name": "Tu nombre",
+    "birth_date": "Fecha de nacimiento",
+    "pin_invalid": "El PIN debe tener 4 dígitos"
   },
   "measurement": {
     "whoSuggested": "Rango Sugerido OMS",
@@ -156,7 +173,10 @@
     "weight": "Peso (kg)",
     "height": "Talla (cm)",
     "headCirc": "PC (cm)",
-    "temperature": "Temperatura"
+    "temperature": "Temperatura",
+    "lastMeasurement": "Última medida:",
+    "useSuggestion": "Usar sugerencia",
+    "clear": "Borrar"
   },
   "diaper": {
     "title": "Registro de pañal"

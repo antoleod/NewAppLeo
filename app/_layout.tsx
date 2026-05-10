@@ -123,8 +123,9 @@ export default function RootLayout() {
       promptMessage: 'Unlock App Leo',
       fallbackLabel: 'Use code',
     });
-    // Always unlock — on failure too, so user is never permanently stuck
-    setIsLocked(false);
+    if (result.success) {
+      setIsLocked(false);
+    }
   };
 
   useEffect(() => {

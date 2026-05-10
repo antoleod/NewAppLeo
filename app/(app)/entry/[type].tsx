@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -222,6 +223,7 @@ export default function EntryComposerScreen() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [occurredAt, setOccurredAt] = useState(new Date());
   const [saving, setSaving] = useState(false);
+  const [sleepInputMode, setSleepInputMode] = useState<'timer' | 'manual' | null>(editing ? null : null);
   const [sleepTimerRunning, setSleepTimerRunning] = useState(false);
   const [sleepStopToken, setSleepStopToken] = useState(0);
   const [sleepStartedAt, setSleepStartedAt] = useState<number | null>(null);
@@ -233,6 +235,14 @@ export default function EntryComposerScreen() {
   const [pumpFullscreenVisible, setPumpFullscreenVisible] = useState(false);
   const [largeTouchMode, setLargeTouchMode] = useState(false);
   const [savedMedicines, setSavedMedicines] = useState<SavedMedicine[]>([]);
+  const closeScale = useSharedValue(1);
+  const closeRotate = useSharedValue(0);
+  const closeAnimStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: closeScale.value },
+      { rotate: `${closeRotate.value}deg` },
+    ],
+  }));
   const [vaccineTemp, setVaccineTemp] = useState('');
   const [vaccineName, setVaccineName] = useState('');
   const [vaccineDose, setVaccineDose] = useState('1');
@@ -475,13 +485,13 @@ export default function EntryComposerScreen() {
   }, [editing, presetAmount, presetMode, presetSide]);
 
   useEffect(() => {
-    if (type !== 'sleep' || editing) return;
+    if (type !== 'sleep' || editing || sleepInputMode !== 'timer') return;
     const startAt = Date.now();
     setSleepStartedAt(startAt);
     setSleepElapsedSeconds(0);
     setSleepFullscreenVisible(true);
     setSleepTimerRunning(true);
-  }, [editing, type]);
+  }, [editing, type, sleepInputMode]);
 
   useEffect(() => {
     if (type !== 'sleep' || !sleepTimerRunning || !sleepStartedAt) return;
@@ -589,27 +599,27 @@ export default function EntryComposerScreen() {
   function buildTitle() {
     switch (type) {
       case 'feed':
-        return mode === 'bottle' ? 'Bottle feed' : 'Breast feed';
+        return mode === 'bottle' ? t('entry.titleFeedBottle') : t('entry.titleFeedBreast');
       case 'food':
-        return foodName || 'Food log';
+        return foodName || t('entry.titleFoodDefault');
       case 'sleep':
-        return 'Sleep session';
+        return t('entry.titleSleep');
       case 'diaper':
-        return 'Diaper log';
+        return t('diaper.title');
       case 'pump':
-        return 'Pump session';
+        return t('entry.titlePump');
       case 'measurement':
-        return 'Measurement';
+        return t('entry.measurement');
       case 'medication':
-        return name || 'Medication';
+        return name || t('entry.medicine');
       case 'milestone':
-        return title || 'Milestone';
+        return title || t('entry.titleMilestone');
       case 'symptom':
-        return 'Symptom log';
+        return t('entry.symptoms');
       case 'temperature':
-        return vaccineTemp ? `Temperature: ${vaccineTemp}°C` : 'Temperature reading';
+        return vaccineTemp ? `${t('entry.temperature')}: ${vaccineTemp}°C` : t('entry.titleTemperatureReading');
       case 'vaccine':
-        return vaccineName || 'Vaccine record';
+        return vaccineName || t('entry.vaccine');
     }
   }
 
@@ -659,27 +669,7 @@ export default function EntryComposerScreen() {
         return;
       }
 
-      // Suggest sharing for joyful, non-medical entries on new save
-      const shareableTypes: EntryType[] = ['sleep', 'feed', 'measurement', 'milestone', 'diaper'];
-      if (!editing && shareableTypes.includes(type)) {
-        const shareLabel = language === 'fr' ? 'Partager' : language === 'es' ? 'Compartir' : language === 'nl' ? 'Delen' : 'Share';
-        const skipLabel = language === 'fr' ? 'Plus tard' : language === 'es' ? 'Después' : language === 'nl' ? 'Later' : 'Later';
-        const title = language === 'fr' ? 'Partager ce moment ?' : language === 'es' ? '¿Compartir este momento?' : language === 'nl' ? 'Dit moment delen?' : 'Share this moment?';
-        const preview = buildShareMessage(savedEntry, profile?.babyName ?? '', language as any);
-
-        Alert.alert(title, preview, [
-          { text: skipLabel, style: 'cancel', onPress: () => router.back() },
-          {
-            text: shareLabel,
-            onPress: async () => {
-              await shareEntry(savedEntry, profile?.babyName ?? '', language as any);
-              router.back();
-            },
-          },
-        ], { cancelable: false });
-      } else {
-        router.back();
-      }
+      router.back();
     } catch (error: any) {
       haptics.error();
       toast.error(error?.message ?? 'Could not save this record.');
@@ -783,8 +773,6 @@ export default function EntryComposerScreen() {
     ], { cancelable: true });
   }
 
-  const showDateTime = type !== 'diaper';
-
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
     <View style={{ flex: 1 }}>
@@ -800,27 +788,29 @@ export default function EntryComposerScreen() {
           </View>
           <Pressable
             onPress={() => router.back()}
+            onPressIn={() => {
+              closeScale.value = withSpring(0.88, { damping: 10, stiffness: 300 });
+              closeRotate.value = withTiming(45, { duration: 180 });
+            }}
+            onPressOut={() => {
+              closeScale.value = withSpring(1, { damping: 8, stiffness: 200 });
+              closeRotate.value = withSpring(0, { damping: 8, stiffness: 200 });
+            }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={({ pressed }) => [styles.closeButton, { opacity: pressed ? 0.6 : 1, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <Ionicons name="close" size={20} color={colors.text} />
+            <Animated.View style={[styles.closeButton, closeAnimStyle]}>
+              <Ionicons name="close" size={20} color="#E6EDF3" />
+            </Animated.View>
           </Pressable>
         </View>
       </View>
 
       <Card>
-        {showDateTime && (
-          <View style={styles.sectionCard}>
-            <DateTimeField label={t('entry.when')} value={occurredAt} onChange={setOccurredAt} />
-          </View>
-        )}
-        {type === 'diaper' && (
-          <View style={styles.sectionCard}>
-            <DateTimeField label={t('entry.when')} value={occurredAt} onChange={setOccurredAt} />
-          </View>
-        )}
+        <View style={styles.sectionCard}>
+          <DateTimeField label={t('entry.when')} value={occurredAt} onChange={setOccurredAt} />
+        </View>
 
         {type === 'feed' && (
           <View style={styles.sectionCard}>
@@ -853,7 +843,7 @@ export default function EntryComposerScreen() {
               <>
                 <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{t('entry.duration')}</Text>
                 <TimerWidget
-                  label={language === 'fr' ? 'Durée (min)' : 'Duration (min)'}
+                  label={t('entry.durationMin')}
                   valueMinutes={Number(durationMin) || 0}
                   onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
                   allowSides
@@ -861,7 +851,7 @@ export default function EntryComposerScreen() {
                   onSideChange={(nextSide) => setSide(nextSide)}
                   largeTouchMode={largeTouchMode}
                 />
-                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Montant estimé' : 'Estimated amount'}</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{t('entry.estimatedAmount')}</Text>
                 <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
               </>
             )}
@@ -1088,10 +1078,68 @@ export default function EntryComposerScreen() {
           );
         })()}
 
+        {type === 'sleep' && !editing && sleepInputMode === null && (
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>{t('entry.sleep')}</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Pressable
+                onPress={() => setSleepInputMode('timer')}
+                style={({ pressed }) => ({
+                  flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center', gap: 6,
+                  borderWidth: 1.5, borderColor: meta.tone,
+                  backgroundColor: pressed ? meta.toneSoft : 'transparent',
+                })}
+              >
+                <Text style={{ fontSize: 24 }}>▶️</Text>
+                <Text style={{ color: meta.tone, fontWeight: '700', fontSize: 13 }}>
+                  {language === 'fr' ? 'Démarrer timer' : language === 'es' ? 'Iniciar timer' : language === 'nl' ? 'Timer starten' : 'Start timer'}
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'center' }}>
+                  {language === 'fr' ? 'Bébé dort maintenant' : language === 'es' ? 'El bebé duerme ahora' : language === 'nl' ? 'Baby slaapt nu' : 'Baby is sleeping now'}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setSleepInputMode('manual')}
+                style={({ pressed }) => ({
+                  flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center', gap: 6,
+                  borderWidth: 1, borderColor: colors.border,
+                  backgroundColor: pressed ? `${colors.card}88` : 'transparent',
+                })}
+              >
+                <Text style={{ fontSize: 24 }}>📝</Text>
+                <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>
+                  {language === 'fr' ? 'Saisir manuellement' : language === 'es' ? 'Registrar pasado' : language === 'nl' ? 'Handmatig invoeren' : 'Log past sleep'}
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'center' }}>
+                  {language === 'fr' ? 'Déjà terminé' : language === 'es' ? 'Ya terminó' : language === 'nl' ? 'Al afgelopen' : 'Already finished'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {type === 'sleep' && !editing && sleepInputMode === 'manual' && (
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.duration')}</Text>
+            <TimerWidget
+              label={t('entry.durationMin')}
+              valueMinutes={Number(durationMin) || 0}
+              onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
+              largeTouchMode={largeTouchMode}
+              hideActionButton
+            />
+            {durationMin && Number(durationMin) > 0 && (
+              <View style={[styles.infoStrip, { marginTop: 12 }]}>
+                <Text style={styles.infoStripText}>{Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {type === 'sleep' && editing && (
           <View style={styles.sectionCard}>
             <TimerWidget
-              label={language === 'fr' ? 'Durée (min)' : 'Duration (min)'}
+              label={t('entry.durationMin')}
               valueMinutes={Number(durationMin) || 0}
               onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
               largeTouchMode={largeTouchMode}
@@ -1102,7 +1150,7 @@ export default function EntryComposerScreen() {
             />
             {durationMin && (
               <View style={[styles.infoStrip, { marginTop: 12 }]}>
-                <Text style={styles.infoStripText}>?? {Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
+                <Text style={styles.infoStripText}>{Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
               </View>
             )}
           </View>
@@ -1121,7 +1169,7 @@ export default function EntryComposerScreen() {
         {type === 'pump' && editing && (
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.duration')}</Text>
-            <TimerWidget label={language === 'fr' ? 'Session (min)' : 'Session (min)'} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
+            <TimerWidget label={t('entry.sessionMin')} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
             <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{t('entry.amount')}</Text>
             <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
           </View>
@@ -1139,14 +1187,14 @@ export default function EntryComposerScreen() {
                   {lastMeasurementEntry ? (
                     <View style={[styles.measureMetaStrip, { borderColor: colors.border }]}>
                       <Text style={[styles.measureMetaText, { color: colors.muted }]}>
-                        {language === 'fr' ? 'Dernière mesure:' : 'Last measurement:'}{' '}
-                        {new Date(lastMeasurementEntry.occurredAt).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}
+                        {t('measurement.lastMeasurement')}{' '}
+                        {new Date(lastMeasurementEntry.occurredAt).toLocaleDateString({ fr: 'fr-FR', es: 'es-ES', nl: 'nl-BE', en: 'en-US' }[language] ?? 'en-US')}
                       </Text>
                     </View>
                   ) : null}
                   {suggested && (
                     <View style={[styles.whoSuggestedBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
-                      <Text style={[styles.whoSuggestedTitle, { color: meta.tone }]}>?? {language === 'fr' ? 'Suggestion selon OMS' : 'WHO Suggested Range'}</Text>
+                      <Text style={[styles.whoSuggestedTitle, { color: meta.tone }]}>{t('entry.whoSuggested')}</Text>
                       <Text style={[styles.whoSuggestedMessage, { color: colors.muted }]}>{suggested.message}</Text>
                       <View style={styles.measureQuickActions}>
                         <Pressable
@@ -1157,7 +1205,7 @@ export default function EntryComposerScreen() {
                           style={[styles.measureQuickBtn, { borderColor: meta.tone, backgroundColor: `${meta.tone}12` }]}
                         >
                           <Text style={[styles.measureQuickBtnText, { color: meta.tone }]}>
-                            {language === 'fr' ? 'Utiliser suggestion' : 'Use suggestion'}
+                            {t('measurement.useSuggestion')}
                           </Text>
                         </Pressable>
                         <Pressable
@@ -1170,7 +1218,7 @@ export default function EntryComposerScreen() {
                           style={[styles.measureQuickBtn, { borderColor: colors.border, backgroundColor: 'transparent' }]}
                         >
                           <Text style={[styles.measureQuickBtnText, { color: colors.muted }]}>
-                            {language === 'fr' ? 'Effacer' : 'Clear'}
+                            {t('measurement.clear')}
                           </Text>
                         </Pressable>
                       </View>
@@ -1202,11 +1250,11 @@ export default function EntryComposerScreen() {
                   )}
 
                   <View style={{ marginTop: suggested ? 12 : 0 }}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>?? {language === 'fr' ? 'Mesures actuelles' : 'Current Measurements'}</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.currentMeasurements')}</Text>
 
                     <View style={{ marginTop: 12 }}>
                       <Input
-                        label={language === 'fr' ? 'Poids (kg)' : 'Weight (kg)'}
+                        label={t('entry.weight')}
                         value={weightKg}
                         onChangeText={setWeightKg}
                         keyboardType="decimal-pad"
@@ -1221,7 +1269,7 @@ export default function EntryComposerScreen() {
 
                     <View style={{ marginTop: 12 }}>
                       <Input
-                        label={language === 'fr' ? 'Taille (cm)' : 'Height (cm)'}
+                        label={t('entry.height')}
                         value={heightCm}
                         onChangeText={setHeightCm}
                         keyboardType="decimal-pad"
@@ -1235,7 +1283,7 @@ export default function EntryComposerScreen() {
                     </View>
 
                     <Input label={t('entry.headCirc')} value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" placeholder="35" />
-                    <Input label={language === 'fr' ? 'Température' : 'Temperature'} value={tempC} onChangeText={setTempC} keyboardType="decimal-pad" placeholder="37.5" />
+                    <Input label={t('entry.temperatureLabel')} value={tempC} onChangeText={setTempC} keyboardType="decimal-pad" placeholder="37.5" />
                   </View>
                 </>
               );
@@ -1245,7 +1293,7 @@ export default function EntryComposerScreen() {
 
         {type === 'medication' && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Médicament' : 'Medication'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{typeLabel}</Text>
             <View style={styles.medQuickRow}>
               {(commonMedications as Array<any>).map((med) => (
                 <Pressable
@@ -1269,7 +1317,7 @@ export default function EntryComposerScreen() {
               style={[styles.medManualBtn, { borderColor: meta.tone }]}
             >
               <Text style={[styles.medManualText, { color: meta.tone }]}>
-                {language === 'fr' ? 'Ajouter manuellement' : 'Add manually'}
+                {{ fr: 'Ajouter manuellement', es: 'Agregar manualmente', nl: 'Handmatig toevoegen', en: 'Add manually' }[language] ?? 'Add manually'}
               </Text>
             </Pressable>
             {savedMedicines.length > 0 && (
@@ -1915,9 +1963,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1C2128',
+    backgroundColor: '#2D333B',
     borderWidth: 1,
-    borderColor: '#21262D',
+    borderColor: '#545D68',
     flexShrink: 0,
   },
   closeButtonLabel: {

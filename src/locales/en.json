@@ -11,7 +11,9 @@
     "yes": "Yes",
     "no": "No",
     "ok": "OK",
-    "loading": "Loading App Leo"
+    "loading": "Loading App Leo",
+    "skip": "Skip",
+    "continue": "Continue"
   },
   "greeting": {
     "morning": "Good morning",
@@ -148,7 +150,22 @@
     "headCirc": "Head circ (cm)",
     "temperatureLabel": "Temperature",
     "errorSaveFailed": "Save failed",
-    "errorCouldNotSave": "Could not save this record"
+    "errorCouldNotSave": "Could not save this record",
+    "discardSession": "Discard this session?",
+    "keepSession": "Keep",
+    "discardConfirm": "Discard",
+    "titleFeedBottle": "Bottle feed",
+    "titleFeedBreast": "Breast feed",
+    "titleFoodDefault": "Food log",
+    "titleSleep": "Sleep session",
+    "titlePump": "Pump session",
+    "titleMilestone": "Milestone",
+    "titleTemperatureReading": "Temperature reading"
+  },
+  "onboarding": {
+    "caregiver_name": "Your name",
+    "birth_date": "Birth date",
+    "pin_invalid": "PIN must be 4 digits"
   },
   "measurement": {
     "whoSuggested": "WHO Suggested Range",
@@ -156,7 +173,10 @@
     "weight": "Weight (kg)",
     "height": "Height (cm)",
     "headCirc": "Head circ (cm)",
-    "temperature": "Temperature"
+    "temperature": "Temperature",
+    "lastMeasurement": "Last measurement:",
+    "useSuggestion": "Use suggestion",
+    "clear": "Clear"
   },
   "diaper": {
     "title": "Diaper log"

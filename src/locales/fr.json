@@ -11,7 +11,9 @@
     "yes": "Oui",
     "no": "Non",
     "ok": "OK",
-    "loading": "Chargement d'App Leo"
+    "loading": "Chargement d'App Leo",
+    "skip": "Passer",
+    "continue": "Continuer"
   },
   "greeting": {
     "morning": "Bonjour",
@@ -148,7 +150,22 @@
     "headCirc": "PC (cm)",
     "temperatureLabel": "Température",
     "errorSaveFailed": "Échec de l'enregistrement",
-    "errorCouldNotSave": "Impossible d'enregistrer ce registre"
+    "errorCouldNotSave": "Impossible d'enregistrer ce registre",
+    "discardSession": "Abandonner cette session ?",
+    "keepSession": "Garder",
+    "discardConfirm": "Abandonner",
+    "titleFeedBottle": "Prise biberon",
+    "titleFeedBreast": "Prise sein",
+    "titleFoodDefault": "Journal repas",
+    "titleSleep": "Session sommeil",
+    "titlePump": "Session tire-lait",
+    "titleMilestone": "Étape",
+    "titleTemperatureReading": "Mesure de température"
+  },
+  "onboarding": {
+    "caregiver_name": "Votre prénom",
+    "birth_date": "Date de naissance",
+    "pin_invalid": "Le code PIN doit avoir 4 chiffres"
   },
   "measurement": {
     "whoSuggested": "Suggestion selon OMS",
@@ -156,7 +173,10 @@
     "weight": "Poids (kg)",
     "height": "Taille (cm)",
     "headCirc": "PC (cm)",
-    "temperature": "Température"
+    "temperature": "Température",
+    "lastMeasurement": "Dernière mesure :",
+    "useSuggestion": "Utiliser suggestion",
+    "clear": "Effacer"
   },
   "diaper": {
     "title": "Journal des couches"

@@ -11,7 +11,9 @@
     "yes": "Ja",
     "no": "Nee",
     "ok": "OK",
-    "loading": "App Leo laden"
+    "loading": "App Leo laden",
+    "skip": "Overslaan",
+    "continue": "Doorgaan"
   },
   "greeting": {
     "morning": "Goedemorgen",
@@ -148,7 +150,22 @@
     "headCirc": "Hoofdomtrek (cm)",
     "temperatureLabel": "Temperatuur",
     "errorSaveFailed": "Opslaan mislukt",
-    "errorCouldNotSave": "Dit record kon niet worden opgeslagen"
+    "errorCouldNotSave": "Dit record kon niet worden opgeslagen",
+    "discardSession": "Deze sessie verwijderen?",
+    "keepSession": "Behouden",
+    "discardConfirm": "Verwijderen",
+    "titleFeedBottle": "Flesvoeding",
+    "titleFeedBreast": "Borstvoeding",
+    "titleFoodDefault": "Voedingsdagboek",
+    "titleSleep": "Slaapsessie",
+    "titlePump": "Kolfsessie",
+    "titleMilestone": "Mijlpaal",
+    "titleTemperatureReading": "Temperatuurmeting"
+  },
+  "onboarding": {
+    "caregiver_name": "Jouw naam",
+    "birth_date": "Geboortedatum",
+    "pin_invalid": "PIN moet 4 cijfers hebben"
   },
   "measurement": {
     "whoSuggested": "WHO Aanbevolen Bereik",
@@ -156,7 +173,10 @@
     "weight": "Gewicht (kg)",
     "height": "Lengte (cm)",
     "headCirc": "Hoofdomtrek (cm)",
-    "temperature": "Temperatuur"
+    "temperature": "Temperatuur",
+    "lastMeasurement": "Laatste meting:",
+    "useSuggestion": "Suggestie gebruiken",
+    "clear": "Wis"
   },
   "diaper": {
     "title": "Luierlog"
