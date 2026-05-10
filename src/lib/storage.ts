@@ -381,6 +381,32 @@ export async function clearGuestProfile() {
   await AsyncStorage.removeItem(GUEST_PROFILE_KEY);
 }
 
+export async function clearLocalSession(uid?: string) {
+  const babies = await getBabies();
+  const keysToRemove: string[] = [
+    ACTIVE_BABY_KEY,
+    BABIES_KEY,
+    GUEST_PROFILE_KEY,
+    MODULE_VISIBILITY_KEY,
+    SAVED_MEDICINES_KEY,
+    ...babies.map((b) => `${ENTRY_PREFIX}:${b.id}`),
+    ...babies.map((b) => `${MOM_HYDRATION_PREFIX}:${b.id}`),
+  ];
+  await AsyncStorage.multiRemove(keysToRemove);
+
+  if (typeof globalThis.localStorage !== 'undefined') {
+    try {
+      const raw = globalThis.localStorage.getItem('appleo.local.entries');
+      if (raw) {
+        const entriesMap = JSON.parse(raw) as Record<string, unknown>;
+        if (uid) delete entriesMap[uid];
+        delete entriesMap['guest'];
+        globalThis.localStorage.setItem('appleo.local.entries', JSON.stringify(entriesMap));
+      }
+    } catch { /* ignore */ }
+  }
+}
+
 export async function getDeviceDisplayName() {
   return (await AsyncStorage.getItem(DEVICE_DISPLAY_NAME_KEY)) ?? '';
 }

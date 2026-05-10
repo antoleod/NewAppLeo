@@ -212,6 +212,31 @@
     "saveFailed": "Error al guardar",
     "couldNotSave": "No se pudo guardar este registro."
   },
+  "settings": {
+    "appearanceTitle": "Apariencia",
+    "appearanceSubtitle": "Simple y claro para el uso diario.",
+    "themeLabel": "Tema",
+    "themeBody": "Elige el aspecto que prefieres.",
+    "applied": "Aplicado",
+    "tapToApply": "Toca para aplicar",
+    "modeBody": "Elige claro, oscuro o automático.",
+    "surfaceStyle": "Estilo de superficie",
+    "surfaceStyleBody": "Controla cómo se ven las tarjetas sobre el fondo.",
+    "frosted": "Esmerilado",
+    "frostedDesc": "Efecto vidrio difuso",
+    "vivid": "Vívido",
+    "vividDesc": "La foto se ve de fondo",
+    "solid": "Sólido",
+    "solidDesc": "Tarjetas opacas",
+    "backgroundPhotoTitle": "Foto de fondo",
+    "backgroundPhotoBody": "Opcional. Las tarjetas siguen siendo legibles sin foto.",
+    "buttonOpacityTitle": "Opacidad de botones",
+    "buttonOpacityBody": "Ajusta todo el botón — texto y fondo juntos.",
+    "buttonTransparencyTitle": "Relleno de botones",
+    "buttonTransparencyBody": "Ajusta solo el fondo del botón. El texto permanece legible.",
+    "livePreview": "Vista previa en vivo",
+    "restoreRecommended": "Restaurar recomendados"
+  },
   "tabs": {
     "profile": "Perfil"
   },

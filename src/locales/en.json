@@ -212,6 +212,31 @@
     "saveFailed": "Save failed",
     "couldNotSave": "Could not save this record."
   },
+  "settings": {
+    "appearanceTitle": "Appearance",
+    "appearanceSubtitle": "Simple and clear for daily use.",
+    "themeLabel": "Theme",
+    "themeBody": "Pick the look you prefer.",
+    "applied": "Applied",
+    "tapToApply": "Tap to apply",
+    "modeBody": "Choose light, dark, or automatic.",
+    "surfaceStyle": "Surface Style",
+    "surfaceStyleBody": "Controls how cards look against the background.",
+    "frosted": "Frosted",
+    "frostedDesc": "Glass-blur cards",
+    "vivid": "Vivid",
+    "vividDesc": "Photo shows through",
+    "solid": "Solid",
+    "solidDesc": "Opaque cards",
+    "backgroundPhotoTitle": "Background Photo",
+    "backgroundPhotoBody": "Optional. Cards remain readable without a photo.",
+    "buttonOpacityTitle": "Button Opacity",
+    "buttonOpacityBody": "Adjusts the entire button — text and background together.",
+    "buttonTransparencyTitle": "Button Fill",
+    "buttonTransparencyBody": "Adjusts only the button background. Text stays fully readable.",
+    "livePreview": "Live preview",
+    "restoreRecommended": "Restore Recommended"
+  },
   "tabs": {
     "profile": "Profile"
   },

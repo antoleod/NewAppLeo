@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Button, Input } from '@/components/ui';
 import { DateTimeField } from '@/components/DateTimeField';
@@ -95,9 +95,14 @@ export function EntryEditSheet({ entry, onSave, onClose, onDelete, bottomSheetMo
       backgroundStyle={{ backgroundColor: colors.bgCard }}
     >
       <BottomSheetView style={{ flex: 1, paddingHorizontal: spacing.lg, paddingVertical: spacing.lg }}>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800', marginBottom: spacing.lg }}>
-          Edit Measurement
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
+          <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>
+            Edit Measurement
+          </Text>
+          <Pressable onPress={handleClose} hitSlop={12} style={{ padding: 4 }}>
+            <Text style={{ color: colors.textMuted, fontSize: 22, lineHeight: 24 }}>✕</Text>
+          </Pressable>
+        </View>
 
         <DateTimeField
           label="Date"

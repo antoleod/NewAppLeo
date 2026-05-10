@@ -212,6 +212,31 @@
     "saveFailed": "Opslaan mislukt",
     "couldNotSave": "Dit record kon niet worden opgeslagen."
   },
+  "settings": {
+    "appearanceTitle": "Uiterlijk",
+    "appearanceSubtitle": "Eenvoudig en duidelijk voor dagelijks gebruik.",
+    "themeLabel": "Thema",
+    "themeBody": "Kies het uiterlijk dat jij prettig vindt.",
+    "applied": "Toegepast",
+    "tapToApply": "Tik om toe te passen",
+    "modeBody": "Kies licht, donker of automatisch.",
+    "surfaceStyle": "Oppervlaktestijl",
+    "surfaceStyleBody": "Bepaalt hoe kaarten eruitzien op de achtergrond.",
+    "frosted": "Bevroren",
+    "frostedDesc": "Matglas-effect",
+    "vivid": "Levendig",
+    "vividDesc": "Foto zichtbaar op achtergrond",
+    "solid": "Solide",
+    "solidDesc": "Ondoorzichtige kaarten",
+    "backgroundPhotoTitle": "Achtergrondfoto",
+    "backgroundPhotoBody": "Optioneel. Kaarten blijven leesbaar zonder foto.",
+    "buttonOpacityTitle": "Knopopaciteit",
+    "buttonOpacityBody": "Past de hele knop aan — tekst en achtergrond samen.",
+    "buttonTransparencyTitle": "Knopvulling",
+    "buttonTransparencyBody": "Past alleen de knopachtergrond aan. Tekst blijft volledig leesbaar.",
+    "livePreview": "Live voorbeeld",
+    "restoreRecommended": "Aanbevolen herstellen"
+  },
   "tabs": {
     "profile": "Profiel"
   },

@@ -105,11 +105,6 @@ export default function RootLayout() {
     }
   }, [fontsLoaded]);
 
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register('/NewAppLeo/sw.js').catch(() => {});
-  }, []);
 
   if (!fontsLoaded) return null;
 

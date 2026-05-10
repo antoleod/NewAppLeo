@@ -212,6 +212,31 @@
     "saveFailed": "Échec de l'enregistrement",
     "couldNotSave": "Impossible d'enregistrer ce registre."
   },
+  "settings": {
+    "appearanceTitle": "Apparence",
+    "appearanceSubtitle": "Simple et clair pour un usage quotidien.",
+    "themeLabel": "Thème",
+    "themeBody": "Choisis l'apparence que tu préfères.",
+    "applied": "Appliqué",
+    "tapToApply": "Appuyer pour appliquer",
+    "modeBody": "Choisir clair, sombre ou automatique.",
+    "surfaceStyle": "Style de surface",
+    "surfaceStyleBody": "Contrôle l'apparence des cartes sur le fond.",
+    "frosted": "Givré",
+    "frostedDesc": "Effet verre dépoli",
+    "vivid": "Vif",
+    "vividDesc": "Photo visible en fond",
+    "solid": "Solide",
+    "solidDesc": "Cartes opaques",
+    "backgroundPhotoTitle": "Photo de fond",
+    "backgroundPhotoBody": "Optionnelle. Les cartes restent lisibles sans photo.",
+    "buttonOpacityTitle": "Opacité des boutons",
+    "buttonOpacityBody": "Ajuste l'ensemble du bouton — texte et fond ensemble.",
+    "buttonTransparencyTitle": "Remplissage des boutons",
+    "buttonTransparencyBody": "Ajuste uniquement le fond du bouton. Le texte reste lisible.",
+    "livePreview": "Aperçu en direct",
+    "restoreRecommended": "Restaurer les recommandés"
+  },
   "tabs": {
     "profile": "Profil"
   },

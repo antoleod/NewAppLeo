@@ -6,7 +6,10 @@ export default function Root({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
+        />
 
         {/* PWA — Android Chrome */}
         <meta name="theme-color" content="#0D1117" />
@@ -25,6 +28,19 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <link rel="shortcut icon" href="/NewAppLeo/favicon.ico" />
 
         <ScrollViewStyleReset />
+
+        {/* Register SW immediately (before React mounts) so Chrome sees it on first load */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                  navigator.serviceWorker.register('/NewAppLeo/sw.js').catch(function () {});
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>

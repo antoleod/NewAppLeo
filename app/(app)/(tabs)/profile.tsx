@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Image, Pressable, Text, View, RefreshControl, ScrollView } from 'react-native';
+import { Alert, AppState, Image, Pressable, Text, View, RefreshControl, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeIn, ZoomIn, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -80,8 +80,12 @@ export default function ProfileScreen() {
   const [queuedSyncCount, setQueuedSyncCount] = useState(0);
   const [showChildren, setShowChildren] = useState(false);
   const [showSession, setShowSession] = useState(false);
+  const [showAddBabyForm, setShowAddBabyForm] = useState(false);
+  const [newBabyName, setNewBabyName] = useState('');
+  const [newBabyBirthDate, setNewBabyBirthDate] = useState(new Date());
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -189,35 +193,30 @@ export default function ProfileScreen() {
     }
   }, [setForm, t, toast, photoScale]);
 
-  const handleAddBaby = useCallback(async () => {
-    if (!form.babyName.trim() || !form.babyBirthDate) {
+
+  const handleAddNewBaby = useCallback(async () => {
+    if (!newBabyName.trim()) {
       haptics.warning();
       toast.warning(t('profile.childRequired'));
       return;
     }
-
     haptics.medium();
     const baby = {
       id: generateBabyId(),
-      name: form.babyName.trim(),
-      birthDate: dateToIsoString(form.babyBirthDate as Date),
-      sex: profile?.babySex ?? 'unspecified',
-      birthWeightKg: parseNumber(form.birthWeightKg),
-      currentWeightKg: parseNumber(form.currentWeightKg),
-      heightCm: parseNumber(form.heightCm),
-      notes: form.babyNotes.trim() || undefined,
-      photoUri: form.babyPhotoUri || undefined,
-      language: (profile?.language ?? 'fr') as any,
+      name: newBabyName.trim(),
+      birthDate: dateToIsoString(newBabyBirthDate),
+      sex: 'unspecified' as const,
+      language: (profile?.language ?? 'en') as any,
       createdAt: new Date().toISOString(),
     };
-
     await saveBaby(baby);
     await refreshProfileData();
-    setActiveBabyIdLocal(baby.id);
+    setNewBabyName('');
+    setNewBabyBirthDate(new Date());
+    setShowAddBabyForm(false);
     haptics.success();
-    const birthDateFormatted = formatDateForDisplay(baby.birthDate, profile?.language ?? 'fr');
-    toast.success(`👶 ${baby.name} added · born ${birthDateFormatted}`);
-  }, [form, profile?.babySex, profile?.language, refreshProfileData, t, toast]);
+    toast.success(t('profile.childSaved'));
+  }, [newBabyName, newBabyBirthDate, profile?.language, refreshProfileData, t, toast]);
 
   const handleSetActiveBaby = useCallback(
     async (babyId: string) => {
@@ -226,21 +225,41 @@ export default function ProfileScreen() {
       await setActiveBabyId(babyId);
       setActiveBabyIdLocal(babyId);
       haptics.success();
-      toast.success(`✅ ${babyName} is now active`);
+      toast.success(format('profile.activeChildLabel', { name: babyName }));
     },
-    [babies, toast],
+    [babies, format, toast],
   );
 
   const handleRemoveBaby = useCallback(
-    async (babyId: string) => {
-      haptics.warning();
+    (babyId: string) => {
       const babyName = babies.find((b) => b.id === babyId)?.name ?? 'Baby';
-      await removeBaby(babyId);
-      await refreshProfileData();
-      haptics.success();
-      toast.success(`🗑 ${babyName} removed`);
+      Alert.alert(
+        t('profile.removeChild'),
+        format('profile.removeChildConfirm', { babyName }),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('profile.removeBaby'),
+            style: 'destructive',
+            onPress: async () => {
+              haptics.warning();
+              await removeBaby(babyId);
+              // If the removed baby was active, activate the next available one
+              if (activeBabyId === babyId) {
+                const remaining = babies.filter((b) => b.id !== babyId);
+                if (remaining.length > 0) {
+                  await setActiveBabyId(remaining[0].id);
+                }
+              }
+              await refreshProfileData();
+              haptics.success();
+              toast.success(t('profile.childRemoved'));
+            },
+          },
+        ]
+      );
     },
-    [babies, refreshProfileData, toast],
+    [activeBabyId, babies, format, refreshProfileData, t, toast],
   );
 
   const handleSyncNow = useCallback(async () => {
@@ -342,6 +361,15 @@ export default function ProfileScreen() {
     },
     [deleteEntry]
   );
+
+  const handleSignOut = useCallback(async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setSigningOut(false);
+    }
+  }, [signOut]);
 
   const language = profile?.language ?? 'fr';
   const childSummary = useMemo(
@@ -462,7 +490,7 @@ export default function ProfileScreen() {
 
         <ExpandableSection isExpanded={showChildren}>
           <>
-            {babies.length ? (
+            {babies.length > 0 ? (
               babies.map((baby) => (
                 <View
                   key={baby.id}
@@ -474,29 +502,30 @@ export default function ProfileScreen() {
                     marginTop: 8,
                   }}
                 >
-                  <Text style={{ color: colors.text, fontWeight: '700' }}>
-                    {baby.name} {activeBabyId === baby.id ? `(${t('profile.activeLabel')})` : ''}
-                  </Text>
-                  <Text style={{ color: colors.muted }}>{baby.birthDate}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                    <Text style={{ color: colors.text, fontWeight: '700', flex: 1 }}>{baby.name}</Text>
+                    {activeBabyId === baby.id && (
+                      <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: `${colors.primary}22` }}>
+                        <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '800' }}>{t('profile.activeLabel')}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={{ color: colors.muted, fontSize: 12 }}>{baby.birthDate}</Text>
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                     <View style={{ flex: 1 }}>
-                      <Button
-                        label={t('common.edit')}
-                        onPress={() => handleEditBaby(baby)}
-                        variant="primary"
-                        size="sm"
-                      />
+                      <Button label={t('common.edit')} onPress={() => handleEditBaby(baby)} variant="primary" size="sm" />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Button
                         label={t('profile.setActive')}
-                        onPress={() => handleSetActiveBaby(baby.id)}
+                        onPress={() => void handleSetActiveBaby(baby.id)}
                         variant={activeBabyId === baby.id ? 'secondary' : 'ghost'}
                         size="sm"
+                        disabled={activeBabyId === baby.id}
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Button label={t('profile.removeChild')} onPress={() => handleRemoveBaby(baby.id)} variant="ghost" size="sm" />
+                      <Button label={t('common.delete')} onPress={() => handleRemoveBaby(baby.id)} variant="ghost" size="sm" />
                     </View>
                   </View>
                 </View>
@@ -506,12 +535,53 @@ export default function ProfileScreen() {
                 icon="person-add-outline"
                 title={t('profile.noBabiesTitle')}
                 body={t('profile.noBabiesBody')}
-                action={<Button label={t('profile.addBaby')} onPress={handleAddBaby} />}
               />
             )}
-            {babies.length ? (
-              <Button label={t('profile.addBaby')} onPress={handleAddBaby} variant="ghost" />
-            ) : null}
+
+            {/* Add new baby — inline form */}
+            {showAddBabyForm ? (
+              <View style={{ borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12, marginTop: 12, gap: 8 }}>
+                <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700', marginBottom: 4 }}>{t('profile.addBaby')}</Text>
+                <Input
+                  label={t('profile.babyNameLabel')}
+                  value={newBabyName}
+                  onChangeText={setNewBabyName}
+                  autoCapitalize="words"
+                />
+                <DateTimeField
+                  label={t('profile.birthDateLabel')}
+                  value={newBabyBirthDate}
+                  onChange={(value) => setNewBabyBirthDate(value as Date)}
+                />
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                  <View style={{ flex: 1 }}>
+                    <Button label={t('common.save')} onPress={() => void handleAddNewBaby()} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      label={t('common.cancel')}
+                      onPress={() => {
+                        setShowAddBabyForm(false);
+                        setNewBabyName('');
+                        setNewBabyBirthDate(new Date());
+                      }}
+                      variant="ghost"
+                    />
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={{ marginTop: 10 }}>
+                <Button
+                  label={t('profile.addBaby')}
+                  onPress={() => {
+                    haptics.light();
+                    setShowAddBabyForm(true);
+                  }}
+                  variant="ghost"
+                />
+              </View>
+            )}
           </>
         </ExpandableSection>
       </Card>
@@ -564,7 +634,7 @@ export default function ProfileScreen() {
                 </View>
               </>
             )}
-            <Button label={t('profile.logout')} onPress={signOut} variant="danger" />
+            <Button label={t('profile.logout')} onPress={handleSignOut} loading={signingOut} disabled={signingOut} variant="danger" />
           </>
         </ExpandableSection>
       </Card>

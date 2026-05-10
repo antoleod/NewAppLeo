@@ -317,10 +317,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     if (remoteAvailable && !guestMode) {
       try {
         await deleteDoc(doc(entriesRef(user.uid), id));
-      } catch (error) {
-        if (!isPermissionDenied(error)) {
-          throw error;
-        }
+      } catch {
         setRemoteAvailable(false);
       }
     }

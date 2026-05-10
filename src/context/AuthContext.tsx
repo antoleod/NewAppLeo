@@ -10,7 +10,7 @@ import {
   watchProfile,
 } from '@/services/userProfileService';
 import { consumeGoogleRedirectResult, registerAccount, signInWithEmail, signInWithGoogle, signOutUser } from '@/services/authService';
-import { clearGuestProfile, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
+import { clearGuestProfile, clearLocalSession, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { createSession } from '@/services/sessionService';
 
@@ -148,14 +148,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await sendPasswordResetEmail(auth, email.trim().toLowerCase());
       },
       signOut: async () => {
-        if (guestMode) {
-          await clearGuestProfile();
-        } else {
-          await signOutUser();
+        try {
+          if (!guestMode) {
+            await signOutUser();
+          }
+        } catch {
+          // Firebase signOut failure — local cleanup still runs
+        } finally {
+          await clearLocalSession(user?.uid ?? undefined);
+          setUser(null);
+          setProfile(null);
+          setGuestMode(false);
         }
-        setUser(null);
-        setProfile(null);
-        setGuestMode(false);
       },
       completeUserOnboarding: async (payload) => {
         if (!user) throw new Error('You must be signed in.');
