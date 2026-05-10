@@ -1,5 +1,5 @@
-import { useMemo, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -43,16 +43,9 @@ export function DateTimeField({
   onChange: (value: Date) => void;
 }) {
   const { theme } = useTheme();
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
   const dateDisplay = useMemo(() => formatDate(value), [value]);
   const timeDisplay = useMemo(() => formatTime(value), [value]);
   const inputValue = useMemo(() => toInputValue(value), [value]);
-
-  function openDateTimePicker() {
-    inputRef.current?.showPicker?.();
-    inputRef.current?.click();
-  }
 
   function handleChange(raw: string) {
     if (!raw) return;
@@ -64,41 +57,40 @@ export function DateTimeField({
   return (
     <View style={styles.container}>
       <Text style={[styles.label, { color: theme.textPrimary }]}>{label}</Text>
-      <Pressable
-        onPress={openDateTimePicker}
-        style={({ pressed }) => [
-          styles.control,
-          {
-            borderColor: theme.border,
-            backgroundColor: theme.bgCardAlt,
-            opacity: pressed ? 0.9 : 1,
-          },
-        ]}
-      >
-        <View style={styles.headerRow}>
-          <Text style={[styles.headerText, { color: theme.textMuted }]}>Date & time</Text>
-          <View style={styles.headerIcons}>
-            <Ionicons name="calendar-outline" size={15} color={theme.textMuted} />
-            <Ionicons name="time-outline" size={15} color={theme.textMuted} />
+      {/* Wrapper with position:relative so the transparent input overlays the visual */}
+      <View style={styles.controlWrapper}>
+        <View
+          style={[
+            styles.control,
+            { borderColor: theme.border, backgroundColor: theme.bgCardAlt },
+          ]}
+          pointerEvents="none"
+        >
+          <View style={styles.headerRow}>
+            <Text style={[styles.headerText, { color: theme.textMuted }]}>Date & time</Text>
+            <View style={styles.headerIcons}>
+              <Ionicons name="calendar-outline" size={15} color={theme.textMuted} />
+              <Ionicons name="time-outline" size={15} color={theme.textMuted} />
+            </View>
+          </View>
+          <View style={styles.valueRow}>
+            <View style={[styles.valuePill, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
+              <Text style={[styles.valueText, { color: theme.textPrimary }]}>{dateDisplay}</Text>
+            </View>
+            <Text style={[styles.dot, { color: theme.textMuted }]}>•</Text>
+            <View style={[styles.valuePill, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
+              <Text style={[styles.valueText, { color: theme.textPrimary }]}>{timeDisplay}</Text>
+            </View>
           </View>
         </View>
-        <View style={styles.valueRow}>
-          <View style={[styles.valuePill, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
-            <Text style={[styles.valueText, { color: theme.textPrimary }]}>{dateDisplay}</Text>
-          </View>
-          <Text style={[styles.dot, { color: theme.textMuted }]}>•</Text>
-          <View style={[styles.valuePill, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
-            <Text style={[styles.valueText, { color: theme.textPrimary }]}>{timeDisplay}</Text>
-          </View>
-        </View>
-      </Pressable>
-      <input
-        ref={inputRef}
-        type="datetime-local"
-        value={inputValue}
-        onChange={(event) => handleChange(event.target.value)}
-        style={styles.hiddenInput as any}
-      />
+        {/* Transparent input covers the full control — works on Safari/iOS where showPicker() fails */}
+        <input
+          type="datetime-local"
+          value={inputValue}
+          onChange={(event) => handleChange(event.target.value)}
+          style={styles.overlayInput as any}
+        />
+      </View>
     </View>
   );
 }
@@ -155,11 +147,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
   },
-  hiddenInput: {
+  controlWrapper: {
+    position: 'relative',
+  },
+  overlayInput: {
     position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
     opacity: 0,
-    pointerEvents: 'none',
-    width: 1,
-    height: 1,
+    cursor: 'pointer',
+    zIndex: 1,
   },
 });
