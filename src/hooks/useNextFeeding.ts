@@ -121,8 +121,16 @@ export function useNextFeeding() {
       setMinutesAgo(Math.floor(diff));
       setLastTime(time);
 
-      // Smart interval: use mean if available, fallback to 180 min
-      const interval = meanIntervalMin ?? 180;
+      // Scale interval by how full the last feed was vs average
+      // e.g. 60ml when avg is 160ml → only wait 37% of normal interval
+      const baseInterval = meanIntervalMin ?? 180;
+      let interval = baseInterval;
+      const lastAmount = lastFeed.payload?.amountMl ?? 0;
+      if (lastAmount > 0 && recommendedAmount?.avg) {
+        const ratio = Math.min(1, Math.max(0.3, lastAmount / recommendedAmount.avg));
+        interval = baseInterval * ratio;
+      }
+
       const remaining = interval - diff;
       setNextFeedInMin(remaining);
 
@@ -135,7 +143,7 @@ export function useNextFeeding() {
     calculate();
     const timer = setInterval(calculate, 30000);
     return () => clearInterval(timer);
-  }, [language, lastFeed?.occurredAt, locale, meanIntervalMin]);
+  }, [language, lastFeed?.occurredAt, lastFeed?.payload?.amountMl, locale, meanIntervalMin, recommendedAmount]);
 
   // "1h55" style instead of "1.9 h"
   const hoursAgo = formatDuration(minutesAgo);
