@@ -21,6 +21,19 @@ import { buildLeoProfilePatch, importLeoEntries } from '@/lib/leoData';
 import { getAppSettings, saveBaby, setAppSettings } from '@/lib/storage';
 import { setGuestProfile } from '@/lib/storage';
 
+// Firestore rejects `undefined` values — strip them before every write
+function stripUndefined<T>(obj: T): T {
+  if (Array.isArray(obj)) return obj.map(stripUndefined) as unknown as T;
+  if (obj !== null && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj as object)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, stripUndefined(v)]),
+    ) as T;
+  }
+  return obj;
+}
+
 export interface AppDataContextValue {
   entries: EntryRecord[];
   loading: boolean;
@@ -240,7 +253,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     if (remoteAvailable && !guestMode) {
       try {
-        const ref = await addDoc(entriesRef(user.uid), {
+        const ref = await addDoc(entriesRef(user.uid), stripUndefined({
           type: input.type,
           title: input.title ?? input.type,
           notes: input.notes ?? '',
@@ -248,7 +261,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           occurredAt: timestamp,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        });
+        }));
         nextEntry.id = ref.id;
       } catch (error) {
         if (!isPermissionDenied(error)) {
@@ -272,10 +285,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     if (remoteAvailable && !guestMode) {
       try {
-        await updateDoc(doc(entriesRef(user.uid), id), {
+        await updateDoc(doc(entriesRef(user.uid), id), stripUndefined({
           ...patch,
           updatedAt: serverTimestamp(),
-        });
+        }));
       } catch (error) {
         if (!isPermissionDenied(error)) {
           throw error;

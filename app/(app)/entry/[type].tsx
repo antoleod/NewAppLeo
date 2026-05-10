@@ -53,19 +53,19 @@ const symptomOptions = [
 const vaccinePresets = ['BCG', 'Hepatitis B', 'DTP', 'Polio', 'MMR', 'Varicella', 'Rotavirus', 'PCV'];
 
 const foodPresets = [
-  { label: 'Purée', value: 'puree', ingredients: ['Frutas o vegetales'], icon: '🥜' },
-  { label: 'Fruit', value: 'fruit', ingredients: ['Manzana', 'Pera', 'Plátano', 'Naranja'], icon: '🍎' },
-  { label: 'Céréales', value: 'cereals', ingredients: ['Avena', 'Arroz', 'Maíz'], icon: '🌾' },
-  { label: 'Yaourt', value: 'yogurt', ingredients: ['Leche', 'Cultivos vivos'], icon: '🥛' },
-  { label: 'Légumes', value: 'vegetables', ingredients: ['Zanahoria', 'Brócoli', 'Calabaza', 'Espinaca'], icon: '🥕' },
-  { label: 'Agua', value: 'water', ingredients: ['Agua'], icon: '💧' },
+  { icon: '🥣', value: 'puree', labels: { fr: 'Purée', en: 'Purée', es: 'Puré', nl: 'Puree' } },
+  { icon: '🍎', value: 'fruit', labels: { fr: 'Fruit', en: 'Fruit', es: 'Fruta', nl: 'Fruit' } },
+  { icon: '🌾', value: 'cereals', labels: { fr: 'Céréales', en: 'Cereals', es: 'Cereales', nl: 'Granen' } },
+  { icon: '🥛', value: 'yogurt', labels: { fr: 'Yaourt', en: 'Yogurt', es: 'Yogur', nl: 'Yoghurt' } },
+  { icon: '🥕', value: 'vegetables', labels: { fr: 'Légumes', en: 'Veggies', es: 'Verduras', nl: 'Groenten' } },
+  { icon: '💧', value: 'water', labels: { fr: 'Eau', en: 'Water', es: 'Agua', nl: 'Water' } },
 ];
 
 const mealTimes = [
-  { label: '🌅 Desayuno', value: 'breakfast', labelEn: '🌅 Breakfast', startHour: 6, endHour: 10 },
-  { label: '🌞 Almuerzo', value: 'lunch', labelEn: '🌞 Lunch', startHour: 11, endHour: 14 },
-  { label: '🍪 Merienda', value: 'snack', labelEn: '🍪 Snack', startHour: 15, endHour: 17 },
-  { label: '🌙 Cena', value: 'dinner', labelEn: '🌙 Dinner', startHour: 18, endHour: 21 },
+  { value: 'breakfast', labels: { fr: '🌅 Petit-déj', en: '🌅 Breakfast', es: '🌅 Desayuno', nl: '🌅 Ontbijt' }, startHour: 6, endHour: 10 },
+  { value: 'lunch', labels: { fr: '🌞 Déjeuner', en: '🌞 Lunch', es: '🌞 Almuerzo', nl: '🌞 Lunch' }, startHour: 11, endHour: 14 },
+  { value: 'snack', labels: { fr: '🍪 Goûter', en: '🍪 Snack', es: '🍪 Merienda', nl: '🍪 Snack' }, startHour: 15, endHour: 17 },
+  { value: 'dinner', labels: { fr: '🌙 Dîner', en: '🌙 Dinner', es: '🌙 Cena', nl: '🌙 Diner' }, startHour: 18, endHour: 21 },
 ];
 
 const foodDefaultQuantities: Record<string, number> = {
@@ -493,7 +493,7 @@ export default function EntryComposerScreen() {
 
   useEffect(() => {
     if (type !== 'food' || editing || !foodName || !profile?.babyBirthDate) return;
-    const selectedPreset = foodPresets.find((p) => p.label === foodName);
+    const selectedPreset = foodPresets.find((p) => p.value === foodName || Object.values(p.labels).includes(foodName));
     if (selectedPreset && !quantityGrams) {
       const recommendedQty = getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value);
       if (recommendedQty) {
@@ -509,16 +509,14 @@ export default function EntryComposerScreen() {
         return mode === 'bottle'
           ? { mode: 'bottle', amountMl: Number(amountMl) || 0, notes }
           : { mode: 'breast', side: side as BreastSide, durationMin: resolvedDuration, amountMl: Number(amountMl) || 0, notes };
-      case 'food':
-        return {
-          foodName,
-          quantity,
-          quantityGrams: quantityGrams ? Number(quantityGrams) : undefined,
-          foodAllergies: foodAllergies.length > 0 ? foodAllergies : undefined,
-          foodLiked: foodLiked || undefined,
-          mealTime: mealTime || undefined,
-          notes,
-        };
+      case 'food': {
+        const foodPayload: Record<string, unknown> = { foodName, quantity, notes };
+        if (quantityGrams) foodPayload.quantityGrams = Number(quantityGrams);
+        if (foodAllergies.length > 0) foodPayload.foodAllergies = foodAllergies;
+        if (foodLiked) foodPayload.foodLiked = foodLiked;
+        if (mealTime) foodPayload.mealTime = mealTime;
+        return foodPayload as EntryPayload;
+      }
       case 'sleep':
         return { durationMin: resolvedDuration, notes };
       case 'diaper':
@@ -819,274 +817,281 @@ export default function EntryComposerScreen() {
           </View>
         )}
 
-        {type === 'food' && (
-          <View style={styles.sectionCard}>
-            {profile?.babyBirthDate && (() => {
-              const birthDate = new Date(profile.babyBirthDate);
-              const ageMonths = (new Date().getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
-              if (ageMonths < 6) {
+        {type === 'food' && (() => {
+          const lang = language as 'fr' | 'en' | 'es' | 'nl';
+          const getFoodLabel = (preset: typeof foodPresets[number]) => preset.labels[lang] ?? preset.labels.en;
+          const getMealLabel = (meal: typeof mealTimes[number]) => meal.labels[lang] ?? meal.labels.en;
+          const selectedPreset = foodPresets.find((p) => p.value === foodName || Object.values(p.labels).includes(foodName));
+          const recommendedQty = selectedPreset && profile?.babyBirthDate
+            ? getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value)
+            : null;
+          const isFirstTry = foodName.trim().length > 0 && !foodPreferencesMap[foodName];
+          const quantityOptions = (() => {
+            if (!profile?.babyBirthDate || !selectedPreset) return [20, 50, 100, 150];
+            const base = recommendedQty ?? 50;
+            return [Math.max(5, base - 20), base, base + 20, base + 40].map(Math.round).filter((v, i, a) => a.indexOf(v) === i);
+          })();
+          const likedLabels = {
+            yes: { fr: 'Adoré !', en: 'Loved it!', es: '¡Le encantó!', nl: 'Heerlijk!' },
+            neutral: { fr: 'Bof', en: 'So-so', es: 'Más o menos', nl: 'Gaat wel' },
+            no: { fr: 'Refusé', en: 'Refused', es: 'Lo rechazó', nl: 'Geweigerd' },
+          };
+          const reactionOptions = [
+            { emoji: '🤧', value: 'allergy', labels: { fr: 'Allergie', en: 'Allergy', es: 'Alergia', nl: 'Allergie' } },
+            { emoji: '😬', value: 'intolerance', labels: { fr: 'Intolérance', en: 'Intolerance', es: 'Intolerancia', nl: 'Intolerantie' } },
+            { emoji: '🔴', value: 'rash', labels: { fr: 'Éruption', en: 'Rash', es: 'Erupción', nl: 'Uitslag' } },
+            { emoji: '🤮', value: 'vomit', labels: { fr: 'Vomissement', en: 'Vomit', es: 'Vómito', nl: 'Braken' } },
+            { emoji: '💩', value: 'diarrhea', labels: { fr: 'Diarrhée', en: 'Diarrhea', es: 'Diarrea', nl: 'Diarree' } },
+          ];
+          const sectionLabel = { fr: 'Choisir un aliment', en: 'Choose food', es: 'Elige alimento', nl: 'Kies voedsel' };
+          const mealTimeLabel = { fr: 'Moment du repas', en: 'Meal time', es: 'Momento', nl: 'Maaltijd' };
+          const quantityLabel = { fr: 'Quantité (g)', en: 'Quantity (g)', es: 'Cantidad (g)', nl: 'Hoeveelheid (g)' };
+          const reactionLabel = { fr: 'Réaction ?', en: 'Any reaction?', es: '¿Alguna reacción?', nl: 'Reactie?' };
+          const likedLabel = { fr: 'Comment ça s\'est passé ?', en: 'How did it go?', es: '¿Cómo fue?', nl: 'Hoe ging het?' };
+          const recentLabel = { fr: 'Récents & Favoris', en: 'Recent & Favorites', es: 'Recientes y favoritos', nl: 'Recent & Favorieten' };
+          const foodNameLabel = { fr: 'Autre aliment', en: 'Other food', es: 'Otro alimento', nl: 'Ander voedsel' };
+          const suggestedLabel = { fr: 'Suggéré pour l\'âge', en: 'Suggested for age', es: 'Sugerido por edad', nl: 'Aanbevolen voor leeftijd' };
+          const firstTryLabel = { fr: '✨ Premier essai', en: '✨ First try!', es: '✨ ¡Primera vez!', nl: '✨ Eerste keer!' };
+
+          return (
+            <View style={styles.sectionCard}>
+              {/* Age warning */}
+              {profile?.babyBirthDate && (() => {
+                const ageMonths = (Date.now() - new Date(profile.babyBirthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+                if (ageMonths >= 6) return null;
                 return (
-                  <View style={[styles.ageWarningBox, { borderColor: '#F0B85A', backgroundColor: 'rgba(240,184,90,0.1)' }]}>
+                  <View style={[styles.ageWarningBox, { borderColor: '#F0B85A', backgroundColor: 'rgba(240,184,90,0.1)', marginBottom: 14 }]}>
                     <Text style={[styles.ageWarningText, { color: '#F0B85A' }]}>
-                      ⚠️ {language === 'fr' ? 'Les aliments solides ne sont recommandés qu\'à partir de 6 mois' : 'Solid foods recommended from 6 months'}
+                      {language === 'fr' ? '⚠️ Aliments solides recommandés à partir de 6 mois'
+                        : language === 'es' ? '⚠️ Alimentos sólidos recomendados desde los 6 meses'
+                        : language === 'nl' ? '⚠️ Vast voedsel aanbevolen vanaf 6 maanden'
+                        : '⚠️ Solid foods recommended from 6 months'}
                     </Text>
                   </View>
                 );
-              }
-              return null;
-            })()}
+              })()}
 
-            {seasonalRecommendations && (
-              <View style={[styles.seasonalBox, { borderColor: meta.tone, backgroundColor: `${meta.tone}10` }]}>
-                <Text style={[styles.seasonalTitle, { color: meta.tone }]}>
-                  {seasonalRecommendations.emoji} {language === 'fr' ? seasonalRecommendations.season_fr : seasonalRecommendations.season_en}
-                </Text>
-                <Text style={[styles.seasonalBenefit, { color: colors.text }]}>
-                  {seasonalRecommendations.benefits}
-                </Text>
-                <View style={{ marginTop: 10 }}>
-                  <Text style={[styles.seasonalLabel, { color: colors.muted }]}>
-                    {language === 'fr' ? 'Fruits de saison' : 'Seasonal fruits'}
+              {/* Seasonal banner */}
+              {seasonalRecommendations && (
+                <View style={[styles.seasonalBox, { borderColor: meta.tone, backgroundColor: `${meta.tone}10`, marginBottom: 14 }]}>
+                  <Text style={[styles.seasonalTitle, { color: meta.tone }]}>
+                    {seasonalRecommendations.emoji} {language === 'fr' ? seasonalRecommendations.season_fr : seasonalRecommendations.season_en}
                   </Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                    {seasonalRecommendations.fruits.map((fruit) => (
-                      <Text key={fruit.name} style={[styles.seasonalFoodTag, { backgroundColor: meta.toneSoft, color: meta.tone }]}>
-                        {fruit.icon} {fruit.name}
-                      </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {[...seasonalRecommendations.fruits, ...seasonalRecommendations.vegetables].slice(0, 6).map((item) => (
+                      <Pressable
+                        key={item.name}
+                        onPress={() => setFoodName(item.name)}
+                        style={[styles.seasonalFoodTag, { backgroundColor: foodName === item.name ? meta.toneSoft : `${meta.tone}15`, borderColor: meta.tone, borderWidth: foodName === item.name ? 1.5 : 0 }]}
+                      >
+                        <Text style={{ color: meta.tone, fontSize: 12 }}>{item.icon} {item.name}</Text>
+                      </Pressable>
                     ))}
                   </View>
                 </View>
-                <View style={{ marginTop: 10 }}>
-                  <Text style={[styles.seasonalLabel, { color: colors.muted }]}>
-                    {language === 'fr' ? 'Légumes de saison' : 'Seasonal vegetables'}
-                  </Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                    {seasonalRecommendations.vegetables.map((veg) => (
-                      <Text key={veg.name} style={[styles.seasonalFoodTag, { backgroundColor: meta.toneSoft, color: meta.tone }]}>
-                        {veg.icon} {veg.name}
-                      </Text>
-                    ))}
-                  </View>
-                </View>
-              </View>
-            )}
+              )}
 
-            <View style={{ marginBottom: 12 }}>
-              <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
-                {language === 'fr' ? 'Choisir un aliment' : 'Choose food'}
-              </Text>
-              <View style={styles.chipRow}>
-                {foodPresets.map((preset) => (
-                  <Pressable
-                    key={preset.value}
-                    onPress={() => setFoodName(preset.label)}
-                    style={[styles.quickChip, foodName === preset.label && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
-                  >
-                    <Text style={[styles.quickChipText, foodName === preset.label && { color: meta.tone, fontWeight: '900' }]}>
-                      {preset.icon} {preset.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-
-            {recentFoodEntries.length > 0 && (
-              <View style={{ marginBottom: 12 }}>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>
-                  {language === 'fr' ? 'Récents & Favoris' : 'Recent & Favorites'}
+              {/* Food preset chips */}
+              <View style={{ marginBottom: 14 }}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
+                  {sectionLabel[lang] ?? sectionLabel.en}
                 </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                  {recentFoodEntries.map((entry) => {
-                    const foodName_ = (entry.payload as any).foodName;
-                    const prefs = foodPreferencesMap[foodName_];
-                    const emoji = !prefs
-                      ? ''
-                      : prefs.liked > prefs.disliked + prefs.neutral
-                        ? '❤️'
-                        : prefs.disliked > prefs.liked + prefs.neutral
-                          ? '😕'
-                          : '';
+                <View style={styles.chipRow}>
+                  {foodPresets.map((preset) => {
+                    const label = getFoodLabel(preset);
+                    const active = selectedPreset?.value === preset.value;
                     return (
                       <Pressable
-                        key={entry.id}
-                        onPress={() => setFoodName(foodName_)}
-                        style={[
-                          styles.recentFoodChip,
-                          foodName === foodName_ && { backgroundColor: meta.toneSoft, borderColor: meta.tone },
-                        ]}
+                        key={preset.value}
+                        onPress={() => setFoodName(preset.value)}
+                        style={[styles.quickChip, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
                       >
-                        <Text style={[styles.recentFoodChipText, foodName === foodName_ && { color: meta.tone, fontWeight: '900' }]}>
-                          {emoji} {foodName_}
+                        <Text style={[styles.quickChipText, active && { color: meta.tone, fontWeight: '900' }]}>
+                          {preset.icon} {label}
                         </Text>
                       </Pressable>
                     );
                   })}
                 </View>
               </View>
-            )}
 
-            <View style={{ marginBottom: 12 }}>
-              <Input
-                label={language === 'fr' ? 'Nom de l\'aliment' : 'Food name'}
-                value={foodName}
-                onChangeText={setFoodName}
-                placeholder={language === 'fr' ? 'Pomme, riz, purée...' : 'Apple, rice, puree...'}
-              />
-            </View>
+              {/* Recent & favorites */}
+              {recentFoodEntries.length > 0 && (
+                <View style={{ marginBottom: 14 }}>
+                  <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>
+                    {recentLabel[lang] ?? recentLabel.en}
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {recentFoodEntries.map((entry) => {
+                      const fn = (entry.payload as any).foodName as string;
+                      const prefs = foodPreferencesMap[fn];
+                      const badge = prefs
+                        ? prefs.liked > prefs.disliked + prefs.neutral ? '❤️ '
+                          : prefs.disliked > prefs.liked + prefs.neutral ? '😕 ' : ''
+                        : '';
+                      return (
+                        <Pressable
+                          key={entry.id}
+                          onPress={() => setFoodName(fn)}
+                          style={[styles.recentFoodChip, foodName === fn && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                        >
+                          <Text style={[styles.recentFoodChipText, foodName === fn && { color: meta.tone, fontWeight: '900' }]}>
+                            {badge}{fn}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
 
-            <View style={{ marginBottom: 12 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {language === 'fr' ? 'Heure du repas' : 'Meal time'}
-                </Text>
-                <Text style={[styles.sectionBody, { color: colors.muted, fontSize: 11 }]}>
-                  {new Date().toLocaleTimeString(language === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
+              {/* Free-text food name */}
+              <View style={{ marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{foodNameLabel[lang] ?? foodNameLabel.en}</Text>
+                  {isFirstTry && (
+                    <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: `${meta.tone}22`, borderWidth: 1, borderColor: meta.tone }}>
+                      <Text style={{ color: meta.tone, fontSize: 11, fontWeight: '700' }}>{firstTryLabel[lang] ?? firstTryLabel.en}</Text>
+                    </View>
+                  )}
+                </View>
+                <Input
+                  label=""
+                  value={foodName}
+                  onChangeText={setFoodName}
+                  placeholder={language === 'fr' ? 'Pomme, compote, quinoa...' : language === 'es' ? 'Manzana, compota...' : language === 'nl' ? 'Appel, compote...' : 'Apple, compote, quinoa...'}
+                />
               </View>
-              <View style={styles.chipRow}>
-                {mealTimes.map((meal) => {
-                  const isRecommended = getRecommendedMealTime() === meal.value && !mealTime;
-                  return (
+
+              {/* Meal time */}
+              <View style={{ marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{mealTimeLabel[lang] ?? mealTimeLabel.en}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 11 }}>
+                    {new Date().toLocaleTimeString(lang === 'fr' ? 'fr-FR' : lang === 'nl' ? 'nl-BE' : lang === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
+                <View style={styles.chipRow}>
+                  {mealTimes.map((meal) => {
+                    const isAuto = getRecommendedMealTime() === meal.value && !mealTime;
+                    const active = mealTime === meal.value || isAuto;
+                    return (
+                      <Pressable
+                        key={meal.value}
+                        onPress={() => setMealTime(meal.value as any)}
+                        style={[styles.quickChip, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: isAuto ? 2 : 1 }]}
+                      >
+                        <Text style={[styles.quickChipText, active && { color: meta.tone, fontWeight: '900' }]}>
+                          {getMealLabel(meal)}{isAuto ? ' ✓' : ''}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Quantity */}
+              <View style={{ marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{quantityLabel[lang] ?? quantityLabel.en}</Text>
+                  {recommendedQty ? (
+                    <Text style={{ color: meta.tone, fontSize: 10, fontWeight: '600' }}>
+                      {suggestedLabel[lang] ?? suggestedLabel.en}: {recommendedQty}g
+                    </Text>
+                  ) : null}
+                </View>
+                <Input
+                  label=""
+                  value={quantityGrams}
+                  onChangeText={setQuantityGrams}
+                  keyboardType="decimal-pad"
+                  placeholder={String(recommendedQty ?? 50)}
+                />
+                <View style={styles.quantityQuickButtons}>
+                  {quantityOptions.map((g) => (
                     <Pressable
-                      key={meal.value}
-                      onPress={() => setMealTime(meal.value as any)}
-                      style={[
-                        styles.quickChip,
-                        mealTime === meal.value && { backgroundColor: meta.toneSoft, borderColor: meta.tone },
-                        isRecommended && !mealTime && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 },
-                      ]}
+                      key={g}
+                      onPress={() => setQuantityGrams(String(g))}
+                      style={[styles.quickQuantityBtn, quantityGrams === String(g) && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
                     >
-                      <Text style={[styles.quickChipText, (mealTime === meal.value || isRecommended) && { color: meta.tone, fontWeight: '900' }]}>
-                        {language === 'fr' ? meal.label : meal.labelEn}
-                        {isRecommended && !mealTime ? ' ✓' : ''}
+                      <Text style={[styles.quickQuantityText, quantityGrams === String(g) && { color: meta.tone, fontWeight: '900' }]}>
+                        {g}g
                       </Text>
                     </Pressable>
-                  );
-                })}
+                  ))}
+                </View>
               </View>
-            </View>
 
-            <View style={{ marginBottom: 12 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {language === 'fr' ? 'Quantité (g)' : 'Quantity (g)'}
+              {/* How did it go? */}
+              <View style={{ marginBottom: 14 }}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
+                  {likedLabel[lang] ?? likedLabel.en}
                 </Text>
-                {foodName && profile?.babyBirthDate && (() => {
-                  const selectedPreset = foodPresets.find((p) => p.label === foodName);
-                  const recommendedQty = selectedPreset ? getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value) : null;
-                  return recommendedQty ? (
-                    <Text style={[styles.sectionBody, { color: colors.muted, fontSize: 10, fontStyle: 'italic' }]}>
-                      {language === 'fr' ? 'Suggéré pour age' : 'Suggested for age'}: {recommendedQty}g
-                    </Text>
-                  ) : null;
-                })()}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {(['yes', 'neutral', 'no'] as const).map((val) => {
+                    const active = foodLiked === val;
+                    const emoji = val === 'yes' ? '😍' : val === 'neutral' ? '😐' : '😣';
+                    return (
+                      <Pressable
+                        key={val}
+                        onPress={() => setFoodLiked(active ? null : val)}
+                        style={{
+                          flex: 1,
+                          paddingVertical: 14,
+                          borderRadius: 12,
+                          alignItems: 'center',
+                          gap: 4,
+                          borderWidth: active ? 2 : 1,
+                          borderColor: active ? meta.tone : colors.border,
+                          backgroundColor: active ? meta.toneSoft : 'transparent',
+                        }}
+                      >
+                        <Text style={{ fontSize: 24 }}>{emoji}</Text>
+                        <Text style={{ color: active ? meta.tone : colors.muted, fontSize: 11, fontWeight: active ? '700' : '400' }}>
+                          {likedLabels[val][lang] ?? likedLabels[val].en}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
-              <Input
-                label=""
-                value={quantityGrams}
-                onChangeText={setQuantityGrams}
-                keyboardType="decimal-pad"
-                placeholder={foodName && profile?.babyBirthDate ? String((() => {
-                  const selectedPreset = foodPresets.find((p) => p.label === foodName);
-                  return selectedPreset ? getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value) : '50';
-                })()) : '50'}
-              />
-              <View style={styles.quantityQuickButtons}>
-                {(() => {
-                  if (!profile?.babyBirthDate) {
-                    return [20, 50, 100, 150];
-                  }
-                  const selectedPreset = foodPresets.find((p) => p.label === foodName);
-                  if (!selectedPreset) {
-                    return [20, 50, 100, 150];
-                  }
-                  const recommendedQty = getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value);
-                  const baseOptions = [recommendedQty - 20, recommendedQty, recommendedQty + 20, recommendedQty + 40]
-                    .filter((v) => v > 0)
-                    .map((v) => Math.round(v))
-                    .filter((v, i, a) => a.indexOf(v) === i);
-                  return baseOptions.length >= 3 ? baseOptions : [20, 50, 100, 150];
-                })().map((g) => (
-                  <Pressable
-                    key={g}
-                    onPress={() => setQuantityGrams(String(g))}
-                    style={[styles.quickQuantityBtn, quantityGrams === String(g) && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
-                  >
-                    <Text style={[styles.quickQuantityText, quantityGrams === String(g) && { color: meta.tone, fontWeight: '900' }]}>
-                      {g}g
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
 
-            <View style={{ marginBottom: 12 }}>
-              <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
-                {language === 'fr' ? '¿Le gustó?' : 'Did baby like it?'}
-              </Text>
-              <View style={styles.chipRow}>
-                <Pressable
-                  onPress={() => setFoodLiked(foodLiked === 'yes' ? null : 'yes')}
-                  style={[styles.quickChip, foodLiked === 'yes' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
-                >
-                  <Text style={[styles.quickChipText, foodLiked === 'yes' && { color: meta.tone, fontWeight: '900' }]}>
-                    👍 {language === 'fr' ? 'Sí' : 'Yes'}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setFoodLiked(foodLiked === 'neutral' ? null : 'neutral')}
-                  style={[styles.quickChip, foodLiked === 'neutral' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
-                >
-                  <Text style={[styles.quickChipText, foodLiked === 'neutral' && { color: meta.tone, fontWeight: '900' }]}>
-                    😐 {language === 'fr' ? 'Neutral' : 'Neutral'}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setFoodLiked(foodLiked === 'no' ? null : 'no')}
-                  style={[styles.quickChip, foodLiked === 'no' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
-                >
-                  <Text style={[styles.quickChipText, foodLiked === 'no' && { color: meta.tone, fontWeight: '900' }]}>
-                    👎 {language === 'fr' ? 'No' : 'No'}
-                  </Text>
-                </Pressable>
+              {/* Reactions */}
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
+                  {reactionLabel[lang] ?? reactionLabel.en}
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {reactionOptions.map(({ emoji, value, labels }) => {
+                    const active = foodAllergies.includes(value);
+                    return (
+                      <Pressable
+                        key={value}
+                        onPress={() => setFoodAllergies(active ? foodAllergies.filter((a) => a !== value) : [...foodAllergies, value])}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          borderRadius: 10,
+                          borderWidth: active ? 2 : 1,
+                          borderColor: active ? '#E74C3C' : colors.border,
+                          backgroundColor: active ? 'rgba(231,76,60,0.12)' : 'transparent',
+                        }}
+                      >
+                        <Text style={{ fontSize: 16 }}>{emoji}</Text>
+                        <Text style={{ color: active ? '#E74C3C' : colors.muted, fontWeight: active ? '700' : '500', fontSize: 13 }}>
+                          {labels[lang] ?? labels.en}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
             </View>
-
-            <View style={{ marginBottom: 12 }}>
-              <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
-                {language === 'fr' ? 'Réaction?' : 'Any reaction?'}
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                {[
-                  { label: language === 'fr' ? 'Allergie' : 'Allergy', value: 'allergy' },
-                  { label: language === 'fr' ? 'Intolérance' : 'Intolerance', value: 'intolerance' },
-                  { label: language === 'fr' ? 'Éruption' : 'Rash', value: 'rash' },
-                  { label: language === 'fr' ? 'Vomissements' : 'Vomit', value: 'vomit' },
-                  { label: language === 'fr' ? 'Diarrhée' : 'Diarrhea', value: 'diarrhea' },
-                ].map(({ label, value }) => (
-                  <Pressable
-                    key={value}
-                    onPress={() => {
-                      if (foodAllergies.includes(value)) {
-                        setFoodAllergies(foodAllergies.filter((a) => a !== value));
-                      } else {
-                        setFoodAllergies([...foodAllergies, value]);
-                      }
-                    }}
-                    style={[
-                      styles.reactionChip,
-                      foodAllergies.includes(value) && { backgroundColor: meta.toneSoft, borderColor: meta.tone },
-                    ]}
-                  >
-                    <Text style={[{ color: foodAllergies.includes(value) ? meta.tone : colors.muted, fontWeight: '600', fontSize: 12 }]}>
-                      {label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          </View>
-        )}
+          );
+        })()}
 
         {type === 'sleep' && editing && (
           <View style={styles.sectionCard}>
