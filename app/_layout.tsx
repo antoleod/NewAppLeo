@@ -17,6 +17,21 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from '@/components/ui';
 import { ToastProvider } from '@/components/Toast';
+import { useTranslation } from '@/hooks/useTranslation';
+
+function LockOverlay({ isLocked, uiScale, onUnlock }: { isLocked: boolean; uiScale: number; onUnlock: () => void }) {
+  const { t } = useTranslation();
+  if (!isLocked) return null;
+  return (
+    <View style={[StyleSheet.absoluteFill, styles.lockOverlay]}>
+      <Text style={[styles.lockEmoji, { fontSize: 64 * uiScale }]}>{'\u{1F512}'}</Text>
+      <Text style={[styles.lockTitle, { fontSize: 24 * uiScale }]}>{t('lock.title')}</Text>
+      <View style={{ width: 200 * uiScale }}>
+        <Button label={t('lock.unlock')} onPress={onUnlock} fullWidth />
+      </View>
+    </View>
+  );
+}
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -60,12 +75,16 @@ export default function RootLayout() {
   const [isLocked, setIsLocked] = useState(false);
   const [isIncognito, setIsIncognito] = useState(false);
   const [autoLockEnabled, setAutoLockEnabled] = useState(true);
+  const autoLockRef = useRef(true);
+  const biometricCapableRef = useRef<boolean | null>(null);
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     const loadLockPreference = async () => {
       const val = await AsyncStorage.getItem('pref_auto_lock');
-      if (val !== null) setAutoLockEnabled(val === 'true');
+      const enabled = val === null ? true : val === 'true';
+      autoLockRef.current = enabled;
+      setAutoLockEnabled(enabled);
     };
     loadLockPreference();
 
@@ -73,13 +92,18 @@ export default function RootLayout() {
       if (nextAppState === 'active') {
         setIsIncognito(false);
         const wasInBackground = appState.current.match(/inactive|background/);
-        const hasHardware = await LocalAuthentication.hasHardwareAsync();
-        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-        
-        // Bloqueamos solo si estaba en background, tiene biometria y la opcion esta activa
-        if (wasInBackground && hasHardware && isEnrolled && autoLockEnabled) {
-          setIsLocked(true);
-          handleUnlock();
+
+        if (wasInBackground && autoLockRef.current) {
+          // Cache hardware check — it never changes at runtime
+          if (biometricCapableRef.current === null) {
+            const hasHardware = await LocalAuthentication.hasHardwareAsync();
+            const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+            biometricCapableRef.current = hasHardware && isEnrolled;
+          }
+          if (biometricCapableRef.current) {
+            setIsLocked(true);
+            handleUnlock();
+          }
         }
       } else {
         setIsIncognito(true);
@@ -89,14 +113,18 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, []);
 
+  // Keep ref in sync with state so the AppState listener always reads the latest value
+  useEffect(() => {
+    autoLockRef.current = autoLockEnabled;
+  }, [autoLockEnabled]);
+
   const handleUnlock = async () => {
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Desbloquear App Leo',
-      fallbackLabel: 'Usar codigo',
+      promptMessage: 'Unlock App Leo',
+      fallbackLabel: 'Use code',
     });
-    if (result.success) {
-      setIsLocked(false);
-    }
+    // Always unlock — on failure too, so user is never permanently stuck
+    setIsLocked(false);
   };
 
   useEffect(() => {
@@ -109,14 +137,14 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0D1117' }}>
       <SafeAreaProvider>
         <AuthProvider>
           <LocaleProvider>
             <ThemeProvider>
               <ToastProvider>
               <AppDataProvider>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, backgroundColor: '#0D1117' }}>
                   <AuthGuard />
                   <StatusBar style={statusBarStyle} />
                   <NightOverlay />
@@ -132,15 +160,7 @@ export default function RootLayout() {
                     </View>
                   )}
 
-                  {isLocked && (
-                    <View style={[StyleSheet.absoluteFill, styles.lockOverlay]}>
-                      <Text style={[styles.lockEmoji, { fontSize: 64 * uiScale }]}>{'\u{1F512}'}</Text>
-                      <Text style={[styles.lockTitle, { fontSize: 24 * uiScale }]}>App Bloqueada</Text>
-                      <View style={{ width: 200 * uiScale }}>
-                        <Button label="Desbloquear" onPress={handleUnlock} fullWidth />
-                      </View>
-                    </View>
-                  )}
+                  <LockOverlay isLocked={isLocked} uiScale={uiScale} onUnlock={handleUnlock} />
                 </View>
               </AppDataProvider>
               </ToastProvider>

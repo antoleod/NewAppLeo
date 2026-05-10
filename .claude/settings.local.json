@@ -30,7 +30,9 @@
       "Bash(node -e \"try { require\\('expo-router/html'\\); console.log\\('expo-router/html: OK'\\); } catch\\(e\\) { console.log\\('expo-router/html: MISSING -', e.message.split\\('\\\\n'\\)[0]\\); }\")",
       "Bash(node -e ' *)",
       "Bash(node *)",
-      "Bash(git remote *)"
+      "Bash(git remote *)",
+      "Bash(ls \"C:\\\\Users\\\\X1\\\\Downloads\\\\scan\\\\scan\\\\.claude\\\\agents\")",
+      "Read(//c/Users/X1/Downloads/scan/scan/.claude/agents/**)"
     ]
   }
 }

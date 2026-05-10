@@ -67,9 +67,9 @@ export interface UserProfile {
   username: string;
   usernameLower: string;
   authEmail: string;
-  encryptedPassword: string;
-  pinHash: string;
-  pinSalt: string;
+  encryptedPassword?: string;
+  pinHash?: string;
+  pinSalt?: string;
   role: 'parent' | 'caregiver' | 'admin';
   status: 'active' | 'pending' | 'disabled';
   caregiverName: string;

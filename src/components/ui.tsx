@@ -70,8 +70,11 @@ export function Page({
     </View>
   );
 
+  // Always set a dark/themed background so iOS overscroll bounce never exposes white
+  const pageBackground = usePhotoBackdrop ? colors.background : colors.background;
+
   return (
-    <View style={[styles.page, { backgroundColor: usePhotoBackdrop ? 'transparent' : colors.background }]}>
+    <View style={[styles.page, { backgroundColor: pageBackground }]}>
       {usePhotoBackdrop ? (
         <ImageBackground
           source={backdropSource}
@@ -103,7 +106,7 @@ export function Page({
             {content}
           </ScrollView>
         ) : (
-          <View style={[styles.scroll, isDesktopWeb && styles.scrollDesktop]}>{content}</View>
+          <View style={[styles.scrollStatic, isDesktopWeb && styles.scrollDesktop]}>{content}</View>
         )}
       </SafeAreaView>
     </View>
@@ -652,14 +655,17 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     flexGrow: 1,
   },
+  scrollStatic: {
+    flex: 1,
+  },
   scrollDesktop: {
     paddingHorizontal: spacing.lg,
   },
   pageInner: {
+    flex: 1,
     width: '100%',
     maxWidth: 1100,
     alignSelf: 'center',
-    gap: spacing.lg,
   },
   card: {
     borderWidth: 1,

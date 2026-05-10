@@ -262,12 +262,15 @@ export default function IndexRoute() {
                 await SecureStore.deleteItemAsync('saved_password');
               }
             } else if (view === 'signup') {
+              const randomPin = Array.from(
+                globalThis.crypto.getRandomValues(new Uint8Array(6))
+              ).map(b => b % 10).join('');
               await register({
                 displayName: email.split('@')[0] || 'Parent',
                 username: email.split('@')[0] || `user_${Date.now()}`,
                 email,
                 password,
-                pin: '0000',
+                pin: randomPin,
               });
             } else {
               await resetPassword(email);

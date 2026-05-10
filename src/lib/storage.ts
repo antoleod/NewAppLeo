@@ -389,22 +389,22 @@ export async function clearLocalSession(uid?: string) {
     GUEST_PROFILE_KEY,
     MODULE_VISIBILITY_KEY,
     SAVED_MEDICINES_KEY,
+    'appleo.syncQueue',
     ...babies.map((b) => `${ENTRY_PREFIX}:${b.id}`),
     ...babies.map((b) => `${MOM_HYDRATION_PREFIX}:${b.id}`),
   ];
   await AsyncStorage.multiRemove(keysToRemove);
 
-  if (typeof globalThis.localStorage !== 'undefined') {
-    try {
-      const raw = globalThis.localStorage.getItem('appleo.local.entries');
-      if (raw) {
-        const entriesMap = JSON.parse(raw) as Record<string, unknown>;
-        if (uid) delete entriesMap[uid];
-        delete entriesMap['guest'];
-        globalThis.localStorage.setItem('appleo.local.entries', JSON.stringify(entriesMap));
-      }
-    } catch { /* ignore */ }
-  }
+  // Clean up per-uid localStore entries stored in AsyncStorage
+  try {
+    const raw = await AsyncStorage.getItem('appleo.local.entries');
+    if (raw) {
+      const entriesMap = JSON.parse(raw) as Record<string, unknown>;
+      if (uid) delete entriesMap[uid];
+      delete entriesMap['guest'];
+      await AsyncStorage.setItem('appleo.local.entries', JSON.stringify(entriesMap));
+    }
+  } catch { /* ignore */ }
 }
 
 export async function getDeviceDisplayName() {

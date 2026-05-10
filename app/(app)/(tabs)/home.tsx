@@ -201,6 +201,79 @@ function getFoodStats(entries: EntryRecord[]) {
   };
 }
 
+function GlassCard({ children, style, blur = true }: { children: React.ReactNode; style?: any; blur?: boolean }) {
+  const { theme, colors } = useTheme();
+  const content = (
+    <View
+      style={[
+        {
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: theme.border,
+          backgroundColor: theme.bgCard,
+          shadowColor: '#000',
+          shadowOpacity: 0.24,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 6,
+        },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+
+  if (!blur) return content;
+
+  return (
+    <BlurView intensity={20} style={[{ borderRadius: 16, overflow: 'hidden' }, style]}>
+      {content}
+    </BlurView>
+  );
+}
+
+function ActionButton({
+  label,
+  icon,
+  onPress,
+  color,
+  style,
+}: {
+  label: string;
+  icon: string;
+  onPress: () => void;
+  color?: string;
+  style?: any;
+}) {
+  const { theme } = useTheme();
+  const btnColor = color ?? theme.blue;
+  return (
+    <Pressable
+      {...touchTargetProps}
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          height: 56,
+          paddingHorizontal: 14,
+          borderRadius: 12,
+          backgroundColor: pressed ? `${btnColor}22` : theme.bgCard,
+          borderWidth: 1,
+          borderColor: theme.border,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          opacity: pressed ? 0.92 : 1,
+        },
+        style,
+      ]}
+    >
+      <Text style={{ fontSize: 18 }}>{icon}</Text>
+      <Text style={{ color: theme.textPrimary, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export default function HomeScreen() {
   const { language } = useLocale();
   const locale = localeTag(language);
@@ -242,77 +315,7 @@ export default function HomeScreen() {
     return GOLD;
   };
 
-  const GlassCard = ({ children, style, blur = true }: { children: React.ReactNode; style?: any; blur?: boolean }) => {
-    const content = (
-      <View
-        style={[
-          {
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: BORDER,
-            backgroundColor: CARD,
-            shadowColor: '#000',
-            shadowOpacity: 0.24,
-            shadowRadius: 18,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 6,
-          },
-          style,
-        ]}
-      >
-        {children}
-      </View>
-    );
-
-    if (!blur) return content;
-
-    return (
-      <BlurView intensity={20} style={[{ borderRadius: 16, overflow: 'hidden' }, style]}>
-        {content}
-      </BlurView>
-    );
-  };
-
-  const ActionButton = ({
-    label,
-    icon,
-    onPress,
-    color = BLUE,
-    style,
-  }: {
-    label: string;
-    icon: string;
-    onPress: () => void;
-    color?: string;
-    style?: any;
-  }) => {
-    return (
-      <Pressable
-        {...touchTargetProps}
-        onPress={onPress}
-        style={({ pressed }) => [
-          {
-            height: 56,
-            paddingHorizontal: 14,
-            borderRadius: 12,
-            backgroundColor: pressed ? `${color}22` : CARD,
-            borderWidth: 1,
-            borderColor: BORDER,
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            opacity: pressed ? 0.92 : 1,
-          },
-          style,
-        ]}
-      >
-        <Text style={{ fontSize: 18 }}>{icon}</Text>
-        <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{label}</Text>
-      </Pressable>
-    );
-  };
-
-  const styles = StyleSheet.create({
+  const styles = useMemo(() => StyleSheet.create({
     pageContent: {
       width: '100%',
       maxWidth: 1100,
@@ -510,7 +513,7 @@ export default function HomeScreen() {
     switcherFooter: {
       gap: 8,
     },
-  });
+  }), [CARD, BORDER, TEXT, MUTED, ACCENT, BG]);
 
   const [hydration, setHydration] = useState(0);
   const [babyId, setBabyId] = useState<string | null>(null);
@@ -820,18 +823,37 @@ export default function HomeScreen() {
   }
 
   return (
-    <Page contentStyle={styles.pageContent}>
-      <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+    <Page scroll={false} contentStyle={styles.pageContent}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} bounces={false}>
         <View style={{ paddingBottom: Math.max(100, insets.bottom + 80) }}>
           {/* Premium Compact Header */}
           <Animated.View entering={FadeIn.duration(300)} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 }}>
             {/* Top row: greeting + settings */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: MUTED, fontSize: 12, fontWeight: '500', letterSpacing: 0.3, marginBottom: 2 }}>
+                <Text style={{
+                  color: TEXT,
+                  fontSize: 12,
+                  fontWeight: '700',
+                  letterSpacing: 0.6,
+                  marginBottom: 3,
+                  opacity: 0.72,
+                  textShadowColor: 'rgba(0,0,0,0.55)',
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 3,
+                  textTransform: 'uppercase',
+                }}>
                   {t(`greeting.${getHourPeriod()}`)}
                 </Text>
-                <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>
+                <Text style={{
+                  color: TEXT,
+                  fontSize: 24,
+                  fontWeight: '800',
+                  letterSpacing: -0.6,
+                  textShadowColor: 'rgba(0,0,0,0.5)',
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 6,
+                }}>
                   {resolvedDisplayName}
                 </Text>
               </View>
@@ -897,51 +919,56 @@ export default function HomeScreen() {
             <NextFeedingCard onPress={openNextFeedPicker} />
           </Animated.View>
 
-          {/* 2. PRIMARY ACTION — Bottle (primary, full width) + Breast (secondary, small) */}
+          {/* 2. PRIMARY ACTIONS — Bottle + Breast on the same row */}
           <Animated.View entering={FadeInDown.duration(260).delay(80)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-            <Pressable
-              onPress={() => startQuickTimer('bottle')}
-              accessibilityRole="button"
-              style={({ pressed }) => ({
-                width: '100%',
-                height: 64,
-                borderRadius: 18,
-                backgroundColor: pressed ? `${TEXT}D9` : TEXT,
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'row',
-                gap: 10,
-                marginBottom: 10,
-                shadowColor: '#000',
-                shadowOpacity: 0.22,
-                shadowRadius: 14,
-                shadowOffset: { width: 0, height: 5 },
-                elevation: 6,
-                transform: [{ scale: pressed ? 0.97 : 1 }],
-              })}
-            >
-              <Text style={{ fontSize: 24 }}>🍼</Text>
-              <Text style={{ color: '#0D1117', fontSize: 17, fontWeight: '800', letterSpacing: 0.1 }}>{t('feeding.bottle')}</Text>
-              <View style={{ position: 'absolute', right: 16, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={{ color: 'rgba(0,0,0,0.45)', fontSize: 13, fontWeight: '700' }}>{quickAmount} ml</Text>
-              </View>
-            </Pressable>
-            <Pressable
-              onPress={() => setShowNextFeedPicker(true)}
-              hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
-              style={({ pressed }) => ({
-                alignSelf: 'center',
-                paddingHorizontal: 18,
-                paddingVertical: 9,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: pressed ? ACCENT + '66' : BORDER,
-                backgroundColor: pressed ? ACCENT + '10' : 'transparent',
-              })}
-              accessibilityRole="button"
-            >
-              <Text style={{ color: MUTED, fontSize: 13, fontWeight: '600' }}>🤱 {t('feeding.breast')}</Text>
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {/* Bottle — primary, wider */}
+              <Pressable
+                onPress={() => startQuickTimer('bottle')}
+                accessibilityRole="button"
+                style={({ pressed }) => ({
+                  flex: 3,
+                  height: 58,
+                  borderRadius: 16,
+                  backgroundColor: pressed ? `${TEXT}D9` : TEXT,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  gap: 8,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.2,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 4 },
+                  elevation: 5,
+                  transform: [{ scale: pressed ? 0.97 : 1 }],
+                })}
+              >
+                <Text style={{ fontSize: 20 }}>🍼</Text>
+                <Text style={{ color: '#0D1117', fontSize: 15, fontWeight: '800', letterSpacing: 0.1 }}>{t('feeding.bottle')}</Text>
+                <Text style={{ color: 'rgba(0,0,0,0.40)', fontSize: 12, fontWeight: '700', marginLeft: 2 }}>{quickAmount} ml</Text>
+              </Pressable>
+              {/* Breast — secondary, narrower */}
+              <Pressable
+                onPress={() => setShowNextFeedPicker(true)}
+                accessibilityRole="button"
+                style={({ pressed }) => ({
+                  flex: 2,
+                  height: 58,
+                  borderRadius: 16,
+                  borderWidth: 1.5,
+                  borderColor: pressed ? ACCENT + '80' : BORDER,
+                  backgroundColor: pressed ? ACCENT + '14' : CARD,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  gap: 6,
+                  transform: [{ scale: pressed ? 0.97 : 1 }],
+                })}
+              >
+                <Text style={{ fontSize: 18 }}>🤱</Text>
+                <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('feeding.breast')}</Text>
+              </Pressable>
+            </View>
           </Animated.View>
 
           {/* 3. Today at a glance — compact 3-metric strip */}

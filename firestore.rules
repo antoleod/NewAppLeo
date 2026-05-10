@@ -9,6 +9,18 @@ service cloud.firestore {
       return code.matches('^[0-9]{6}$');
     }
 
+    match /usernames/{username} {
+      allow get: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /emails/{email} {
+      allow get: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     match /pairingSessions/{code} {
       allow get, list: if isSignedIn()
         && isSixDigitCode(code)

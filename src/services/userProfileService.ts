@@ -42,9 +42,6 @@ export function defaultProfile(uid: string, authEmail: string, username = '', di
     username,
     usernameLower: normalizeUsername(username),
     authEmail,
-    encryptedPassword: '',
-    pinHash: '',
-    pinSalt: '',
     role: 'parent',
     status: 'active',
     caregiverName: displayName || authEmail.split('@')[0],
@@ -68,18 +65,32 @@ function profileToLocal(profile: UserProfile) {
   };
 }
 
-function withLocalFallback(profile: UserProfile) {
-  putLocalProfile(profileToLocal(profile));
+async function withLocalFallback(profile: UserProfile) {
+  await putLocalProfile(profileToLocal(profile));
   if (profile.usernameLower) {
-    putLocalUsername(profile.usernameLower, profile.uid);
+    await putLocalUsername(profile.usernameLower, profile.uid);
   }
   return profileToLocal(profile);
+}
+
+async function mergeSensitiveFields(firestoreProfile: UserProfile, uid: string): Promise<UserProfile> {
+  const local = await getLocalProfile(uid);
+  if (!local) return firestoreProfile;
+  return {
+    ...firestoreProfile,
+    encryptedPassword: local.encryptedPassword ?? firestoreProfile.encryptedPassword,
+    pinHash: local.pinHash ?? firestoreProfile.pinHash,
+    pinSalt: local.pinSalt ?? firestoreProfile.pinSalt,
+  };
 }
 
 export async function loadProfile(uid: string) {
   try {
     const snap = await getDoc(userProfileRef(uid));
-    return snap.exists() ? (snap.data() as UserProfile) : getLocalProfile(uid);
+    if (snap.exists()) {
+      return mergeSensitiveFields(snap.data() as UserProfile, uid);
+    }
+    return getLocalProfile(uid);
   } catch (error) {
     if (isPermissionDenied(error)) {
       return getLocalProfile(uid);
@@ -92,13 +103,17 @@ export function watchProfile(uid: string, onChange: (profile: UserProfile | null
   try {
     return onSnapshot(
       userProfileRef(uid),
-      (snapshot) => {
-        const profile = snapshot.exists() ? (snapshot.data() as UserProfile) : getLocalProfile(uid);
-        onChange(profile);
+      async (snapshot) => {
+        if (snapshot.exists()) {
+          const merged = await mergeSensitiveFields(snapshot.data() as UserProfile, uid);
+          onChange(merged);
+        } else {
+          onChange(await getLocalProfile(uid));
+        }
       },
-      (error) => {
+      async (error) => {
         if (isPermissionDenied(error)) {
-          onChange(getLocalProfile(uid));
+          onChange(await getLocalProfile(uid));
           return;
         }
         console.error('Profile listener error:', error);
@@ -106,7 +121,7 @@ export function watchProfile(uid: string, onChange: (profile: UserProfile | null
       },
     );
   } catch (error) {
-    onChange(getLocalProfile(uid));
+    void getLocalProfile(uid).then(onChange);
     return () => undefined;
   }
 }
@@ -137,6 +152,8 @@ export async function createProfileRecord(params: {
     hasCompletedOnboarding: false,
   };
 
+  const { encryptedPassword: _ep, pinHash: _ph, pinSalt: _ps, ...profileForFirestore } = profile;
+
   try {
     await runTransaction(db, async (transaction) => {
       const usernameDoc = usernameRef(username);
@@ -151,12 +168,12 @@ export async function createProfileRecord(params: {
         createdAt: serverTimestamp(),
       });
       transaction.set(userProfileRef(params.uid), {
-        ...profile,
+        ...profileForFirestore,
         createdAt: serverTimestamp() as any,
         updatedAt: serverTimestamp() as any,
       });
     });
-    return profile;
+    return withLocalFallback(profile);
   } catch (error) {
     if (isPermissionDenied(error)) {
       return withLocalFallback(profile);
@@ -188,7 +205,7 @@ export async function updateProfile(uid: string, partial: Partial<UserProfile>) 
     ...cleanPartial,
     updatedAt: new Date().toISOString(),
   } as UserProfile;
-  withLocalFallback(next);
+  await withLocalFallback(next);
 }
 
 export async function completeOnboarding(uid: string, payload: OnboardingPayload) {
@@ -236,7 +253,7 @@ export async function claimUsername(uid: string, username: string) {
   }
 
   const current = (await loadProfile(uid)) ?? defaultProfile(uid, 'local@example.com');
-  withLocalFallback({
+  await withLocalFallback({
     ...current,
     username: normalized,
     usernameLower: normalized,
@@ -259,7 +276,7 @@ export async function resolveUsernameToProfile(username: string) {
     return profile;
   } catch (error) {
     if (isPermissionDenied(error)) {
-      const localProfile = getLocalProfileByUsername(normalized);
+      const localProfile = await getLocalProfileByUsername(normalized);
       if (!localProfile) {
         throw new Error('Unknown username.');
       }
@@ -270,5 +287,6 @@ export async function resolveUsernameToProfile(username: string) {
 }
 
 export function verifyPinAgainstProfile(pin: string, profile: UserProfile) {
+  if (!profile.pinSalt || !profile.pinHash) return false;
   return hashPin(pin, profile.pinSalt) === profile.pinHash;
 }

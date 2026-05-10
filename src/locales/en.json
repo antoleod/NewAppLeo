@@ -10,7 +10,8 @@
     "next": "Next",
     "yes": "Yes",
     "no": "No",
-    "ok": "OK"
+    "ok": "OK",
+    "loading": "Loading App Leo"
   },
   "greeting": {
     "morning": "Good morning",
@@ -370,5 +371,11 @@
     "voiceIntent": "Intent: ",
     "voiceCaptureFailed": "Voice capture failed",
     "voiceCaptureError": "Unable to start voice capture."
+  },
+  "lock": {
+    "title": "App Locked",
+    "unlock": "Unlock",
+    "prompt": "Unlock App Leo",
+    "fallback": "Use code"
   }
 }

@@ -103,8 +103,8 @@ export async function registerAccount(payload: RegisterPayload) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    putLocalProfile(profile);
-    putLocalUsername(username, authResult.user.uid);
+    await putLocalProfile(profile);
+    await putLocalUsername(username, authResult.user.uid);
     return { user: authResult.user, profile };
   }
 }
@@ -165,7 +165,7 @@ async function bootstrapGoogleProfile(authResult: UserCredential) {
     // fall back to local profile in restrictive Firestore environments
   }
 
-  putLocalProfile(bootstrap);
+  await putLocalProfile(bootstrap);
   return bootstrap;
 }
 

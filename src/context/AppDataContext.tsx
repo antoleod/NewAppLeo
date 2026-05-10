@@ -1,16 +1,19 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
+  limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
 } from 'firebase/firestore';
+
+const ENTRIES_PAGE_LIMIT = 500;
 import { db } from '@/lib/firebase';
 import { EntryPayload, EntryRecord, EntryType } from '@/types';
 import { useAuth } from './AuthContext';
@@ -21,7 +24,6 @@ import { buildLeoProfilePatch, importLeoEntries } from '@/lib/leoData';
 import { getAppSettings, saveBaby, setAppSettings } from '@/lib/storage';
 import { setGuestProfile } from '@/lib/storage';
 
-// Firestore rejects `undefined` values — strip them before every write
 function stripUndefined<T>(obj: T): T {
   if (Array.isArray(obj)) return obj.map(stripUndefined) as unknown as T;
   if (obj !== null && typeof obj === 'object') {
@@ -103,8 +105,34 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const { user, profile, guestMode } = useAuth();
   const [entries, setEntries] = useState<EntryRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [remoteAvailable, setRemoteAvailable] = useState(true);
 
+  // Tracks whether Firestore is reachable. Resets to true on each auth change or
+  // foreground transition so we always retry online first.
+  const remoteAvailableRef = useRef(true);
+
+  // Permanently true once a permission-denied error is received for this session.
+  // Prevents infinite reconnect loops when the user truly lacks access.
+  const permissionDeniedRef = useRef(false);
+
+  // Holds the current onSnapshot unsubscribe function so AppState handler can
+  // tear down the dead listener before re-attaching.
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+
+  // Guards against state updates after component unmount or auth change.
+  const cancelledRef = useRef(false);
+
+  // Ref to the attach-listener function so the AppState handler can call it
+  // without capturing a stale closure.
+  const attachListenerRef = useRef<((uid: string) => void) | null>(null);
+
+  // Ref to the current uid so AppState handler always reads latest value.
+  const uidRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    uidRef.current = user?.uid ?? null;
+  }, [user?.uid]);
+
+  // ── Leo demo-data bootstrap (guest only) ─────────────────────────────────
   useEffect(() => {
     if (!user || !guestMode || loading || entries.length) return;
 
@@ -117,7 +145,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       const importedEntries = importLeoEntries();
       if (!importedEntries.length) return;
 
-      setLocalEntries(user.uid, importedEntries);
+      await setLocalEntries(user.uid, importedEntries);
       if (profile) {
         const nextProfile = {
           ...profile,
@@ -152,62 +180,84 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     };
   }, [entries.length, guestMode, loading, profile, user]);
 
+  // ── Main data subscription ────────────────────────────────────────────────
   useEffect(() => {
+    cancelledRef.current = false;
+    permissionDeniedRef.current = false;
+    remoteAvailableRef.current = true;
+
+    // Tear down any previous subscription
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = null;
+
     if (!user || guestMode) {
       if (guestMode && user) {
-        setEntries(getLocalEntries(user.uid));
+        void getLocalEntries(user.uid).then((localEntries) => {
+          if (!cancelledRef.current) {
+            setEntries(localEntries);
+            setLoading(false);
+          }
+        });
+        remoteAvailableRef.current = false;
+      } else {
+        setEntries([]);
         setLoading(false);
-        setRemoteAvailable(false);
-        return;
       }
-      setEntries([]);
-      setLoading(false);
-      setRemoteAvailable(true);
-      return;
+      return () => {
+        cancelledRef.current = true;
+      };
     }
 
-    let unsubscribe: (() => void) | null = null;
-    let cancelled = false;
+    const attachListener = (uid: string) => {
+      if (cancelledRef.current || permissionDeniedRef.current) return;
 
-    const setupListener = () => {
+      // Tear down dead subscription before re-attaching
+      unsubscribeRef.current?.();
+
       setLoading(true);
-      setRemoteAvailable(true);
-      const q = query(entriesRef(user.uid), orderBy('occurredAt', 'desc'));
-      unsubscribe = onSnapshot(
+      const q = query(entriesRef(uid), orderBy('occurredAt', 'desc'), limit(ENTRIES_PAGE_LIMIT));
+
+      unsubscribeRef.current = onSnapshot(
         q,
         (snapshot) => {
-          if (cancelled) return;
+          if (cancelledRef.current) return;
+          remoteAvailableRef.current = true;
           setEntries(snapshot.docs.map((item) => normalizeEntry(item.id, item.data())));
           setLoading(false);
         },
-        (error) => {
-          if (cancelled) return;
+        async (error) => {
+          if (cancelledRef.current) return;
+
+          remoteAvailableRef.current = false;
+
           if (isPermissionDenied(error)) {
-            setRemoteAvailable(false);
-            setEntries(getLocalEntries(user.uid));
-            setLoading(false);
-            return;
+            // Permanent — do not retry until next sign-in
+            permissionDeniedRef.current = true;
           }
-          console.error('Entry listener error:', error);
-          setLoading(false);
+
+          // Always serve local cache as fallback
+          const localEntries = await getLocalEntries(uid);
+          if (!cancelledRef.current) {
+            setEntries(localEntries);
+            setLoading(false);
+          }
         },
       );
     };
 
-    setupListener();
+    attachListenerRef.current = attachListener;
+    attachListener(user.uid);
 
     return () => {
-      cancelled = true;
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      cancelledRef.current = true;
+      unsubscribeRef.current?.();
+      unsubscribeRef.current = null;
     };
   }, [guestMode, user]);
 
+  // ── Foreground sync: flush queue + reconnect Firestore if it went down ────
   useEffect(() => {
-    if (!profile?.uid) {
-      return;
-    }
+    if (!profile?.uid) return;
 
     let inFlight = false;
     const flushQueue = async () => {
@@ -225,8 +275,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     void flushQueue();
 
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        void flushQueue();
+      if (state !== 'active') return;
+
+      void flushQueue();
+
+      // Re-attach Firestore listener if it died from a transient error
+      const uid = uidRef.current;
+      if (!remoteAvailableRef.current && !permissionDeniedRef.current && uid) {
+        attachListenerRef.current?.(uid);
       }
     });
 
@@ -236,6 +292,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, [profile?.uid]);
 
   const summary = useMemo(() => getTodaySummary(entries, profile), [entries, profile]);
+
+  // ── Mutations: always try Firestore first (online-first) ─────────────────
 
   async function addEntry(input: { type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }) {
     if (!user) throw new Error('You must be signed in.');
@@ -251,7 +309,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       updatedAt: new Date().toISOString(),
     };
 
-    if (remoteAvailable && !guestMode) {
+    if (!guestMode) {
       try {
         const ref = await addDoc(entriesRef(user.uid), stripUndefined({
           type: input.type,
@@ -263,70 +321,80 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           updatedAt: serverTimestamp(),
         }));
         nextEntry.id = ref.id;
+        remoteAvailableRef.current = true;
       } catch (error) {
-        if (!isPermissionDenied(error)) {
-          throw error;
+        if (isPermissionDenied(error)) {
+          permissionDeniedRef.current = true;
         }
-        setRemoteAvailable(false);
+        remoteAvailableRef.current = false;
+        void queueUpserts([nextEntry]);
       }
     }
 
-    setLocalEntries(user.uid, [nextEntry, ...getLocalEntries(user.uid).filter((entry) => entry.id !== nextEntry.id)]);
-    if (!guestMode) {
-      void queueUpserts([nextEntry]);
-    }
-    setEntries((current) => [nextEntry, ...current.filter((entry) => entry.id !== nextEntry.id)].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)));
+    const currentLocal = await getLocalEntries(user.uid);
+    await setLocalEntries(user.uid, [nextEntry, ...currentLocal.filter((e) => e.id !== nextEntry.id)]);
+    setEntries((current) =>
+      [nextEntry, ...current.filter((e) => e.id !== nextEntry.id)].sort((a, b) =>
+        b.occurredAt.localeCompare(a.occurredAt),
+      ),
+    );
     return nextEntry.id;
   }
 
   async function updateEntry(id: string, patch: Partial<EntryRecord>) {
     if (!user) throw new Error('You must be signed in.');
-    const current = entries.find((entry) => entry.id === id);
+    const current = entries.find((e) => e.id === id);
     const next = current ? { ...current, ...patch, updatedAt: new Date().toISOString() } : null;
 
-    if (remoteAvailable && !guestMode) {
+    if (!guestMode) {
       try {
         await updateDoc(doc(entriesRef(user.uid), id), stripUndefined({
           ...patch,
           updatedAt: serverTimestamp(),
         }));
+        remoteAvailableRef.current = true;
       } catch (error) {
-        if (!isPermissionDenied(error)) {
-          throw error;
+        if (isPermissionDenied(error)) {
+          permissionDeniedRef.current = true;
         }
-        setRemoteAvailable(false);
+        remoteAvailableRef.current = false;
+        if (next) void queueUpserts([next]);
       }
     }
 
     if (next) {
-      upsertLocalEntry(user.uid, next);
-      if (!guestMode) {
-        void queueUpserts([next]);
-      }
+      await upsertLocalEntry(user.uid, next);
       setEntries((currentEntries) =>
         currentEntries
-          .map((entry) => (entry.id === id ? next : entry))
-          .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)),
+          .map((e) => (e.id === id ? next : e))
+          .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
       );
     }
   }
 
   async function deleteEntry(id: string) {
     if (!user) throw new Error('You must be signed in.');
-    const current = entries.find((entry) => entry.id === id);
-    if (remoteAvailable && !guestMode) {
+    const current = entries.find((e) => e.id === id);
+
+    if (!guestMode) {
       try {
         await deleteDoc(doc(entriesRef(user.uid), id));
-      } catch {
-        setRemoteAvailable(false);
+        remoteAvailableRef.current = true;
+      } catch (error) {
+        if (isPermissionDenied(error)) {
+          permissionDeniedRef.current = true;
+        }
+        remoteAvailableRef.current = false;
+        void queueDeletes([{
+          id,
+          occurredAt: current?.occurredAt ?? new Date().toISOString(),
+          updatedAt: current?.updatedAt ?? new Date().toISOString(),
+        }]);
       }
     }
 
-    deleteLocalEntry(user.uid, id);
-    if (!guestMode) {
-      void queueDeletes([{ id, occurredAt: current?.occurredAt ?? new Date().toISOString(), updatedAt: current?.updatedAt ?? new Date().toISOString() }]);
-    }
-    setEntries((current) => current.filter((entry) => entry.id !== id));
+    await deleteLocalEntry(user.uid, id);
+    setEntries((c) => c.filter((e) => e.id !== id));
   }
 
   async function seedDemoData() {
@@ -338,7 +406,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       updatedAt: new Date().toISOString(),
     }));
 
-    if (remoteAvailable && !guestMode) {
+    if (!guestMode) {
       try {
         for (const entry of DEMO_ENTRIES) {
           await addDoc(entriesRef(user.uid), {
@@ -347,26 +415,26 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             updatedAt: serverTimestamp(),
           });
         }
+        remoteAvailableRef.current = true;
       } catch (error) {
-        if (!isPermissionDenied(error)) {
-          throw error;
+        if (isPermissionDenied(error)) {
+          permissionDeniedRef.current = true;
         }
-        setRemoteAvailable(false);
+        remoteAvailableRef.current = false;
+        void queueUpserts(seeded);
       }
     }
 
-    const nextEntries = [...seeded, ...getLocalEntries(user.uid)]
-      .filter((entry, index, array) => array.findIndex((candidate) => candidate.id === entry.id) === index)
-      .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
-    setLocalEntries(user.uid, nextEntries);
-    if (!guestMode) {
-      void queueUpserts(nextEntries);
-    }
+    const currentLocal = await getLocalEntries(user.uid);
+    const nextEntries = [...seeded, ...currentLocal]
+      .filter((e, i, arr) => arr.findIndex((c) => c.id === e.id) === i)
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+    await setLocalEntries(user.uid, nextEntries);
     setEntries(nextEntries);
   }
 
   function entryById(id: string) {
-    return entries.find((entry) => entry.id === id);
+    return entries.find((e) => e.id === id);
   }
 
   const value = useMemo<AppDataContextValue>(

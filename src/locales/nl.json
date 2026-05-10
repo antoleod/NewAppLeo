@@ -10,7 +10,8 @@
     "next": "Volgende",
     "yes": "Ja",
     "no": "Nee",
-    "ok": "OK"
+    "ok": "OK",
+    "loading": "App Leo laden"
   },
   "greeting": {
     "morning": "Goedemorgen",
@@ -370,5 +371,11 @@
     "voiceIntent": "Bedoeling: ",
     "voiceCaptureFailed": "Spraakopname mislukt",
     "voiceCaptureError": "Kon spraakopname niet starten."
+  },
+  "lock": {
+    "title": "App Vergrendeld",
+    "unlock": "Ontgrendelen",
+    "prompt": "App Leo ontgrendelen",
+    "fallback": "Code gebruiken"
   }
 }

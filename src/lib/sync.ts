@@ -96,26 +96,40 @@ export async function queueDeletes(ids: Array<{ id: string; occurredAt: string; 
 }
 
 export async function flushQueuedOperations(uid: string) {
+  // Atomic swap: clear the queue before iterating so any new operations
+  // enqueued during the flush are preserved rather than overwritten.
   const queue = await loadQueuedOperations();
-  for (const operation of queue) {
-    if (operation.kind === 'upsert') {
-      await setDoc(
-        doc(entriesCollection(uid), operation.entry.id),
-        {
-          ...operation.entry,
-          createdAt: operation.entry.createdAt ?? serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-      continue;
-    }
+  if (queue.length === 0) return { flushed: 0 };
+  await saveQueuedOperations([]);
 
-    await deleteDoc(doc(entriesCollection(uid), operation.id));
+  const failed: SyncOperation[] = [];
+  for (const operation of queue) {
+    try {
+      if (operation.kind === 'upsert') {
+        await setDoc(
+          doc(entriesCollection(uid), operation.entry.id),
+          {
+            ...operation.entry,
+            createdAt: operation.entry.createdAt ?? serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      } else {
+        await deleteDoc(doc(entriesCollection(uid), operation.id));
+      }
+    } catch {
+      failed.push(operation);
+    }
   }
 
-  await saveQueuedOperations([]);
-  return { flushed: queue.length };
+  if (failed.length > 0) {
+    // Re-enqueue failed operations merged with any that arrived during the flush.
+    const remaining = await loadQueuedOperations();
+    await saveQueuedOperations(mergeQueue(failed, remaining));
+  }
+
+  return { flushed: queue.length - failed.length };
 }
 
 export async function pullEntries() {

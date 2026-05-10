@@ -41,7 +41,6 @@ jobs:
 
       - name: Type check
         run: npm run typecheck
-        continue-on-error: true
 
       - name: Verify changes
         run: |
