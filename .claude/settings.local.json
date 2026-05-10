@@ -7,7 +7,21 @@
       "Bash(Get-ChildItem -Recurse -Filter \"*.tsx\")",
       "Bash(Select-String -Pattern \"backgroundColor|background:|theme\" -List)",
       "Bash(Select-Object Path -Unique)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "PowerShell(git push *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "PowerShell(git *)",
+      "Bash(git commit -m 'fix\\(ux\\): mobile touch targets, emoji rendering, temp status labels *)",
+      "Bash(git commit -m 'feat\\(food\\): radical UX simplification — lighter, faster, ADHD-friendly *)",
+      "PowerShell(\\(Get-Item \"C:\\\\Users\\\\X1\\\\Documents\\\\NewAppLeo\\\\public\\\\icon-192.png\"\\).Length; \\(Get-Item \"C:\\\\Users\\\\X1\\\\Documents\\\\NewAppLeo\\\\public\\\\icon-512.png\"\\).Length; \\(Get-Item \"C:\\\\Users\\\\X1\\\\Documents\\\\NewAppLeo\\\\public\\\\apple-touch-icon.png\"\\).Length)",
+      "PowerShell(\\(Get-Item \"C:\\\\Users\\\\X1\\\\Documents\\\\NewAppLeo\\\\assets\\\\branding\\\\app-icon\\\\babyflow-app-icon-192.png\"\\).Length; \\(Get-Item \"C:\\\\Users\\\\X1\\\\Documents\\\\NewAppLeo\\\\assets\\\\branding\\\\app-icon\\\\babyflow-app-icon-512.png\"\\).Length; \\(Get-Item \"C:\\\\Users\\\\X1\\\\Documents\\\\NewAppLeo\\\\assets\\\\branding\\\\app-icon\\\\babyflow-app-icon-1024.png\"\\).Length)",
+      "Bash(git commit -m 'feat\\(pwa\\): enable PWA with service worker and correct manifest icons *)",
+      "Bash(awk '{print $9, $5}')",
+      "Bash(xargs -I {} basename {})",
+      "Bash(grep -E \"\\\\.md$|\\\\.log$|\\\\.copied$\")",
+      "Bash(git commit -m 'chore: delete legacy, unused, and backup files *)"
     ]
   }
 }
