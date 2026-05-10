@@ -1688,9 +1688,9 @@ export default function EntryComposerScreen() {
       {type === 'sleep' && !editing && sleepStartedAt ? (
         <FullscreenTimerModal
           visible={sleepFullscreenVisible}
-          emoji="😴"
-          title={language === 'fr' ? 'Sommeil' : 'Sleep'}
-          subtitlePrefix={language === 'fr' ? 'Sommeil' : 'Sleep'}
+          emoji={'\u{1F634}'}
+          title={language === 'fr' ? 'Sommeil' : language === 'es' ? 'Sueño' : language === 'nl' ? 'Slaap' : 'Sleep'}
+          subtitlePrefix={language === 'fr' ? 'Sommeil' : language === 'es' ? 'Sueño' : language === 'nl' ? 'Slaap' : 'Sleep'}
           startedAt={sleepStartedAt}
           elapsedSeconds={sleepElapsedSeconds}
           onStop={() => void handleSleepStop()}
@@ -1699,9 +1699,9 @@ export default function EntryComposerScreen() {
       {type === 'pump' && !editing && pumpStartedAt ? (
         <FullscreenTimerModal
           visible={pumpFullscreenVisible}
-          emoji="🤱"
-          title={language === 'fr' ? 'Tirage' : 'Pump'}
-          subtitlePrefix={language === 'fr' ? 'Tirage' : 'Pump'}
+          emoji={'\u{1F37C}'}
+          title={language === 'fr' ? 'Tirage' : language === 'es' ? 'Extracción' : language === 'nl' ? 'Kolven' : 'Pump'}
+          subtitlePrefix={language === 'fr' ? 'Tirage' : language === 'es' ? 'Extracción' : language === 'nl' ? 'Kolven' : 'Pump'}
           startedAt={pumpStartedAt}
           elapsedSeconds={pumpElapsedSeconds}
           onStop={() => void handlePumpStop()}

@@ -13,9 +13,6 @@ function formatTimer(totalSeconds: number) {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
-function formatClock(timestamp: number) {
-  return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(timestamp));
-}
 
 const CAN_USE_NATIVE_ANIMATION_DRIVER = Platform.OS !== 'web';
 
@@ -28,6 +25,7 @@ export function FullscreenTimerModal({
   elapsedSeconds,
   animatePulse = true,
   onStop,
+  locale = 'fr-FR',
 }: {
   visible: boolean;
   emoji: string;
@@ -37,6 +35,7 @@ export function FullscreenTimerModal({
   elapsedSeconds: number;
   animatePulse?: boolean;
   onStop: () => void;
+  locale?: string;
 }) {
   const pulse = useRef(new Animated.Value(1)).current;
 
@@ -60,7 +59,10 @@ export function FullscreenTimerModal({
     };
   }, [animatePulse, pulse, visible]);
 
-  const subtitle = useMemo(() => `${subtitlePrefix} - en cours depuis ${formatClock(startedAt)}`, [startedAt, subtitlePrefix]);
+  const startedLabel = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(startedAt));
+    return `${subtitlePrefix} · ${fmt}`;
+  }, [locale, startedAt, subtitlePrefix]);
 
   return (
     <Modal visible={visible} animationType="fade" presentationStyle="fullScreen">
@@ -80,7 +82,7 @@ export function FullscreenTimerModal({
           >
             {formatTimer(elapsedSeconds)}
           </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.72)', fontSize: 18, textAlign: 'center' }}>{subtitle}</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.72)', fontSize: 18, textAlign: 'center' }}>{startedLabel}</Text>
         </View>
         <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
           <Pressable
