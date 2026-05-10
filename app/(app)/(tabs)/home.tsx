@@ -40,6 +40,7 @@ import { QuantityPicker } from '@/components/QuantityPicker';
 import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
 import { NextFeedingCard } from '@/components/NextFeedingCard';
 import { GetEntryIcon } from '@/components/EntryTypeIcons';
+import { BottleIcon, BreastfeedingIcon } from '@/components/FeedingIcons';
 import { haptics } from '@/lib/haptics';
 import { shadow, textShadow } from '@/lib/shadow';
 
@@ -930,7 +931,7 @@ export default function HomeScreen() {
                   transform: [{ scale: pressed ? 0.97 : 1 }],
                 })}
               >
-                <Text style={{ fontSize: 20 }}>🍼</Text>
+                <BottleIcon color="#0D1117" size={26} />
                 <Text style={{ color: '#0D1117', fontSize: 15, fontWeight: '800', letterSpacing: 0.1 }}>{t('feeding.bottle')}</Text>
                 <Text style={{ color: 'rgba(0,0,0,0.40)', fontSize: 12, fontWeight: '700', marginLeft: 2 }}>{quickAmount} ml</Text>
               </Pressable>
@@ -952,7 +953,7 @@ export default function HomeScreen() {
                   transform: [{ scale: pressed ? 0.97 : 1 }],
                 })}
               >
-                <Text style={{ fontSize: 18 }}>🤱</Text>
+                <BreastfeedingIcon color={TEXT} size={24} />
                 <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('feeding.breast')}</Text>
               </Pressable>
             </View>
@@ -1646,7 +1647,7 @@ export default function HomeScreen() {
                   })}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ fontSize: 16 }}>🤱</Text>
+                    <BreastfeedingIcon color={color} size={20} />
                     <Text style={{ color, fontSize: 13, fontWeight: '700' }}>{label}</Text>
                   </View>
                   <Text style={{ color: MUTED, fontSize: 11 }}>

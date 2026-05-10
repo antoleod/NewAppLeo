@@ -42,14 +42,19 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const cached = await cache.match(event.request);
-      const networkPromise = fetch(event.request).then((response) => {
-        if (response.ok && response.status < 400) {
-          cache.put(event.request, response.clone());
-        }
-        return response;
-      });
+      const networkPromise = fetch(event.request)
+        .then((response) => {
+          if (response.ok && response.status < 400) {
+            cache.put(event.request, response.clone());
+          }
+          return response;
+        })
+        .catch(() => cached);
       // Stale-while-revalidate: return cache instantly, update in background
-      return cached ?? networkPromise;
+      if (cached) {
+        return cached;
+      }
+      return networkPromise;
     })
   );
 });

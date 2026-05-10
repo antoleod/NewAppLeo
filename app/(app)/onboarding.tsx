@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { Alert, Pressable, Text, View, useWindowDimensions, Animated, StyleSheet, Platform, useColorScheme, Image } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import Reanimated, { FadeIn, FadeInRight, useAnimatedStyle, useSharedValue, withSequence, withTiming, interpolateColor, withSpring, interpolate } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -323,18 +322,6 @@ export default function OnboardingScreen() {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
   };
-
-  async function playPopSound() {
-    try {
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3' },
-        { shouldPlay: true }
-      );
-      await sound.playAsync();
-    } catch (e) {
-      console.log('Error playing sound', e);
-    }
-  }
 
   async function finishOnboarding() {
     if (saving) return;

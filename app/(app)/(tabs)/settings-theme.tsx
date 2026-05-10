@@ -50,6 +50,7 @@ export default function ThemeSettings() {
         body: 'Installez App Leo sur votre appareil pour l’ouvrir comme une app native.',
         installed: 'Déjà installée',
         installNow: 'Installer maintenant',
+        forceInstall: 'Forcer installation PWA',
         unavailable: 'Installation non disponible',
       },
       es: {
@@ -57,6 +58,7 @@ export default function ThemeSettings() {
         body: 'Instala App Leo en tu dispositivo para abrirla como app nativa.',
         installed: 'Ya está instalada',
         installNow: 'Instalar ahora',
+        forceInstall: 'Forzar instalación PWA',
         unavailable: 'Instalación no disponible',
       },
       en: {
@@ -64,6 +66,7 @@ export default function ThemeSettings() {
         body: 'Install App Leo on your device to open it like a native app.',
         installed: 'Already installed',
         installNow: 'Install now',
+        forceInstall: 'Force PWA install',
         unavailable: 'Install unavailable',
       },
       nl: {
@@ -71,6 +74,7 @@ export default function ThemeSettings() {
         body: 'Installeer App Leo op je apparaat om deze als native app te openen.',
         installed: 'Al geïnstalleerd',
         installNow: 'Nu installeren',
+        forceInstall: 'PWA-installatie forceren',
         unavailable: 'Installatie niet beschikbaar',
       },
     } as const
@@ -79,6 +83,7 @@ export default function ThemeSettings() {
     body: 'Installez App Leo sur votre appareil pour l’ouvrir comme une app native.',
     installed: 'Déjà installée',
     installNow: 'Installer maintenant',
+    forceInstall: 'Forcer installation PWA',
     unavailable: 'Installation non disponible',
   };
 
@@ -143,7 +148,10 @@ export default function ThemeSettings() {
   }, []);
 
   async function handleInstallPwa() {
-    if (!installPromptEvent) return;
+    if (!installPromptEvent) {
+      handleManualInstallHelp();
+      return;
+    }
     installPromptEvent.prompt();
     await installPromptEvent.userChoice?.catch(() => null);
     setInstallPromptEvent(null);
@@ -425,7 +433,12 @@ export default function ThemeSettings() {
                   label={installPromptEvent ? pwaText.installNow : pwaText.unavailable}
                   onPress={() => void handleInstallPwa()}
                   variant="primary"
-                  disabled={!installPromptEvent}
+                  disabled={false}
+                />
+                <Button
+                  label={pwaText.forceInstall}
+                  onPress={() => void handleInstallPwa()}
+                  variant="secondary"
                 />
                 <Button
                   label={language === 'es' ? 'Ver instalación manual' : language === 'en' ? 'Show manual install' : language === 'nl' ? 'Toon handmatige installatie' : 'Voir installation manuelle'}
