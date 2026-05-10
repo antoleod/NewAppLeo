@@ -98,6 +98,7 @@ export interface AppSettings {
   compactHomeCards: boolean;
   buttonOpacity: number;
   buttonTransparency: number;
+  milkGoalMl: number;
   hasImportedLeoData: boolean;
   dashboardMetrics: DashboardMetrics;
   effects: MotionEffects;
@@ -116,6 +117,7 @@ export const defaultAppSettings: AppSettings = {
   compactHomeCards: false,
   buttonOpacity: 1,
   buttonTransparency: 1,
+  milkGoalMl: 600,
   hasImportedLeoData: false,
   dashboardMetrics: {
     dailyStatus: true,
@@ -417,6 +419,18 @@ export async function removeSession(uid: string, sessionId: string) {
     await AsyncStorage.removeItem(currentSessionKey(uid));
   }
   return next;
+}
+
+const LAST_BOTTLE_AMOUNT_KEY = 'appleo.lastBottleAmount';
+
+export async function getLastBottleAmount(): Promise<number> {
+  const val = await AsyncStorage.getItem(LAST_BOTTLE_AMOUNT_KEY);
+  const n = Number(val);
+  return Number.isFinite(n) && n > 0 ? n : 150;
+}
+
+export async function setLastBottleAmount(amount: number): Promise<void> {
+  await AsyncStorage.setItem(LAST_BOTTLE_AMOUNT_KEY, String(Math.round(amount)));
 }
 
 export async function buildBabyFromProfile(

@@ -55,6 +55,10 @@
     "lastFeeding": "LAST FEEDING",
     "timeSinceLast": "TIME SINCE LAST",
     "elapsed": "Elapsed time",
+    "nextIn": "Next in",
+    "feedNow": "Feed now!",
+    "nightFeeds": "feeds tonight",
+    "trendVsLastWeek": "vs last week",
     "breast": "Breast",
     "bottle": "Bottle",
     "amount": "Amount"
@@ -173,7 +177,9 @@
     "ageDay": "d",
     "bottleComplete": "Bottle complete",
     "feedComplete": "complete",
-    "feedStartedAt": "started at"
+    "feedStartedAt": "started at",
+    "medActive": "Active treatment",
+    "trackMoreTitle": "Track more?"
   },
   "insights": {
     "eyebrow": "INSIGHTS",

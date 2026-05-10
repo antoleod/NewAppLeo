@@ -70,20 +70,33 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
     });
   }
 
-  const medicationDose = lastMedication?.payload?.dosage?.trim();
-  const medicationHours = hoursSince(medicationDose ? lastMedication?.occurredAt : undefined);
-  if (medicationHours !== null && medicationHours >= 6) {
-    alerts.push({
-      id: 'med-due',
-      title: 'Medication review',
-      body: 'Check if the next dose or follow-up is due.',
-      icon: '💊',
-      value: 'Due',
-      statusLabel: 'pending',
-      tone: 'danger',
-      actionLabel: 'Log medication',
-      targetType: 'medication',
-    });
+  // Medication next-dose alert — works even without dosage field
+  const recentMeds = sorted.filter((e) => {
+    const h = hoursSince(e.occurredAt);
+    return e.type === 'medication' && h !== null && h <= 36;
+  });
+  if (recentMeds.length > 0) {
+    const latestMed = recentMeds[0];
+    const medName = (latestMed.payload?.name ?? '').trim();
+    const interval = getMedInterval(medName);
+    const sinceHours = hoursSince(latestMed.occurredAt);
+    if (sinceHours !== null && sinceHours >= interval * 0.85) {
+      const remainMin = Math.max(0, Math.round((interval - sinceHours) * 60));
+      const isOverdue = sinceHours >= interval;
+      alerts.push({
+        id: 'med-due',
+        title: medName || 'Medication',
+        body: isOverdue
+          ? `Dose overdue by ${Math.round(sinceHours - interval)}h.`
+          : `Next dose in ${remainMin} min.`,
+        icon: '💊',
+        value: isOverdue ? 'Overdue' : `${remainMin}m`,
+        statusLabel: isOverdue ? 'overdue' : 'soon',
+        tone: isOverdue ? 'danger' : 'warning',
+        actionLabel: 'Log medication',
+        targetType: 'medication',
+      });
+    }
   }
 
   // Fever alert
@@ -238,6 +251,30 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   }
 
   return alerts.slice(0, 3);
+}
+
+const MED_INTERVALS: Record<string, number> = {
+  nurofen: 6,
+  ibuprofen: 6,
+  advil: 6,
+  perdolan: 6,
+  pardolan: 6,
+  paracetamol: 6,
+  doliprane: 6,
+  efferalgan: 6,
+  amoxicilline: 8,
+  amoxicillin: 8,
+  augmentin: 8,
+  balso: 12,
+  toplexil: 12,
+};
+
+function getMedInterval(name: string): number {
+  const lower = name.toLowerCase();
+  for (const [key, hours] of Object.entries(MED_INTERVALS)) {
+    if (lower.includes(key)) return hours;
+  }
+  return 8;
 }
 
 function calculateAgeMonths(birthDate: string): number {

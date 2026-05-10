@@ -55,6 +55,10 @@
     "lastFeeding": "LAATSTE VOEDING",
     "timeSinceLast": "TIJD SINDS LAATSTE",
     "elapsed": "Verstreken tijd",
+    "nextIn": "Volgende over",
+    "feedNow": "Nu voeden!",
+    "nightFeeds": "voedingen vannacht",
+    "trendVsLastWeek": "vs vorige week",
     "breast": "Borst",
     "bottle": "Fles",
     "amount": "Hoeveelheid"
@@ -173,7 +177,9 @@
     "ageDay": "d",
     "bottleComplete": "Fles klaar",
     "feedComplete": "klaar",
-    "feedStartedAt": "gestart om"
+    "feedStartedAt": "gestart om",
+    "medActive": "Actieve behandeling",
+    "trackMoreTitle": "Meer bijhouden?"
   },
   "insights": {
     "eyebrow": "INZICHTEN",

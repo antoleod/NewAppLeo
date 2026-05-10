@@ -26,9 +26,11 @@ import {
   getActiveBaby,
   getBabies,
   getAppSettings,
+  getLastBottleAmount,
   getModuleVisibility,
   getMomHydration,
   setActiveBabyId,
+  setLastBottleAmount,
   setMomHydration,
   getDeviceDisplayName,
   updateAppSettings,
@@ -69,7 +71,11 @@ function formatRelative(timestamp: string | undefined, _locale: string) {
   const hours = hoursSince(timestamp);
   if (hours === null) return '--';
   if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} min`;
-  if (hours < 24) return `${Math.round(hours * 10) / 10} h`;
+  if (hours < 24) {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return `${h}h${String(m).padStart(2, '0')}`;
+  }
   return `${Math.round(hours / 24)} j`;
 }
 
@@ -513,7 +519,7 @@ export default function HomeScreen() {
   const [quickAmount, setQuickAmount] = useState(150);
   const [quickFeedSide, setQuickFeedSide] = useState<BreastSide>('left');
   const [now, setNow] = useState(Date.now());
-  const [defaultFeedingMode, setDefaultFeedingMode] = useState<'breast' | 'bottle'>('breast');
+  const [defaultFeedingMode, setDefaultFeedingMode] = useState<'breast' | 'bottle'>('bottle');
   const [deviceDisplayName, setDeviceDisplayName] = useState('');
 
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
@@ -527,15 +533,6 @@ export default function HomeScreen() {
   }, [lastFeed, meanInterval, now]);
 
   const totalMilkToday = summary.today.bottleMl;
-  const milkGoalMin = 750;
-  const milkGoalMax = 1050;
-  const milkTargetPercent = Math.max(0, Math.min(100, (totalMilkToday / milkGoalMax) * 100));
-  const milkStatus =
-    totalMilkToday < milkGoalMin
-      ? t('milk.belowTarget')
-      : totalMilkToday > milkGoalMax
-        ? t('milk.aboveTarget')
-        : t('milk.inTarget');
 
   const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
   const urgentAlerts = smartAlerts.filter((a) => a.tone === 'warning' || a.tone === 'danger');
@@ -550,11 +547,52 @@ export default function HomeScreen() {
   const foodHistory = useMemo(() => getFoodHistory(entries), [entries]);
   const foodStats = useMemo(() => getFoodStats(entries), [entries]);
 
-  const milkProgress = useSharedValue(0);
+  // Night feeds: 22:00 previous day → 06:00 today
+  const nightFeeds = useMemo(() => {
+    const today = new Date();
+    const nightStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 22, 0, 0).getTime();
+    const nightEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 6, 0, 0).getTime();
+    const window = Math.max(nightEnd, Date.now());
+    return feedEntries.filter((e) => {
+      const ts = new Date(e.occurredAt).getTime();
+      return ts >= nightStart && ts <= window;
+    });
+  }, [feedEntries]);
 
-  useEffect(() => {
-    milkProgress.value = withTiming(milkTargetPercent, { duration: 800 });
-  }, [milkProgress, milkTargetPercent]);
+  // Weekly bottle trend: this week avg ml vs last week avg ml
+  const weeklyBottleTrend = useMemo(() => {
+    const now = Date.now();
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const bottleFeeds = feedEntries.filter((e) => e.payload?.mode === 'bottle' || e.type === 'feed');
+    const thisWeek = bottleFeeds.filter((e) => now - new Date(e.occurredAt).getTime() < weekMs);
+    const lastWeek = bottleFeeds.filter((e) => {
+      const age = now - new Date(e.occurredAt).getTime();
+      return age >= weekMs && age < 2 * weekMs;
+    });
+    const avg = (arr: typeof bottleFeeds) =>
+      arr.length ? Math.round(arr.reduce((s, e) => s + (e.payload?.amountMl ?? 0), 0) / arr.length) : null;
+    return { thisAvg: avg(thisWeek), lastAvg: avg(lastWeek), thisCount: thisWeek.length };
+  }, [feedEntries]);
+
+  // Active medications (last 72h), deduplicated by name
+  const activeMeds = useMemo(() => {
+    const cutoff = Date.now() - 72 * 60 * 60 * 1000;
+    const seen = new Set<string>();
+    return entries.filter((e) => {
+      if (e.type !== 'medication') return false;
+      if (new Date(e.occurredAt).getTime() < cutoff) return false;
+      const name = (e.payload?.name ?? '').toLowerCase();
+      if (seen.has(name)) return false;
+      seen.add(name);
+      return true;
+    });
+  }, [entries]);
+
+  // Detect missing tracking categories
+  const hasAnySleep = useMemo(() => entries.some((e) => e.type === 'sleep'), [entries]);
+  const hasAnyDiaper = useMemo(() => entries.some((e) => e.type === 'diaper'), [entries]);
+
+  const milkProgress = useSharedValue(0);
 
   const milkBarStyle = useAnimatedStyle(() => ({
     width: `${milkProgress.value}%`,
@@ -570,6 +608,7 @@ export default function HomeScreen() {
       setVisibility(await getModuleVisibility());
       setAppSettingsState(await getAppSettings());
       setDeviceDisplayName(await getDeviceDisplayName());
+      setQuickAmount(await getLastBottleAmount());
     };
 
     void refresh();
@@ -632,11 +671,14 @@ export default function HomeScreen() {
             },
     });
     haptics.success();
+    if (quickTimerMode === 'bottle') {
+      void setLastBottleAmount(quickAmount);
+    }
     setQuickTimerMode(null);
     setShowSaveSheet(false);
     setTimerStartedAt(null);
     setTimerElapsedSeconds(0);
-    setQuickAmount(150);
+    setQuickAmount(await getLastBottleAmount());
     setQuickFeedSide('left');
   }
 
@@ -684,10 +726,37 @@ export default function HomeScreen() {
   const activeBaby = babies.find((baby) => baby.id === babyId);
   const babyAge = activeBaby ? calculateBabyAge(activeBaby.birthDate) : null;
 
+  // Dynamic milk goal: age-adjusted, fallback to stored setting (default 600ml for 6+ months)
+  const milkGoalTarget = useMemo(() => {
+    if (activeBaby) {
+      const age = calculateBabyAge(activeBaby.birthDate);
+      if (age.months < 3) return 750;
+      if (age.months < 6) return 680;
+    }
+    return appSettings.milkGoalMl;
+  }, [activeBaby, appSettings.milkGoalMl]);
+
+  const milkGoalMin = Math.round(milkGoalTarget * 0.75);
+  const milkGoalMax = Math.round(milkGoalTarget * 1.3);
+  const milkTargetPercent = Math.max(0, Math.min(100, (totalMilkToday / milkGoalTarget) * 100));
+
+  useEffect(() => {
+    milkProgress.value = withTiming(milkTargetPercent, { duration: 800 });
+  }, [milkProgress, milkTargetPercent]);
+
+  const milkStatus =
+    totalMilkToday < milkGoalMin
+      ? t('milk.belowTarget')
+      : totalMilkToday > milkGoalMax
+        ? t('milk.aboveTarget')
+        : t('milk.inTarget');
+
   const lastFeedTime = lastFeed ? formatClock(lastFeed.occurredAt, locale) : '--:--';
   const lastFeedAmount = lastFeed?.payload?.amountMl ?? lastFeed?.payload?.durationMin ?? 0;
   const lastFeedType = lastFeed?.payload?.mode === 'bottle' ? t('feeding.bottle') : t('feeding.breast');
   const timeSinceLastFeed = formatRelative(lastFeed?.occurredAt, locale);
+  const elapsedHours = hoursSince(lastFeed?.occurredAt);
+  const elapsedColor = elapsedHours === null ? MUTED : elapsedHours < 2 ? GREEN : elapsedHours < 3 ? '#F2C86F' : RED;
 
   const recentEntries = entries.slice(0, 4);
 
@@ -816,41 +885,44 @@ export default function HomeScreen() {
             <NextFeedingCard onPress={openNextFeedPicker} />
           </Animated.View>
 
-          {/* 2. PRIMARY ACTION - Feeding CTA (most frequent action) */}
-          <Animated.View entering={FadeInDown.duration(260).delay(80)} style={{ paddingHorizontal: 20, marginBottom: 12, flexDirection: 'row', gap: 8 }}>
-            <Pressable
-              onPress={openNextFeedPicker}
-              style={({ pressed }) => ({
-                flex: 1,
-                height: 56,
-                borderRadius: 14,
-                backgroundColor: pressed ? '#1A1A1A' : TEXT,
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'row',
-                gap: 8,
-              })}
-            >
-              <Text style={{ fontSize: 18 }}>🤱</Text>
-              <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600', letterSpacing: 0.2 }}>{t('feeding.breast')}</Text>
-            </Pressable>
+          {/* 2. PRIMARY ACTION — Bottle (primary, full width) + Breast (secondary, small) */}
+          <Animated.View entering={FadeInDown.duration(260).delay(80)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
             <Pressable
               onPress={() => startQuickTimer('bottle')}
               style={({ pressed }) => ({
-                flex: 1,
-                height: 56,
-                borderRadius: 14,
-                borderWidth: 1.5,
-                borderColor: TEXT,
-                backgroundColor: pressed ? BORDER_SOFT : CARD,
+                width: '100%',
+                height: 62,
+                borderRadius: 16,
+                backgroundColor: pressed ? `${TEXT}CC` : TEXT,
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexDirection: 'row',
-                gap: 8,
+                gap: 10,
+                marginBottom: 8,
+                shadowColor: '#000',
+                shadowOpacity: 0.18,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 4 },
+                elevation: 5,
               })}
             >
-              <Text style={{ fontSize: 18 }}>🍼</Text>
-              <Text style={{ color: TEXT, fontSize: 15, fontWeight: '600', letterSpacing: 0.2 }}>{t('feeding.bottle')}</Text>
+              <Text style={{ fontSize: 22 }}>🍼</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', letterSpacing: 0.2 }}>{t('feeding.bottle')}</Text>
+              <View style={{ position: 'absolute', right: 16 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, fontWeight: '600' }}>{quickAmount} ml</Text>
+              </View>
+            </Pressable>
+            <Pressable
+              onPress={() => setShowNextFeedPicker(true)}
+              style={({ pressed }) => ({
+                alignSelf: 'center',
+                paddingHorizontal: 14,
+                paddingVertical: 5,
+                borderRadius: 10,
+                opacity: pressed ? 0.4 : 0.55,
+              })}
+            >
+              <Text style={{ color: MUTED, fontSize: 12, fontWeight: '600' }}>🤱 {t('feeding.breast')}</Text>
             </Pressable>
           </Animated.View>
 
@@ -865,14 +937,23 @@ export default function HomeScreen() {
                 <Text style={{ color: SOFT, fontSize: 11 }}>
                   {lastFeedAmount} {lastFeed?.payload?.mode === 'bottle' ? 'ml' : 'min'} · {lastFeedType}
                 </Text>
+                {nightFeeds.length > 0 && (
+                  <Text style={{ color: BLUE, fontSize: 11, fontWeight: '700', marginTop: 5 }}>
+                    🌙 {nightFeeds.length} {t('feeding.nightFeeds')}
+                  </Text>
+                )}
               </View>
-              <View style={{ flex: 1, paddingHorizontal: 14, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
+              <View style={{ flex: 1, paddingHorizontal: 14, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: elapsedHours !== null && elapsedHours >= 3 ? `${RED}55` : BORDER, backgroundColor: CARD }}>
                 <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 6 }}>
                   {t('feeding.timeSinceLast')}
                 </Text>
-                <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700', letterSpacing: -0.5, marginBottom: 4 }}>{timeSinceLastFeed}</Text>
+                <Text style={{ color: elapsedColor, fontSize: 22, fontWeight: '700', letterSpacing: -0.5, marginBottom: 4 }}>{timeSinceLastFeed}</Text>
                 <Text style={{ color: SOFT, fontSize: 11 }}>
-                  {t('feeding.elapsed')}
+                  {nextFeedDueIn !== null
+                    ? nextFeedDueIn > 0
+                      ? `${t('feeding.nextIn')} ${formatRelative(new Date(Date.now() + nextFeedDueIn).toISOString(), locale)}`
+                      : t('feeding.feedNow')
+                    : t('feeding.elapsed')}
                 </Text>
               </View>
             </View>
@@ -1006,6 +1087,38 @@ export default function HomeScreen() {
             </Animated.View>
           )}
 
+          {/* 5b. Active medication banner */}
+          {activeMeds.length > 0 && (
+            <Animated.View entering={FadeInDown.duration(260).delay(170)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+              <Pressable
+                onPress={() => router.push('/entry/medication')}
+                style={({ pressed }) => ({
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  borderRadius: 12,
+                  backgroundColor: pressed ? `${BLUE}25` : `${BLUE}15`,
+                  borderLeftWidth: 3,
+                  borderLeftColor: BLUE,
+                  opacity: pressed ? 0.85 : 1,
+                })}
+              >
+                <Ionicons name="medical-outline" size={18} color={BLUE} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>
+                    {t('home.medActive')}
+                  </Text>
+                  <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
+                    {activeMeds.map((e) => e.payload?.name).filter(Boolean).join(' · ')}
+                  </Text>
+                </View>
+                <Ionicons name="add-circle-outline" size={20} color={BLUE} />
+              </Pressable>
+            </Animated.View>
+          )}
+
           {/* 6. Pinned vaccines - upcoming reminders */}
           {pinnedVaccines.length > 0 && (
             <Animated.View entering={FadeInDown.duration(260).delay(180)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
@@ -1125,6 +1238,16 @@ export default function HomeScreen() {
               </View>
               <View style={{ height: 4, borderRadius: 2, backgroundColor: BORDER_SOFT, overflow: 'hidden' }}>
                 <Animated.View style={[{ height: '100%', backgroundColor: ACCENT, borderRadius: 2 }, milkBarStyle]} />
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                <Text style={{ color: MUTED, fontSize: 11 }}>
+                  {t('milk.target')} {milkGoalMin}–{milkGoalMax} ml
+                </Text>
+                {weeklyBottleTrend.thisAvg !== null && weeklyBottleTrend.lastAvg !== null && (
+                  <Text style={{ color: weeklyBottleTrend.thisAvg >= weeklyBottleTrend.lastAvg ? GREEN : RED, fontSize: 11, fontWeight: '700' }}>
+                    {weeklyBottleTrend.thisAvg >= weeklyBottleTrend.lastAvg ? '↑' : '↓'} {Math.abs(weeklyBottleTrend.thisAvg - weeklyBottleTrend.lastAvg)} ml {t('feeding.trendVsLastWeek')}
+                  </Text>
+                )}
               </View>
             </View>
           </Animated.View>
@@ -1385,6 +1508,38 @@ export default function HomeScreen() {
                       );
                     });
                   })()}
+                </View>
+              </View>
+            </Animated.View>
+          )}
+
+          {/* 13b. Missing-data prompt — shown once if key categories never tracked */}
+          {entries.length > 5 && (!hasAnySleep || !hasAnyDiaper) && (
+            <Animated.View entering={FadeInDown.duration(260).delay(480)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+              <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Ionicons name="information-circle-outline" size={18} color={MUTED} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', marginBottom: 6 }}>
+                    {t('home.trackMoreTitle')}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                    {!hasAnySleep && (
+                      <Pressable
+                        onPress={() => router.push('/entry/sleep')}
+                        style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: pressed ? `${BLUE}25` : `${BLUE}15`, borderWidth: 1, borderColor: `${BLUE}40` })}
+                      >
+                        <Text style={{ color: BLUE, fontSize: 11, fontWeight: '700' }}>😴 {t('entry.sleep')}</Text>
+                      </Pressable>
+                    )}
+                    {!hasAnyDiaper && (
+                      <Pressable
+                        onPress={() => router.push('/entry/diaper')}
+                        style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: pressed ? `${ACCENT}25` : `${ACCENT}15`, borderWidth: 1, borderColor: `${ACCENT}40` })}
+                      >
+                        <Text style={{ color: ACCENT, fontSize: 11, fontWeight: '700' }}>🧷 {t('entry.diaper')}</Text>
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
               </View>
             </Animated.View>

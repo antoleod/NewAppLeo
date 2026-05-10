@@ -55,6 +55,10 @@
     "lastFeeding": "ÚLTIMA TOMA",
     "timeSinceLast": "DESDE LA ÚLTIMA",
     "elapsed": "Tiempo transcurrido",
+    "nextIn": "Próxima en",
+    "feedNow": "¡Hora de alimentar!",
+    "nightFeeds": "tomas esta noche",
+    "trendVsLastWeek": "vs sem. anterior",
     "breast": "Pecho",
     "bottle": "Biberón",
     "amount": "Cantidad"
@@ -173,7 +177,9 @@
     "ageDay": "d",
     "bottleComplete": "Biberón completado",
     "feedComplete": "completado",
-    "feedStartedAt": "iniciado a"
+    "feedStartedAt": "iniciado a",
+    "medActive": "Tratamiento activo",
+    "trackMoreTitle": "¿Registrar también?"
   },
   "insights": {
     "eyebrow": "PERSPECTIVAS",
