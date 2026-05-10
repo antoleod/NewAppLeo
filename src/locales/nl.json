@@ -49,7 +49,18 @@
     "rash": "Huiduitslag",
     "vomit": "Braken",
     "diarrhea": "Diarree",
-    "possibleAllergies": "Mogelijke allergieën"
+    "possibleAllergies": "Mogelijke allergieën",
+    "howMuch": "Hoeveel heeft hij gegeten?",
+    "amountAll": "Alles",
+    "amountHalf": "Helft",
+    "amountLittle": "Weinig",
+    "amountNone": "Niets",
+    "addAnother": "Nog een toevoegen",
+    "goHome": "Naar huis",
+    "savedTitle": "Opgeslagen!",
+    "savedSubtitle": "Maaltijd geregistreerd.",
+    "todayMeals": "Maaltijden van vandaag",
+    "noFoodYet": "Nog geen maaltijden vandaag"
   },
   "feeding": {
     "lastFeeding": "LAATSTE VOEDING",

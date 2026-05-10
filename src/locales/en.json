@@ -49,7 +49,18 @@
     "rash": "Rash",
     "vomit": "Vomit",
     "diarrhea": "Diarrhea",
-    "possibleAllergies": "Possible allergies"
+    "possibleAllergies": "Possible allergies",
+    "howMuch": "How much was eaten?",
+    "amountAll": "All",
+    "amountHalf": "Half",
+    "amountLittle": "Little",
+    "amountNone": "None",
+    "addAnother": "Add another",
+    "goHome": "Go Home",
+    "savedTitle": "Saved!",
+    "savedSubtitle": "Meal logged.",
+    "todayMeals": "Today's meals",
+    "noFoodYet": "No meals logged yet today"
   },
   "feeding": {
     "lastFeeding": "LAST FEEDING",

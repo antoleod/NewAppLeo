@@ -166,12 +166,17 @@ function getFoodHistory(entries: EntryRecord[]) {
   return entries
     .filter((e) => e.type === 'food')
     .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
-    .slice(0, 6);
+    .slice(0, 8);
 }
 
 function getFoodStats(entries: EntryRecord[]) {
   const foodEntries = entries.filter((e) => e.type === 'food');
-  if (foodEntries.length === 0) return { mostCommon: null, totalUnique: 0 };
+  if (foodEntries.length === 0) return { mostCommon: null, totalUnique: 0, totalGramsToday: 0, mealsToday: 0 };
+
+  const today = new Date();
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const todayEntries = foodEntries.filter((e) => new Date(e.occurredAt).getTime() >= startOfDay);
+  const totalGramsToday = todayEntries.reduce((sum, e) => sum + (e.payload?.quantityGrams ?? 0), 0);
 
   const foodCounts = new Map<string, number>();
   foodEntries.forEach((entry) => {
@@ -191,6 +196,8 @@ function getFoodStats(entries: EntryRecord[]) {
   return {
     mostCommon: mostCommon ? { name: mostCommon, count: maxCount } : null,
     totalUnique: foodCounts.size,
+    totalGramsToday,
+    mealsToday: todayEntries.length,
   };
 }
 
@@ -1207,18 +1214,22 @@ export default function HomeScreen() {
                     borderWidth: 1,
                     borderColor: BORDER,
                     backgroundColor: pressed ? BORDER_SOFT : CARD,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 10,
                   })}
                 >
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500' }}>{t('food.status')}</Text>
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
-                      {foodTodayCount} {t('food.today')}
-                    </Text>
+                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 0.5, marginBottom: 3 }}>{t('food.status')}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
+                    <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', letterSpacing: -0.3 }}>{foodTodayCount}</Text>
+                    <Text style={{ color: SOFT, fontSize: 12 }}>{t('food.today')}</Text>
                   </View>
+                  {lastFood.payload?.foodName && (
+                    <Text style={{ color: GOLD, fontSize: 11, fontWeight: '500', marginTop: 3 }} numberOfLines={1}>
+                      {lastFood.payload.mealTime === 'breakfast' ? '🌅 '
+                        : lastFood.payload.mealTime === 'lunch' ? '🌞 '
+                        : lastFood.payload.mealTime === 'snack' ? '🍪 '
+                        : lastFood.payload.mealTime === 'dinner' ? '🌙 ' : '🍴 '}
+                      {lastFood.payload.foodName}
+                    </Text>
+                  )}
                 </Pressable>
               )}
             </Animated.View>
@@ -1422,20 +1433,41 @@ export default function HomeScreen() {
           {/* 12. Food history - past meals */}
           {foodHistory.length > 0 && (
             <Animated.View entering={FadeInDown.duration(260).delay(420)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-              <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
-                <View style={{ marginBottom: 10 }}>
-                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>
-                    {t('food.history')}
-                  </Text>
+              <Pressable onPress={() => router.push('/entry/food')} style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
+                {/* Header row */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <View>
+                    <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 0.5, marginBottom: 2 }}>{t('food.history')}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>
+                        {foodStats.mealsToday}
+                      </Text>
+                      <Text style={{ color: SOFT, fontSize: 13, fontWeight: '500' }}>{t('food.today')}</Text>
+                      {foodStats.totalGramsToday > 0 && (
+                        <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: GOLD + '22' }}>
+                          <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700' }}>{foodStats.totalGramsToday}g</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
                   {foodStats.mostCommon && (
-                    <Text style={{ color: MUTED, fontSize: 11, marginTop: 4 }}>
-                      {t('food.favorite')}<Text style={{ color: TEXT, fontWeight: '500' }}>{foodStats.mostCommon.name}</Text> · {foodStats.mostCommon.count}x
-                    </Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ color: MUTED, fontSize: 10 }}>{t('food.favorite')}</Text>
+                      <Text style={{ color: TEXT, fontSize: 12, fontWeight: '600' }} numberOfLines={1}>{foodStats.mostCommon.name} · {foodStats.mostCommon.count}×</Text>
+                    </View>
                   )}
                 </View>
-                <View>
+                {/* Meal entries */}
+                <View style={{ gap: 2 }}>
                   {foodHistory.map((food, idx) => {
                     const hasAllergy = (food.payload?.foodAllergies?.length ?? 0) > 0;
+                    const ml = food.payload?.mealTime;
+                    const ae = food.payload?.amountEaten;
+                    const liked = food.payload?.foodLiked;
+                    const mealIcon = ml === 'breakfast' ? '🌅' : ml === 'lunch' ? '🌞' : ml === 'snack' ? '🍪' : ml === 'dinner' ? '🌙' : '🍴';
+                    const aeEmoji = ae === 'all' ? '🍽️' : ae === 'half' ? '🥗' : ae === 'little' ? '🥄' : ae === 'none' ? '🚫' : null;
+                    const likedEmoji = liked === 'yes' ? '❤️' : liked === 'no' ? '😣' : null;
+                    const isToday = new Date(food.occurredAt).toDateString() === new Date().toDateString();
                     return (
                       <Pressable
                         key={food.id}
@@ -1443,27 +1475,35 @@ export default function HomeScreen() {
                         style={({ pressed }) => ({
                           flexDirection: 'row',
                           alignItems: 'center',
-                          gap: 12,
-                          paddingVertical: 10,
-                          borderTopWidth: idx > 0 ? 1 : 0,
-                          borderTopColor: BORDER_SOFT,
-                          opacity: pressed ? 0.6 : 1,
+                          gap: 10,
+                          paddingVertical: 9,
+                          paddingHorizontal: 10,
+                          borderRadius: 10,
+                          marginBottom: 2,
+                          backgroundColor: isToday ? (hasAllergy ? 'rgba(231,76,60,0.06)' : GOLD + '0A') : 'transparent',
+                          opacity: pressed ? 0.7 : 1,
                         })}
                       >
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: hasAllergy ? YELLOW : GOLD }} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '500' }}>{food.payload?.foodName}</Text>
-                          <Text style={{ color: MUTED, fontSize: 11, marginTop: 1 }}>
-                            {t('food.amount')}{food.payload?.quantity}
-                            {hasAllergy && ` · ${food.payload?.foodAllergies?.join(', ')}`}
-                          </Text>
+                        <Text style={{ fontSize: 16, width: 22, textAlign: 'center' }}>{mealIcon}</Text>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{food.payload?.foodName}</Text>
+                          {(food.payload?.quantityGrams || hasAllergy) && (
+                            <Text style={{ color: MUTED, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
+                              {food.payload?.quantityGrams ? `${food.payload.quantityGrams}g` : ''}
+                              {hasAllergy ? ` · ⚠️ ${food.payload?.foodAllergies?.slice(0, 1).join('')}` : ''}
+                            </Text>
+                          )}
                         </View>
-                        <Text style={{ color: SOFT, fontSize: 11, fontWeight: '500' }}>{formatClock(food.occurredAt, locale)}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          {aeEmoji && <Text style={{ fontSize: 13 }}>{aeEmoji}</Text>}
+                          {likedEmoji && <Text style={{ fontSize: 13 }}>{likedEmoji}</Text>}
+                          <Text style={{ color: SOFT, fontSize: 11 }}>{formatClock(food.occurredAt, locale)}</Text>
+                        </View>
                       </Pressable>
                     );
                   })}
                 </View>
-              </View>
+              </Pressable>
             </Animated.View>
           )}
 

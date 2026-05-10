@@ -26,6 +26,7 @@ export interface EntryPayload {
   quantity?: string;
   quantityGrams?: number;
   foodLiked?: 'yes' | 'no' | 'neutral';
+  amountEaten?: 'all' | 'half' | 'little' | 'none';
   mealTime?: 'breakfast' | 'lunch' | 'snack' | 'dinner';
   pee?: number;
   poop?: number;

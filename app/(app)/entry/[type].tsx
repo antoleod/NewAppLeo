@@ -246,7 +246,10 @@ export default function EntryComposerScreen() {
   const [reminderMedicationDate, setReminderMedicationDate] = useState(new Date());
   const [foodAllergies, setFoodAllergies] = useState<string[]>([]);
   const [foodLiked, setFoodLiked] = useState<'yes' | 'no' | 'neutral' | null>(null);
+  const [amountEaten, setAmountEaten] = useState<'all' | 'half' | 'little' | 'none' | null>(null);
   const [mealTime, setMealTime] = useState<'breakfast' | 'lunch' | 'snack' | 'dinner' | ''>(type === 'food' && !editing ? getRecommendedMealTime() : '');
+  const [showFoodDoneModal, setShowFoodDoneModal] = useState(false);
+  const [lastSavedFood, setLastSavedFood] = useState<{ name: string; grams: string }>({ name: '', grams: '' });
   const [quantityGrams, setQuantityGrams] = useState('');
   const meta = typeMeta[type];
   const { profile, saveProfile } = useAuth();
@@ -264,6 +267,13 @@ export default function EntryComposerScreen() {
         .slice(0, 4),
     [entries],
   );
+  const todayFoodEntries = useMemo(() => {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    return entries
+      .filter((e) => e.type === 'food' && new Date(e.occurredAt) >= startOfDay)
+      .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+  }, [entries]);
 
   const foodPreferencesMap = useMemo(() => {
     const map: Record<string, { liked: number; neutral: number; disliked: number }> = {};
@@ -397,6 +407,7 @@ export default function EntryComposerScreen() {
         setQuantityGrams(editing.payload?.quantityGrams ? String(editing.payload.quantityGrams) : '');
         setFoodAllergies((editing.payload?.foodAllergies as string[]) ?? []);
         setFoodLiked((editing.payload?.foodLiked as any) ?? null);
+        setAmountEaten((editing.payload?.amountEaten as any) ?? null);
         setMealTime((editing.payload?.mealTime as any) ?? '');
         break;
       case 'sleep':
@@ -502,6 +513,17 @@ export default function EntryComposerScreen() {
     }
   }, [foodName, editing, type, quantityGrams, profile?.babyBirthDate]);
 
+  function resetFoodForm() {
+    setFoodName('');
+    setQuantityGrams('');
+    setFoodLiked(null);
+    setAmountEaten(null);
+    setFoodAllergies([]);
+    setMealTime(getRecommendedMealTime());
+    setNotes('');
+    setOccurredAt(new Date());
+  }
+
   function buildPayload(durationMinOverride?: number): EntryPayload {
     const resolvedDuration = durationMinOverride ?? (Number(durationMin) || 0);
     switch (type) {
@@ -514,6 +536,7 @@ export default function EntryComposerScreen() {
         if (quantityGrams) foodPayload.quantityGrams = Number(quantityGrams);
         if (foodAllergies.length > 0) foodPayload.foodAllergies = foodAllergies;
         if (foodLiked) foodPayload.foodLiked = foodLiked;
+        if (amountEaten) foodPayload.amountEaten = amountEaten;
         if (mealTime) foodPayload.mealTime = mealTime;
         return foodPayload as EntryPayload;
       }
@@ -616,8 +639,16 @@ export default function EntryComposerScreen() {
 
       haptics.success();
 
+      // Food: show "Add another / Go Home" modal instead of share prompt
+      if (type === 'food' && !editing) {
+        setLastSavedFood({ name: foodName, grams: quantityGrams });
+        setShowFoodDoneModal(true);
+        setSaving(false);
+        return;
+      }
+
       // Suggest sharing for joyful, non-medical entries on new save
-      const shareableTypes: EntryType[] = ['food', 'sleep', 'feed', 'measurement', 'milestone', 'diaper'];
+      const shareableTypes: EntryType[] = ['sleep', 'feed', 'measurement', 'milestone', 'diaper'];
       if (!editing && shareableTypes.includes(type)) {
         const shareLabel = language === 'fr' ? 'Partager' : language === 'es' ? 'Compartir' : language === 'nl' ? 'Delen' : 'Share';
         const skipLabel = language === 'fr' ? 'Plus tard' : language === 'es' ? 'Después' : language === 'nl' ? 'Later' : 'Later';
@@ -852,9 +883,58 @@ export default function EntryComposerScreen() {
           const foodNameLabel = { fr: 'Autre aliment', en: 'Other food', es: 'Otro alimento', nl: 'Ander voedsel' };
           const suggestedLabel = { fr: 'Suggéré pour l\'âge', en: 'Suggested for age', es: 'Sugerido por edad', nl: 'Aanbevolen voor leeftijd' };
           const firstTryLabel = { fr: '✨ Premier essai', en: '✨ First try!', es: '✨ ¡Primera vez!', nl: '✨ Eerste keer!' };
+          const mealTimeIcons: Record<string, string> = { breakfast: '🌅', lunch: '🌞', snack: '🍪', dinner: '🌙' };
+          const amountEatenConfig = [
+            { value: 'all' as const, emoji: '🍽️', color: '#3FB950', label: t('food.amountAll') },
+            { value: 'half' as const, emoji: '🥗', color: '#F0B85A', label: t('food.amountHalf') },
+            { value: 'little' as const, emoji: '🥄', color: '#58A6FF', label: t('food.amountLittle') },
+            { value: 'none' as const, emoji: '🚫', color: '#888888', label: t('food.amountNone') },
+          ];
 
           return (
             <View style={styles.sectionCard}>
+              {/* Today's meals summary strip */}
+              {!editing && (
+                <View style={{ marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }}>
+                      {t('food.todayMeals').toUpperCase()}
+                    </Text>
+                    <Text style={{ color: meta.tone, fontSize: 12, fontWeight: '600' }}>
+                      {todayFoodEntries.length > 0 ? `${todayFoodEntries.length}×` : ''}
+                    </Text>
+                  </View>
+                  {todayFoodEntries.length === 0 ? (
+                    <View style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed', alignItems: 'center' }}>
+                      <Text style={{ color: colors.muted, fontSize: 12 }}>{t('food.noFoodYet')}</Text>
+                    </View>
+                  ) : (
+                    <View style={{ gap: 6 }}>
+                      {todayFoodEntries.slice(0, 4).map((entry) => {
+                        const fn = entry.payload?.foodName ?? '';
+                        const grams = entry.payload?.quantityGrams;
+                        const ml = entry.payload?.mealTime;
+                        const ae = entry.payload?.amountEaten;
+                        const aeEmoji = ae === 'all' ? '🍽️' : ae === 'half' ? '🥗' : ae === 'little' ? '🥄' : ae === 'none' ? '🚫' : '';
+                        const timeStr = new Date(entry.occurredAt).toLocaleTimeString(
+                          lang === 'fr' ? 'fr-FR' : lang === 'nl' ? 'nl-BE' : lang === 'es' ? 'es-ES' : 'en-US',
+                          { hour: '2-digit', minute: '2-digit' },
+                        );
+                        return (
+                          <View key={entry.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: `${meta.tone}0D` }}>
+                            <Text style={{ fontSize: 13 }}>{ml ? mealTimeIcons[ml] : '🍴'}</Text>
+                            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600', flex: 1 }} numberOfLines={1}>{fn}</Text>
+                            {grams ? <Text style={{ color: colors.muted, fontSize: 11 }}>{grams}g</Text> : null}
+                            {aeEmoji ? <Text style={{ fontSize: 12 }}>{aeEmoji}</Text> : null}
+                            <Text style={{ color: colors.muted, fontSize: 11 }}>{timeStr}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              )}
+
               {/* Age warning */}
               {profile?.babyBirthDate && (() => {
                 const ageMonths = (Date.now() - new Date(profile.babyBirthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44);
@@ -1019,6 +1099,30 @@ export default function EntryComposerScreen() {
                       </Text>
                     </Pressable>
                   ))}
+                </View>
+              </View>
+
+              {/* How much was eaten? */}
+              <View style={{ marginBottom: 14 }}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
+                  {t('food.howMuch')}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {amountEatenConfig.map(({ value, emoji, color, label }) => {
+                    const active = amountEaten === value;
+                    return (
+                      <Pressable
+                        key={value}
+                        onPress={() => setAmountEaten(active ? null : value)}
+                        style={{ flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center', gap: 5, borderWidth: active ? 2 : 1, borderColor: active ? color : colors.border, backgroundColor: active ? `${color}20` : 'transparent' }}
+                      >
+                        <Text style={{ fontSize: 24 }}>{emoji}</Text>
+                        <Text style={{ color: active ? color : colors.muted, fontSize: 10, fontWeight: active ? '800' : '400', textAlign: 'center' }}>
+                          {label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
               </View>
 
@@ -1732,6 +1836,47 @@ export default function EntryComposerScreen() {
           saving={saving}
         />
       )}
+
+      {/* Food "Add another / Go Home" modal */}
+      <Modal visible={showFoodDoneModal} animationType="slide" transparent statusBarTranslucent>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' }}>
+          <View style={{ backgroundColor: theme.bgCard, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 44, gap: 0 }}>
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: `${meta.tone}22`, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <Text style={{ fontSize: 36 }}>🍽️</Text>
+              </View>
+              <Text style={{ color: theme.textPrimary, fontSize: 22, fontWeight: '800', textAlign: 'center', letterSpacing: -0.3 }}>
+                {t('food.savedTitle')}
+              </Text>
+              {(lastSavedFood.name || lastSavedFood.grams) ? (
+                <Text style={{ color: theme.textMuted, fontSize: 14, textAlign: 'center', marginTop: 6 }}>
+                  {[lastSavedFood.name, lastSavedFood.grams ? `${lastSavedFood.grams}g` : ''].filter(Boolean).join(' · ')}
+                </Text>
+              ) : (
+                <Text style={{ color: theme.textMuted, fontSize: 14, textAlign: 'center', marginTop: 6 }}>
+                  {t('food.savedSubtitle')}
+                </Text>
+              )}
+            </View>
+            <Pressable
+              onPress={() => { setShowFoodDoneModal(false); resetFoodForm(); }}
+              style={{ backgroundColor: meta.tone, borderRadius: 18, paddingVertical: 17, alignItems: 'center', marginBottom: 10 }}
+            >
+              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 16, letterSpacing: 0.2 }}>
+                + {t('food.addAnother')}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => { setShowFoodDoneModal(false); router.back(); }}
+              style={{ borderRadius: 18, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: theme.border }}
+            >
+              <Text style={{ color: theme.textPrimary, fontWeight: '600', fontSize: 16 }}>
+                {t('food.goHome')}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* ShareCard fuera de pantalla: se captura como imagen cuando el usuario toca Partager */}
       {editing && (

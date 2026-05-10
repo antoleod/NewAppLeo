@@ -49,7 +49,18 @@
     "rash": "Éruption",
     "vomit": "Vomissements",
     "diarrhea": "Diarrhée",
-    "possibleAllergies": "Possibles allergies"
+    "possibleAllergies": "Possibles allergies",
+    "howMuch": "Combien a-t-il mangé ?",
+    "amountAll": "Tout",
+    "amountHalf": "Moitié",
+    "amountLittle": "Peu",
+    "amountNone": "Rien",
+    "addAnother": "Ajouter un autre",
+    "goHome": "Retour à l'accueil",
+    "savedTitle": "Enregistré !",
+    "savedSubtitle": "Repas bien noté.",
+    "todayMeals": "Repas du jour",
+    "noFoodYet": "Pas encore de repas aujourd'hui"
   },
   "feeding": {
     "lastFeeding": "DERNIÈRE PRISE",
