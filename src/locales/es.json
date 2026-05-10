@@ -70,7 +70,8 @@
     "soon": "Pronto",
     "waiting": "Todavía no",
     "lastFeedDetail": "Última toma a las {time} · hace {hours} h",
-    "noFeed": "No hay tomas registradas"
+    "noFeed": "No hay tomas registradas",
+    "suggested": "Sugerido:"
   },
   "vaccine": {
     "scheduled": "VACUNAS PROGRAMADAS",

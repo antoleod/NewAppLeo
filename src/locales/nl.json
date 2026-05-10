@@ -70,7 +70,8 @@
     "soon": "Binnenkort",
     "waiting": "Nog niet",
     "lastFeedDetail": "Laatste voeding om {time} · {hours} u geleden",
-    "noFeed": "Geen voeding geregistreerd"
+    "noFeed": "Geen voeding geregistreerd",
+    "suggested": "Aanbevolen:"
   },
   "vaccine": {
     "scheduled": "GEPLANDE VACCINS",

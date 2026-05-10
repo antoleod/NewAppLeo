@@ -9,7 +9,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
   const { theme } = useTheme();
   const { t, format } = useTranslation();
-  const { status, hoursAgo, lastTime } = useNextFeeding();
+  const { status, hoursAgo, lastTime, nextFeedLabel, recommendedAmount } = useNextFeeding();
   const isPossible = status === 'possible';
   const isSoon = status === 'soon';
   const { pulseStyle, glowStyle } = usePulseAnimation({ active: isPossible, intensity: 'soft' });
@@ -75,6 +75,24 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
               </Text>
             ) : (
               <Text style={[typography.detail, { color: theme.textMuted, marginTop: 6 }]}>{t('nextFeeding.noFeed')}</Text>
+            )}
+
+            {nextFeedLabel && !isPossible && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                <Text style={[typography.detail, { color: theme.textMuted }]}>{t('feeding.nextIn')}</Text>
+                <Text style={[typography.detail, { color: theme.textPrimary, fontWeight: '700' }]}>
+                  {nextFeedLabel}
+                </Text>
+              </View>
+            )}
+
+            {recommendedAmount && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <Text style={[typography.detail, { color: theme.textMuted }]}>{t('nextFeeding.suggested')}</Text>
+                <Text style={[typography.detail, { color: theme.accent, fontWeight: '600' }]}>
+                  {`~${recommendedAmount.min}–${recommendedAmount.max} ml`}
+                </Text>
+              </View>
             )}
           </View>
 

@@ -70,7 +70,8 @@
     "soon": "Soon",
     "waiting": "Not yet",
     "lastFeedDetail": "Last feeding at {time} · {hours} h ago",
-    "noFeed": "No feeding recorded"
+    "noFeed": "No feeding recorded",
+    "suggested": "Suggested:"
   },
   "vaccine": {
     "scheduled": "SCHEDULED VACCINES",
