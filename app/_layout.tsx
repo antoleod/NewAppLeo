@@ -3,7 +3,7 @@ import { Stack, useSegments, router } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme, View, AppState, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { useColorScheme, View, AppState, StyleSheet, Text, useWindowDimensions, Platform } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
@@ -104,6 +104,12 @@ export default function RootLayout() {
       void SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('/NewAppLeo/sw.js').catch(() => {});
+  }, []);
 
   if (!fontsLoaded) return null;
 

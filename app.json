@@ -15,26 +15,42 @@
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/branding/app-icon/babyflow-app-icon-192.png",
+      "favicon": "./public/favicon.ico",
       "manifest": {
         "name": "App Leo",
         "short_name": "App Leo",
         "start_url": "/NewAppLeo/",
         "display": "standalone",
-        "background_color": "#ffffff",
-        "theme_color": "#ffffff",
+        "orientation": "portrait",
+        "background_color": "#0D1117",
+        "theme_color": "#0D1117",
         "scope": "/NewAppLeo/",
-        "description": "App Leo - cuidado y seguimiento para bebés desde la web o PWA.",
+        "description": "App Leo — baby care & tracking. Daily logs for feeding, sleep, diapers and more.",
+        "categories": ["health", "medical", "lifestyle"],
         "icons": [
           {
-            "src": "./assets/branding/app-icon/babyflow-app-icon-192.png",
+            "src": "/NewAppLeo/icon-192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
           },
           {
-            "src": "./assets/branding/app-icon/babyflow-app-icon-512.png",
+            "src": "/NewAppLeo/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+          },
+          {
+            "src": "/NewAppLeo/icon-512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
+          },
+          {
+            "src": "/NewAppLeo/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
           }
         ]
       }
