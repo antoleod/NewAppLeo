@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, View, GestureResponderEvent } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
@@ -156,20 +156,28 @@ interface DiaperVolumeSliderProps {
 }
 
 function DiaperVolumeSlider({ emoji, value, onChange, color }: DiaperVolumeSliderProps) {
-  function handleSlide(e: GestureResponderEvent) {
-    const x = e.nativeEvent.locationX;
-    const containerWidth = 280;
-    const percentage = Math.max(0, Math.min(1, x / containerWidth));
-    const newValue = Math.round(percentage * 9);
-    onChange(newValue);
+  const [trackWidth, setTrackWidth] = useState(0);
+
+  function computeValue(locationX: number) {
+    if (!trackWidth) return value;
+    const percentage = Math.max(0, Math.min(1, locationX / trackWidth));
+    return Math.round(percentage * 9);
   }
 
   return (
     <View style={styles.diaperMinimal}>
       <Text style={styles.diaperMinimalEmoji}>{emoji}</Text>
-      <Pressable onPress={handleSlide} style={[styles.diaperMinimalBar, { backgroundColor: color + '15', borderColor: color }]}>
+      <View
+        onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderGrant={(e) => onChange(computeValue(e.nativeEvent.locationX))}
+        onResponderMove={(e) => onChange(computeValue(e.nativeEvent.locationX))}
+        onResponderRelease={(e) => onChange(computeValue(e.nativeEvent.locationX))}
+        style={[styles.diaperMinimalBar, { backgroundColor: color + '15', borderColor: color }]}
+      >
         <View style={[styles.diaperMinimalFill, { width: `${(value / 9) * 100}%`, backgroundColor: color }]} />
-      </Pressable>
+      </View>
       <Text style={[styles.diaperMinimalValue, { color }]}>{value}</Text>
     </View>
   );
@@ -494,12 +502,13 @@ export default function EntryComposerScreen() {
     }
   }, [foodName, editing, type, quantityGrams, profile?.babyBirthDate]);
 
-  function buildPayload(): EntryPayload {
+  function buildPayload(durationMinOverride?: number): EntryPayload {
+    const resolvedDuration = durationMinOverride ?? (Number(durationMin) || 0);
     switch (type) {
       case 'feed':
         return mode === 'bottle'
           ? { mode: 'bottle', amountMl: Number(amountMl) || 0, notes }
-          : { mode: 'breast', side: side as BreastSide, durationMin: Number(durationMin) || 0, amountMl: Number(amountMl) || 0, notes };
+          : { mode: 'breast', side: side as BreastSide, durationMin: resolvedDuration, amountMl: Number(amountMl) || 0, notes };
       case 'food':
         return {
           foodName,
@@ -511,7 +520,7 @@ export default function EntryComposerScreen() {
           notes,
         };
       case 'sleep':
-        return { durationMin: Number(durationMin) || 0, notes };
+        return { durationMin: resolvedDuration, notes };
       case 'diaper':
         return {
           pee: clamp(Number(pee) || 0, 0, 9),
@@ -520,7 +529,7 @@ export default function EntryComposerScreen() {
           notes,
         };
       case 'pump':
-        return { durationMin: Number(durationMin) || 0, amountMl: Number(amountMl) || 0, notes };
+        return { durationMin: resolvedDuration, amountMl: Number(amountMl) || 0, notes };
       case 'measurement':
         return {
           weightKg: weightKg ? Number(weightKg) : undefined,
@@ -574,11 +583,11 @@ export default function EntryComposerScreen() {
     }
   }
 
-  async function handleSave() {
+  async function handleSave(durationMinOverride?: number) {
     setSaving(true);
     try {
       const timestamp = occurredAt.toISOString();
-      const payload = buildPayload();
+      const payload = buildPayload(durationMinOverride);
       const titleValue = buildTitle();
       const savedEntry = {
         id: editing?.id ?? `tmp_${Date.now()}`,
@@ -626,7 +635,7 @@ export default function EntryComposerScreen() {
               router.back();
             },
           },
-        ]);
+        ], { cancelable: false });
       } else {
         router.back();
       }
@@ -639,11 +648,12 @@ export default function EntryComposerScreen() {
   }
 
   async function handlePrimarySave() {
-    if (type === 'sleep' && sleepTimerRunning) {
+    if (type === 'sleep' && sleepTimerRunning && sleepStartedAt) {
+      const elapsedMinutes = Math.max(1, Math.round((Date.now() - sleepStartedAt) / 60000));
       setSleepStopToken((current) => current + 1);
-      setTimeout(() => {
-        void handleSave();
-      }, 40);
+      setSleepTimerRunning(false);
+      setDurationMin(String(elapsedMinutes));
+      await handleSave(elapsedMinutes);
       return;
     }
     await handleSave();
@@ -655,7 +665,7 @@ export default function EntryComposerScreen() {
     setDurationMin(String(elapsedMinutes));
     setSleepTimerRunning(false);
     setSleepFullscreenVisible(false);
-    await handleSave();
+    await handleSave(elapsedMinutes);
   }
 
   async function handlePumpStop() {
@@ -664,7 +674,7 @@ export default function EntryComposerScreen() {
     setDurationMin(String(elapsedMinutes));
     setPumpTimerRunning(false);
     setPumpFullscreenVisible(false);
-    await handleSave();
+    await handleSave(elapsedMinutes);
   }
 
   async function handleSaveReminder() {

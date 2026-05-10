@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useTheme } from '@/context/ThemeContext';
@@ -35,44 +35,62 @@ export function DateTimeField({
   onChange: (value: Date) => void;
 }) {
   const { theme } = useTheme();
-  const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
-  const [draftValue, setDraftValue] = useState<Date | null>(null);
+  const [open, setOpen] = useState(false);
+  // Android only: step through date then time
+  const [androidMode, setAndroidMode] = useState<'date' | 'time'>('date');
+  const [draft, setDraft] = useState<Date | null>(null);
 
   const dateDisplay = useMemo(() => formatDate(value), [value]);
   const timeDisplay = useMemo(() => formatTime(value), [value]);
 
-  function openDateTimePicker() {
-    setDraftValue(new Date(safeDate(value)));
-    setPickerMode('date');
+  function openPicker() {
+    setDraft(new Date(safeDate(value)));
+    if (Platform.OS === 'android') setAndroidMode('date');
+    setOpen(true);
   }
 
-  function handleChange(event: DateTimePickerEvent, next?: Date) {
+  // ── iOS: spinner fires on every scroll, only commit on Done ──────────────────
+  function handleIOSChange(_event: DateTimePickerEvent, next?: Date) {
+    if (next) setDraft(next);
+  }
+
+  function handleIOSConfirm() {
+    if (draft) onChange(draft);
+    setOpen(false);
+    setDraft(null);
+  }
+
+  function handleIOSCancel() {
+    setOpen(false);
+    setDraft(null);
+  }
+
+  // ── Android: date dialog → time dialog → commit ───────────────────────────
+  function handleAndroidChange(event: DateTimePickerEvent, next?: Date) {
     if (event.type === 'dismissed' || !next) {
-      setPickerMode(null);
-      setDraftValue(null);
+      setOpen(false);
+      setDraft(null);
       return;
     }
-
-    if (pickerMode === 'date') {
-      const merged = new Date(draftValue ?? safeDate(value));
+    if (androidMode === 'date') {
+      const merged = new Date(draft ?? safeDate(value));
       merged.setFullYear(next.getFullYear(), next.getMonth(), next.getDate());
-      setDraftValue(merged);
-      setPickerMode('time');
+      setDraft(merged);
+      setAndroidMode('time');
       return;
     }
-
-    const merged = new Date(draftValue ?? safeDate(value));
+    const merged = new Date(draft ?? safeDate(value));
     merged.setHours(next.getHours(), next.getMinutes(), 0, 0);
     onChange(merged);
-    setPickerMode(null);
-    setDraftValue(null);
+    setOpen(false);
+    setDraft(null);
   }
 
   return (
     <View style={styles.container}>
       <Text style={[styles.label, { color: theme.textPrimary }]}>{label}</Text>
       <Pressable
-        onPress={openDateTimePicker}
+        onPress={openPicker}
         style={({ pressed }) => [
           styles.control,
           {
@@ -99,7 +117,38 @@ export function DateTimeField({
           </View>
         </View>
       </Pressable>
-      {pickerMode ? <DateTimePicker value={draftValue ?? safeDate(value)} mode={pickerMode} display="default" onChange={handleChange} /> : null}
+
+      {Platform.OS === 'ios' ? (
+        <Modal visible={open} transparent animationType="slide" onRequestClose={handleIOSCancel}>
+          <View style={styles.iosBackdrop}>
+            <View style={[styles.iosCard, { backgroundColor: theme.bgCard, borderColor: theme.border }]}>
+              <View style={styles.iosHeader}>
+                <Pressable onPress={handleIOSCancel} hitSlop={8}>
+                  <Text style={[styles.iosBtn, { color: theme.textMuted }]}>Cancel</Text>
+                </Pressable>
+                <Pressable onPress={handleIOSConfirm} hitSlop={8}>
+                  <Text style={[styles.iosBtn, { color: theme.accent, fontWeight: '700' }]}>Done</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={draft ?? safeDate(value)}
+                mode="datetime"
+                display="spinner"
+                onChange={handleIOSChange}
+              />
+            </View>
+          </View>
+        </Modal>
+      ) : (
+        open ? (
+          <DateTimePicker
+            value={draft ?? safeDate(value)}
+            mode={androidMode}
+            display="default"
+            onChange={handleAndroidChange}
+          />
+        ) : null
+      )}
     </View>
   );
 }
@@ -155,5 +204,31 @@ const styles = StyleSheet.create({
   dot: {
     fontSize: 16,
     fontWeight: '900',
+  },
+  // iOS Modal styles
+  iosBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  iosCard: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    paddingBottom: 24,
+  },
+  iosHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(128,128,128,0.3)',
+  },
+  iosBtn: {
+    fontSize: 16,
   },
 });
