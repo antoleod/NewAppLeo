@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
@@ -184,7 +184,7 @@ function DiaperVolumeSlider({ emoji, value, onChange, color }: DiaperVolumeSlide
 }
 
 export default function EntryComposerScreen() {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const { language } = useLocale();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string }>();
@@ -730,10 +730,16 @@ export default function EntryComposerScreen() {
     }
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!editing) return;
-    await deleteEntry(editing.id);
-    router.back();
+    const confirmTitle = language === 'fr' ? 'Supprimer ?' : language === 'es' ? '¿Eliminar?' : language === 'nl' ? 'Verwijderen?' : 'Delete?';
+    const confirmMsg = language === 'fr' ? 'Cette action est irréversible.' : language === 'es' ? 'Esta acción no se puede deshacer.' : language === 'nl' ? 'Deze actie is onomkeerbaar.' : 'This cannot be undone.';
+    const cancelLabel = language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'nl' ? 'Annuleren' : 'Cancel';
+    const deleteLabel = language === 'fr' ? 'Supprimer' : language === 'es' ? 'Eliminar' : language === 'nl' ? 'Verwijderen' : 'Delete';
+    Alert.alert(confirmTitle, confirmMsg, [
+      { text: cancelLabel, style: 'cancel' },
+      { text: deleteLabel, style: 'destructive', onPress: async () => { await deleteEntry(editing.id); router.back(); } },
+    ], { cancelable: true });
   }
 
   const showDateTime = type !== 'diaper';
@@ -1611,16 +1617,35 @@ export default function EntryComposerScreen() {
 
       {/* Sticky Footer Actions */}
       <View style={[styles.actionsStickyContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
-        <View style={styles.actions}>
-          {!((type === 'sleep' || type === 'pump') && !editing) && (
-            <Button label={editing ? (language === 'fr' ? 'Mettre à jour' : 'Update') : language === 'fr' ? 'Enregistrer' : 'Save'} onPress={() => void handlePrimarySave()} loading={saving} />
-          )}
-          {editing && (
+        {!((type === 'sleep' || type === 'pump') && !editing) && (
+          <Pressable
+            onPress={saving ? undefined : () => void handlePrimarySave()}
+            style={({ pressed }) => [
+              styles.primaryActionBtn,
+              { backgroundColor: theme.accent, opacity: saving ? 0.7 : pressed ? 0.88 : 1 },
+            ]}
+          >
+            {saving ? (
+              <ActivityIndicator color={theme.accentText} size="small" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={22} color={theme.accentText} />
+                <Text style={[styles.primaryActionLabel, { color: theme.accentText }]}>
+                  {editing
+                    ? (language === 'fr' ? 'Mettre à jour' : language === 'es' ? 'Actualizar' : language === 'nl' ? 'Bijwerken' : 'Update')
+                    : (language === 'fr' ? 'Enregistrer' : language === 'es' ? 'Guardar' : language === 'nl' ? 'Opslaan' : 'Save')}
+                </Text>
+              </>
+            )}
+          </Pressable>
+        )}
+
+        {editing && (
+          <View style={styles.secondaryActionsRow}>
             <Pressable
               onPress={() => {
                 if (!editing) return;
                 setSharingImage(true);
-                // pequeño delay para que la ShareCard renderice antes de capturar
                 setTimeout(() => {
                   void shareEntryAsImage(
                     () => captureRef(shareCardRef, { format: 'png', quality: 1.0, result: 'tmpfile' }),
@@ -1631,29 +1656,33 @@ export default function EntryComposerScreen() {
                 }, 150);
               }}
               disabled={sharingImage}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                height: 48,
-                borderRadius: 12,
-                borderWidth: 1.5,
-                borderColor: colors.primary,
-                backgroundColor: pressed ? `${colors.primary}15` : 'transparent',
-                opacity: sharingImage ? 0.6 : 1,
-              })}
+              style={({ pressed }) => [
+                styles.secondaryActionBtn,
+                { borderColor: theme.accent, backgroundColor: pressed ? `${theme.accent}18` : 'transparent', opacity: sharingImage ? 0.5 : 1 },
+              ]}
             >
-              <Ionicons name={sharingImage ? 'hourglass-outline' : 'share-outline'} size={18} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600' }}>
+              <Ionicons name={sharingImage ? 'hourglass-outline' : 'share-social-outline'} size={18} color={theme.accent} />
+              <Text style={[styles.secondaryActionLabel, { color: theme.accent }]}>
                 {sharingImage
-                  ? (language === 'fr' ? 'Préparation...' : language === 'es' ? 'Preparando...' : language === 'nl' ? 'Laden...' : 'Preparing...')
+                  ? (language === 'fr' ? 'En cours...' : language === 'es' ? 'Cargando...' : language === 'nl' ? 'Laden...' : 'Loading...')
                   : (language === 'fr' ? 'Partager' : language === 'es' ? 'Compartir' : language === 'nl' ? 'Delen' : 'Share')}
               </Text>
             </Pressable>
-          )}
-          {editing && <Button label={language === 'fr' ? 'Supprimer' : 'Delete'} onPress={handleDelete} variant="danger" />}
-        </View>
+
+            <Pressable
+              onPress={handleDelete}
+              style={({ pressed }) => [
+                styles.secondaryActionBtn,
+                { borderColor: theme.red, backgroundColor: pressed ? `${theme.red}18` : 'transparent' },
+              ]}
+            >
+              <Ionicons name="trash-outline" size={18} color={theme.red} />
+              <Text style={[styles.secondaryActionLabel, { color: theme.red }]}>
+                {language === 'fr' ? 'Supprimer' : language === 'es' ? 'Eliminar' : language === 'nl' ? 'Verwijderen' : 'Delete'}
+              </Text>
+            </Pressable>
+          </View>
+        )}
       </View>
 
       {type === 'sleep' && !editing && sleepStartedAt ? (
@@ -2101,11 +2130,41 @@ const styles = StyleSheet.create({
   },
   actionsStickyContainer: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingVertical: 16,
+    paddingTop: 14,
+    paddingBottom: 20,
     borderTopWidth: 1,
-    borderTopColor: '#21262D',
+    gap: 10,
+  },
+  primaryActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
+    height: 56,
+    borderRadius: 16,
+  },
+  primaryActionLabel: {
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  secondaryActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  secondaryActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  secondaryActionLabel: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   reactionChip: {
     paddingHorizontal: 12,
@@ -2342,10 +2401,6 @@ const styles = StyleSheet.create({
   notesToggle: {
     paddingVertical: 4,
     paddingHorizontal: 8,
-  },
-  actions: {
-    gap: 10,
-    marginTop: 8,
   },
   ageWarningBox: {
     paddingHorizontal: 12,
