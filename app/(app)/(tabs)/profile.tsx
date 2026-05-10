@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, Image, Pressable, Text, View, RefreshControl, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeIn, ZoomIn, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -23,7 +24,14 @@ import { getLocalPairingSession } from '@/services/pairingService';
 import { flushQueuedOperations, loadQueuedOperations } from '@/lib/sync';
 import { useToast } from '@/components/Toast';
 import { haptics } from '@/lib/haptics';
-import { deleteSession, watchSessions, type SessionItem } from '@/services/sessionService';
+import {
+  clearCurrentSession,
+  deleteSession,
+  getCurrentSessionId,
+  registerCurrentSession,
+  watchSessions,
+  type SessionItem,
+} from '@/services/sessionService';
 
 const languageOptions = [
   { label: 'FR', value: 'fr' },
@@ -31,6 +39,20 @@ const languageOptions = [
   { label: 'EN', value: 'en' },
   { label: 'NL', value: 'nl' },
 ];
+
+function formatRelativeTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
 
 function generateBabyId() {
   return globalThis.crypto?.randomUUID?.() ?? `baby_${Date.now()}`;
@@ -84,6 +106,7 @@ export default function ProfileScreen() {
   const [newBabyName, setNewBabyName] = useState('');
   const [newBabyBirthDate, setNewBabyBirthDate] = useState(new Date());
   const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -132,8 +155,13 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (!user || guestMode) return;
     const unsub = watchSessions(user.uid, setSessions);
+    registerCurrentSession(user.uid, user.email ?? profile?.authEmail ?? '')
+      .then((id) => setCurrentSessionId(id))
+      .catch(() => {
+        getCurrentSessionId(user.uid).then((id) => { if (id) setCurrentSessionId(id); });
+      });
     return () => unsub();
-  }, [user, guestMode]);
+  }, [user, guestMode, profile?.authEmail]);
 
   const handleFieldChange = useCallback(
     (field: keyof typeof form, value: string | Date) => {
@@ -365,11 +393,12 @@ export default function ProfileScreen() {
   const handleSignOut = useCallback(async () => {
     setSigningOut(true);
     try {
+      if (user?.uid) await clearCurrentSession(user.uid);
       await signOut();
     } finally {
       setSigningOut(false);
     }
-  }, [signOut]);
+  }, [signOut, user]);
 
   const language = profile?.language ?? 'fr';
   const childSummary = useMemo(
@@ -587,56 +616,207 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
+        {/* Header */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.sessionTitle')}</Text>
+          <View>
+            <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>
+              {t('profile.sessionTitle')}
+            </Text>
+            {!guestMode && sessions.length > 0 && (
+              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 1 }}>
+                {sessions.length} {t('profile.openSessions').toLowerCase()}
+              </Text>
+            )}
+          </View>
           <Button
             label={showSession ? t('modal.hide') : t('modal.show')}
-            onPress={() => {
-              haptics.light();
-              setShowSession((value) => !value);
-            }}
+            onPress={() => { haptics.light(); setShowSession((v) => !v); }}
             variant="ghost"
           />
         </View>
 
         <ExpandableSection isExpanded={showSession}>
-          <>
-            {guestMode ? (
-              <Text style={{ color: colors.muted, marginBottom: 8 }}>{t('profile.guestSessionInfo')}</Text>
-            ) : (
-              <>
-                <Text style={{ color: colors.muted }}>{t('profile.currentSessionLabel')}{user?.email ?? profile?.authEmail ?? t('profile.emailUnknown')}</Text>
-                <Text style={{ color: colors.muted }}>{t('profile.pairing')}: {pairingCode ?? t('profile.pairingNone')}</Text>
-                <Text style={{ color: colors.muted }}>{t('profile.queuedSync')}{queuedSyncCount}</Text>
-                <Text style={{ color: colors.text, fontWeight: '700', marginTop: 10 }}>{t('profile.openSessions')}</Text>
-                {sessions.length ? (
-                  sessions.map((item) => {
-                    const isCurrent = item.email === (user?.email ?? profile?.authEmail);
-                    return (
-                      <View key={item.id} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 10, marginTop: 8 }}>
-                        <Text style={{ color: colors.text, fontWeight: '700' }}>{item.email} {isCurrent ? `(${t('profile.currentSession') ?? 'current'})` : ''}</Text>
-                        <Text style={{ color: colors.muted, fontSize: 12 }}>{item.device}</Text>
-                        <Text style={{ color: colors.muted, fontSize: 12 }}>{new Date(item.createdAt ?? Date.now()).toLocaleString()}</Text>
-                        <Button label={item.isOwner ? t('profile.ownerSession') : t('profile.removeSession')} onPress={() => void handleRemoveSession(item.id)} variant="ghost" disabled={item.isOwner} />
+          {guestMode ? (
+            <View style={{ paddingTop: 8 }}>
+              <Text style={{ color: colors.muted }}>{t('profile.guestSessionInfo')}</Text>
+            </View>
+          ) : (
+            <View style={{ paddingTop: 4 }}>
+              {/* Account meta */}
+              <View style={{ gap: 3, paddingBottom: 10 }}>
+                <Text style={{ color: colors.muted, fontSize: 12 }}>
+                  {user?.email ?? profile?.authEmail ?? t('profile.emailUnknown')}
+                </Text>
+                {pairingCode ? (
+                  <Text style={{ color: colors.muted, fontSize: 12 }}>
+                    {t('profile.pairing')}: {pairingCode}
+                  </Text>
+                ) : null}
+                {queuedSyncCount > 0 ? (
+                  <Text style={{ color: colors.muted, fontSize: 12 }}>
+                    {t('profile.queuedSync')}{queuedSyncCount}
+                  </Text>
+                ) : null}
+              </View>
+
+              {/* Section label */}
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13, marginBottom: 4 }}>
+                {t('profile.openSessions')}
+              </Text>
+
+              {/* Session cards */}
+              {sessions.length > 0 ? (
+                sessions.map((item) => {
+                  const isCurrent = item.id === currentSessionId;
+                  const canRevoke = !item.isOwner && !isCurrent;
+                  const timeLabel = item.lastActiveAt ?? item.createdAt;
+                  return (
+                    <View
+                      key={item.id}
+                      style={{
+                        borderWidth: 1,
+                        borderColor: isCurrent ? colors.primary : colors.border,
+                        borderRadius: 14,
+                        padding: 12,
+                        marginTop: 6,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                        {/* Platform icon */}
+                        <View
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 10,
+                            backgroundColor: `${colors.primary}18`,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Ionicons
+                            name={item.platform === 'web' ? 'laptop-outline' : 'phone-portrait-outline'}
+                            size={18}
+                            color={isCurrent ? colors.primary : colors.muted}
+                          />
+                        </View>
+
+                        {/* Info */}
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <Text
+                              style={{
+                                color: colors.text,
+                                fontWeight: '700',
+                                fontSize: 14,
+                                flexShrink: 1,
+                              }}
+                            >
+                              {item.device}
+                            </Text>
+                            {isCurrent && (
+                              <View
+                                style={{
+                                  paddingHorizontal: 7,
+                                  paddingVertical: 2,
+                                  borderRadius: 8,
+                                  backgroundColor: `${colors.primary}22`,
+                                }}
+                              >
+                                <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '800' }}>
+                                  {t('profile.thisDevice')}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={{ color: colors.muted, fontSize: 12 }}>{item.email}</Text>
+                          {timeLabel ? (
+                            <Text style={{ color: colors.muted, fontSize: 11 }}>
+                              {t('profile.sessionStarted')}: {formatRelativeTime(timeLabel)}
+                            </Text>
+                          ) : null}
+                        </View>
+
+                        {/* Revoke */}
+                        {canRevoke && (
+                          <Pressable
+                            onPress={() => void handleRemoveSession(item.id)}
+                            style={({ pressed }) => ({
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              borderRadius: 8,
+                              borderWidth: 1,
+                              borderColor: '#ef4444',
+                              opacity: pressed ? 0.5 : 1,
+                              marginTop: 1,
+                            })}
+                            hitSlop={8}
+                          >
+                            <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700' }}>
+                              {t('profile.revokeSession')}
+                            </Text>
+                          </Pressable>
+                        )}
                       </View>
-                    );
-                  })
-                ) : (
-                  <Text style={{ color: colors.muted, marginTop: 6 }}>{t('profile.noSessions')}</Text>
-                )}
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                  <View style={{ flex: 1 }}>
-                    <Button label={t('profile.syncNow')} onPress={handleSyncNow} variant="ghost" loading={syncing} disabled={syncing} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Button label={t('profile.pairPartner')} onPress={() => router.push('/pair')} variant="ghost" />
-                  </View>
+
+                      {/* Owner badge */}
+                      {item.isOwner && (
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 4,
+                            marginTop: 6,
+                            paddingLeft: 46,
+                          }}
+                        >
+                          <Ionicons name="shield-checkmark-outline" size={11} color={colors.muted} />
+                          <Text style={{ color: colors.muted, fontSize: 11 }}>
+                            {t('profile.ownerSession')}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })
+              ) : (
+                <Text style={{ color: colors.muted, fontSize: 13, marginTop: 4 }}>
+                  {t('profile.noSessions')}
+                </Text>
+              )}
+
+              {/* Action row */}
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    label={t('profile.syncNow')}
+                    onPress={handleSyncNow}
+                    variant="ghost"
+                    loading={syncing}
+                    disabled={syncing}
+                  />
                 </View>
-              </>
-            )}
-            <Button label={t('profile.logout')} onPress={handleSignOut} loading={signingOut} disabled={signingOut} variant="danger" />
-          </>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    label={t('profile.pairPartner')}
+                    onPress={() => router.push('/pair')}
+                    variant="ghost"
+                  />
+                </View>
+              </View>
+            </View>
+          )}
         </ExpandableSection>
+
+        {/* Logout — always visible, outside the expandable section */}
+        <View style={{ marginTop: 10 }}>
+          <Button
+            label={t('profile.logout')}
+            onPress={handleSignOut}
+            loading={signingOut}
+            disabled={signingOut}
+            variant="danger"
+          />
+        </View>
       </Card>
 
       <DataImporter />

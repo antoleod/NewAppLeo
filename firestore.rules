@@ -52,8 +52,8 @@ service cloud.firestore {
 
       match /sessions/{sessionId} {
         allow read, create: if isSignedIn() && request.auth.uid == uid;
+        allow update: if isSignedIn() && request.auth.uid == uid;
         allow delete: if isSignedIn() && request.auth.uid == uid && resource.data.isOwner != true;
-        allow update: if false;
       }
     }
   }

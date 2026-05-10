@@ -12,7 +12,7 @@ import {
 import { consumeGoogleRedirectResult, registerAccount, signInWithEmail, signInWithGoogle, signOutUser } from '@/services/authService';
 import { clearGuestProfile, clearLocalSession, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { createSession } from '@/services/sessionService';
+import { registerCurrentSession as createSession } from '@/services/sessionService';
 
 interface AuthContextValue {
   user: User | null;
