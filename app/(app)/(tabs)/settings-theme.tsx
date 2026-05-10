@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button, Card, Page, Segment } from '@/components/ui';
 import { BackgroundPhotoSelector } from '@/components/BackgroundPhotoSelector';
 import { SettingsImporter } from '@/components/SettingsImporter';
+import { DataExporter } from '@/components/DataExporter';
 import { getAppSettings, setAppSettings } from '@/lib/storage';
 
 export default function ThemeSettings() {
@@ -308,6 +309,7 @@ export default function ThemeSettings() {
           <Button label="Restore Recommended" onPress={() => void handleResetRecommended()} variant="secondary" />
         </Card>
 
+        <DataExporter />
         <SettingsImporter />
       </ScrollView>
     </Page>
