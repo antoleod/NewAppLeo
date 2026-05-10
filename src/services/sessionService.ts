@@ -31,14 +31,20 @@ export async function createSession(uid: string, email: string) {
 
 export function watchSessions(uid: string, onChange: (items: SessionItem[]) => void) {
   const q = query(sessionsRef(uid), orderBy('createdAt', 'desc'));
-  return onSnapshot(q, (snap) => {
-    onChange(
-      snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<SessionItem, 'id'>),
-      })),
-    );
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      onChange(
+        snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<SessionItem, 'id'>),
+        })),
+      );
+    },
+    () => {
+      onChange([]);
+    },
+  );
 }
 
 export async function deleteSession(uid: string, session: SessionItem) {

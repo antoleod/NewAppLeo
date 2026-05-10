@@ -126,10 +126,10 @@ export default function ProfileScreen() {
   }, [refreshProfileData]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || guestMode) return;
     const unsub = watchSessions(user.uid, setSessions);
     return () => unsub();
-  }, [user]);
+  }, [user, guestMode]);
 
   const handleFieldChange = useCallback(
     (field: keyof typeof form, value: string | Date) => {
@@ -278,11 +278,16 @@ export default function ProfileScreen() {
       if (!user) return;
       const target = sessions.find((item) => item.id === sessionId);
       if (!target) return;
-      await deleteSession(user.uid, target);
-      haptics.success();
-      toast.success('Session removed.');
+      try {
+        await deleteSession(user.uid, target);
+        haptics.success();
+        toast.success(t('profile.sessionRemoved'));
+      } catch (error: any) {
+        haptics.error();
+        toast.error(error?.message ?? t('errors.saveFailed'));
+      }
     },
-    [sessions, toast, user],
+    [sessions, t, toast, user],
   );
 
   const handleRefresh = useCallback(async () => {
@@ -426,7 +431,7 @@ export default function ProfileScreen() {
 
         <Input label={t('profile.notesLabel')} value={form.babyNotes} onChangeText={(value) => handleFieldChange('babyNotes', value)} multiline />
 
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 16, marginBottom: 8 }}>Weight History</Text>
+        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 16, marginBottom: 8 }}>{t('profile.weightHistory')}</Text>
         <WeightHistoryChart limit={5} onEditEntry={handleEditEntry} />
 
         <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 16, marginBottom: 8 }}>{t('profile.preferencesTitle')}</Text>
@@ -476,7 +481,7 @@ export default function ProfileScreen() {
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                     <View style={{ flex: 1 }}>
                       <Button
-                        label="Edit"
+                        label={t('common.edit')}
                         onPress={() => handleEditBaby(baby)}
                         variant="primary"
                         size="sm"
@@ -526,33 +531,39 @@ export default function ProfileScreen() {
 
         <ExpandableSection isExpanded={showSession}>
           <>
-            <Text style={{ color: colors.muted }}>Current session email: {user?.email ?? profile?.authEmail ?? t('profile.emailUnknown')}</Text>
-            <Text style={{ color: colors.muted }}>{t('profile.pairing')}: {pairingCode ?? t('profile.pairingNone')}</Text>
-            <Text style={{ color: colors.muted }}>{t('profile.queuedSync')}{queuedSyncCount}</Text>
-            <Text style={{ color: colors.text, fontWeight: '700', marginTop: 10 }}>Open sessions</Text>
-            {sessions.length ? (
-              sessions.map((item) => {
-                const isCurrent = item.email === (user?.email ?? profile?.authEmail);
-                return (
-                  <View key={item.id} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 10, marginTop: 8 }}>
-                    <Text style={{ color: colors.text, fontWeight: '700' }}>{item.email} {isCurrent ? '(current)' : ''}</Text>
-                    <Text style={{ color: colors.muted, fontSize: 12 }}>{item.device}</Text>
-                    <Text style={{ color: colors.muted, fontSize: 12 }}>{new Date(item.createdAt ?? Date.now()).toLocaleString()}</Text>
-                    <Button label={item.isOwner ? 'Owner session' : 'Remove session'} onPress={() => void handleRemoveSession(item.id)} variant="ghost" disabled={item.isOwner} />
-                  </View>
-                );
-              })
+            {guestMode ? (
+              <Text style={{ color: colors.muted, marginBottom: 8 }}>{t('profile.guestSessionInfo')}</Text>
             ) : (
-              <Text style={{ color: colors.muted, marginTop: 6 }}>No open sessions found.</Text>
+              <>
+                <Text style={{ color: colors.muted }}>{t('profile.currentSessionLabel')}{user?.email ?? profile?.authEmail ?? t('profile.emailUnknown')}</Text>
+                <Text style={{ color: colors.muted }}>{t('profile.pairing')}: {pairingCode ?? t('profile.pairingNone')}</Text>
+                <Text style={{ color: colors.muted }}>{t('profile.queuedSync')}{queuedSyncCount}</Text>
+                <Text style={{ color: colors.text, fontWeight: '700', marginTop: 10 }}>{t('profile.openSessions')}</Text>
+                {sessions.length ? (
+                  sessions.map((item) => {
+                    const isCurrent = item.email === (user?.email ?? profile?.authEmail);
+                    return (
+                      <View key={item.id} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 10, marginTop: 8 }}>
+                        <Text style={{ color: colors.text, fontWeight: '700' }}>{item.email} {isCurrent ? `(${t('profile.currentSession') ?? 'current'})` : ''}</Text>
+                        <Text style={{ color: colors.muted, fontSize: 12 }}>{item.device}</Text>
+                        <Text style={{ color: colors.muted, fontSize: 12 }}>{new Date(item.createdAt ?? Date.now()).toLocaleString()}</Text>
+                        <Button label={item.isOwner ? t('profile.ownerSession') : t('profile.removeSession')} onPress={() => void handleRemoveSession(item.id)} variant="ghost" disabled={item.isOwner} />
+                      </View>
+                    );
+                  })
+                ) : (
+                  <Text style={{ color: colors.muted, marginTop: 6 }}>{t('profile.noSessions')}</Text>
+                )}
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  <View style={{ flex: 1 }}>
+                    <Button label={t('profile.syncNow')} onPress={handleSyncNow} variant="ghost" loading={syncing} disabled={syncing} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Button label={t('profile.pairPartner')} onPress={() => router.push('/pair')} variant="ghost" />
+                  </View>
+                </View>
+              </>
             )}
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-              <View style={{ flex: 1 }}>
-                <Button label={t('profile.syncNow')} onPress={handleSyncNow} variant="ghost" loading={syncing} disabled={syncing} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button label={t('profile.pairPartner')} onPress={() => router.push('/pair')} variant="ghost" />
-              </View>
-            </View>
             <Button label={t('profile.logout')} onPress={signOut} variant="danger" />
           </>
         </ExpandableSection>
