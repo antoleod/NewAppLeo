@@ -111,7 +111,7 @@ export default function InsightsScreen() {
   if (!entries.length) {
     return (
       <Page contentStyle={{ width: '100%' }}>
-        <Heading eyebrow={t('insights.eyebrow')} title={t('insights.title')} subtitle={t('insights.subtitle.none')} />
+        <Heading eyebrow={t('insights.eyebrow')} title={t('insights.title')} subtitle={t('insights.subtitle.none')} align="left" />
         <EmptyState
           icon="bar-chart-outline"
           title={t('insights.noDataTitle')}
@@ -130,6 +130,7 @@ export default function InsightsScreen() {
             eyebrow={t('insights.eyebrow')}
             title={t('insights.title')}
             subtitle={meanInterval ? `${Math.round(meanInterval / 36e5)}h` : t('insights.subtitle.none')}
+            align="left"
           />
         </Animated.View>
 

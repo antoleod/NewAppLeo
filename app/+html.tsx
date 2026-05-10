@@ -14,18 +14,18 @@ export default function Root({ children }: { children: React.ReactNode }) {
         {/* PWA — Android Chrome */}
         <meta name="theme-color" content="#0D1117" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="manifest" href="/NewAppLeo/manifest.json" />
+        <link rel="manifest" href="/NewAppLeo/manifest.json?v=3" />
 
         {/* PWA — iOS Safari */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="App Leo" />
-        <link rel="apple-touch-icon" href="/NewAppLeo/apple-touch-icon.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/NewAppLeo/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/NewAppLeo/apple-touch-icon.png?v=3" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/NewAppLeo/apple-touch-icon.png?v=3" />
 
         {/* Favicon */}
-        <link rel="icon" type="image/png" href="/NewAppLeo/favicon.png" />
-        <link rel="shortcut icon" href="/NewAppLeo/favicon.ico" />
+        <link rel="icon" type="image/png" href="/NewAppLeo/favicon.png?v=3" />
+        <link rel="shortcut icon" href="/NewAppLeo/favicon.png?v=3" />
 
         <ScrollViewStyleReset />
 
@@ -35,7 +35,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function () {
-                  navigator.serviceWorker.register('/NewAppLeo/sw.js').catch(function () {});
+                  navigator.serviceWorker.register('/NewAppLeo/sw.js?v=3').catch(function () {});
                 });
               }
             `,

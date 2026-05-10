@@ -5,8 +5,8 @@ type Dictionary = Record<string, string>;
 const dictionaries: Record<AppLanguage, Dictionary> = {
   fr: {
     'tabs.home': 'Accueil',
-    'tabs.history': 'Historique',
-    'tabs.insights': 'Insights',
+    'tabs.history': 'Journal',
+    'tabs.insights': 'Analyses',
     'tabs.profile': 'Profil',
     'history.eyebrow': 'Timeline',
     'history.title': 'Historique',
@@ -78,8 +78,8 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
   },
   es: {
     'tabs.home': 'Inicio',
-    'tabs.history': 'Historial',
-    'tabs.insights': 'Insights',
+    'tabs.history': 'Registro',
+    'tabs.insights': 'Análisis',
     'tabs.profile': 'Perfil',
     'history.eyebrow': 'Timeline',
     'history.title': 'Historial',
@@ -237,8 +237,8 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
   },
   nl: {
     'tabs.home': 'Home',
-    'tabs.history': 'Historiek',
-    'tabs.insights': 'Inzichten',
+    'tabs.history': 'Logboek',
+    'tabs.insights': 'Analyse',
     'tabs.profile': 'Profiel',
     'history.eyebrow': 'Timeline',
     'history.title': 'Historiek',

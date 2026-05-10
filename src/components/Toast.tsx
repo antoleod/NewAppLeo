@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { shadow } from '@/lib/shadow';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
@@ -94,7 +95,7 @@ function ToastHost({ toast, onDismiss }: { toast: ToastInternal | null; onDismis
           : theme.blue;
 
   return (
-    <SafeAreaView pointerEvents="box-none" edges={['bottom']} style={styles.host}>
+    <SafeAreaView edges={['bottom']} style={[styles.host, { pointerEvents: 'box-none' } as any]}>
       <Animated.View
         key={toast.id}
         entering={FadeInDown.springify().damping(18)}
@@ -110,7 +111,7 @@ function ToastHost({ toast, onDismiss }: { toast: ToastInternal | null; onDismis
             {
               backgroundColor: theme.bgCard,
               borderColor: tone,
-              shadowColor: theme.textPrimary,
+              ...shadow(theme.textPrimary, 0.18, 20, 0, 10),
             },
           ]}
         >
@@ -155,9 +156,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
     elevation: 8,
   },
   iconWrap: {

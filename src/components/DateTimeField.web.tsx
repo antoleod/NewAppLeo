@@ -62,9 +62,8 @@ export function DateTimeField({
         <View
           style={[
             styles.control,
-            { borderColor: theme.border, backgroundColor: theme.bgCardAlt },
+            { borderColor: theme.border, backgroundColor: theme.bgCardAlt, pointerEvents: 'none' } as any,
           ]}
-          pointerEvents="none"
         >
           <View style={styles.headerRow}>
             <Text style={[styles.headerText, { color: theme.textMuted }]}>Date & time</Text>

@@ -30,6 +30,7 @@ import { haptics } from '@/lib/haptics';
 import { useToast } from '@/components/Toast';
 import { shareEntry, shareEntryAsImage, buildShareMessage } from '@/lib/shareEntry';
 import { ShareCard } from '@/components/ShareCard';
+import { shadow } from '@/lib/shadow';
 
 const typeLabelsI18n: Record<EntryType, Record<string, string>> = {
   feed:        { fr: 'Biberon',    en: 'Feed',        es: 'Biberón',    nl: 'Voeding'  },
@@ -158,24 +159,37 @@ interface DiaperVolumeSliderProps {
 }
 
 function DiaperVolumeSlider({ emoji, value, onChange, color }: DiaperVolumeSliderProps) {
-  const [trackWidth, setTrackWidth] = useState(0);
+  const trackRef = useRef<View>(null);
+  const trackLayout = useRef({ pageX: 0, width: 0 });
 
-  function computeValue(locationX: number) {
-    if (!trackWidth) return value;
-    const percentage = Math.max(0, Math.min(1, locationX / trackWidth));
-    return Math.round(percentage * 9);
+  function handleTouch(pageX: number) {
+    const { pageX: originX, width } = trackLayout.current;
+    if (!width) return;
+    const pct = Math.max(0, Math.min(1, (pageX - originX) / width));
+    onChange(Math.round(pct * 9));
   }
 
   return (
     <View style={styles.diaperMinimal}>
       <Text style={styles.diaperMinimalEmoji}>{emoji}</Text>
       <View
-        onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
+        ref={trackRef}
+        onLayout={() => {
+          trackRef.current?.measure((_x, _y, w, _h, pageX) => {
+            trackLayout.current = { pageX, width: w };
+          });
+        }}
         onStartShouldSetResponder={() => true}
         onMoveShouldSetResponder={() => true}
-        onResponderGrant={(e) => onChange(computeValue(e.nativeEvent.locationX))}
-        onResponderMove={(e) => onChange(computeValue(e.nativeEvent.locationX))}
-        onResponderRelease={(e) => onChange(computeValue(e.nativeEvent.locationX))}
+        onResponderGrant={(e) => {
+          const touchPageX = e.nativeEvent.pageX;
+          trackRef.current?.measure((_x, _y, w, _h, originPageX) => {
+            trackLayout.current = { pageX: originPageX, width: w };
+            handleTouch(touchPageX);
+          });
+        }}
+        onResponderMove={(e) => handleTouch(e.nativeEvent.pageX)}
+        onResponderRelease={(e) => handleTouch(e.nativeEvent.pageX)}
         style={[styles.diaperMinimalBar, { backgroundColor: color + '15', borderColor: color }]}
       >
         <View style={[styles.diaperMinimalFill, { width: `${(value / 9) * 100}%`, backgroundColor: color }]} />
@@ -242,6 +256,12 @@ export default function EntryComposerScreen() {
       { scale: closeScale.value },
       { rotate: `${closeRotate.value}deg` },
     ],
+  }));
+  const actionsSlideY = useSharedValue(18);
+  const actionsOpacity = useSharedValue(0);
+  const actionsAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: actionsSlideY.value }],
+    opacity: actionsOpacity.value,
   }));
   const [vaccineTemp, setVaccineTemp] = useState('');
   const [vaccineName, setVaccineName] = useState('');
@@ -468,6 +488,11 @@ export default function EntryComposerScreen() {
         break;
     }
   }, [editing]);
+
+  useEffect(() => {
+    actionsSlideY.value = withTiming(0, { duration: 220 });
+    actionsOpacity.value = withTiming(1, { duration: 220 });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -767,9 +792,19 @@ export default function EntryComposerScreen() {
     const confirmMsg = language === 'fr' ? 'Cette action est irréversible.' : language === 'es' ? 'Esta acción no se puede deshacer.' : language === 'nl' ? 'Deze actie is onomkeerbaar.' : 'This cannot be undone.';
     const cancelLabel = language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'nl' ? 'Annuleren' : 'Cancel';
     const deleteLabel = language === 'fr' ? 'Supprimer' : language === 'es' ? 'Eliminar' : language === 'nl' ? 'Verwijderen' : 'Delete';
+    const runDelete = async () => {
+      await deleteEntry(editing.id);
+      router.back();
+    };
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(confirmMsg)) {
+        void runDelete();
+      }
+      return;
+    }
     Alert.alert(confirmTitle, confirmMsg, [
       { text: cancelLabel, style: 'cancel' },
-      { text: deleteLabel, style: 'destructive', onPress: async () => { await deleteEntry(editing.id); router.back(); } },
+      { text: deleteLabel, style: 'destructive', onPress: () => void runDelete() },
     ], { cancelable: true });
   }
 
@@ -1716,7 +1751,7 @@ export default function EntryComposerScreen() {
             paddingHorizontal: 24,
             paddingTop: 16,
             paddingBottom: Math.max(44, insets.bottom + 24),
-            shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 24, shadowOffset: { width: 0, height: -6 },
+            ...shadow('#000', 0.3, 24, 0, -6),
             elevation: 20,
           }}>
             {/* Drag handle */}
@@ -1793,7 +1828,7 @@ export default function EntryComposerScreen() {
                 backgroundColor: meta.tone, borderRadius: 16, height: 54,
                 alignItems: 'center', justifyContent: 'center', marginBottom: 10,
                 opacity: pressed ? 0.86 : 1,
-                shadowColor: meta.tone, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+                ...shadow(meta.tone, 0.35, 12, 0, 4),
               })}
             >
               <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 15, letterSpacing: 0.1 }}>
@@ -1833,11 +1868,17 @@ export default function EntryComposerScreen() {
 
     {/* Fixed footer — outside scroll, always accessible */}
     {!((type === 'sleep' || type === 'pump') && !editing) && (
-      <View style={[styles.actionsStickyContainer, {
+      <Animated.View style={[styles.actionsStickyContainer, actionsAnimStyle, {
         position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 50,
-        backgroundColor: theme.bgCard,
+        backgroundColor: theme.bgCardAlt,
         borderTopColor: colors.border,
         paddingBottom: Math.max(20, insets.bottom + 10),
+        ...(Platform.OS === 'web'
+          ? ({
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+            } as any)
+          : null),
       }]}>
         <Pressable
           onPress={saving ? undefined : () => void handlePrimarySave()}
@@ -1862,6 +1903,19 @@ export default function EntryComposerScreen() {
 
         {editing && (
           <View style={styles.secondaryActionsRow}>
+            <Pressable
+              onPress={() => router.push('/(app)/(tabs)/settings-theme')}
+              style={({ pressed }) => [
+                styles.secondaryActionBtn,
+                { borderColor: colors.border, backgroundColor: pressed ? `${theme.textMuted}18` : 'transparent' },
+              ]}
+            >
+              <Ionicons name="settings-outline" size={18} color={theme.textPrimary} />
+              <Text style={[styles.secondaryActionLabel, { color: theme.textPrimary }]}>
+                {language === 'fr' ? 'Réglages' : language === 'es' ? 'Ajustes' : language === 'nl' ? 'Instellingen' : 'Settings'}
+              </Text>
+            </Pressable>
+
             <Pressable
               onPress={() => {
                 if (!editing) return;
@@ -1903,7 +1957,7 @@ export default function EntryComposerScreen() {
             </Pressable>
           </View>
         )}
-      </View>
+      </Animated.View>
     )}
 
     </View>

@@ -25,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
+import { shadow } from '@/lib/shadow';
 
 function withColorOpacity(color: string, opacity: number) {
   const alpha = Math.max(0, Math.min(1, opacity));
@@ -125,7 +126,7 @@ export function Card({ children, style }: { children: React.ReactNode; style?: a
         {
           backgroundColor: theme.bgCard,
           borderColor: theme.border,
-          shadowColor: theme.textPrimary,
+          ...shadow(theme.textPrimary, 0.04, 10, 0, 6),
         },
         style,
       ]}
@@ -152,9 +153,10 @@ export function Heading({
   const pathname = usePathname();
   const { width } = useWindowDimensions();
   const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
-  const shouldStack = width < 680;
-  const scale = isDesktopWeb ? 0.9 : width >= 900 ? 0.98 : width >= 700 ? 1 : 1;
-  const iconName =
+  const scale = isDesktopWeb ? 0.9 : width >= 900 ? 0.98 : 1;
+  const isCenter = align === 'center';
+
+  const iconName: keyof typeof Ionicons.glyphMap =
     pathname.includes('settings-theme') ? 'color-palette-outline' :
     pathname.includes('/profile') ? 'person-circle-outline' :
     pathname.includes('/history') ? 'time-outline' :
@@ -162,28 +164,102 @@ export function Heading({
     pathname.includes('/home') ? 'home-outline' :
     pathname.includes('/onboarding') ? 'sparkles-outline' :
     'ellipse-outline';
+
+  const gradientColors = isCenter
+    ? [withColorOpacity(theme.accent, 0.13), withColorOpacity(theme.accent, 0.04), 'transparent'] as const
+    : [withColorOpacity(theme.accent, 0.11), withColorOpacity(theme.accent, 0.03), 'transparent'] as const;
+
   return (
-    <View style={[styles.headingRow, shouldStack && styles.headingStacked, align === 'center' && styles.headingCentered]}>
-      <View style={{ flex: 1, alignItems: align === 'center' ? 'center' : 'flex-start' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '100%' }}>
-          <Ionicons name={iconName as any} size={15} color={theme.accent} />
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            style={[
-              styles.title,
-              { color: theme.textPrimary, fontSize: 15 * scale, fontWeight: '700' },
-              align === 'center' && { textAlign: 'center' },
-            ]}
+    <View
+      style={{
+        marginHorizontal: -2,
+        marginBottom: 2,
+        borderRadius: 18,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: withColorOpacity(theme.accent, 0.15),
+      }}
+    >
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: isCenter ? 0.5 : 0, y: 0 }}
+        end={{ x: isCenter ? 0.5 : 1, y: 1 }}
+        style={{
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 14,
+          alignItems: isCenter ? 'center' : 'flex-start',
+        }}
+      >
+        {eyebrow ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 10,
+              backgroundColor: withColorOpacity(theme.accent, 0.14),
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 20,
+              alignSelf: isCenter ? 'center' : 'flex-start',
+            }}
           >
-            {eyebrow ? <Text style={{ color: theme.accent, fontSize: 11 * scale, fontWeight: '700', letterSpacing: 0.6 }}>{eyebrow.toUpperCase()}</Text> : null}
-            {eyebrow ? <Text style={{ color: theme.textMuted }}>{' - '}</Text> : null}
-            <Text style={{ color: theme.textPrimary, fontSize: 15 * scale, fontWeight: '700' }}>{title}</Text>
-            {subtitle ? <Text style={{ color: theme.textMuted, fontSize: 12 * scale, fontWeight: '500' }}>{` - ${subtitle}`}</Text> : null}
+            <Ionicons name={iconName} size={11} color={theme.accent} />
+            <Text
+              style={{
+                color: theme.accent,
+                fontSize: Math.round(10 * scale),
+                fontWeight: '700',
+                letterSpacing: 1.4,
+                textTransform: 'uppercase',
+              }}
+            >
+              {eyebrow}
+            </Text>
+          </View>
+        ) : null}
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: isCenter ? 'center' : 'space-between',
+            gap: 10,
+            alignSelf: 'stretch',
+          }}
+        >
+          <Text
+            style={{
+              color: theme.textPrimary,
+              fontSize: Math.round(24 * scale),
+              fontWeight: '800',
+              letterSpacing: -0.5,
+              lineHeight: Math.round(30 * scale),
+              textAlign: isCenter ? 'center' : 'left',
+              flex: 1,
+            }}
+          >
+            {title}
           </Text>
+          {action ?? null}
         </View>
-      </View>
-      {action}
+
+        {subtitle ? (
+          <Text
+            style={{
+              color: theme.textMuted,
+              fontSize: Math.round(13 * scale),
+              fontWeight: '500',
+              marginTop: 6,
+              lineHeight: Math.round(18 * scale),
+              textAlign: isCenter ? 'center' : 'left',
+            }}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
+      </LinearGradient>
     </View>
   );
 }
@@ -239,10 +315,7 @@ export function Button({
           backgroundColor: transparentBackground,
           borderColor: transparentBorder,
           opacity: pressed ? Math.min(solidOpacity, 0.85) : solidOpacity,
-          shadowColor: variant === 'ghost' ? 'transparent' : theme.textPrimary,
-          shadowOpacity: variant === 'ghost' || disabled ? 0 : 0.08 * backgroundOpacity,
-          shadowRadius: 14,
-          shadowOffset: { width: 0, height: 8 },
+          ...shadow(theme.textPrimary, variant === 'ghost' || disabled ? 0 : 0.08 * backgroundOpacity, 14, 0, 8),
           elevation: variant === 'ghost' ? 0 : 2,
         },
         style,
@@ -474,7 +547,7 @@ export function SkeletonCard({ lines = 3 }: { lines?: number }) {
         {
           backgroundColor: theme.bgCard,
           borderColor: theme.border,
-          shadowColor: theme.textPrimary,
+          ...shadow(theme.textPrimary, 0.04, 10, 0, 6),
           gap: 10,
         },
       ]}
@@ -578,7 +651,7 @@ export function ColorSwatch({
           {
             backgroundColor: color,
             borderColor: theme.border,
-            shadowColor: color,
+            ...shadow(color, 0.2, 6, 0, 3),
           },
         ]}
       />
@@ -672,9 +745,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     padding: spacing.lg,
     gap: spacing.md,
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
     elevation: 1,
   },
   cardDesktop: {
@@ -876,9 +946,6 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: radii.md,
     borderWidth: 1,
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
   swatchLabel: {

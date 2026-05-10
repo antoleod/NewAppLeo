@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext';
 import { Button, Card, Page, Segment } from '@/components/ui';
 import { BackgroundPhotoSelector } from '@/components/BackgroundPhotoSelector';
 import { SettingsImporter } from '@/components/SettingsImporter';
@@ -27,6 +28,7 @@ export default function ThemeSettings() {
     setButtonTransparency,
   } = useTheme();
   const { setThemeMode } = useAuth();
+  const { language } = useLocale();
 
   const normalizeOpacity = (opacity: unknown) => {
     const numericOpacity = Number(opacity);
@@ -39,6 +41,46 @@ export default function ThemeSettings() {
   const [transparencyValue, setTransparencyValue] = useState(() => normalizeOpacity(buttonTransparency));
   const [transparencyTrackWidth, setTransparencyTrackWidth] = useState(0);
   const transparencyPercent = ((transparencyValue - 0.2) / 0.8) * 100;
+  const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+  const pwaText = (
+    {
+      fr: {
+        title: 'Installer l’app (PWA)',
+        body: 'Installez App Leo sur votre appareil pour l’ouvrir comme une app native.',
+        installed: 'Déjà installée',
+        installNow: 'Installer maintenant',
+        unavailable: 'Installation non disponible',
+      },
+      es: {
+        title: 'Instalar app (PWA)',
+        body: 'Instala App Leo en tu dispositivo para abrirla como app nativa.',
+        installed: 'Ya está instalada',
+        installNow: 'Instalar ahora',
+        unavailable: 'Instalación no disponible',
+      },
+      en: {
+        title: 'Install app (PWA)',
+        body: 'Install App Leo on your device to open it like a native app.',
+        installed: 'Already installed',
+        installNow: 'Install now',
+        unavailable: 'Install unavailable',
+      },
+      nl: {
+        title: 'App installeren (PWA)',
+        body: 'Installeer App Leo op je apparaat om deze als native app te openen.',
+        installed: 'Al geïnstalleerd',
+        installNow: 'Nu installeren',
+        unavailable: 'Installatie niet beschikbaar',
+      },
+    } as const
+  )[language as 'fr' | 'es' | 'en' | 'nl'] ?? {
+    title: 'Installer l’app (PWA)',
+    body: 'Installez App Leo sur votre appareil pour l’ouvrir comme une app native.',
+    installed: 'Déjà installée',
+    installNow: 'Installer maintenant',
+    unavailable: 'Installation non disponible',
+  };
 
   const themes = [
     {
@@ -80,6 +122,44 @@ export default function ThemeSettings() {
   useEffect(() => {
     setTransparencyValue(normalizeOpacity(buttonTransparency));
   }, [buttonTransparency]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const checkInstalled = () => {
+      const standalone = typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches;
+      setIsPwaInstalled(Boolean(standalone));
+    };
+    checkInstalled();
+    const handleBeforeInstallPrompt = (event: any) => {
+      event.preventDefault();
+      setInstallPromptEvent(event);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as any);
+    window.addEventListener('appinstalled', checkInstalled as any);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as any);
+      window.removeEventListener('appinstalled', checkInstalled as any);
+    };
+  }, []);
+
+  async function handleInstallPwa() {
+    if (!installPromptEvent) return;
+    installPromptEvent.prompt();
+    await installPromptEvent.userChoice?.catch(() => null);
+    setInstallPromptEvent(null);
+  }
+
+  function handleManualInstallHelp() {
+    const helpText =
+      language === 'es'
+        ? 'Si no aparece instalar automático:\n\n• Chrome/Edge: menú del navegador > "Instalar aplicación"\n• iPhone Safari: Compartir > "Añadir a pantalla de inicio"\n• Asegúrate de usar HTTPS y recargar la página.'
+        : language === 'en'
+        ? 'If auto install is not shown:\n\n• Chrome/Edge: browser menu > "Install app"\n• iPhone Safari: Share > "Add to Home Screen"\n• Make sure you are on HTTPS and reload the page.'
+        : language === 'nl'
+        ? 'Als automatische installatie niet verschijnt:\n\n• Chrome/Edge: browsermenu > "App installeren"\n• iPhone Safari: Deel > "Zet op beginscherm"\n• Zorg voor HTTPS en herlaad de pagina.'
+        : 'Si l’installation auto n’apparaît pas :\n\n• Chrome/Edge : menu du navigateur > "Installer l’application"\n• iPhone Safari : Partager > "Ajouter à l’écran d’accueil"\n• Vérifiez HTTPS puis rechargez la page.';
+    Alert.alert(pwaText.title, helpText);
+  }
 
   async function updateButtonOpacity(value: number, persist: boolean) {
     const nextOpacity = normalizeOpacity(value);
@@ -329,6 +409,34 @@ export default function ThemeSettings() {
           <Button label={t('settings.restoreRecommended')} onPress={() => void handleResetRecommended()} variant="secondary" />
         </Card>
 
+        {Platform.OS === 'web' ? (
+          <Card>
+            <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{pwaText.title}</Text>
+            <Text style={[styles.sectionBody, { color: theme.textMuted }]}>
+              {pwaText.body}
+            </Text>
+            {isPwaInstalled ? (
+              <View style={[styles.pwaInstalledBadge, { borderColor: theme.border, backgroundColor: theme.bgCardAlt }]}>
+                <Text style={{ color: theme.textPrimary, fontWeight: '700' }}>{pwaText.installed}</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                <Button
+                  label={installPromptEvent ? pwaText.installNow : pwaText.unavailable}
+                  onPress={() => void handleInstallPwa()}
+                  variant="primary"
+                  disabled={!installPromptEvent}
+                />
+                <Button
+                  label={language === 'es' ? 'Ver instalación manual' : language === 'en' ? 'Show manual install' : language === 'nl' ? 'Toon handmatige installatie' : 'Voir installation manuelle'}
+                  onPress={handleManualInstallHelp}
+                  variant="secondary"
+                />
+              </View>
+            )}
+          </Card>
+        ) : null}
+
         <DataExporter />
         <SettingsImporter />
       </ScrollView>
@@ -361,4 +469,5 @@ const styles = StyleSheet.create({
   opacityScale: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   opacityScaleText: { fontSize: 11, fontWeight: '700' },
   controlLabel: { fontSize: 12, fontWeight: '800', marginTop: 16, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
+  pwaInstalledBadge: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' },
 });

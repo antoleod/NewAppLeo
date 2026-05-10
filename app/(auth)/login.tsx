@@ -23,6 +23,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
 import { useToast } from '@/components/Toast';
 import { AppLanguage } from '@/types';
+import { shadow } from '@/lib/shadow';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -246,8 +247,8 @@ export default function LoginScreen() {
     <Page scroll={false} contentStyle={styles.page}>
       {/* ── Background: deep black with subtle accent glow ── */}
       <LinearGradient colors={['#000000', '#0A0A0F', '#0F0F1A']} style={StyleSheet.absoluteFill} />
-      <View pointerEvents="none" style={styles.glowTop} />
-      <View pointerEvents="none" style={styles.glowBottom} />
+      <View style={[styles.glowTop, { pointerEvents: 'none' } as any]} />
+      <View style={[styles.glowBottom, { pointerEvents: 'none' } as any]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -506,10 +507,7 @@ const styles = StyleSheet.create({
   // Hero — compact, mobile-first
   hero: { alignItems: 'center', gap: 4, marginBottom: 4 },
   iconWrap: {
-    shadowColor: ACCENT_GLOW,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.30,
-    shadowRadius: 20,
+    ...shadow(ACCENT_GLOW, 0.30, 20, 0, 10),
     elevation: 8,
     marginBottom: 6,
   },
@@ -579,13 +577,10 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: ACCENT_GLOW,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.40,
-    shadowRadius: 14,
+    ...shadow(ACCENT_GLOW, 0.40, 14, 0, 6),
     elevation: 5,
   },
-  primaryButtonDim: { opacity: 0.5, shadowOpacity: 0 },
+  primaryButtonDim: { opacity: 0.5, ...Platform.select({ web: { boxShadow: 'none' } as any, default: { shadowOpacity: 0 } }) },
   primaryButtonPressed: { opacity: 0.85, transform: [{ scale: 0.985 }] },
   primaryButtonText: {
     color: '#FFFFFF',

@@ -259,6 +259,9 @@
     "restoreRecommended": "Restaurer les recommandés"
   },
   "tabs": {
+    "home": "Accueil",
+    "history": "Journal",
+    "insights": "Analyses",
     "profile": "Profil"
   },
   "profile": {

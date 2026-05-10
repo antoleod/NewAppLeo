@@ -41,6 +41,7 @@ import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
 import { NextFeedingCard } from '@/components/NextFeedingCard';
 import { GetEntryIcon } from '@/components/EntryTypeIcons';
 import { haptics } from '@/lib/haptics';
+import { shadow, textShadow } from '@/lib/shadow';
 
 type QuickTimerMode = 'breast' | 'bottle' | null;
 
@@ -206,10 +207,7 @@ function GlassCard({ children, style, blur = true }: { children: React.ReactNode
           borderWidth: 1,
           borderColor: theme.border,
           backgroundColor: theme.bgCard,
-          shadowColor: '#000',
-          shadowOpacity: 0.24,
-          shadowRadius: 18,
-          shadowOffset: { width: 0, height: 4 },
+          ...shadow('#000', 0.24, 18, 0, 4),
           elevation: 6,
         },
         style,
@@ -339,10 +337,7 @@ export default function HomeScreen() {
       paddingHorizontal: 22,
       paddingVertical: 22,
       gap: 18,
-      shadowColor: '#000',
-      shadowOpacity: 0.08,
-      shadowRadius: 24,
-      shadowOffset: { width: 0, height: 8 },
+      ...shadow('#000', 0.08, 24, 0, 8),
       elevation: 8,
     },
     sheetTitle: {
@@ -379,10 +374,7 @@ export default function HomeScreen() {
       paddingHorizontal: 18,
       paddingVertical: 18,
       gap: 10,
-      shadowColor: '#000',
-      shadowOpacity: 0.08,
-      shadowRadius: 20,
-      shadowOffset: { width: 0, height: 8 },
+      ...shadow('#000', 0.08, 20, 0, 8),
       elevation: 7,
     },
     menuTitle: {
@@ -430,10 +422,7 @@ export default function HomeScreen() {
       paddingHorizontal: 18,
       paddingVertical: 18,
       gap: 12,
-      shadowColor: '#000',
-      shadowOpacity: 0.08,
-      shadowRadius: 20,
-      shadowOffset: { width: 0, height: 8 },
+      ...shadow('#000', 0.08, 20, 0, 8),
       elevation: 7,
     },
     switcherTitle: {
@@ -841,9 +830,7 @@ export default function HomeScreen() {
                   letterSpacing: 0.6,
                   marginBottom: 3,
                   opacity: 0.72,
-                  textShadowColor: 'rgba(0,0,0,0.55)',
-                  textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 3,
+                  ...textShadow('rgba(0,0,0,0.55)', 0, 1, 3),
                   textTransform: 'uppercase',
                 }}>
                   {t(`greeting.${getHourPeriod()}`)}
@@ -853,9 +840,7 @@ export default function HomeScreen() {
                   fontSize: 24,
                   fontWeight: '800',
                   letterSpacing: -0.6,
-                  textShadowColor: 'rgba(0,0,0,0.5)',
-                  textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 6,
+                  ...textShadow('rgba(0,0,0,0.5)', 0, 1, 6),
                 }}>
                   {resolvedDisplayName}
                 </Text>
@@ -940,10 +925,7 @@ export default function HomeScreen() {
                   justifyContent: 'center',
                   flexDirection: 'row',
                   gap: 8,
-                  shadowColor: '#000',
-                  shadowOpacity: 0.2,
-                  shadowRadius: 12,
-                  shadowOffset: { width: 0, height: 4 },
+                  ...shadow('#000', 0.2, 12, 0, 4),
                   elevation: 5,
                   transform: [{ scale: pressed ? 0.97 : 1 }],
                 })}
@@ -1045,10 +1027,7 @@ export default function HomeScreen() {
                         justifyContent: 'center',
                         gap: 7,
                         paddingHorizontal: 5,
-                        shadowColor: '#000',
-                        shadowOpacity: pressed ? 0.08 : 0.14,
-                        shadowRadius: pressed ? 8 : 12,
-                        shadowOffset: { width: 0, height: pressed ? 2 : 4 },
+                        ...shadow('#000', pressed ? 0.08 : 0.14, pressed ? 8 : 12, 0, pressed ? 2 : 4),
                         elevation: pressed ? 1 : 3,
                         transform: [{ scale: pressed ? 0.98 : 1 }],
                       })}
@@ -1118,10 +1097,7 @@ export default function HomeScreen() {
     borderLeftWidth: 4,
     borderLeftColor: c,
 
-    shadowColor: '#000',
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    ...shadow('#000', 0.22, 8, 0, 4),
     elevation: 4,
 
     opacity: pressed ? 0.9 : 1,
@@ -1147,9 +1123,7 @@ export default function HomeScreen() {
         color: '#FFFFFF',
         fontSize: 13,
         fontWeight: '800',
-        textShadowColor: 'rgba(0,0,0,0.45)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 2,
+        ...textShadow('rgba(0,0,0,0.45)', 0, 1, 2),
       }}
       numberOfLines={1}
     >
@@ -1162,9 +1136,7 @@ export default function HomeScreen() {
         fontSize: 11,
         fontWeight: '600',
         marginTop: 3,
-        textShadowColor: 'rgba(0,0,0,0.35)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 1.5,
+        ...textShadow('rgba(0,0,0,0.35)', 0, 1, 1.5),
       }}
       numberOfLines={2}
     >

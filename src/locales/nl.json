@@ -259,6 +259,9 @@
     "restoreRecommended": "Aanbevolen herstellen"
   },
   "tabs": {
+    "home": "Home",
+    "history": "Logboek",
+    "insights": "Analyse",
     "profile": "Profiel"
   },
   "profile": {

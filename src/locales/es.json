@@ -259,6 +259,9 @@
     "restoreRecommended": "Restaurar recomendados"
   },
   "tabs": {
+    "home": "Inicio",
+    "history": "Registro",
+    "insights": "Análisis",
     "profile": "Perfil"
   },
   "profile": {

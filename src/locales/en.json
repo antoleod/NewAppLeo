@@ -259,6 +259,9 @@
     "restoreRecommended": "Restore Recommended"
   },
   "tabs": {
+    "home": "Home",
+    "history": "History",
+    "insights": "Insights",
     "profile": "Profile"
   },
   "profile": {

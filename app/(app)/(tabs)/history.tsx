@@ -114,7 +114,7 @@ export default function HistoryScreen() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const { isWideWeb } = useWideWeb();
-  const { language } = useLocale();
+  const { language, t: tLocale } = useLocale();
   const FILTERS = useMemo(() => getFilters(language), [language]);
   const { entries, deleteEntry, addEntry } = useAppData();
   const { profile } = useAuth();
@@ -315,6 +315,9 @@ export default function HistoryScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showOmsTable, setShowOmsTable] = useState(false);
   const [omsSex, setOmsSex] = useState<OmsSex>(profile?.babySex === 'male' ? 'male' : 'female');
+  const [showTodayStatus, setShowTodayStatus] = useState(true);
+  const [showInsights, setShowInsights] = useState(true);
+  const [showTimeGroups, setShowTimeGroups] = useState(true);
   const [undoEntry, setUndoEntry] = useState<EntryRecord | null>(null);
   const didAutoSelectLatest = useRef(false);
 
@@ -385,6 +388,17 @@ export default function HistoryScreen() {
   const measureEntries = dayEntries.filter((entry) => entry.type === 'measurement');
   const latestMeasure = measureEntries[0];
   const frequencyBadge = dayFeedCount > 1 ? `${Math.round((24 / dayFeedCount) * 10) / 10}h` : '--';
+  const longestFeedGapHours = useMemo(() => {
+    if (dayFeedEntries.length < 2) return null;
+    const sorted = [...dayFeedEntries].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+    let maxGap = 0;
+    for (let i = 1; i < sorted.length; i += 1) {
+      const prev = new Date(sorted[i - 1].occurredAt).getTime();
+      const current = new Date(sorted[i].occurredAt).getTime();
+      maxGap = Math.max(maxGap, current - prev);
+    }
+    return Math.round((maxGap / 3600000) * 10) / 10;
+  }, [dayFeedEntries]);
 
   const sex = omsSex;
   const age = monthsAndDaysSince(profile?.babyBirthDate);
@@ -484,7 +498,7 @@ export default function HistoryScreen() {
 
   const historySidebar = (
     <>
-        <Heading title={language === 'es' ? 'Historial y Salud' : language === 'en' ? 'History & Health' : language === 'nl' ? 'Historiek & Gezondheid' : 'Historique & Santé'} />
+        <Heading eyebrow={tLocale('history.eyebrow')} title={tLocale('history.title')} align="left" />
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -645,6 +659,53 @@ export default function HistoryScreen() {
   const historyMain = (
     <>
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
+          <Heading eyebrow="VISTA" title="Panel" subtitle="Activa u oculta bloques." />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {[
+              { key: 'status', label: showTodayStatus ? 'Ocultar estado' : 'Mostrar estado', onPress: () => setShowTodayStatus((v) => !v) },
+              { key: 'insights', label: showInsights ? 'Ocultar insights' : 'Mostrar insights', onPress: () => setShowInsights((v) => !v) },
+              { key: 'groups', label: showTimeGroups ? 'Ocultar franjas' : 'Mostrar franjas', onPress: () => setShowTimeGroups((v) => !v) },
+            ].map((item) => (
+              <Pressable key={item.key} onPress={item.onPress} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: BORDER, backgroundColor: BG }}>
+                <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{item.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Card>
+
+        {showTodayStatus ? (
+          <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
+            <Heading eyebrow="HOY" title="Estado de hoy" subtitle="Resumen rapido." />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {[
+                { label: 'Comidas', value: String(dayFeedCount) },
+                { label: 'Sueno total', value: `${sleepMinutes} min` },
+                { label: 'Ultima toma', value: dayFeedEntries[0] ? formatTime(dayFeedEntries[0].occurredAt) : '--' },
+              ].map((kpi) => (
+                <View key={kpi.label} style={{ flexBasis: isMobile ? '100%' : '31%', borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: BG, padding: 12, gap: 4 }}>
+                  <Text style={{ color: MUTED, fontSize: 12 }}>{kpi.label}</Text>
+                  <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700' }}>{kpi.value}</Text>
+                </View>
+              ))}
+            </View>
+          </Card>
+        ) : null}
+
+        {showInsights ? (
+          <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
+            <Heading eyebrow="INSIGHTS" title="Insights automáticos" subtitle="Lectura rapida del dia." />
+            <View style={{ gap: 8 }}>
+              <View style={{ borderRadius: 10, borderWidth: 1, borderColor: BORDER, backgroundColor: BG, padding: 10 }}>
+                <Text style={{ color: TEXT, fontSize: 13 }}>{`Tomas: ${dayFeedCount - yesterdayFeedCount >= 0 ? '+' : ''}${dayFeedCount - yesterdayFeedCount} vs ayer.`}</Text>
+              </View>
+              <View style={{ borderRadius: 10, borderWidth: 1, borderColor: BORDER, backgroundColor: BG, padding: 10 }}>
+                <Text style={{ color: TEXT, fontSize: 13 }}>{`Ventana mas larga sin comer: ${longestFeedGapHours ?? '--'} h.`}</Text>
+              </View>
+            </View>
+          </Card>
+        ) : null}
+
+        <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
           <Heading eyebrow="POIDS" title="Weight Trend Chart" subtitle="Courbe bebe + repere OMS." />
           <WeightChart points={weightPoints} bandRows={weightBandRows.length ? weightBandRows : weightPoints.map((point) => ({ label: point.label, p25: point.value - 0.3, p75: point.value + 0.3 }))} />
         </Card>
@@ -675,44 +736,60 @@ export default function HistoryScreen() {
             <OmsMetricCard label="Perimetre cranien" value={latestHeadCirc} unit="cm" band={headBand} />
             <OmsMetricCard label="IMC" value={bmi} unit="" band={bmiBand} />
           </View>
-        </Card>
-
-        <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <Pressable onPress={() => setShowOmsTable((current) => !current)} style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: GOLD, fontSize: 16, fontWeight: '700' }}>{showOmsTable ? 'Masquer la table OMS' : 'Afficher la table OMS'}</Text>
-          </Pressable>
-          {showOmsTable ? (
+          <View style={{ marginTop: 6, gap: 8 }}>
+            <Text style={{ color: MUTED, fontSize: 12 }}>
+              Tabla OMS: P50 es el valor medio; el rango P3-P97 es el rango esperado.
+            </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ minWidth: 900, gap: 6 }}>
-                <View style={{ flexDirection: 'row', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: BORDER }}>
-                  {['Age', 'Poids P3/P50/P97', 'Taille P3/P50/P97', 'PC P50'].map((header) => (
-                    <Text key={header} style={{ width: 210, color: MUTED, fontWeight: '700' }}>
-                      {header}
-                    </Text>
-                  ))}
+              <View style={{ minWidth: isMobile ? 620 : 700, gap: 4 }}>
+                <View style={{ flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+                  <Text style={{ width: 70, color: MUTED, fontWeight: '700', fontSize: 12 }}>Edad</Text>
+                  <Text style={{ width: 180, color: MUTED, fontWeight: '700', fontSize: 12 }}>Peso (kg)</Text>
+                  <Text style={{ width: 180, color: MUTED, fontWeight: '700', fontSize: 12 }}>Talla (cm)</Text>
+                  <Text style={{ width: 170, color: MUTED, fontWeight: '700', fontSize: 12 }}>Perim. craneal (cm)</Text>
                 </View>
-                {omsBySex[omsSex].map((row) => {
+                {(showOmsTable ? omsBySex[omsSex] : omsBySex[omsSex].slice(0, 5)).map((row) => {
                   const active = row.month === Math.round(age.monthsFloat);
                   return (
                     <View
                       key={row.month}
                       style={{
                         flexDirection: 'row',
-                        paddingVertical: 10,
-                        borderRadius: 10,
+                        paddingVertical: 9,
+                        borderRadius: 8,
                         backgroundColor: active ? `${GOLD}22` : 'transparent',
                       }}
                     >
-                      <Text style={{ width: 210, color: active ? GOLD : TEXT }}>{row.month} mois</Text>
-                      <Text style={{ width: 210, color: active ? GOLD : TEXT }}>{row.weight.p3} / {row.weight.p50} / {row.weight.p97}</Text>
-                      <Text style={{ width: 210, color: active ? GOLD : TEXT }}>{row.height.p3} / {row.height.p50} / {row.height.p97}</Text>
-                      <Text style={{ width: 210, color: active ? GOLD : TEXT }}>{row.headCirc.p50}</Text>
+                      <Text style={{ width: 70, color: active ? GOLD : TEXT, fontSize: 12, fontWeight: active ? '700' : '500' }}>{row.month}m</Text>
+                      <Text style={{ width: 180, color: active ? GOLD : TEXT, fontSize: 12 }}>
+                        Medio: {row.weight.p50} | Rango: {row.weight.p3}-{row.weight.p97}
+                      </Text>
+                      <Text style={{ width: 180, color: active ? GOLD : TEXT, fontSize: 12 }}>
+                        Medio: {row.height.p50} | Rango: {row.height.p3}-{row.height.p97}
+                      </Text>
+                      <Text style={{ width: 170, color: active ? GOLD : TEXT, fontSize: 12 }}>Medio: {row.headCirc.p50}</Text>
                     </View>
                   );
                 })}
               </View>
             </ScrollView>
-          ) : null}
+            <Pressable
+              onPress={() => setShowOmsTable((current) => !current)}
+              style={{
+                alignSelf: 'flex-start',
+                borderWidth: 1,
+                borderColor: BORDER,
+                borderRadius: 999,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                backgroundColor: BG,
+              }}
+            >
+              <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>
+                {showOmsTable ? 'Ocultar tabla OMS' : 'Ver tabla OMS completa'}
+              </Text>
+            </Pressable>
+          </View>
         </Card>
 
         {unifiedTimeline.length ? (
@@ -722,12 +799,21 @@ export default function HistoryScreen() {
               <View style={{ gap: 10 }}>
                 {items.map((entry, idx) => {
                   const expanded = expandedId === entry.id;
+                  const hour = new Date(entry.occurredAt).getHours();
+                  const slot = hour < 12 ? 'Manana' : hour < 18 ? 'Tarde' : 'Noche';
+                  const prev = items[idx - 1];
+                  const prevHour = prev ? new Date(prev.occurredAt).getHours() : null;
+                  const prevSlot = prevHour === null ? null : prevHour < 12 ? 'Manana' : prevHour < 18 ? 'Tarde' : 'Noche';
+                  const showSlot = showTimeGroups && slot !== prevSlot;
                   return (
                     <Animated.View
                       key={entry.id}
                       entering={FadeInDown.duration(220).delay(Math.min(idx * 30, 240))}
                       layout={LinearTransition.springify().damping(18)}
                     >
+                    {showSlot ? (
+                      <Text style={{ color: GOLD, fontSize: 12, fontWeight: '700', marginBottom: 6 }}>{slot}</Text>
+                    ) : null}
                     <Pressable
                       onPress={() => setExpandedId((current) => (current === entry.id ? null : entry.id))}
                       style={{

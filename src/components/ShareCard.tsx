@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { EntryRecord } from '@/types';
+import { shadow } from '@/lib/shadow';
 
 // ─── Constante configurable para Google Play ─────────────────────────────────
 export const GOOGLE_PLAY_URL = 'https://play.google.com/store/apps/details?id=com.appleo.baby';
@@ -252,10 +253,7 @@ const styles = StyleSheet.create({
     width: 360,
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
+    ...shadow('#000', 0.12, 24, 0, 8),
     elevation: 8,
   },
   topBand: {

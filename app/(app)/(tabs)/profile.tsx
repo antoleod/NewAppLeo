@@ -409,7 +409,7 @@ export default function ProfileScreen() {
   if (isLoading) {
     return (
       <Page>
-        <Heading eyebrow={t('tabs.profile')} title={t('profile.section')} subtitle={t('profile.subtitle')} />
+        <Heading eyebrow={t('tabs.profile')} title={t('profile.title')} subtitle={t('profile.subtitle')} align="left" />
         <Card>
           <ProfileSkeleton />
         </Card>
@@ -420,7 +420,7 @@ export default function ProfileScreen() {
   return (
     <BottomSheetModalProvider>
       <Page>
-      <Heading eyebrow={t('tabs.profile')} title={t('profile.section')} subtitle={t('profile.subtitle')} />
+      <Heading eyebrow={t('tabs.profile')} title={t('profile.title')} subtitle={t('profile.subtitle')} align="left" />
 
       <Card>
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>

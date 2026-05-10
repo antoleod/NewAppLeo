@@ -1,4 +1,4 @@
-const CACHE = 'appleo-v1';
+const CACHE = 'appleo-v3';
 
 const PRECACHE = [
   '/NewAppLeo/',
