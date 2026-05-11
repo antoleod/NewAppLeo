@@ -34,6 +34,13 @@
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script>
+      // Capture beforeinstallprompt before React mounts — the event fires once and is lost
+      // if no listener is attached early. Components read window.__pwaInstallPrompt on mount.
+      window.__pwaInstallPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__pwaInstallPrompt = e;
+      });
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/NewAppLeo/sw.js').catch(() => {});

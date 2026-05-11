@@ -14,28 +14,33 @@ export default function Root({ children }: { children: React.ReactNode }) {
         {/* PWA — Android Chrome */}
         <meta name="theme-color" content="#0D1117" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="manifest" href="/NewAppLeo/manifest.json?v=3" />
+        <link rel="manifest" href="/NewAppLeo/manifest.json?v=4" />
 
         {/* PWA — iOS Safari */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="App Leo" />
-        <link rel="apple-touch-icon" href="/NewAppLeo/apple-touch-icon.png?v=3" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/NewAppLeo/apple-touch-icon.png?v=3" />
+        <link rel="apple-touch-icon" href="/NewAppLeo/apple-touch-icon.png?v=4" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/NewAppLeo/apple-touch-icon.png?v=4" />
 
         {/* Favicon */}
-        <link rel="icon" type="image/png" href="/NewAppLeo/favicon.png?v=3" />
-        <link rel="shortcut icon" href="/NewAppLeo/favicon.png?v=3" />
+        <link rel="icon" type="image/png" href="/NewAppLeo/favicon.png?v=4" />
+        <link rel="shortcut icon" href="/NewAppLeo/favicon.png?v=4" />
 
         <ScrollViewStyleReset />
 
-        {/* Register SW immediately (before React mounts) so Chrome sees it on first load */}
+        {/* Capture beforeinstallprompt before React mounts — fires once at page load */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              window.__pwaInstallPrompt = null;
+              window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                window.__pwaInstallPrompt = e;
+              });
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function () {
-                  navigator.serviceWorker.register('/NewAppLeo/sw.js?v=3').catch(function () {});
+                  navigator.serviceWorker.register('/NewAppLeo/sw.js?v=4').catch(function () {});
                 });
               }
             `,

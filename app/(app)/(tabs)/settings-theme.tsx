@@ -137,8 +137,16 @@ export default function ThemeSettings() {
       setIsPwaInstalled(Boolean(standalone));
     };
     checkInstalled();
+
+    // Pick up the event captured early in index.html (before React mounted)
+    if ((window as any).__pwaInstallPrompt) {
+      setInstallPromptEvent((window as any).__pwaInstallPrompt);
+    }
+
+    // Also listen in case the event fires after this component mounts
     const handleBeforeInstallPrompt = (event: any) => {
       event.preventDefault();
+      (window as any).__pwaInstallPrompt = event;
       setInstallPromptEvent(event);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as any);
@@ -156,6 +164,7 @@ export default function ThemeSettings() {
     }
     installPromptEvent.prompt();
     await installPromptEvent.userChoice?.catch(() => null);
+    (window as any).__pwaInstallPrompt = null;
     setInstallPromptEvent(null);
   }
 

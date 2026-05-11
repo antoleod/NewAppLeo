@@ -15,7 +15,6 @@
     },
     "web": {
       "bundler": "metro",
-      "template": "./index.html",
       "favicon": "./public/favicon.png",
       "manifest": {
         "name": "App Leo",

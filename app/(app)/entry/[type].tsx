@@ -273,6 +273,7 @@ export default function EntryComposerScreen() {
   const [reminderVaccineDate, setReminderVaccineDate] = useState(new Date());
   const [showMedicationReminderFlow, setShowMedicationReminderFlow] = useState(false);
   const [sharingImage, setSharingImage] = useState(false);
+  const [showSharePreview, setShowSharePreview] = useState(false);
   const shareCardRef = useRef<View>(null);
   const [reminderMedicationName, setReminderMedicationName] = useState('');
   const [reminderMedicationDate, setReminderMedicationDate] = useState(new Date());
@@ -1850,19 +1851,65 @@ export default function EntryComposerScreen() {
         </View>
       </Modal>
 
-      {/* ShareCard fuera de pantalla: se captura como imagen cuando el usuario toca Partager */}
+      {/* Share preview modal */}
       {editing && (
-        <View
-          ref={shareCardRef}
-          style={{ position: 'absolute', top: -2000, left: 0 }}
-          collapsable={false}
-        >
-          <ShareCard
-            entry={editing as any}
-            babyName={profile?.babyName}
-            lang={language as any}
-          />
-        </View>
+        <Modal visible={showSharePreview} transparent animationType="fade" onRequestClose={() => setShowSharePreview(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <View ref={shareCardRef} collapsable={false}>
+              <ShareCard entry={editing as any} babyName={profile?.babyName} lang={language as any} />
+            </View>
+
+            <View style={{ width: '100%', gap: 10, marginTop: 24 }}>
+              <Pressable
+                onPress={() => {
+                  setSharingImage(true);
+                  setTimeout(() => {
+                    void shareEntryAsImage(
+                      () => captureRef(shareCardRef, { format: 'png', quality: 1.0, result: 'tmpfile' }),
+                      editing as any,
+                      profile?.babyName ?? '',
+                      language as any,
+                    ).finally(() => {
+                      setSharingImage(false);
+                      setShowSharePreview(false);
+                    });
+                  }, 150);
+                }}
+                disabled={sharingImage}
+                style={({ pressed }) => ({
+                  backgroundColor: sharingImage ? '#555' : meta.tone,
+                  borderRadius: 14,
+                  paddingVertical: 15,
+                  alignItems: 'center',
+                  flexDirection: 'row' as const,
+                  justifyContent: 'center' as const,
+                  gap: 8,
+                  opacity: pressed ? 0.85 : 1,
+                })}
+              >
+                {sharingImage ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="share-social-outline" size={20} color="#fff" />
+                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
+                      {language === 'fr' ? 'Partager cette image' : language === 'es' ? 'Compartir imagen' : language === 'nl' ? 'Afbeelding delen' : 'Share this image'}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+
+              <Pressable
+                onPress={() => setShowSharePreview(false)}
+                style={({ pressed }) => ({ alignItems: 'center' as const, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
+              >
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600', fontSize: 15 }}>
+                  {language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'nl' ? 'Annuleren' : 'Cancel'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
       )}
     </Page>
 
@@ -1904,29 +1951,28 @@ export default function EntryComposerScreen() {
         {editing && (
           <View style={styles.secondaryActionsRow}>
             <Pressable
-              onPress={() => {
-                if (!editing) return;
-                setSharingImage(true);
-                setTimeout(() => {
-                  void shareEntryAsImage(
-                    () => captureRef(shareCardRef, { format: 'png', quality: 1.0, result: 'tmpfile' }),
-                    editing as any,
-                    profile?.babyName ?? '',
-                    language as any,
-                  ).finally(() => setSharingImage(false));
-                }, 150);
-              }}
-              disabled={sharingImage}
+              onPress={() => router.back()}
               style={({ pressed }) => [
                 styles.secondaryActionBtn,
-                { borderColor: theme.accent, backgroundColor: pressed ? `${theme.accent}18` : 'transparent', opacity: sharingImage ? 0.5 : 1 },
+                { borderColor: colors.border, backgroundColor: pressed ? colors.border : 'transparent' },
               ]}
             >
-              <Ionicons name={sharingImage ? 'hourglass-outline' : 'share-social-outline'} size={18} color={theme.accent} />
+              <Ionicons name="arrow-back-outline" size={18} color={colors.muted} />
+              <Text style={[styles.secondaryActionLabel, { color: colors.muted }]}>
+                {language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'nl' ? 'Annuleren' : 'Cancel'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => { if (editing) setShowSharePreview(true); }}
+              style={({ pressed }) => [
+                styles.secondaryActionBtn,
+                { borderColor: theme.accent, backgroundColor: pressed ? `${theme.accent}18` : 'transparent' },
+              ]}
+            >
+              <Ionicons name="share-social-outline" size={18} color={theme.accent} />
               <Text style={[styles.secondaryActionLabel, { color: theme.accent }]}>
-                {sharingImage
-                  ? (language === 'fr' ? 'En cours...' : language === 'es' ? 'Cargando...' : language === 'nl' ? 'Laden...' : 'Loading...')
-                  : (language === 'fr' ? 'Partager' : language === 'es' ? 'Compartir' : language === 'nl' ? 'Delen' : 'Share')}
+                {language === 'fr' ? 'Partager' : language === 'es' ? 'Compartir' : language === 'nl' ? 'Delen' : 'Share'}
               </Text>
             </Pressable>
 
