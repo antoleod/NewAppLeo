@@ -767,7 +767,7 @@ const settings = await getAppSettings();
       ? t('feeding.bottle')
       : quickFeedSide === 'both'
         ? t('modal.bothSides')
-        : quickFeedSide === 'right'
+        : quickFeedSide === 'right'     
           ? t('modal.rightBreast')
           : t('modal.leftBreast');
   const activeFeedSubtitlePrefix =
@@ -1199,6 +1199,32 @@ const settings = await getAppSettings();
                   const label = getEntryDisplayLabel(entry, t);
                   const detail = getEntryDetail(entry, t, locale);
 
+                  const swipeRef = (() => {
+                    if (!swipeableRefs.current.has(entry.id))
+                      swipeableRefs.current.set(entry.id, React.createRef<SwipeableMethods | null>());
+                    return swipeableRefs.current.get(entry.id)!;
+                  })();
+
+                  const renderLeftAction = () => (
+                    <Pressable
+                      onPress={() => {
+                        haptics.light();
+                        swipeRef.current?.close();
+                        router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } });
+                      }}
+                      style={{
+                        width: 68,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backgroundColor: BLUE,
+                        marginBottom: 1,
+                        gap: 4,
+                      }}
+                    >
+                      <Ionicons name="pencil-outline" size={20} color="#fff" />
+                    </Pressable>
+                  );
+
                   const renderRightAction = () => (
                     <Pressable
                       onPress={() => {
@@ -1210,7 +1236,7 @@ const settings = await getAppSettings();
                             {
                               text: t('common.cancel'),
                               style: 'cancel',
-                              onPress: () => swipeableRefs.current.get(entry.id)?.current?.close(),
+                              onPress: () => swipeRef.current?.close(),
                             },
                             {
                               text: t('common.delete'),
@@ -1238,9 +1264,12 @@ const settings = await getAppSettings();
                   return (
                     <ReanimatedSwipeable
                       key={entry.id}
-                      ref={(() => { if (!swipeableRefs.current.has(entry.id)) swipeableRefs.current.set(entry.id, React.createRef<SwipeableMethods | null>()); return swipeableRefs.current.get(entry.id)!; })()}
+                      ref={swipeRef}
+                      renderLeftActions={renderLeftAction}
                       renderRightActions={renderRightAction}
+                      leftThreshold={40}
                       rightThreshold={40}
+                      overshootLeft={false}
                       overshootRight={false}
                       friction={2}
                     >

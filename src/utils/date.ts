@@ -27,10 +27,11 @@ export function formatShortDate(value: string | Date) {
   return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(date);
 }
 
-export function formatLongDate(value: string | Date) {
+export function formatLongDate(value: string | Date, locale?: string) {
   const date = toDate(value);
   if (!date) return 'Unknown date';
-  return new Intl.DateTimeFormat('en', { weekday: 'long', month: 'long', day: 'numeric' }).format(date);
+  const resolvedLocale = locale ?? 'en';
+  return new Intl.DateTimeFormat(resolvedLocale, { weekday: 'long', month: 'long', day: 'numeric' }).format(date);
 }
 
 export function formatDateTime(value: string | Date) {
@@ -74,4 +75,8 @@ export function subtractDays(date: Date, days: number) {
   const copy = new Date(date);
   copy.setDate(copy.getDate() - days);
   return copy;
+}
+
+export function isToday(date: Date) {
+  return isSameDay(date, new Date());
 }

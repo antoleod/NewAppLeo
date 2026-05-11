@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Segment } from '@/components/shared';
 import { formatDuration } from '@/utils/date';
 import { useTheme } from '@/context/ThemeContext';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function pad(value: number) {
   return String(Math.max(0, Math.floor(value))).padStart(2, '0');
@@ -34,6 +35,7 @@ export function TimerWidget({
   onRunningChange?: (running: boolean) => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [running, setRunning] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [liveSeconds, setLiveSeconds] = useState(0);
@@ -86,9 +88,9 @@ export function TimerWidget({
           value={side ?? 'left'}
           onChange={(value) => onSideChange(value as 'left' | 'right' | 'both')}
           options={[
-            { label: 'Left', value: 'left' },
-            { label: 'Right', value: 'right' },
-            { label: 'Both', value: 'both' },
+            { label: t('timer.left'), value: 'left' },
+            { label: t('timer.right'), value: 'right' },
+            { label: t('timer.both'), value: 'both' },
           ]}
         />
       ) : null}
@@ -107,6 +109,8 @@ export function TimerWidget({
             setStartedAt(Date.now());
             setRunning(true);
           }}
+          accessibilityRole="button"
+          accessibilityLabel={running ? t('timer.stop') : t('timer.start')}
           style={{
             minHeight: largeTouchMode ? 64 : 56,
             borderRadius: 18,
@@ -115,7 +119,9 @@ export function TimerWidget({
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>{running ? 'Stop' : 'Start'}</Text>
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
+            {running ? t('timer.stop') : t('timer.start')}
+          </Text>
         </Pressable>
       </View> : null}
     </View>

@@ -11,6 +11,37 @@ import { DataExporter } from '@/components/profile';
 import { getAppSettings, setAppSettings } from '@/lib/storage';
 import { useTranslation } from '@/hooks/useTranslation';
 
+const pwaTextMap = {
+  fr: {
+    title: "Installer l'app (PWA)",
+    body: "Installez BabyFlow sur votre appareil pour l'ouvrir comme une app native.",
+    installed: 'Déjà installée',
+    installNow: 'Installer maintenant',
+    manualHelp: `• Chrome/Edge : menu > "Installer l'application"\n• iPhone Safari : Partager > "Ajouter à l'écran d'accueil"`,
+  },
+  es: {
+    title: 'Instalar app (PWA)',
+    body: 'Instala BabyFlow en tu dispositivo para abrirla como app nativa.',
+    installed: 'Ya está instalada',
+    installNow: 'Instalar ahora',
+    manualHelp: '• Chrome/Edge: menú > "Instalar aplicación"\n• iPhone Safari: Compartir > "Añadir a pantalla de inicio"',
+  },
+  en: {
+    title: 'Install app (PWA)',
+    body: 'Install BabyFlow on your device to open it like a native app.',
+    installed: 'Already installed',
+    installNow: 'Install now',
+    manualHelp: '• Chrome/Edge: menu > "Install app"\n• iPhone Safari: Share > "Add to Home Screen"',
+  },
+  nl: {
+    title: 'App installeren (PWA)',
+    body: 'Installeer BabyFlow op je apparaat om deze als native app te openen.',
+    installed: 'Al geïnstalleerd',
+    installNow: 'Nu installeren',
+    manualHelp: '• Chrome/Edge: menu > "App installeren"\n• iPhone Safari: Deel > "Zet op beginscherm"',
+  },
+} as const;
+
 export default function ThemeSettings() {
   const { width } = useWindowDimensions();
   const { t } = useTranslation();
@@ -45,44 +76,10 @@ export default function ThemeSettings() {
   const transparencyPercent = ((transparencyValue - 0.2) / 0.8) * 100;
   const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
-  const pwaText = (
-    {
-      fr: {
-        title: "Installer l'app (PWA)",
-        body: "Installez BabyFlow sur votre appareil pour l'ouvrir comme une app native.",
-        installed: 'Déjà installée',
-        installNow: 'Installer maintenant',
-        manualHelp: `• Chrome/Edge : menu > "Installer l'application"\n• iPhone Safari : Partager > "Ajouter à l'écran d'accueil"`,
-      },
-      es: {
-        title: 'Instalar app (PWA)',
-        body: 'Instala BabyFlow en tu dispositivo para abrirla como app nativa.',
-        installed: 'Ya está instalada',
-        installNow: 'Instalar ahora',
-        manualHelp: '• Chrome/Edge: menú > "Instalar aplicación"\n• iPhone Safari: Compartir > "Añadir a pantalla de inicio"',
-      },
-      en: {
-        title: 'Install app (PWA)',
-        body: 'Install BabyFlow on your device to open it like a native app.',
-        installed: 'Already installed',
-        installNow: 'Install now',
-        manualHelp: '• Chrome/Edge: menu > "Install app"\n• iPhone Safari: Share > "Add to Home Screen"',
-      },
-      nl: {
-        title: 'App installeren (PWA)',
-        body: 'Installeer BabyFlow op je apparaat om deze als native app te openen.',
-        installed: 'Al geïnstalleerd',
-        installNow: 'Nu installeren',
-        manualHelp: '• Chrome/Edge: menu > "App installeren"\n• iPhone Safari: Deel > "Zet op beginscherm"',
-      },
-    } as const
-  )[language as 'fr' | 'es' | 'en' | 'nl'] ?? {
-    title: "Installer l'app (PWA)",
-    body: "Installez BabyFlow sur votre appareil pour l'ouvrir comme une app native.",
-    installed: 'Déjà installée',
-    installNow: 'Installer maintenant',
-    manualHelp: `• Chrome/Edge : menu > "Installer l'application"\n• iPhone Safari : Partager > "Ajouter à l'écran d'accueil"`,
-  };
+  const pwaText = React.useMemo(
+    () => pwaTextMap[language as keyof typeof pwaTextMap] ?? pwaTextMap.fr,
+    [language],
+  );
 
   // Real token values per variant and palette mode — mirrors src/theme.ts variantOverrides
   const variantSwatches: Record<string, Record<'nuit' | 'jour', [string, string, string]>> = {
@@ -369,7 +366,7 @@ export default function ThemeSettings() {
             onLayout={(event) => setOpacityTrackWidth(event.nativeEvent.layout.width)}
             onStartShouldSetResponder={() => true}
             onMoveShouldSetResponder={() => true}
-            onResponderGrant={(event) => updateOpacityFromEvent(event, true)}
+            onResponderGrant={(event) => updateOpacityFromEvent(event, false)}
             onResponderMove={(event) => updateOpacityFromEvent(event, false)}
             onResponderRelease={(event) => updateOpacityFromEvent(event, true)}
             style={[styles.opacityTrack, { backgroundColor: theme.bgCardAlt, borderColor: theme.border }]}
@@ -389,7 +386,7 @@ export default function ThemeSettings() {
             onLayout={(event) => setTransparencyTrackWidth(event.nativeEvent.layout.width)}
             onStartShouldSetResponder={() => true}
             onMoveShouldSetResponder={() => true}
-            onResponderGrant={(event) => updateTransparencyFromEvent(event, true)}
+            onResponderGrant={(event) => updateTransparencyFromEvent(event, false)}
             onResponderMove={(event) => updateTransparencyFromEvent(event, false)}
             onResponderRelease={(event) => updateTransparencyFromEvent(event, true)}
             style={[styles.opacityTrack, { backgroundColor: theme.bgCardAlt, borderColor: theme.border }]}

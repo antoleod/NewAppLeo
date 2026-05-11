@@ -1,10 +1,30 @@
+import { useMemo } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button, Input } from '@/components/shared';
 import { DateTimeField } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
+import type { Theme } from '@/theme';
 
-function makeStyles(theme: import('@/theme').Theme) {
+interface Props {
+  visible: boolean;
+  onClose: () => void;
+  language: string;
+  colors: Record<string, string>;
+  metaTone: string;
+  metaToneSoft: string;
+  reminderStep: 'vaccine' | 'date';
+  setReminderStep: (step: 'vaccine' | 'date') => void;
+  vaccinePresets: string[];
+  reminderVaccineName: string;
+  setReminderVaccineName: (name: string) => void;
+  reminderVaccineDate: Date;
+  setReminderVaccineDate: (date: Date) => void;
+  onSave: () => void;
+  saving: boolean;
+}
+
+function makeStyles(theme: Theme) {
   return StyleSheet.create({
     reminderModalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
     reminderModalContent: { backgroundColor: theme.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingVertical: 20, paddingBottom: 40, maxHeight: '85%' },
@@ -40,10 +60,10 @@ export function VaccineReminderModal({
   setReminderVaccineDate,
   onSave,
   saving,
-}: any) {
+}: Props) {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const styles = makeStyles(theme);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -112,6 +132,12 @@ export function VaccineReminderModal({
                 <View style={styles.reminderSummaryItem}>
                   <Text style={{ color: colors.muted }}>{t('vaccine.vaccineLabel')}</Text>
                   <Text style={{ color: colors.text, fontWeight: '700' }}>{reminderVaccineName}</Text>
+                </View>
+                <View style={styles.reminderSummaryItem}>
+                  <Text style={{ color: colors.muted }}>{t('vaccine.dateTimeLabel')}</Text>
+                  <Text style={{ color: colors.text, fontWeight: '700' }}>
+                    {new Intl.DateTimeFormat(language, { day: '2-digit', month: 'short', year: 'numeric' }).format(reminderVaccineDate instanceof Date ? reminderVaccineDate : new Date(reminderVaccineDate))}
+                  </Text>
                 </View>
               </View>
 

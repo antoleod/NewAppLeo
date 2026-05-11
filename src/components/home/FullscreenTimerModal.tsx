@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Animated, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocale } from '@/context/LocaleContext';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function pad(value: number) {
   return String(Math.max(0, Math.floor(value))).padStart(2, '0');
@@ -13,6 +15,12 @@ function formatTimer(totalSeconds: number) {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
+function localeTag(language: string) {
+  if (language === 'es') return 'es-ES';
+  if (language === 'en') return 'en-US';
+  if (language === 'nl') return 'nl-BE';
+  return 'fr-FR';
+}
 
 const CAN_USE_NATIVE_ANIMATION_DRIVER = Platform.OS !== 'web';
 
@@ -25,7 +33,6 @@ export function FullscreenTimerModal({
   elapsedSeconds,
   animatePulse = true,
   onStop,
-  locale = 'fr-FR',
 }: {
   visible: boolean;
   emoji: string;
@@ -35,8 +42,10 @@ export function FullscreenTimerModal({
   elapsedSeconds: number;
   animatePulse?: boolean;
   onStop: () => void;
-  locale?: string;
 }) {
+  const { language } = useLocale();
+  const { t } = useTranslation();
+  const locale = localeTag(language);
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -87,6 +96,8 @@ export function FullscreenTimerModal({
         <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
           <Pressable
             onPress={onStop}
+            accessibilityRole="button"
+            accessibilityLabel={t('timer.stop')}
             style={{
               minHeight: 64,
               borderRadius: 20,
@@ -95,7 +106,7 @@ export function FullscreenTimerModal({
               justifyContent: 'center',
             }}
           >
-            <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 17 }}>STOP</Text>
+            <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 17 }}>{t('timer.stop').toUpperCase()}</Text>
           </Pressable>
         </View>
       </SafeAreaView>

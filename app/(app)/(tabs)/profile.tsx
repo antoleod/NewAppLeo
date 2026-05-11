@@ -84,7 +84,7 @@ function formatDateForDisplay(iso: string, locale: string): string {
 export default function ProfileScreen() {
   const { colors } = useTheme();
   const { t, format } = useTranslation();
-  const { setLanguage: setContextLanguage } = useLocale();
+  const { language: localeLanguage, setLanguage: setContextLanguage } = useLocale();
   const { profile, guestMode, saveProfile, signOut, user } = useAuth();
   const toast = useToast();
 
@@ -110,6 +110,7 @@ export default function ProfileScreen() {
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingBabyId, setDeletingBabyId] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -163,7 +164,7 @@ export default function ProfileScreen() {
     setActiveBabyIdLocal((await getActiveBaby())?.id ?? null);
     setPairingCode(session?.code ?? null);
     setQueuedSyncCount(queuedOperations.length);
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     refreshProfileData().then(() => setIsLoading(false));
@@ -228,7 +229,6 @@ export default function ProfileScreen() {
           notes: form.babyNotes.trim() || undefined,
           photoUri: form.babyPhotoUri || undefined,
         });
-        isEditingRef.current = false;
         await refreshProfileData();
       }
 
@@ -330,17 +330,19 @@ export default function ProfileScreen() {
             style: 'destructive',
             onPress: async () => {
               haptics.warning();
-              await removeBaby(babyId);
-              // If the removed baby was active, activate the next available one
-              if (activeBabyId === babyId) {
-                const remaining = babies.filter((b) => b.id !== babyId);
-                if (remaining.length > 0) {
-                  await setActiveBabyId(remaining[0].id);
+              setDeletingBabyId(babyId);
+              try {
+                await removeBaby(babyId);
+                if (activeBabyId === babyId) {
+                  const remaining = babies.filter((b) => b.id !== babyId);
+                  if (remaining.length > 0) await setActiveBabyId(remaining[0].id);
                 }
+                await refreshProfileData();
+                haptics.success();
+                toast.success(t('profile.childRemoved'));
+              } finally {
+                setDeletingBabyId(null);
               }
-              await refreshProfileData();
-              haptics.success();
-              toast.success(t('profile.childRemoved'));
             },
           },
         ]
@@ -367,7 +369,7 @@ export default function ProfileScreen() {
       const message = String(error?.message ?? '');
       const code = String(error?.code ?? '');
       if (code.includes('permission-denied') || /insufficient permissions|missing or insufficient/i.test(message)) {
-        toast.error('Sync blocked by Firestore rules for this account. Please verify database permissions.');
+        toast.error(t('profile.syncPermissionError'));
       } else {
         toast.error(error?.message ?? t('profile.syncError'));
       }
@@ -446,7 +448,7 @@ export default function ProfileScreen() {
     }
   }, [signOut, user]);
 
-  const language = profile?.language ?? 'fr';
+  const language = localeLanguage;
   const childSummary = useMemo(
     () => (activeBabyId ? babies.find((baby) => baby.id === activeBabyId) : null),
     [activeBabyId, babies],
@@ -599,7 +601,14 @@ export default function ProfileScreen() {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Button label={t('common.delete')} onPress={() => handleRemoveBaby(baby.id)} variant="ghost" size="sm" />
+                      <Button
+                        label={t('common.delete')}
+                        onPress={() => handleRemoveBaby(baby.id)}
+                        variant="ghost"
+                        size="sm"
+                        loading={deletingBabyId === baby.id}
+                        disabled={deletingBabyId === baby.id}
+                      />
                     </View>
                   </View>
                 </View>

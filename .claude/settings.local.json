@@ -37,7 +37,8 @@
       "Bash(dir \"C:\\\\Users\\\\X1\\\\Documents\\\\NewAppLeo\\\\dist\" /s /b)",
       "Bash(findstr /i \"sw service-worker manifest icon-\")",
       "Bash(npx firebase *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

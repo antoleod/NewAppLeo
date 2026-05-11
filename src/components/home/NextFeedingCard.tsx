@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
 import { useNextFeeding } from '@/hooks/useNextFeeding';
@@ -18,7 +19,12 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
   const statusLabel = isPossible ? t('nextFeeding.possible') : isSoon ? t('nextFeeding.soon') : t('nextFeeding.waiting');
 
   return (
-    <Pressable onPress={onPress} accessibilityRole="button">
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={t('nextFeeding.title')}
+      accessibilityHint={statusLabel}
+    >
       <View
         style={{
           borderRadius: 12,
@@ -98,8 +104,8 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
 
           <View
             style={{
-              width: 42,
-              height: 42,
+              width: 44,
+              height: 44,
               borderRadius: 999,
               borderWidth: 1,
               borderColor: `${statusColor}55`,
@@ -108,7 +114,7 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
               backgroundColor: `${statusColor}18`,
             }}
           >
-            <Text style={{ color: statusColor, fontSize: 18, fontWeight: '900' }}>{'>'}</Text>
+            <Ionicons name="chevron-forward" size={18} color={statusColor} />
           </View>
         </View>
       </View>
