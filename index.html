@@ -36,9 +36,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./service-worker.js').catch(() => {
-            // Service worker registration failed, PWA still works without caching.
-          });
+          navigator.serviceWorker.register('/NewAppLeo/sw.js').catch(() => {});
         });
       }
     </script>
