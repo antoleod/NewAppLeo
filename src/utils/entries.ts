@@ -114,7 +114,7 @@ export function getTimelineItems(entries: EntryRecord[], filter: EntryType | 'al
     .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
 }
 
-export function getWeeklyTrend(entries: EntryRecord[]) {
+export function getWeeklyTrend(entries: EntryRecord[], locale?: string) {
   return Array.from({ length: 7 }, (_, index) => {
     const day = subtractDays(startOfDay(new Date()), 6 - index);
     const items = entries.filter((entry) => isSameDay(entry.occurredAt, day));
@@ -128,7 +128,7 @@ export function getWeeklyTrend(entries: EntryRecord[]) {
 
     return {
       key: dateKey(day),
-      label: new Intl.DateTimeFormat('en', { weekday: 'short' }).format(day),
+      label: new Intl.DateTimeFormat(locale ?? 'en', { weekday: 'short' }).format(day),
       feedCount,
       bottleMl,
       sleepMinutes,

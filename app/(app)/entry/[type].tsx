@@ -1214,9 +1214,9 @@ export default function EntryComposerScreen() {
         {type === 'measurement' && (
           <View style={styles.sectionCard}>
             {(() => {
-              const suggested = profile?.babyBirthDate ? getSuggestedValues(profile.babyBirthDate) : null;
-              const weightCat = weightKg && profile?.babyBirthDate ? getWeightCategory(Number(weightKg), profile.babyBirthDate) : null;
-              const heightCat = heightCm && profile?.babyBirthDate ? getHeightCategory(Number(heightCm), profile.babyBirthDate) : null;
+              const suggested = profile?.babyBirthDate ? getSuggestedValues(profile.babyBirthDate, t) : null;
+              const weightCat = weightKg && profile?.babyBirthDate ? getWeightCategory(Number(weightKg), profile.babyBirthDate, t) : null;
+              const heightCat = heightCm && profile?.babyBirthDate ? getHeightCategory(Number(heightCm), profile.babyBirthDate, t) : null;
 
               return (
                 <>
