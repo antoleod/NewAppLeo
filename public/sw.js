@@ -1,4 +1,4 @@
-const CACHE = 'appleo-v3';
+const CACHE = 'appleo-v4';
 
 const PRECACHE = [
   '/NewAppLeo/',
@@ -6,7 +6,7 @@ const PRECACHE = [
   '/NewAppLeo/icon-192.png',
   '/NewAppLeo/icon-512.png',
   '/NewAppLeo/apple-touch-icon.png',
-  '/NewAppLeo/favicon.ico',
+  '/NewAppLeo/favicon.png',
 ];
 
 self.addEventListener('install', (event) => {

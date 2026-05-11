@@ -14,7 +14,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
         {/* PWA — Android Chrome */}
         <meta name="theme-color" content="#0D1117" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="manifest" href="/NewAppLeo/manifest.json?v=4" />
+        <link rel="manifest" href="/NewAppLeo/manifest.json" />
 
         {/* PWA — iOS Safari */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -40,7 +40,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
               });
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function () {
-                  navigator.serviceWorker.register('/NewAppLeo/sw.js?v=4').catch(function () {});
+                  navigator.serviceWorker.register('/NewAppLeo/sw.js?v=5').catch(function () {});
                 });
               }
             `,
