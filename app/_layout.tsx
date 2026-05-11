@@ -19,13 +19,13 @@ import { Button } from '@/components/shared';
 import { ToastProvider } from '@/components/shared';
 import { useTranslation } from '@/hooks/useTranslation';
 
-function LockOverlay({ isLocked, uiScale, onUnlock }: { isLocked: boolean; uiScale: number; onUnlock: () => void }) {
+function LockOverlay({ isLocked, uiScale, onUnlock, bgColor, textColor }: { isLocked: boolean; uiScale: number; onUnlock: () => void; bgColor: string; textColor: string }) {
   const { t } = useTranslation();
   if (!isLocked) return null;
   return (
-    <View style={[StyleSheet.absoluteFill, styles.lockOverlay]}>
+    <View style={[StyleSheet.absoluteFill, styles.lockOverlay, { backgroundColor: bgColor }]}>
       <Text style={[styles.lockEmoji, { fontSize: 64 * uiScale }]}>{'\u{1F512}'}</Text>
-      <Text style={[styles.lockTitle, { fontSize: 24 * uiScale }]}>{t('lock.title')}</Text>
+      <Text style={[styles.lockTitle, { fontSize: 24 * uiScale, color: textColor }]}>{t('lock.title')}</Text>
       <View style={{ width: 200 * uiScale }}>
         <Button label={t('lock.unlock')} onPress={onUnlock} fullWidth />
       </View>
@@ -57,10 +57,10 @@ function ThemedShell({
       {isIncognito && (
         <View style={[StyleSheet.absoluteFill, styles.incognitoOverlay, { backgroundColor: colors.background }]}>
           <Text style={{ fontSize: 40 * uiScale }}>✨</Text>
-          <Text style={{ color: mode === 'dark' ? '#fff' : '#111', marginTop: 10 * uiScale, fontWeight: '600', fontSize: 16 * uiScale }}>App Leo</Text>
+          <Text style={{ color: mode === 'dark' ? '#fff' : '#111', marginTop: 10 * uiScale, fontWeight: '600', fontSize: 16 * uiScale }}>BabyFlow</Text>
         </View>
       )}
-      <LockOverlay isLocked={isLocked} uiScale={uiScale} onUnlock={onUnlock} />
+      <LockOverlay isLocked={isLocked} uiScale={uiScale} onUnlock={onUnlock} bgColor={colors.background} textColor={colors.text} />
     </View>
   );
 }
@@ -152,7 +152,7 @@ export default function RootLayout() {
 
   const handleUnlock = async () => {
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Unlock App Leo',
+      promptMessage: 'Unlock BabyFlow',
       fallbackLabel: 'Use code',
     });
     if (result.success) {
@@ -203,14 +203,13 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   lockOverlay: {
-    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 9999,
     gap: 20,
   },
   lockEmoji: { fontSize: 64 },
-  lockTitle: { fontSize: 24, fontWeight: '800', color: '#1A1C1E' },
+  lockTitle: { fontSize: 24, fontWeight: '800' },
   incognitoOverlay: {
     justifyContent: 'center',
     alignItems: 'center',

@@ -45,7 +45,7 @@ export function defaultProfile(uid: string, authEmail: string, username = '', di
     role: 'parent',
     status: 'active',
     caregiverName: displayName || authEmail.split('@')[0],
-    babyName: 'Leo',
+    babyName: 'Baby',
     babyBirthDate: '2025-10-21',
     babySex: 'unspecified',
     language: 'fr',

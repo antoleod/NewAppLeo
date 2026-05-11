@@ -227,10 +227,10 @@ export async function shareEntryAsImage(
 function buildShareCaption(entry: EntryRecord, babyName: string, lang: Lang): string {
   const msg = buildShareMessage(entry, babyName, lang);
   const cta = {
-    fr: `Trouver Leo sur Google Play : ${GOOGLE_PLAY_URL}`,
-    es: `Encuentra Leo en Google Play: ${GOOGLE_PLAY_URL}`,
-    en: `Find Leo on Google Play: ${GOOGLE_PLAY_URL}`,
-    nl: `Vind Leo op Google Play: ${GOOGLE_PLAY_URL}`,
+    fr: `Trouver BabyFlow sur Google Play : ${GOOGLE_PLAY_URL}`,
+    es: `Encuentra BabyFlow en Google Play: ${GOOGLE_PLAY_URL}`,
+    en: `Find BabyFlow on Google Play: ${GOOGLE_PLAY_URL}`,
+    nl: `Vind BabyFlow op Google Play: ${GOOGLE_PLAY_URL}`,
   }[lang];
   return `${msg}\n\n${cta}`;
 }

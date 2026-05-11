@@ -1,26 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Text, View, useWindowDimensions, StyleSheet, Image, Platform } from 'react-native';
 import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { Button, Card, Heading, Input, Page } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
-import { createPairingSession, joinPairingSession, getLocalPairingSession, type PairingSession } from '@/services/pairingService';
+import { createPairingSession, createCode, joinPairingSession, getLocalPairingSession, type PairingSession } from '@/services/pairingService';
+import { registerSessionForHost } from '@/services/sessionService';
 import { useToast } from '@/components/shared';
 import { haptics } from '@/lib/haptics';
 import { getDeviceDisplayName, setDeviceDisplayName } from '@/lib/storage';
-
-function makeCode() {
-  const raw = globalThis.crypto?.getRandomValues ? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(3))) : [1, 2, 3];
-  return raw.map((value) => String(value % 10)).join('').padEnd(6, '0').slice(0, 6);
-}
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function PairScreen() {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const { user } = useAuth();
   const toast = useToast();
-  const [code, setCode] = useState(makeCode);
+  const { t, format } = useTranslation();
+  const [code, setCode] = useState(() => createCode());
   const [participantName, setParticipantName] = useState('');
   const [session, setSession] = useState<PairingSession | null>(null);
   const isTablet = width >= 768;
@@ -34,7 +32,7 @@ export default function PairScreen() {
   const pairingPayload = webPairUrl ?? `appleo://pair?code=${normalizedCode}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(pairingPayload)}`;
 
-  const applyCodeFromUrl = async (urlValue: string | null | undefined) => {
+  const applyCodeFromUrl = useCallback(async (urlValue: string | null | undefined) => {
     if (!urlValue) return;
     const parsed = Linking.parse(urlValue);
     const incoming = String(parsed.queryParams?.code ?? '')
@@ -42,16 +40,16 @@ export default function PairScreen() {
       .slice(0, 6);
     if (!incoming || incoming.length < 6) return;
     setCode(incoming);
-    toast.success(`Pairing code detected: ${incoming}`);
+    toast.success(format('pairing.codeDetected', { code: incoming }));
     try {
       const next = await joinPairingSession(incoming, user?.uid ?? 'anonymous');
       setSession(next);
       haptics.success();
-      toast.success(`Joined session ${next.code} (${next.status}).`);
+      toast.success(format('pairing.joinedSession', { code: next.code }));
     } catch {
       // Keep code prefilled even if join requires manual retry.
     }
-  };
+  }, [user?.uid, toast, t]);
 
   useEffect(() => {
     (async () => {
@@ -66,41 +64,41 @@ export default function PairScreen() {
     });
     void Linking.getInitialURL().then((url) => applyCodeFromUrl(url));
     return () => sub.remove();
-  }, [user?.uid]);
+  }, [applyCodeFromUrl]);
 
   return (
     <Page contentStyle={[styles.container, { maxWidth: cardMaxWidth }]}>
-      <Heading eyebrow="PAIR LINK" title="Connect Device" subtitle="Secure one-step pairing." />
+      <Heading eyebrow={t('pairing.eyebrow')} title={t('pairing.title')} subtitle={t('pairing.subtitle')} />
       <Card style={[styles.heroCard, { borderColor: colors.border }]}>
         <View style={{ gap: 12 * uiScale }}>
           <View style={styles.statusRow}>
-            <Text style={[styles.label, { color: colors.muted }]}>Pairing code</Text>
+            <Text style={[styles.label, { color: colors.muted }]}>{t('pairing.codeLabel')}</Text>
             <View style={[styles.statusPill, { borderColor: colors.border }]}>
-              <Text style={[styles.statusText, { color: colors.text }]}>{session?.status ?? 'local only'}</Text>
+              <Text style={[styles.statusText, { color: colors.text }]}>{session?.status ?? t('pairing.statusLocal')}</Text>
             </View>
           </View>
           <Text style={[styles.code, { color: colors.text, fontSize: 40 * uiScale }]}>{sessionCode}</Text>
           <View style={[styles.qrWrap, { borderColor: colors.border }]}>
-            <Image source={{ uri: qrUrl }} style={styles.qrImage} accessibilityLabel="Pairing QR code" />
+            <Image source={{ uri: qrUrl }} style={styles.qrImage} accessibilityLabel={t('pairing.qrAlt')} />
           </View>
           <Text style={{ color: colors.muted, fontSize: 12 * uiScale, textAlign: 'center', lineHeight: 18 }}>
-            Scan to prefill instantly on the second device.
+            {t('pairing.qrHint')}
           </Text>
           <View style={styles.actionsRow}>
             <Button
-              label="New code"
+              label={t('pairing.newCode')}
               onPress={async () => {
                 const next = await createPairingSession(user?.uid ?? 'anonymous');
                 setSession(next);
                 setCode(next.code);
                 haptics.success();
-                toast.success(`Pairing code: ${next.code}`);
+                toast.success(format('pairing.codeCreated', { code: next.code }));
               }}
               fullWidth
             />
             <Button
-              label="Copy"
-              onPress={() => toast.info(`Pairing code: ${sessionCode}`)}
+              label={t('common.copy')}
+              onPress={() => toast.info(format('pairing.codeCreated', { code: sessionCode }))}
               variant="ghost"
               fullWidth
             />
@@ -109,32 +107,36 @@ export default function PairScreen() {
       </Card>
       <Card style={[styles.joinCard, { borderColor: colors.border }]}>
         <View style={{ gap: 10 * uiScale }}>
-          <Input label="Your name" value={participantName} onChangeText={setParticipantName} placeholder="Papa, Mama, Abuela..." />
-          <Input label="Join code" value={code} onChangeText={setCode} placeholder="123456" keyboardType="numeric" inputMode="numeric" />
+          <Input label={t('pairing.yourName')} value={participantName} onChangeText={setParticipantName} placeholder={t('pairing.namePlaceholder')} />
+          <Input label={t('pairing.joinCode')} value={code} onChangeText={setCode} placeholder="123456" keyboardType="numeric" inputMode="numeric" />
           <Button
-            label="Join"
+            label={t('pairing.join')}
             onPress={async () => {
               try {
                 const cleanName = participantName.trim();
                 if (!cleanName) {
-                  toast.warning('Please enter your name first.');
+                  toast.warning(t('pairing.nameRequired'));
                   return;
                 }
                 await setDeviceDisplayName(cleanName);
                 const next = await joinPairingSession(code, user?.uid ?? 'anonymous');
                 setSession(next);
+                if (user && next.hostUid && next.hostUid !== user.uid) {
+                  registerSessionForHost(next.hostUid, user.email ?? cleanName, next.code).catch(() => {});
+                }
                 haptics.success();
-                toast.success(`Joined session ${next.code} (${next.status}).`);
+                toast.success(format('pairing.joinedSession', { code: next.code }));
+                router.replace('/(app)/(tabs)/home');
               } catch (error: any) {
                 haptics.error();
-                toast.error(error?.message ?? 'Could not join the session.');
+                toast.error(error?.message ?? t('pairing.joinError'));
               }
             }}
             fullWidth
           />
         </View>
       </Card>
-      <Button label="Back to app" onPress={() => router.back()} variant="ghost" fullWidth />
+      <Button label={t('pairing.backToApp')} onPress={() => router.back()} variant="ghost" fullWidth />
     </Page>
   );
 }
@@ -198,4 +200,3 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 });
-

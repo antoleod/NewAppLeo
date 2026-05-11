@@ -11,9 +11,10 @@
     "yes": "Sí",
     "no": "No",
     "ok": "OK",
-    "loading": "Cargando App Leo",
+    "loading": "Cargando BabyFlow",
     "skip": "Omitir",
-    "continue": "Continuar"
+    "continue": "Continuar",
+    "copy": "Copiar"
   },
   "greeting": {
     "morning": "Buenos días",
@@ -406,7 +407,40 @@
     "voiceHeard": "Escuché: ",
     "voiceIntent": "Intención: ",
     "voiceCaptureFailed": "Captura de voz fallida",
-    "voiceCaptureError": "No se pudo iniciar la captura de voz."
+    "voiceCaptureError": "No se pudo iniciar la captura de voz.",
+    "justNow": "Ahora mismo"
+  },
+  "pairing": {
+    "eyebrow": "VINCULAR",
+    "title": "Conectar dispositivo",
+    "subtitle": "Vinculación segura en un paso.",
+    "codeLabel": "Código de vinculación",
+    "statusLocal": "solo local",
+    "qrAlt": "Código QR de vinculación",
+    "qrHint": "Escanea para rellenar al instante en el segundo dispositivo.",
+    "newCode": "Nuevo código",
+    "codeCreated": "Código de vinculación: {code}",
+    "codeDetected": "Código detectado: {code}",
+    "joinedSession": "Sesión {code} unida.",
+    "yourName": "Tu nombre",
+    "namePlaceholder": "Papá, Mamá, Abuela...",
+    "joinCode": "Código de unión",
+    "join": "Unirse",
+    "nameRequired": "Por favor ingresa tu nombre primero.",
+    "joinError": "No se pudo unir a la sesión.",
+    "backToApp": "Volver a la app"
+  },
+  "vaccine": {
+    "reminderTitle": "Recordatorio de vacuna",
+    "step1": "1/2 - Elegir la vacuna",
+    "step2": "2/2 - Elegir la fecha",
+    "orEnterName": "O ingresa otro nombre:",
+    "namePlaceholder": "Nombre de la vacuna...",
+    "nextDoseQuestion": "¿Cuándo será la próxima dosis?",
+    "dateTimeLabel": "Fecha y hora",
+    "summary": "Resumen",
+    "vaccineLabel": "Vacuna:",
+    "createReminder": "Crear recordatorio"
   },
   "lock": {
     "title": "App Bloqueada",

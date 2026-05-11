@@ -186,7 +186,7 @@ export function buildLeoProfilePatch(current?: UserProfile | null): Partial<User
     .sort((left, right) => right.dateISO.localeCompare(left.dateISO))[0];
 
   return {
-    babyName: current?.babyName || 'Leo',
+    babyName: current?.babyName || 'Baby',
     babyBirthDate: current?.babyBirthDate || '2025-10-21',
     currentWeightKg: latestMeasurement?.weight ?? current?.currentWeightKg,
     heightCm: latestMeasurement?.height ?? current?.heightCm,

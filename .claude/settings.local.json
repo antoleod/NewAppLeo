@@ -35,7 +35,9 @@
       "Read(//c/Users/X1/Downloads/scan/scan/.claude/agents/**)",
       "Bash(Get-ChildItem *)",
       "Bash(dir \"C:\\\\Users\\\\X1\\\\Documents\\\\NewAppLeo\\\\dist\" /s /b)",
-      "Bash(findstr /i \"sw service-worker manifest icon-\")"
+      "Bash(findstr /i \"sw service-worker manifest icon-\")",
+      "Bash(npx firebase *)",
+      "Bash(python3 *)"
     ]
   }
 }

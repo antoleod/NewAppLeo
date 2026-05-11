@@ -1,6 +1,6 @@
 ﻿{
   "expo": {
-    "name": "App Leo",
+    "name": "BabyFlow",
     "slug": "appleo",
     "scheme": "appleo",
     "version": "1.0.0",
@@ -17,15 +17,15 @@
       "bundler": "metro",
       "favicon": "./public/favicon.png",
       "manifest": {
-        "name": "App Leo",
-        "short_name": "App Leo",
+        "name": "BabyFlow",
+        "short_name": "BabyFlow",
         "start_url": "/NewAppLeo/",
         "display": "standalone",
         "orientation": "portrait",
         "background_color": "#0D1117",
         "theme_color": "#0D1117",
         "scope": "/NewAppLeo/",
-        "description": "App Leo - baby care and tracking. Daily logs for feeding, sleep, diapers and more.",
+        "description": "BabyFlow - baby care and tracking. Daily logs for feeding, sleep, diapers and more.",
         "categories": ["health", "medical", "lifestyle"],
         "icons": [
           {

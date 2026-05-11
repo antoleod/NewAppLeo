@@ -91,7 +91,7 @@ export async function registerAccount(payload: RegisterPayload) {
       role: 'parent' as const,
       status: 'active' as const,
       caregiverName: payload.displayName || email.split('@')[0],
-      babyName: 'Leo',
+      babyName: 'Baby',
       babyBirthDate: '2025-10-21',
       babySex: 'unspecified' as const,
       language: 'fr' as const,

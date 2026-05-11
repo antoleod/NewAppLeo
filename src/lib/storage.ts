@@ -369,7 +369,7 @@ export function createGuestProfile(): UserProfile {
     role: 'parent',
     status: 'active',
     caregiverName: 'Guest',
-    babyName: 'Leo',
+    babyName: 'Baby',
     babyBirthDate: '2025-10-21',
     babySex: 'unspecified',
     language: 'fr',

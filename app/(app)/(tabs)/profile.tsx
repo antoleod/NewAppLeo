@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Alert, AppState, Image, Pressable, Text, View, RefreshControl, ScrollView } from 'react-native';
+import { Alert, AppState, Image, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import Animated, { FadeIn, ZoomIn, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { FadeIn, useSharedValue, withSpring } from 'react-native-reanimated';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Button, Card, EmptyState, Heading, Input, Page, Segment } from '@/components/shared';
 import { DateTimeField } from '@/components/shared';
@@ -29,6 +29,7 @@ import {
   clearCurrentSession,
   deleteSession,
   getCurrentSessionId,
+  getSessionsOnce,
   registerCurrentSession,
   watchSessions,
   type SessionItem,
@@ -41,17 +42,17 @@ const languageOptions = [
   { label: 'NL', value: 'nl' },
 ];
 
-function formatRelativeTime(iso: string): string {
+function formatRelativeTime(iso: string, t: (key: string) => string): string {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '�';
+  if (Number.isNaN(date.getTime())) return '?';
   const diff = Date.now() - date.getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('profile.justNow');
+  if (mins < 60) return `${mins}m`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return `${hrs}h`;
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return `${days}d`;
   return date.toLocaleDateString();
 }
 
@@ -89,7 +90,7 @@ export default function ProfileScreen() {
 
   const [form, setForm] = useState({
     caregiverName: profile?.caregiverName ?? '',
-    babyName: profile?.babyName ?? 'Leo',
+    babyName: profile?.babyName ?? 'Baby',
     babyBirthDate: isoStringToDate(profile?.babyBirthDate ?? ''),
     birthWeightKg: profile?.birthWeightKg ? String(profile.birthWeightKg) : '',
     currentWeightKg: profile?.currentWeightKg ? String(profile.currentWeightKg) : '',
@@ -112,7 +113,6 @@ export default function ProfileScreen() {
   const [signingOut, setSigningOut] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [editingBaby, setEditingBaby] = useState<typeof babies[0] | null>(null);
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const photoScale = useSharedValue(1);
@@ -140,7 +140,7 @@ export default function ProfileScreen() {
         }
       : {
           caregiverName: profile?.caregiverName ?? '',
-          babyName: profile?.babyName ?? 'Leo',
+          babyName: profile?.babyName ?? 'Baby',
           babyBirthDate: isoStringToDate(profile?.babyBirthDate ?? ''),
           birthWeightKg: profile?.birthWeightKg ? String(profile.birthWeightKg) : '',
           currentWeightKg: profile?.currentWeightKg ? String(profile.currentWeightKg) : '',
@@ -175,6 +175,8 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (!user || guestMode) return;
+    // Load immediately for instant display, then keep in sync via snapshot
+    void getSessionsOnce(user.uid).then((initial) => { if (initial.length) setSessions(initial); });
     const unsub = watchSessions(user.uid, setSessions);
     registerCurrentSession(user.uid, user.email ?? profile?.authEmail ?? '')
       .then((id) => setCurrentSessionId(id))
@@ -394,19 +396,6 @@ export default function ProfileScreen() {
     [sessions, t, toast, user],
   );
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    haptics.light();
-    try {
-      await refreshProfileData();
-      haptics.success();
-    } catch {
-      haptics.error();
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshProfileData]);
-
   const handleEditBaby = useCallback(
     (baby: typeof babies[0]) => {
       setEditingBaby(baby);
@@ -595,7 +584,7 @@ export default function ProfileScreen() {
                       </View>
                     )}
                   </View>
-                  <Text style={{ color: colors.muted, fontSize: 12 }}>{baby.birthDate}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 12 }}>{formatDateForDisplay(baby.birthDate, language)}</Text>
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                     <View style={{ flex: 1 }}>
                       <Button label={t('common.edit')} onPress={() => handleEditBaby(baby)} variant="primary" size="sm" />
@@ -787,7 +776,7 @@ export default function ProfileScreen() {
                           <Text style={{ color: colors.muted, fontSize: 12 }}>{item.email}</Text>
                           {timeLabel ? (
                             <Text style={{ color: colors.muted, fontSize: 11 }}>
-                              {t('profile.sessionStarted')}: {formatRelativeTime(timeLabel)}
+                              {t('profile.sessionStarted')}: {formatRelativeTime(timeLabel, t)}
                             </Text>
                           ) : null}
                         </View>
@@ -801,13 +790,13 @@ export default function ProfileScreen() {
                               paddingVertical: 6,
                               borderRadius: 8,
                               borderWidth: 1,
-                              borderColor: '#ef4444',
+                              borderColor: colors.danger,
                               opacity: pressed ? 0.5 : 1,
                               marginTop: 1,
                             })}
                             hitSlop={8}
                           >
-                            <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700' }}>
+                            <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '700' }}>
                               {t('profile.revokeSession')}
                             </Text>
                           </Pressable>

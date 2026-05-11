@@ -33,7 +33,7 @@ export async function generateWeeklyPdf(entries: EntryRecord[]) {
         </style>
       </head>
       <body>
-        <h1>App Leo Weekly Summary</h1>
+        <h1>BabyFlow Weekly Summary</h1>
         <p>${summary}</p>
         <table>
           <thead>

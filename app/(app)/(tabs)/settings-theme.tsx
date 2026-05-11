@@ -48,45 +48,40 @@ export default function ThemeSettings() {
   const pwaText = (
     {
       fr: {
-        title: 'Installer l’app (PWA)',
-        body: 'Installez App Leo sur votre appareil pour l’ouvrir comme une app native.',
+        title: "Installer l'app (PWA)",
+        body: "Installez BabyFlow sur votre appareil pour l'ouvrir comme une app native.",
         installed: 'Déjà installée',
         installNow: 'Installer maintenant',
-        forceInstall: 'Forcer installation PWA',
-        unavailable: 'Installation non disponible',
+        manualHelp: `• Chrome/Edge : menu > "Installer l'application"\n• iPhone Safari : Partager > "Ajouter à l'écran d'accueil"`,
       },
       es: {
         title: 'Instalar app (PWA)',
-        body: 'Instala App Leo en tu dispositivo para abrirla como app nativa.',
+        body: 'Instala BabyFlow en tu dispositivo para abrirla como app nativa.',
         installed: 'Ya está instalada',
         installNow: 'Instalar ahora',
-        forceInstall: 'Forzar instalación PWA',
-        unavailable: 'Instalación no disponible',
+        manualHelp: '• Chrome/Edge: menú > "Instalar aplicación"\n• iPhone Safari: Compartir > "Añadir a pantalla de inicio"',
       },
       en: {
         title: 'Install app (PWA)',
-        body: 'Install App Leo on your device to open it like a native app.',
+        body: 'Install BabyFlow on your device to open it like a native app.',
         installed: 'Already installed',
         installNow: 'Install now',
-        forceInstall: 'Force PWA install',
-        unavailable: 'Install unavailable',
+        manualHelp: '• Chrome/Edge: menu > "Install app"\n• iPhone Safari: Share > "Add to Home Screen"',
       },
       nl: {
         title: 'App installeren (PWA)',
-        body: 'Installeer App Leo op je apparaat om deze als native app te openen.',
+        body: 'Installeer BabyFlow op je apparaat om deze als native app te openen.',
         installed: 'Al geïnstalleerd',
         installNow: 'Nu installeren',
-        forceInstall: 'PWA-installatie forceren',
-        unavailable: 'Installatie niet beschikbaar',
+        manualHelp: '• Chrome/Edge: menu > "App installeren"\n• iPhone Safari: Deel > "Zet op beginscherm"',
       },
     } as const
   )[language as 'fr' | 'es' | 'en' | 'nl'] ?? {
-    title: 'Installer l’app (PWA)',
-    body: 'Installez App Leo sur votre appareil pour l’ouvrir comme une app native.',
+    title: "Installer l'app (PWA)",
+    body: "Installez BabyFlow sur votre appareil pour l'ouvrir comme une app native.",
     installed: 'Déjà installée',
     installNow: 'Installer maintenant',
-    forceInstall: 'Forcer installation PWA',
-    unavailable: 'Installation non disponible',
+    manualHelp: `• Chrome/Edge : menu > "Installer l'application"\n• iPhone Safari : Partager > "Ajouter à l'écran d'accueil"`,
   };
 
   // Real token values per variant and palette mode — mirrors src/theme.ts variantOverrides
@@ -158,26 +153,11 @@ export default function ThemeSettings() {
   }, []);
 
   async function handleInstallPwa() {
-    if (!installPromptEvent) {
-      handleManualInstallHelp();
-      return;
-    }
+    if (!installPromptEvent) return;
     installPromptEvent.prompt();
     await installPromptEvent.userChoice?.catch(() => null);
     (window as any).__pwaInstallPrompt = null;
     setInstallPromptEvent(null);
-  }
-
-  function handleManualInstallHelp() {
-    const helpText =
-      language === 'es'
-        ? 'Si no aparece instalar automático:\n\n• Chrome/Edge: menú del navegador > "Instalar aplicación"\n• iPhone Safari: Compartir > "Añadir a pantalla de inicio"\n• Asegúrate de usar HTTPS y recargar la página.'
-        : language === 'en'
-        ? 'If auto install is not shown:\n\n• Chrome/Edge: browser menu > "Install app"\n• iPhone Safari: Share > "Add to Home Screen"\n• Make sure you are on HTTPS and reload the page.'
-        : language === 'nl'
-        ? 'Als automatische installatie niet verschijnt:\n\n• Chrome/Edge: browsermenu > "App installeren"\n• iPhone Safari: Deel > "Zet op beginscherm"\n• Zorg voor HTTPS en herlaad de pagina.'
-        : 'Si l’installation auto n’apparaît pas :\n\n• Chrome/Edge : menu du navigateur > "Installer l’application"\n• iPhone Safari : Partager > "Ajouter à l’écran d’accueil"\n• Vérifiez HTTPS puis rechargez la page.';
-    Alert.alert(pwaText.title, helpText);
   }
 
   async function updateButtonOpacity(value: number, persist: boolean) {
@@ -452,24 +432,17 @@ export default function ThemeSettings() {
               <View style={[styles.pwaInstalledBadge, { borderColor: theme.border, backgroundColor: theme.bgCardAlt }]}>
                 <Text style={{ color: theme.textPrimary, fontWeight: '700' }}>{pwaText.installed}</Text>
               </View>
+            ) : installPromptEvent ? (
+              <Button
+                label={pwaText.installNow}
+                onPress={() => void handleInstallPwa()}
+                variant="primary"
+              />
             ) : (
-              <View style={{ gap: 8 }}>
-                <Button
-                  label={installPromptEvent ? pwaText.installNow : pwaText.unavailable}
-                  onPress={() => void handleInstallPwa()}
-                  variant="primary"
-                  disabled={false}
-                />
-                <Button
-                  label={pwaText.forceInstall}
-                  onPress={() => void handleInstallPwa()}
-                  variant="secondary"
-                />
-                <Button
-                  label={language === 'es' ? 'Ver instalación manual' : language === 'en' ? 'Show manual install' : language === 'nl' ? 'Toon handmatige installatie' : 'Voir installation manuelle'}
-                  onPress={handleManualInstallHelp}
-                  variant="secondary"
-                />
+              <View style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 10, padding: 12 }}>
+                <Text style={{ color: theme.textMuted, fontSize: 12, lineHeight: 20 }}>
+                  {pwaText.manualHelp}
+                </Text>
               </View>
             )}
           </Card>

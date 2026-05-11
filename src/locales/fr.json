@@ -11,9 +11,10 @@
     "yes": "Oui",
     "no": "Non",
     "ok": "OK",
-    "loading": "Chargement d'App Leo",
+    "loading": "Chargement de BabyFlow",
     "skip": "Passer",
-    "continue": "Continuer"
+    "continue": "Continuer",
+    "copy": "Copier"
   },
   "greeting": {
     "morning": "Bonjour",
@@ -406,7 +407,40 @@
     "voiceHeard": "Entendu: ",
     "voiceIntent": "Intention: ",
     "voiceCaptureFailed": "Échec de la capture vocale",
-    "voiceCaptureError": "Impossible de démarrer la capture vocale."
+    "voiceCaptureError": "Impossible de démarrer la capture vocale.",
+    "justNow": "À l'instant"
+  },
+  "pairing": {
+    "eyebrow": "LIEN PAIR",
+    "title": "Connecter l'appareil",
+    "subtitle": "Couplage sécurisé en une étape.",
+    "codeLabel": "Code de couplage",
+    "statusLocal": "local uniquement",
+    "qrAlt": "QR code de couplage",
+    "qrHint": "Scannez pour remplir instantanément sur le second appareil.",
+    "newCode": "Nouveau code",
+    "codeCreated": "Code de couplage: {code}",
+    "codeDetected": "Code détecté: {code}",
+    "joinedSession": "Session {code} rejointe.",
+    "yourName": "Votre nom",
+    "namePlaceholder": "Papa, Maman, Grand-mère...",
+    "joinCode": "Code de jonction",
+    "join": "Rejoindre",
+    "nameRequired": "Veuillez entrer votre nom d'abord.",
+    "joinError": "Impossible de rejoindre la session.",
+    "backToApp": "Retour à l'app"
+  },
+  "vaccine": {
+    "reminderTitle": "Rappel de vaccin",
+    "step1": "1/2 - Choisir le vaccin",
+    "step2": "2/2 - Choisir la date",
+    "orEnterName": "Ou saisir un autre nom:",
+    "namePlaceholder": "Nom du vaccin...",
+    "nextDoseQuestion": "Quand sera la prochaine dose?",
+    "dateTimeLabel": "Date et heure",
+    "summary": "Récapitulatif",
+    "vaccineLabel": "Vaccin:",
+    "createReminder": "Créer le rappel"
   },
   "lock": {
     "title": "App Verrouillée",

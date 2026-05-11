@@ -2,6 +2,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button, Input } from '@/components/shared';
 import { DateTimeField } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function makeStyles(theme: import('@/theme').Theme) {
   return StyleSheet.create({
@@ -41,6 +42,7 @@ export function VaccineReminderModal({
   saving,
 }: any) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = makeStyles(theme);
 
   return (
@@ -50,9 +52,9 @@ export function VaccineReminderModal({
           {reminderStep === 'vaccine' && (
             <>
               <View style={styles.reminderModalHeader}>
-                <Text style={styles.reminderModalTitle}>{language === 'fr' ? 'Rappel de vaccin' : 'Vaccine Reminder'}</Text>
+                <Text style={styles.reminderModalTitle}>{t('vaccine.reminderTitle')}</Text>
                 <Text style={[styles.reminderModalSubtitle, { color: colors.muted }]}>
-                  {language === 'fr' ? '1/2 - Choisir le vaccin' : '1/2 - Choose vaccine'}
+                  {t('vaccine.step1')}
                 </Text>
               </View>
 
@@ -75,14 +77,14 @@ export function VaccineReminderModal({
 
               <View style={styles.reminderCustomSection}>
                 <Text style={[styles.reminderLabel, { color: colors.muted }]}>
-                  {language === 'fr' ? 'Ou saisir un autre nom:' : 'Or enter another name:'}
+                  {t('vaccine.orEnterName')}
                 </Text>
-                <Input label="" value={reminderVaccineName} onChangeText={setReminderVaccineName} placeholder={language === 'fr' ? 'Nom du vaccin...' : 'Vaccine name...'} />
+                <Input label="" value={reminderVaccineName} onChangeText={setReminderVaccineName} placeholder={t('vaccine.namePlaceholder')} />
               </View>
 
               <View style={styles.reminderActions}>
-                <Button label={language === 'fr' ? 'Continuer' : 'Continue'} onPress={() => setReminderStep('date')} disabled={!reminderVaccineName.trim()} />
-                <Button label={language === 'fr' ? 'Annuler' : 'Cancel'} variant="ghost" onPress={onClose} />
+                <Button label={t('common.continue')} onPress={() => setReminderStep('date')} disabled={!reminderVaccineName.trim()} />
+                <Button label={t('common.cancel')} variant="ghost" onPress={onClose} />
               </View>
             </>
           )}
@@ -90,32 +92,32 @@ export function VaccineReminderModal({
           {reminderStep === 'date' && (
             <>
               <View style={styles.reminderModalHeader}>
-                <Text style={styles.reminderModalTitle}>{language === 'fr' ? 'Rappel de vaccin' : 'Vaccine Reminder'}</Text>
+                <Text style={styles.reminderModalTitle}>{t('vaccine.reminderTitle')}</Text>
                 <Text style={[styles.reminderModalSubtitle, { color: colors.muted }]}>
-                  {language === 'fr' ? '2/2 - Choisir la date' : '2/2 - Choose date'}
+                  {t('vaccine.step2')}
                 </Text>
               </View>
 
               <View style={styles.reminderDateSection}>
                 <Text style={[styles.reminderLabel, { color: colors.muted, marginBottom: 12 }]}>
-                  {language === 'fr' ? 'Quand sera la prochaine dose?' : 'When will the next dose be?'}
+                  {t('vaccine.nextDoseQuestion')}
                 </Text>
-                <DateTimeField label={language === 'fr' ? 'Date et heure' : 'Date and time'} value={reminderVaccineDate} onChange={setReminderVaccineDate} />
+                <DateTimeField label={t('vaccine.dateTimeLabel')} value={reminderVaccineDate} onChange={setReminderVaccineDate} />
               </View>
 
               <View style={styles.reminderSummary}>
                 <Text style={[styles.reminderSummaryTitle, { color: colors.text }]}>
-                  {language === 'fr' ? 'Récapitulatif' : 'Summary'}
+                  {t('vaccine.summary')}
                 </Text>
                 <View style={styles.reminderSummaryItem}>
-                  <Text style={{ color: colors.muted }}>{language === 'fr' ? 'Vaccin:' : 'Vaccine:'}</Text>
+                  <Text style={{ color: colors.muted }}>{t('vaccine.vaccineLabel')}</Text>
                   <Text style={{ color: colors.text, fontWeight: '700' }}>{reminderVaccineName}</Text>
                 </View>
               </View>
 
               <View style={styles.reminderActions}>
-                <Button label={language === 'fr' ? 'Créer le rappel' : 'Create reminder'} onPress={onSave} loading={saving} />
-                <Button label={language === 'fr' ? 'Retour' : 'Back'} variant="ghost" onPress={() => setReminderStep('vaccine')} />
+                <Button label={t('vaccine.createReminder')} onPress={onSave} loading={saving} />
+                <Button label={t('common.back')} variant="ghost" onPress={() => setReminderStep('vaccine')} />
               </View>
             </>
           )}

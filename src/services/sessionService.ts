@@ -10,6 +10,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -71,6 +72,44 @@ function tsToIso(val: unknown): string | undefined {
   return undefined;
 }
 
+export async function getSessionsOnce(uid: string): Promise<SessionItem[]> {
+  try {
+    const snap = await getDocs(query(sessionsRef(uid), orderBy('createdAt', 'desc'), limit(20)));
+    return snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        email: String(data.email ?? ''),
+        device: String(data.device ?? 'Unknown device'),
+        platform: (data.platform ?? 'web') as SessionItem['platform'],
+        isOwner: Boolean(data.isOwner),
+        createdAt: tsToIso(data.createdAt),
+        lastActiveAt: tsToIso(data.lastActiveAt),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function registerSessionForHost(
+  hostUid: string,
+  joinerEmail: string,
+  pairingCode: string,
+): Promise<void> {
+  const { device, platform } = parseDeviceInfo();
+  const id = globalThis.crypto?.randomUUID?.() ?? `sess_${Date.now()}`;
+  await setDoc(doc(db, 'users', hostUid, 'sessions', id), {
+    email: joinerEmail,
+    device,
+    platform,
+    isOwner: false,
+    pairingCode,
+    createdAt: serverTimestamp(),
+    lastActiveAt: serverTimestamp(),
+  });
+}
+
 export async function registerCurrentSession(uid: string, email: string): Promise<string> {
   const stored = await AsyncStorage.getItem(sessionKey(uid));
 
@@ -83,17 +122,21 @@ export async function registerCurrentSession(uid: string, email: string): Promis
 
   const { device, platform } = parseDeviceInfo();
   const id = globalThis.crypto?.randomUUID?.() ?? `sess_${Date.now()}`;
+  const sessionDoc = doc(db, 'users', uid, 'sessions', id);
 
-  const probe = await getDocs(query(sessionsRef(uid), limit(1)));
-  const isOwner = probe.empty;
-
-  await setDoc(doc(db, 'users', uid, 'sessions', id), {
-    email,
-    device,
-    platform,
-    isOwner,
-    createdAt: serverTimestamp(),
-    lastActiveAt: serverTimestamp(),
+  // Use a transaction so only the very first session ever gets isOwner:true,
+  // even if two devices register simultaneously.
+  await runTransaction(db, async (tx) => {
+    const existing = await getDocs(query(sessionsRef(uid), limit(1)));
+    const isOwner = existing.empty;
+    tx.set(sessionDoc, {
+      email,
+      device,
+      platform,
+      isOwner,
+      createdAt: serverTimestamp(),
+      lastActiveAt: serverTimestamp(),
+    });
   });
 
   await AsyncStorage.setItem(sessionKey(uid), id);

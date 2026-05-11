@@ -11,9 +11,10 @@
     "yes": "Ja",
     "no": "Nee",
     "ok": "OK",
-    "loading": "App Leo laden",
+    "loading": "BabyFlow laden",
     "skip": "Overslaan",
-    "continue": "Doorgaan"
+    "continue": "Doorgaan",
+    "copy": "Kopiëren"
   },
   "greeting": {
     "morning": "Goedemorgen",
@@ -406,7 +407,40 @@
     "voiceHeard": "Hoord: ",
     "voiceIntent": "Bedoeling: ",
     "voiceCaptureFailed": "Spraakopname mislukt",
-    "voiceCaptureError": "Kon spraakopname niet starten."
+    "voiceCaptureError": "Kon spraakopname niet starten.",
+    "justNow": "Zojuist"
+  },
+  "pairing": {
+    "eyebrow": "KOPPELING",
+    "title": "Apparaat verbinden",
+    "subtitle": "Veilig koppelen in één stap.",
+    "codeLabel": "Koppelcode",
+    "statusLocal": "alleen lokaal",
+    "qrAlt": "QR-code voor koppeling",
+    "qrHint": "Scan om direct in te vullen op het tweede apparaat.",
+    "newCode": "Nieuwe code",
+    "codeCreated": "Koppelcode: {code}",
+    "codeDetected": "Code gedetecteerd: {code}",
+    "joinedSession": "Sessie {code} toegetreden.",
+    "yourName": "Jouw naam",
+    "namePlaceholder": "Papa, Mama, Oma...",
+    "joinCode": "Toetreedcode",
+    "join": "Toetreden",
+    "nameRequired": "Voer eerst je naam in.",
+    "joinError": "Kon de sessie niet toetreden.",
+    "backToApp": "Terug naar app"
+  },
+  "vaccine": {
+    "reminderTitle": "Vaccin herinnering",
+    "step1": "1/2 - Vaccin kiezen",
+    "step2": "2/2 - Datum kiezen",
+    "orEnterName": "Of voer een andere naam in:",
+    "namePlaceholder": "Vaccinnaam...",
+    "nextDoseQuestion": "Wanneer is de volgende dosis?",
+    "dateTimeLabel": "Datum en tijd",
+    "summary": "Samenvatting",
+    "vaccineLabel": "Vaccin:",
+    "createReminder": "Herinnering maken"
   },
   "lock": {
     "title": "App Vergrendeld",

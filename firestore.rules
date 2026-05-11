@@ -9,6 +9,18 @@ service cloud.firestore {
       return code.matches('^[0-9]{6}$');
     }
 
+    // Allows a user to create a non-owner session on a host's path
+    // when a valid pairing session exists linking them.
+    function isPairedMember(hostUid) {
+      let code = request.resource.data.get('pairingCode', '');
+      return code != ''
+        && isSixDigitCode(code)
+        && !request.resource.data.get('isOwner', false)
+        && exists(/databases/$(database)/documents/pairingSessions/$(code))
+        && get(/databases/$(database)/documents/pairingSessions/$(code)).data.hostUid == hostUid
+        && request.auth.uid in get(/databases/$(database)/documents/pairingSessions/$(code)).data.memberUids;
+    }
+
     match /usernames/{username} {
       allow get: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
@@ -51,7 +63,11 @@ service cloud.firestore {
       }
 
       match /sessions/{sessionId} {
-        allow read, create: if isSignedIn() && request.auth.uid == uid;
+        allow read: if isSignedIn() && request.auth.uid == uid;
+        allow create: if isSignedIn() && (
+          request.auth.uid == uid
+          || isPairedMember(uid)
+        );
         allow update: if isSignedIn() && request.auth.uid == uid;
         allow delete: if isSignedIn() && request.auth.uid == uid && resource.data.isOwner != true;
       }

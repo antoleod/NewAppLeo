@@ -352,7 +352,7 @@ export default function OnboardingScreen() {
       };
       await completeUserOnboarding({
         caregiverName: caregiverName.trim() || 'Parent',
-        babyName: babyName.trim() || 'Leo',
+        babyName: babyName.trim() || 'Baby',
         babyBirthDate: babyBirthDate.toISOString(),
         babySex,
         birthWeightKg: Number(birthWeightKg) || undefined,
@@ -371,7 +371,7 @@ export default function OnboardingScreen() {
           {
             ...profile,
             caregiverName: caregiverName.trim() || profile.caregiverName,
-            babyName: babyName.trim() || 'Leo',
+            babyName: babyName.trim() || 'Baby',
             babyBirthDate: babyBirthDate.toISOString(),
             babySex,
             birthWeightKg: Number(birthWeightKg) || undefined,
@@ -381,7 +381,7 @@ export default function OnboardingScreen() {
             babyNotes: babyNotes.trim() || undefined,
             language,
           },
-          babyName.trim() || 'Leo',
+          babyName.trim() || 'Baby',
           babyBirthDate.toISOString(),
           babySex,
         );
@@ -578,7 +578,7 @@ export default function OnboardingScreen() {
                 label={language === 'nl' ? "Baby's naam *" : language === 'es' ? 'Nombre del bebé *' : 'Nom du bébé *'} 
                 value={babyName} 
                 onChangeText={setBabyName} 
-                placeholder="Leo" 
+                placeholder="Baby"
                 autoCapitalize="words"
                 error={showValidation && !babyName.trim() ? '•' : undefined}
               />

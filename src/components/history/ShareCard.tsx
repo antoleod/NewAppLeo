@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { EntryRecord } from '@/types';
 import { shadow } from '@/lib/shadow';
 
-export const GOOGLE_PLAY_URL = 'https://play.google.com/store/apps/details?id=com.appleo.baby';
+const APP_ICON = require('../../../assets/branding/app-icon/babyflow-app-icon-192.png');
+
+export const GOOGLE_PLAY_URL = 'https://play.google.com/store/apps/details?id=com.appleo.babytracker';
 
 type Lang = 'fr' | 'es' | 'en' | 'nl';
 
@@ -15,8 +17,8 @@ interface ShareCardProps {
 
 function t(lang: Lang, key: string): string {
   const strings: Record<string, Record<Lang, string>> = {
-    sharedFrom: { fr: 'Partagé depuis Leo', es: 'Compartido desde Leo', en: 'Shared from Leo', nl: 'Gedeeld via Leo' },
-    findOn:     { fr: 'Trouver Leo sur Google Play', es: 'Encuentra Leo en Google Play', en: 'Find Leo on Google Play', nl: 'Vind Leo op Google Play' },
+    sharedFrom: { fr: 'Partagé depuis BabyFlow', es: 'Compartido desde BabyFlow', en: 'Shared from BabyFlow', nl: 'Gedeeld via BabyFlow' },
+    findOn:     { fr: 'Trouver BabyFlow sur Google Play', es: 'Encuentra BabyFlow en Google Play', en: 'Find BabyFlow on Google Play', nl: 'Vind BabyFlow op Google Play' },
     feed:        { fr: 'Alimentation', es: 'Alimentación', en: 'Feeding', nl: 'Voeding' },
     bottle:      { fr: 'Biberon', es: 'Biberón', en: 'Bottle', nl: 'Fles' },
     breast:      { fr: 'Allaitement', es: 'Lactancia', en: 'Breastfeed', nl: 'Borstvoeding' },
@@ -162,8 +164,8 @@ export function ShareCard({ entry, babyName, lang = 'fr' }: ShareCardProps) {
       <View style={[styles.topSection, { backgroundColor: meta.color }]}>
         <View style={styles.topHeader}>
           <View style={styles.logoRow}>
-            <Text style={styles.logoEmoji}>🦁</Text>
-            <Text style={styles.logoText}>Leo</Text>
+            <Image source={APP_ICON} style={styles.logoIcon} />
+            <Text style={styles.logoText}>BabyFlow</Text>
           </View>
           <Text style={styles.topDate}>{dateStr}</Text>
         </View>
@@ -209,7 +211,7 @@ export function ShareCard({ entry, babyName, lang = 'fr' }: ShareCardProps) {
 
         <View style={styles.footer}>
           <View style={styles.footerRow}>
-            <Text style={styles.footerEmoji}>🦁</Text>
+            <Image source={APP_ICON} style={styles.footerIcon} />
             <Text style={[styles.footerBrand, { color: meta.color }]}>{t(lang, 'sharedFrom')}</Text>
           </View>
           <Text style={styles.footerUrl}>{GOOGLE_PLAY_URL}</Text>
@@ -246,7 +248,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  logoEmoji: { fontSize: 18 },
+  logoIcon: { width: 26, height: 26, borderRadius: 6 },
   logoText: {
     fontSize: 18,
     fontWeight: '900',
@@ -346,7 +348,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  footerEmoji: { fontSize: 14 },
+  footerIcon: { width: 18, height: 18, borderRadius: 4 },
   footerBrand: {
     fontSize: 13,
     fontWeight: '700',

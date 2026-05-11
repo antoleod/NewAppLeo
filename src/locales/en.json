@@ -11,9 +11,10 @@
     "yes": "Yes",
     "no": "No",
     "ok": "OK",
-    "loading": "Loading App Leo",
+    "loading": "Loading BabyFlow",
     "skip": "Skip",
-    "continue": "Continue"
+    "continue": "Continue",
+    "copy": "Copy"
   },
   "greeting": {
     "morning": "Good morning",
@@ -406,7 +407,40 @@
     "voiceHeard": "Heard: ",
     "voiceIntent": "Intent: ",
     "voiceCaptureFailed": "Voice capture failed",
-    "voiceCaptureError": "Unable to start voice capture."
+    "voiceCaptureError": "Unable to start voice capture.",
+    "justNow": "Just now"
+  },
+  "pairing": {
+    "eyebrow": "PAIR LINK",
+    "title": "Connect Device",
+    "subtitle": "Secure one-step pairing.",
+    "codeLabel": "Pairing code",
+    "statusLocal": "local only",
+    "qrAlt": "Pairing QR code",
+    "qrHint": "Scan to prefill instantly on the second device.",
+    "newCode": "New code",
+    "codeCreated": "Pairing code: {code}",
+    "codeDetected": "Pairing code detected: {code}",
+    "joinedSession": "Joined session {code}.",
+    "yourName": "Your name",
+    "namePlaceholder": "Dad, Mom, Grandma...",
+    "joinCode": "Join code",
+    "join": "Join",
+    "nameRequired": "Please enter your name first.",
+    "joinError": "Could not join the session.",
+    "backToApp": "Back to app"
+  },
+  "vaccine": {
+    "reminderTitle": "Vaccine Reminder",
+    "step1": "1/2 - Choose vaccine",
+    "step2": "2/2 - Choose date",
+    "orEnterName": "Or enter another name:",
+    "namePlaceholder": "Vaccine name...",
+    "nextDoseQuestion": "When will the next dose be?",
+    "dateTimeLabel": "Date and time",
+    "summary": "Summary",
+    "vaccineLabel": "Vaccine:",
+    "createReminder": "Create reminder"
   },
   "lock": {
     "title": "App Locked",

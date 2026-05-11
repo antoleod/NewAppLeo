@@ -301,7 +301,7 @@ export default function IndexRoute() {
             <Card style={{ gap: 24, padding: 24, borderRadius: 32 }}>
               <View style={{ alignItems: 'center', gap: 10 }}>
                 <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '900', letterSpacing: 1.4, textTransform: 'uppercase', textAlign: 'center' }}>
-                  App Leo
+                  BabyFlow
                 </Text>
                 <Text style={{ color: colors.text, fontSize: 32, fontWeight: '900', lineHeight: 38, textAlign: 'center' }}>{headline}</Text>
                 <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 24, textAlign: 'center', paddingHorizontal: 10 }}>

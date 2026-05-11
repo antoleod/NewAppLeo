@@ -14,7 +14,7 @@ export interface PairingSession {
 const PAIRING_KEY = 'appleo.pairingSession';
 const COLLECTION = 'pairingSessions';
 
-function createCode() {
+export function createCode() {
   const raw = globalThis.crypto?.getRandomValues ? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(3))) : [1, 2, 3];
   return raw.map((value) => String(value % 10)).join('').padEnd(6, '0').slice(0, 6);
 }
