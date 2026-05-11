@@ -1,28 +1,28 @@
-ï»¿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, Image, Pressable, Text, View, RefreshControl, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeIn, ZoomIn, useSharedValue, withSpring } from 'react-native-reanimated';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { Button, Card, EmptyState, Heading, Input, Page, Segment } from '@/components/ui';
-import { DateTimeField } from '@/components/DateTimeField';
-import { ExpandableSection } from '@/components/ExpandableSection';
-import { ProfileSkeleton } from '@/components/ProfileSkeleton';
-import { AvatarInitials } from '@/components/AvatarInitials';
-import { BabyEditSheet } from '@/components/BabyEditSheet';
-import { EntryEditSheet } from '@/components/EntryEditSheet';
-import { WeightHistoryChart } from '@/components/WeightHistoryChart';
+import { Button, Card, EmptyState, Heading, Input, Page, Segment } from '@/components/shared';
+import { DateTimeField } from '@/components/shared';
+import { ExpandableSection } from '@/components/shared';
+import { ProfileSkeleton } from '@/components/profile';
+import { AvatarInitials } from '@/components/shared';
+import { BabyEditSheet } from '@/components/profile';
+import { EntryEditSheet } from '@/components/history';
+import { WeightHistoryChart } from '@/components/insights';
 import { useAuth } from '@/context/AuthContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useLocale } from '@/context/LocaleContext';
 import { getActiveBaby, getBabies, saveBaby, setActiveBabyId, removeBaby } from '@/lib/storage';
-import { DataImporter } from '@/components/DataImporter';
+import { DataImporter } from '@/components/profile';
 import { getLocalPairingSession } from '@/services/pairingService';
 import { flushQueuedOperations, loadQueuedOperations } from '@/lib/sync';
-import { useToast } from '@/components/Toast';
+import { useToast } from '@/components/shared';
 import { haptics } from '@/lib/haptics';
 import {
   clearCurrentSession,
@@ -42,7 +42,7 @@ const languageOptions = [
 
 function formatRelativeTime(iso: string): string {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return 'â€”';
+  if (Number.isNaN(date.getTime())) return '—';
   const diff = Date.now() - date.getTime();
   const mins = Math.floor(diff / 60_000);
   if (mins < 1) return 'Just now';
@@ -186,7 +186,7 @@ export default function ProfileScreen() {
         babyPhotoUri: form.babyPhotoUri || undefined,
       });
       haptics.success();
-      const msg = currentWeight ? `âœ… ${form.babyName} updated Â· ${currentWeight}` : `âœ… ${form.babyName} updated`;
+      const msg = currentWeight ? `? ${form.babyName} updated · ${currentWeight}` : `? ${form.babyName} updated`;
       toast.success(msg);
     } catch (error: any) {
       haptics.error();
@@ -567,7 +567,7 @@ export default function ProfileScreen() {
               />
             )}
 
-            {/* Add new baby â€” inline form */}
+            {/* Add new baby — inline form */}
             {showAddBabyForm ? (
               <View style={{ borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12, marginTop: 12, gap: 8 }}>
                 <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700', marginBottom: 4 }}>{t('profile.addBaby')}</Text>
@@ -807,7 +807,7 @@ export default function ProfileScreen() {
           )}
         </ExpandableSection>
 
-        {/* Logout â€” always visible, outside the expandable section */}
+        {/* Logout — always visible, outside the expandable section */}
         <View style={{ marginTop: 10 }}>
           <Button
             label={t('profile.logout')}

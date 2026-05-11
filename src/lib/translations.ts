@@ -7,7 +7,9 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
     'tabs.home': 'Accueil',
     'tabs.history': 'Journal',
     'tabs.insights': 'Analyses',
-    'tabs.profile': 'Profil',
+    
+    'header.settings': 'Parametres',
+    'header.profile': 'Profil',
     'history.eyebrow': 'Timeline',
     'history.title': 'Historique',
     'history.subtitle': 'Parcourez, filtrez et exportez les entrees par jour.',
@@ -80,7 +82,9 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
     'tabs.home': 'Inicio',
     'tabs.history': 'Registro',
     'tabs.insights': 'Análisis',
-    'tabs.profile': 'Perfil',
+    
+    'header.settings': 'Configuracion',
+    'header.profile': 'Perfil',
     'history.eyebrow': 'Timeline',
     'history.title': 'Historial',
     'history.subtitle': 'Explora, filtra y exporta entradas por dia.',
@@ -153,7 +157,9 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
     'tabs.home': 'Home',
     'tabs.history': 'History',
     'tabs.insights': 'Insights',
-    'tabs.profile': 'Profile',
+    
+    'header.settings': 'Settings',
+    'header.profile': 'Profile',
     'history.eyebrow': 'Timeline',
     'history.title': 'History',
     'history.subtitle': 'Browse, filter, and export entries by day.',
@@ -239,7 +245,9 @@ const dictionaries: Record<AppLanguage, Dictionary> = {
     'tabs.home': 'Home',
     'tabs.history': 'Logboek',
     'tabs.insights': 'Analyse',
-    'tabs.profile': 'Profiel',
+    
+    'header.settings': 'Instellingen',
+    'header.profile': 'Profiel',
     'history.eyebrow': 'Timeline',
     'history.title': 'Historiek',
     'history.subtitle': 'Bekijk, filter en exporteer items per dag.',

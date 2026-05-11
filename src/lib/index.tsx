@@ -1,6 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { ActivityIndicator, Pressable, Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager, Animated, Vibration, Alert } from 'react-native';
-import { Button, Card, Page } from '@/components/ui';
+import { Button, Card, Page } from '@/components/shared';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocale } from '@/context/LocaleContext';

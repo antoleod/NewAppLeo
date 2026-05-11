@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Page, SkeletonCard } from '@/components/ui';
+import { Button, Page, SkeletonCard } from '@/components/shared';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
@@ -36,11 +36,11 @@ import {
   getDeviceDisplayName,
   updateAppSettings,
 } from '@/lib/storage';
-import { QuantityPicker } from '@/components/QuantityPicker';
-import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
-import { NextFeedingCard } from '@/components/NextFeedingCard';
-import { GetEntryIcon } from '@/components/EntryTypeIcons';
-import { BottleIcon, BreastfeedingIcon } from '@/components/FeedingIcons';
+import { QuantityPicker } from '@/components/shared';
+import { FullscreenTimerModal } from '@/components/home';
+import { NextFeedingCard } from '@/components/home';
+import { GetEntryIcon } from '@/components/history';
+import { BottleIcon, BreastfeedingIcon } from '@/components/history';
 import { haptics } from '@/lib/haptics';
 import { shadow, textShadow } from '@/lib/shadow';
 

@@ -23,7 +23,8 @@
   "header": {
     "birth": "Birth: ",
     "switchChild": "Switch child",
-    "settings": "Settings"
+    "settings": "Settings",
+    "profile": "Profile"
   },
   "health": {
     "status": "HEALTH",
@@ -262,7 +263,8 @@
     "home": "Home",
     "history": "History",
     "insights": "Insights",
-    "profile": "Profile"
+    "profile": "Profile",
+    "settings-theme": "Theme"
   },
   "profile": {
     "title": "Family Profile",

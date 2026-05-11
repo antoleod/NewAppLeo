@@ -4,7 +4,7 @@ import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { typography } from '@/typography';
-import { Button, Card, SectionHeader } from '@/components/ui';
+import { Button, Card, SectionHeader } from '@/components/shared';
 import { parseImportData } from '@/lib/importExport';
 
 export interface SettingsImporterProps {

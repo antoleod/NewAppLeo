@@ -11,12 +11,12 @@ import { Fraunces_400Regular_Italic, Fraunces_700Bold } from '@expo-google-fonts
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AppDataProvider } from '@/context/AppDataContext';
-import { NightOverlay } from '@/components/NightOverlay';
+import { NightOverlay } from '@/components/shared';
 import { LocaleProvider } from '@/context/LocaleContext';
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Button } from '@/components/ui';
-import { ToastProvider } from '@/components/Toast';
+import { Button } from '@/components/shared';
+import { ToastProvider } from '@/components/shared';
 import { useTranslation } from '@/hooks/useTranslation';
 
 function LockOverlay({ isLocked, uiScale, onUnlock }: { isLocked: boolean; uiScale: number; onUnlock: () => void }) {

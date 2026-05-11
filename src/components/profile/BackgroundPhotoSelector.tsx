@@ -11,7 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
-import { Button, Card, SectionHeader, ButtonGroup } from '@/components/ui';
+import { Button, Card, SectionHeader, ButtonGroup } from '@/components/shared';
 
 export interface BackgroundPhotoSelectorProps {
   currentPhotoUri?: string;

@@ -105,6 +105,26 @@ export function InsightsTabIcon({ color, size = 24, focused }: Props) {
   );
 }
 
+/** Paint palette — Theme settings */
+export function SettingsThemeTabIcon({ color, size = 24, focused }: Props) {
+  const s = focused ? 2 : 1.7;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* palette body */}
+      <Path
+        d="M12 3 C7.03 3 3 7.03 3 12 C3 16.97 7.03 21 12 21 C12.83 21 13.5 20.33 13.5 19.5 C13.5 19.11 13.35 18.76 13.11 18.49 C12.88 18.23 12.74 17.88 12.74 17.5 C12.74 16.67 13.41 16 14.24 16 H16 C18.76 16 21 13.76 21 11 C21 6.58 16.97 3 12 3 Z"
+        stroke={color} strokeWidth={s} strokeLinejoin="round"
+        fill={focused ? color : 'none'} fillOpacity={0.1}
+      />
+      {/* color dots */}
+      <Circle cx={6.5} cy={11.5} r={1.2} fill={color} fillOpacity={focused ? 1 : 0.7} />
+      <Circle cx={8.5} cy={7.5} r={1.2} fill={color} fillOpacity={focused ? 1 : 0.7} />
+      <Circle cx={12} cy={6} r={1.2} fill={color} fillOpacity={focused ? 1 : 0.7} />
+      <Circle cx={15.5} cy={7.5} r={1.2} fill={color} fillOpacity={focused ? 1 : 0.7} />
+    </Svg>
+  );
+}
+
 /** Baby face — Profile */
 export function ProfileTabIcon({ color, size = 24, focused }: Props) {
   const s = focused ? 2 : 1.7;

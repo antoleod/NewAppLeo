@@ -1,7 +1,7 @@
 import { Stack, Redirect, useSegments } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { View, ActivityIndicator, Text } from 'react-native';
-import { Page } from '@/components/ui';
+import { Page } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 

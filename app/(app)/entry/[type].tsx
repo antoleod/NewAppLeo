@@ -1,11 +1,11 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
-import { Button, Card, Input, Page, Segment } from '@/components/ui';
+import { Button, Card, Input, Page, Segment } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useLocale } from '@/context/LocaleContext';
@@ -13,11 +13,11 @@ import { useAuth } from '@/context/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { clamp } from '@/utils/date';
 import { BreastSide, EntryPayload, EntryType } from '@/types';
-import { TimerWidget } from '@/components/TimerWidget';
-import { QuantityPicker } from '@/components/QuantityPicker';
-import { DateTimeField } from '@/components/DateTimeField';
-import { VaccineReminderModal } from '@/components/VaccineReminderModal';
-import { FullscreenTimerModal } from '@/components/FullscreenTimerModal';
+import { TimerWidget } from '@/components/home';
+import { QuantityPicker } from '@/components/shared';
+import { DateTimeField } from '@/components/shared';
+import { VaccineReminderModal } from '@/components/home';
+import { FullscreenTimerModal } from '@/components/home';
 import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
 import commonMedications from '@/data/common-medications.json';
 import * as ImagePicker from 'expo-image-picker';
@@ -27,9 +27,9 @@ import { getSuggestedValues, getWeightCategory, getHeightCategory } from '@/lib/
 import { getRecommendedQuantity, getFoodRecommendationMessage } from '@/lib/food-recommendations';
 import { getSeasonalRecommendations } from '@/lib/seasonal-recommendations';
 import { haptics } from '@/lib/haptics';
-import { useToast } from '@/components/Toast';
+import { useToast } from '@/components/shared';
 import { shareEntry, shareEntryAsImage, buildShareMessage } from '@/lib/shareEntry';
-import { ShareCard } from '@/components/ShareCard';
+import { ShareCard } from '@/components/history';
 import { shadow } from '@/lib/shadow';
 
 const typeLabelsI18n: Record<EntryType, Record<string, string>> = {
@@ -1903,19 +1903,6 @@ export default function EntryComposerScreen() {
 
         {editing && (
           <View style={styles.secondaryActionsRow}>
-            <Pressable
-              onPress={() => router.push('/(app)/(tabs)/settings-theme')}
-              style={({ pressed }) => [
-                styles.secondaryActionBtn,
-                { borderColor: colors.border, backgroundColor: pressed ? `${theme.textMuted}18` : 'transparent' },
-              ]}
-            >
-              <Ionicons name="settings-outline" size={18} color={theme.textPrimary} />
-              <Text style={[styles.secondaryActionLabel, { color: theme.textPrimary }]}>
-                {language === 'fr' ? 'Réglages' : language === 'es' ? 'Ajustes' : language === 'nl' ? 'Instellingen' : 'Settings'}
-              </Text>
-            </Pressable>
-
             <Pressable
               onPress={() => {
                 if (!editing) return;

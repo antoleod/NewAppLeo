@@ -18,10 +18,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
-import { Page } from '@/components/ui';
+import { Page } from '@/components/shared';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
-import { useToast } from '@/components/Toast';
+import { useToast } from '@/components/shared';
 import { AppLanguage } from '@/types';
 import { shadow } from '@/lib/shadow';
 

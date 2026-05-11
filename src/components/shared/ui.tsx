@@ -63,7 +63,7 @@ export function Page({
   const usePhotoBackdrop = themeStyle !== 'classic';
   const backdropSource = backgroundPhotoUri
     ? ({ uri: backgroundPhotoUri } as const)
-    : require('../../assets/img/baby1.f57cad83ec056a25eac37625af9c68fb.jpg');
+    : require('../../../assets/img/baby1.f57cad83ec056a25eac37625af9c68fb.jpg');
   const backdropBlur = themeStyle === 'photo' ? 2 : Platform.OS === 'web' ? 0 : 12;
   const content = (
     <View style={[styles.pageInner, { maxWidth: pageMaxWidth }, contentStyle]}>

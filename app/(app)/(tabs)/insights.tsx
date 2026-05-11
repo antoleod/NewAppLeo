@@ -1,8 +1,8 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Text, View, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { Button, EmptyState, Heading, Page } from '@/components/ui';
+import { Button, EmptyState, Heading, Page } from '@/components/shared';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
@@ -184,7 +184,7 @@ export default function InsightsScreen() {
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
                     <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{day.label}</Text>
                     <Text style={{ color: MUTED, fontSize: 11 }}>
-                      {day.feedCount} · {day.bottleMl} ml · {day.sleepMinutes} min
+                      {day.feedCount} � {day.bottleMl} ml � {day.sleepMinutes} min
                     </Text>
                   </View>
                   <View style={{ height: 8, borderRadius: 999, backgroundColor: BORDER, overflow: 'hidden' }}>
@@ -205,7 +205,7 @@ export default function InsightsScreen() {
               {whoSuggested && ageMonths !== null && (
                 <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: `${GREEN}15`, borderWidth: 1, borderColor: `${GREEN}40`, gap: 6, marginBottom: 4 }}>
                   <Text style={{ color: GREEN, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    💡 {language === 'fr' ? 'Selon OMS' : 'WHO Reference'}
+                    ?? {language === 'fr' ? 'Selon OMS' : 'WHO Reference'}
                   </Text>
                   <Text style={{ color: TEXT, fontSize: 12, lineHeight: 18 }}>{whoSuggested.message}</Text>
                   <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
@@ -242,7 +242,7 @@ export default function InsightsScreen() {
                   </Text>
                   <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700' }}>{latestWeight ? `${latestWeight} kg` : '--'}</Text>
                   <Text style={{ color: MUTED, fontSize: 11 }}>
-                    {latestHeight ? `${latestHeight} cm` : '--'} {latestHeadCirc ? `· ${latestHeadCirc} cm HC` : ''}
+                    {latestHeight ? `${latestHeight} cm` : '--'} {latestHeadCirc ? `� ${latestHeadCirc} cm HC` : ''}
                   </Text>
                 </View>
 
@@ -298,7 +298,7 @@ export default function InsightsScreen() {
 
               <Pressable onPress={() => router.push('/entry/measurement')} style={{ paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: `${GREEN}20`, borderWidth: 1, borderColor: `${GREEN}40`, marginTop: 4 }}>
                 <Text style={{ color: GREEN, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>
-                  {language === 'fr' ? '📏 Ajouter une mesure' : '📏 Add Measurement'}
+                  {language === 'fr' ? '?? Ajouter une mesure' : '?? Add Measurement'}
                 </Text>
               </Pressable>
             </View>

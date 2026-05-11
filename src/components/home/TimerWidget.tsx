@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Segment } from '@/components/ui';
+import { Segment } from '@/components/shared';
 import { formatDuration } from '@/utils/date';
 import { useTheme } from '@/context/ThemeContext';
 

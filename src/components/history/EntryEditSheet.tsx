@@ -1,36 +1,28 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import { Button, Input } from '@/components/ui';
-import { DateTimeField } from '@/components/DateTimeField';
+import { Button, Input } from '@/components/shared';
+import { DateTimeField } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
 import { haptics } from '@/lib/haptics';
 import { spacing } from '@/theme';
+import type { EntryRecord } from '@/types';
 
-export interface BabyProfile {
-  id: string;
-  name: string;
-  birthDate: string;
-  sex?: 'female' | 'male' | 'unspecified';
-  birthWeightKg?: number;
-  currentWeightKg?: number;
-  heightCm?: number;
-}
-
-interface BabyEditSheetProps {
-  baby: BabyProfile;
-  onSave: (updated: BabyProfile) => Promise<void>;
+interface EntryEditSheetProps {
+  entry: EntryRecord;
+  onSave: (updated: EntryRecord) => Promise<void>;
   onClose: () => void;
+  onDelete?: (id: string) => Promise<void>;
   bottomSheetModalRef: React.RefObject<BottomSheetModal>;
 }
 
 function isoStringToDate(iso: string): Date {
   if (!iso) return new Date();
-  return new Date(iso + 'T00:00:00.000Z');
+  return new Date(iso);
 }
 
 function dateToIsoString(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return date.toISOString();
 }
 
 function parseNumber(value: string) {
@@ -38,14 +30,13 @@ function parseNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-export function BabyEditSheet({ baby, onSave, onClose, bottomSheetModalRef }: BabyEditSheetProps) {
+export function EntryEditSheet({ entry, onSave, onClose, onDelete, bottomSheetModalRef }: EntryEditSheetProps) {
   const { colors } = useTheme();
-  const snapPoints = useMemo(() => ['85%'], []);
-  const [name, setName] = useState(baby.name);
-  const [birthDate, setBirthDate] = useState<Date>(isoStringToDate(baby.birthDate));
-  const [birthWeight, setBirthWeight] = useState(baby.birthWeightKg ? String(baby.birthWeightKg) : '');
-  const [currentWeight, setCurrentWeight] = useState(baby.currentWeightKg ? String(baby.currentWeightKg) : '');
-  const [height, setHeight] = useState(baby.heightCm ? String(baby.heightCm) : '');
+  const snapPoints = useMemo(() => ['80%'], []);
+  const [date, setDate] = useState<Date>(isoStringToDate(entry.occurredAt));
+  const [weight, setWeight] = useState(entry.payload.weightKg ? String(entry.payload.weightKg) : '');
+  const [height, setHeight] = useState(entry.payload.heightCm ? String(entry.payload.heightCm) : '');
+  const [headCirc, setHeadCirc] = useState(entry.payload.headCircCm ? String(entry.payload.headCircCm) : '');
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
@@ -53,23 +44,42 @@ export function BabyEditSheet({ baby, onSave, onClose, bottomSheetModalRef }: Ba
     setSaving(true);
     try {
       await onSave({
-        ...baby,
-        name: name.trim(),
-        birthDate: dateToIsoString(birthDate),
-        birthWeightKg: parseNumber(birthWeight),
-        currentWeightKg: parseNumber(currentWeight),
-        heightCm: parseNumber(height),
+        ...entry,
+        occurredAt: dateToIsoString(date),
+        payload: {
+          ...entry.payload,
+          weightKg: parseNumber(weight),
+          heightCm: parseNumber(height),
+          headCircCm: parseNumber(headCirc),
+        },
       });
       haptics.success();
       bottomSheetModalRef.current?.dismiss();
       onClose();
     } catch (error) {
       haptics.error();
-      console.error('Error saving baby:', error);
+      console.error('Error saving entry:', error);
     } finally {
       setSaving(false);
     }
-  }, [baby, name, birthDate, birthWeight, currentWeight, height, onSave, bottomSheetModalRef, onClose]);
+  }, [entry, date, weight, height, headCirc, onSave, bottomSheetModalRef, onClose]);
+
+  const handleDelete = useCallback(async () => {
+    if (!onDelete) return;
+    haptics.warning();
+    setSaving(true);
+    try {
+      await onDelete(entry.id);
+      haptics.success();
+      bottomSheetModalRef.current?.dismiss();
+      onClose();
+    } catch (error) {
+      haptics.error();
+      console.error('Error deleting entry:', error);
+    } finally {
+      setSaving(false);
+    }
+  }, [entry.id, onDelete, bottomSheetModalRef, onClose]);
 
   const handleClose = useCallback(() => {
     haptics.light();
@@ -87,24 +97,17 @@ export function BabyEditSheet({ baby, onSave, onClose, bottomSheetModalRef }: Ba
       <BottomSheetView style={{ flex: 1, paddingHorizontal: spacing.lg, paddingVertical: spacing.lg }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
           <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>
-            Edit {baby.name}
+            Edit Measurement
           </Text>
           <Pressable onPress={handleClose} hitSlop={12} style={{ padding: 4 }}>
             <Text style={{ color: colors.textMuted, fontSize: 22, lineHeight: 24 }}>✕</Text>
           </Pressable>
         </View>
 
-        <Input
-          label="Baby name"
-          value={name}
-          onChangeText={setName}
-          placeholder="Enter baby name"
-        />
-
         <DateTimeField
-          label="Birth date"
-          value={birthDate}
-          onChange={setBirthDate}
+          label="Date"
+          value={date}
+          onChange={setDate}
         />
 
         <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', marginTop: spacing.lg, marginBottom: spacing.sm }}>
@@ -114,30 +117,33 @@ export function BabyEditSheet({ baby, onSave, onClose, bottomSheetModalRef }: Ba
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
           <View style={{ flex: 1 }}>
             <Input
-              label="Birth weight (kg)"
-              value={birthWeight}
-              onChangeText={setBirthWeight}
+              label="Weight (kg)"
+              value={weight}
+              onChangeText={setWeight}
               keyboardType="decimal-pad"
               inputMode="decimal"
+              placeholder="0.0"
             />
           </View>
           <View style={{ flex: 1 }}>
             <Input
-              label="Current weight (kg)"
-              value={currentWeight}
-              onChangeText={setCurrentWeight}
+              label="Height (cm)"
+              value={height}
+              onChangeText={setHeight}
               keyboardType="decimal-pad"
               inputMode="decimal"
+              placeholder="0.0"
             />
           </View>
         </View>
 
         <Input
-          label="Height (cm)"
-          value={height}
-          onChangeText={setHeight}
+          label="Head circumference (cm)"
+          value={headCirc}
+          onChangeText={setHeadCirc}
           keyboardType="decimal-pad"
           inputMode="decimal"
+          placeholder="0.0"
         />
 
         <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg }}>
@@ -159,6 +165,16 @@ export function BabyEditSheet({ baby, onSave, onClose, bottomSheetModalRef }: Ba
             />
           </View>
         </View>
+
+        {onDelete && (
+          <Button
+            label="Delete"
+            onPress={handleDelete}
+            disabled={saving}
+            variant="danger"
+            style={{ marginTop: spacing.md }}
+          />
+        )}
       </BottomSheetView>
     </BottomSheetModal>
   );

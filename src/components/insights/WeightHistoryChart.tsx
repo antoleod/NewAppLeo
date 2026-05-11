@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
-import { EmptyState } from '@/components/ui';
+import { EmptyState } from '@/components/shared';
 import { spacing } from '@/theme';
 import type { EntryRecord } from '@/types';
 

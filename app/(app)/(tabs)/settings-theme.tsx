@@ -3,10 +3,10 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWind
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
-import { Button, Card, Page, Segment } from '@/components/ui';
-import { BackgroundPhotoSelector } from '@/components/BackgroundPhotoSelector';
-import { SettingsImporter } from '@/components/SettingsImporter';
-import { DataExporter } from '@/components/DataExporter';
+import { Button, Card, Page, Segment } from '@/components/shared';
+import { BackgroundPhotoSelector } from '@/components/profile';
+import { SettingsImporter } from '@/components/profile';
+import { DataExporter } from '@/components/profile';
 import { getAppSettings, setAppSettings } from '@/lib/storage';
 import { useTranslation } from '@/hooks/useTranslation';
 

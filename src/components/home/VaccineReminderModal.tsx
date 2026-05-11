@@ -1,6 +1,6 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Button, Input } from '@/components/ui';
-import { DateTimeField } from '@/components/DateTimeField';
+import { Button, Input } from '@/components/shared';
+import { DateTimeField } from '@/components/shared';
 
 export function VaccineReminderModal({
   visible,

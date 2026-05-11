@@ -7,10 +7,10 @@ import Reanimated, { FadeIn, FadeInRight, useAnimatedStyle, useSharedValue, with
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
-import { Button, Card, Input, Page, Heading } from '@/components/ui';
+import { Button, Card, Input, Page, Heading } from '@/components/shared';
 import { useAuth } from '@/context/AuthContext';
 import { buildBabyFromProfile } from '@/lib/storage';
-import { DateTimeField } from '@/components/DateTimeField';
+import { DateTimeField } from '@/components/shared';
 import { useOnboarding, type OnboardingPath } from '@/hooks/useOnboarding';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocale } from '@/context/LocaleContext';

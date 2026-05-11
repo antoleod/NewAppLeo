@@ -23,7 +23,8 @@
   "header": {
     "birth": "Geboortedatum: ",
     "switchChild": "Kind wisselen",
-    "settings": "Instellingen"
+    "settings": "Instellingen",
+    "profile": "Profiel"
   },
   "health": {
     "status": "GEZONDHEID",
@@ -262,7 +263,8 @@
     "home": "Home",
     "history": "Logboek",
     "insights": "Analyse",
-    "profile": "Profiel"
+    "profile": "Profiel",
+    "settings-theme": "Thema"
   },
   "profile": {
     "title": "Familieprofiel",

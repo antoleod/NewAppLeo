@@ -23,7 +23,8 @@
   "header": {
     "birth": "Nacimiento: ",
     "switchChild": "Cambiar hijo/a",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "profile": "Perfil"
   },
   "health": {
     "status": "SALUD",
@@ -262,7 +263,8 @@
     "home": "Inicio",
     "history": "Registro",
     "insights": "Análisis",
-    "profile": "Perfil"
+    "profile": "Perfil",
+    "settings-theme": "Tema"
   },
   "profile": {
     "title": "Perfil familiar",

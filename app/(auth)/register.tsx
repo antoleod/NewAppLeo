@@ -2,12 +2,12 @@ import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Button, Input, Page } from '@/components/ui';
+import { Button, Input, Page } from '@/components/shared';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
 import { AppLanguage } from '@/types';
 import { normalizeUsername } from '@/utils/crypto';
-import { BabyFlowIcon } from '@/components/BabyFlowIcon';
+import { BabyFlowIcon } from '@/components/system';
 
 const LANGS: Array<{ code: AppLanguage; label: string }> = [
   { code: 'en', label: 'English' },

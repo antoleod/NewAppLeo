@@ -3,7 +3,7 @@ import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
-import { Button, Card, SectionHeader } from '@/components/ui';
+import { Button, Card, SectionHeader } from '@/components/shared';
 import { useAppData } from '@/context/AppDataContext';
 import { EntryRecord, EntryType } from '@/types';
 

@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { Text, View, useWindowDimensions, StyleSheet, Image, Platform } from 'react-native';
 import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
-import { Button, Card, Heading, Input, Page } from '@/components/ui';
+import { Button, Card, Heading, Input, Page } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { createPairingSession, joinPairingSession, getLocalPairingSession, type PairingSession } from '@/services/pairingService';
-import { useToast } from '@/components/Toast';
+import { useToast } from '@/components/shared';
 import { haptics } from '@/lib/haptics';
 import { getDeviceDisplayName, setDeviceDisplayName } from '@/lib/storage';
 
