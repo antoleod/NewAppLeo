@@ -58,6 +58,13 @@ export interface DashboardMetrics {
   widget: boolean;
   weeklyDigest: boolean;
   smartSignals: boolean;
+  statsStrip: boolean;
+  quickAdd: boolean;
+  milkProgress: boolean;
+  healthFood: boolean;
+  foodHistory: boolean;
+  growth: boolean;
+  sectionOrder: string[];
 }
 
 export interface MotionEffects {
@@ -129,6 +136,13 @@ export const defaultAppSettings: AppSettings = {
     widget: true,
     weeklyDigest: true,
     smartSignals: true,
+    statsStrip: true,
+    quickAdd: true,
+    milkProgress: true,
+    healthFood: true,
+    foodHistory: true,
+    growth: true,
+    sectionOrder: ['nextFeed','statsStrip','quickAdd','smartSignals','milkProgress','healthFood','recentActivity','foodHistory','growth','hydration'],
   },
   effects: {
     emojiPulse: true,

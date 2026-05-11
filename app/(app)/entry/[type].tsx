@@ -812,14 +812,14 @@ export default function EntryComposerScreen() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
     <View style={{ flex: 1 }}>
     <Page contentStyle={{ paddingBottom: 80 }}>
-      <View style={styles.heroCard}>
+      <View style={[styles.heroCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
         <View style={styles.heroTopRow}>
           <View style={styles.heroLeftContent}>
             <View style={[styles.heroIcon, { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
               <Ionicons name={meta.icon} size={28} color={meta.tone} />
             </View>
-            <Text style={styles.heroEyebrow}>{t('entry.composer')}</Text>
-            <Text style={styles.heroTitle}>{typeLabel}</Text>
+            <Text style={[styles.heroEyebrow, { color: colors.muted }]}>{t('entry.composer')}</Text>
+            <Text style={[styles.heroTitle, { color: colors.text }]}>{typeLabel}</Text>
           </View>
           <Pressable
             onPress={() => router.back()}
@@ -835,8 +835,8 @@ export default function EntryComposerScreen() {
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <Animated.View style={[styles.closeButton, closeAnimStyle]}>
-              <Ionicons name="close" size={20} color="#E6EDF3" />
+            <Animated.View style={[styles.closeButton, closeAnimStyle, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Ionicons name="close" size={20} color={colors.text} />
             </Animated.View>
           </Pressable>
         </View>
@@ -862,14 +862,14 @@ export default function EntryComposerScreen() {
               <>
                 <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{t('entry.amount')}</Text>
                 <View style={styles.chipRow}>
-                  <Pressable onPress={() => setAmountMl('150')} style={[styles.quickChip, amountMl === '150' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                    <Text style={[styles.quickChipText, amountMl === '150' && { color: meta.tone, fontWeight: '900' }]}>150</Text>
+                  <Pressable onPress={() => setAmountMl('150')} style={[styles.quickChip, { borderColor: colors.border, backgroundColor: colors.card }, amountMl === '150' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                    <Text style={[styles.quickChipText, { color: colors.text }, amountMl === '150' && { color: meta.tone, fontWeight: '900' }]}>150</Text>
                   </Pressable>
-                  <Pressable onPress={() => setAmountMl('180')} style={[styles.quickChip, amountMl === '180' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                    <Text style={[styles.quickChipText, amountMl === '180' && { color: meta.tone, fontWeight: '900' }]}>180</Text>
+                  <Pressable onPress={() => setAmountMl('180')} style={[styles.quickChip, { borderColor: colors.border, backgroundColor: colors.card }, amountMl === '180' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                    <Text style={[styles.quickChipText, { color: colors.text }, amountMl === '180' && { color: meta.tone, fontWeight: '900' }]}>180</Text>
                   </Pressable>
-                  <Pressable onPress={() => setAmountMl('240')} style={[styles.quickChip, amountMl === '240' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                    <Text style={[styles.quickChipText, amountMl === '240' && { color: meta.tone, fontWeight: '900' }]}>240</Text>
+                  <Pressable onPress={() => setAmountMl('240')} style={[styles.quickChip, { borderColor: colors.border, backgroundColor: colors.card }, amountMl === '240' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                    <Text style={[styles.quickChipText, { color: colors.text }, amountMl === '240' && { color: meta.tone, fontWeight: '900' }]}>240</Text>
                   </Pressable>
                 </View>
                 <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
@@ -992,10 +992,10 @@ export default function EntryComposerScreen() {
                     <Pressable
                       key={preset.value}
                       onPress={() => setFoodName(active ? '' : preset.value)}
-                      style={[styles.foodPresetPill, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
+                      style={[styles.foodPresetPill, { borderColor: colors.border, backgroundColor: colors.card }, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
                     >
                       <Text style={{ fontSize: 14 }}>{preset.icon}</Text>
-                      <Text style={[styles.foodPresetLabel, active && { color: meta.tone, fontWeight: '800' }]}>
+                      <Text style={[styles.foodPresetLabel, { color: colors.text }, active && { color: meta.tone, fontWeight: '800' }]}>
                         {getFoodLabel(preset)}
                       </Text>
                     </Pressable>
@@ -1015,9 +1015,9 @@ export default function EntryComposerScreen() {
                       <Pressable
                         key={entry.id}
                         onPress={() => setFoodName(fn)}
-                        style={[styles.recentFoodChip, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                        style={[styles.recentFoodChip, { borderColor: colors.border, backgroundColor: colors.card }, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
                       >
-                        <Text style={[styles.recentFoodChipText, active && { color: meta.tone }]}>
+                        <Text style={[styles.recentFoodChipText, { color: colors.text }, active && { color: meta.tone }]}>
                           {heart}{fn}
                         </Text>
                       </Pressable>
@@ -1038,18 +1038,18 @@ export default function EntryComposerScreen() {
                       <Pressable
                         key={g}
                         onPress={() => setQuantityGrams(active ? '' : String(g))}
-                        style={[styles.qtyChip, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
+                        style={[styles.qtyChip, { borderColor: colors.border, backgroundColor: colors.card }, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
                       >
-                        <Text style={[styles.qtyChipText, active && { color: meta.tone, fontWeight: '800' }]}>{g}g</Text>
+                        <Text style={[styles.qtyChipText, { color: colors.text }, active && { color: meta.tone, fontWeight: '800' }]}>{g}g</Text>
                       </Pressable>
                     );
                   })}
                   {recommendedQty && !quantityOptions.includes(recommendedQty) && (
                     <Pressable
                       onPress={() => setQuantityGrams(String(recommendedQty))}
-                      style={[styles.qtyChip, { borderStyle: 'dashed' }, quantityGrams === String(recommendedQty) && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
+                      style={[styles.qtyChip, { borderStyle: 'dashed', borderColor: colors.border, backgroundColor: colors.card }, quantityGrams === String(recommendedQty) && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
                     >
-                      <Text style={[styles.qtyChipText, quantityGrams === String(recommendedQty) && { color: meta.tone, fontWeight: '800' }]}>{recommendedQty}g ✓</Text>
+                      <Text style={[styles.qtyChipText, { color: colors.text }, quantityGrams === String(recommendedQty) && { color: meta.tone, fontWeight: '800' }]}>{recommendedQty}g ✓</Text>
                     </Pressable>
                   )}
                 </View>
@@ -1165,7 +1165,7 @@ export default function EntryComposerScreen() {
             />
             {durationMin && Number(durationMin) > 0 && (
               <View style={[styles.infoStrip, { marginTop: 12 }]}>
-                <Text style={styles.infoStripText}>{Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
+                <Text style={[styles.infoStripText, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}>{Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
               </View>
             )}
           </View>
@@ -1185,7 +1185,7 @@ export default function EntryComposerScreen() {
             />
             {durationMin && (
               <View style={[styles.infoStrip, { marginTop: 12 }]}>
-                <Text style={styles.infoStripText}>{Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
+                <Text style={[styles.infoStripText, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}>{Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
               </View>
             )}
           </View>
@@ -1337,10 +1337,10 @@ export default function EntryComposerScreen() {
                     setName(med.name);
                     setDosage(getRecommendedDose(med.name) || med.defaultDosage || '');
                   }}
-                  style={[styles.medQuickBtn, { borderColor: meta.tone }]}
+                  style={[styles.medQuickBtn, { borderColor: meta.tone, backgroundColor: colors.card }]}
                 >
-                  <Text style={styles.medQuickTitle}>{med.name}</Text>
-                  <Text style={styles.medQuickSub}>{getRecommendedDose(med.name) || med.defaultDosage || ''}</Text>
+                  <Text style={[styles.medQuickTitle, { color: colors.text }]}>{med.name}</Text>
+                  <Text style={[styles.medQuickSub, { color: colors.muted }]}>{getRecommendedDose(med.name) || med.defaultDosage || ''}</Text>
                 </Pressable>
               ))}
             </View>
@@ -1349,7 +1349,7 @@ export default function EntryComposerScreen() {
                 setName('');
                 setDosage('');
               }}
-              style={[styles.medManualBtn, { borderColor: meta.tone }]}
+              style={[styles.medManualBtn, { borderColor: meta.tone, backgroundColor: colors.background }]}
             >
               <Text style={[styles.medManualText, { color: meta.tone }]}>
                 {{ fr: 'Ajouter manuellement', es: 'Agregar manualmente', nl: 'Handmatig toevoegen', en: 'Add manually' }[language] ?? 'Add manually'}
@@ -1365,10 +1365,10 @@ export default function EntryComposerScreen() {
                         setName(med.name);
                         if (med.dosage) setDosage(med.dosage);
                       }}
-                      style={[styles.savedChip, name === med.name && { borderColor: meta.tone }]}
+                      style={[styles.savedChip, { borderColor: colors.border, backgroundColor: colors.card }, name === med.name && { borderColor: meta.tone }]}
                     >
-                      <Text style={styles.savedChipTitle}>{med.name}</Text>
-                      {med.dosage && <Text style={styles.savedChipSubtitle}>{med.dosage}</Text>}
+                      <Text style={[styles.savedChipTitle, { color: colors.text }]}>{med.name}</Text>
+                      {med.dosage && <Text style={[styles.savedChipSubtitle, { color: colors.muted }]}>{med.dosage}</Text>}
                     </Pressable>
                   ))}
                 </View>
@@ -1415,10 +1415,10 @@ export default function EntryComposerScreen() {
                         setName(med.name);
                         if (med.dosage) setDosage(med.dosage);
                       }}
-                      style={styles.savedChip}
+                      style={[styles.savedChip, { borderColor: colors.border, backgroundColor: colors.card }]}
                     >
-                      <Text style={styles.savedChipTitle}>{med.name}</Text>
-                      {med.dosage ? <Text style={styles.savedChipSubtitle}>{med.dosage}</Text> : null}
+                      <Text style={[styles.savedChipTitle, { color: colors.text }]}>{med.name}</Text>
+                      {med.dosage ? <Text style={[styles.savedChipSubtitle, { color: colors.muted }]}>{med.dosage}</Text> : null}
                     </Pressable>
                   ))}
                 </View>
@@ -1438,9 +1438,9 @@ export default function EntryComposerScreen() {
                   <Pressable
                     key={value}
                     onPress={() => setMedIntervalHours(value)}
-                    style={[styles.medIntervalBtn, active && { borderColor: meta.tone, backgroundColor: meta.toneSoft }]}
+                    style={[styles.medIntervalBtn, { borderColor: colors.border, backgroundColor: colors.card }, active && { borderColor: meta.tone, backgroundColor: meta.toneSoft }]}
                   >
-                    <Text style={[styles.medIntervalText, active && { color: meta.tone }]}>{value}h</Text>
+                    <Text style={[styles.medIntervalText, { color: colors.text }, active && { color: meta.tone }]}>{value}h</Text>
                   </Pressable>
                 );
               })}
@@ -1528,9 +1528,9 @@ export default function EntryComposerScreen() {
                       return newSymptoms;
                     })
                   }
-                  style={[styles.symptomChip, symptoms.includes(option.value) && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                  style={[styles.symptomChip, { borderColor: colors.border, backgroundColor: colors.card }, symptoms.includes(option.value) && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
                 >
-                  <Text style={[styles.symptomChipText, symptoms.includes(option.value) && { color: meta.tone, fontWeight: '900' }]}>{option.label}</Text>
+                  <Text style={[styles.symptomChipText, { color: colors.text }, symptoms.includes(option.value) && { color: meta.tone, fontWeight: '900' }]}>{option.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -1540,14 +1540,14 @@ export default function EntryComposerScreen() {
         {type === 'temperature' && (
           <View style={styles.sectionCard}>
             <View style={styles.tempPresets}>
-              <Pressable onPress={() => setVaccineTemp('36.5')} style={[styles.tempPreset, vaccineTemp === '36.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                <Text style={[styles.tempPresetText, vaccineTemp === '36.5' && { color: meta.tone, fontWeight: '900' }]}>36.5</Text>
+              <Pressable onPress={() => setVaccineTemp('36.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, vaccineTemp === '36.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                <Text style={[styles.tempPresetText, { color: colors.text }, vaccineTemp === '36.5' && { color: meta.tone, fontWeight: '900' }]}>36.5</Text>
               </Pressable>
-              <Pressable onPress={() => setVaccineTemp('37.5')} style={[styles.tempPreset, vaccineTemp === '37.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                <Text style={[styles.tempPresetText, vaccineTemp === '37.5' && { color: meta.tone, fontWeight: '900' }]}>37.5</Text>
+              <Pressable onPress={() => setVaccineTemp('37.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, vaccineTemp === '37.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                <Text style={[styles.tempPresetText, { color: colors.text }, vaccineTemp === '37.5' && { color: meta.tone, fontWeight: '900' }]}>37.5</Text>
               </Pressable>
-              <Pressable onPress={() => setVaccineTemp('38.5')} style={[styles.tempPreset, vaccineTemp === '38.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                <Text style={[styles.tempPresetText, vaccineTemp === '38.5' && { color: meta.tone, fontWeight: '900' }]}>38.5</Text>
+              <Pressable onPress={() => setVaccineTemp('38.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, vaccineTemp === '38.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                <Text style={[styles.tempPresetText, { color: colors.text }, vaccineTemp === '38.5' && { color: meta.tone, fontWeight: '900' }]}>38.5</Text>
               </Pressable>
             </View>
 
@@ -1557,9 +1557,9 @@ export default function EntryComposerScreen() {
                   const current = Number(vaccineTemp) || 37.5;
                   setVaccineTemp((Math.max(35, current - 0.1)).toFixed(1));
                 }}
-                style={styles.tempButton}
+                style={[styles.tempButton, { borderColor: colors.border, backgroundColor: colors.card }]}
               >
-                <Text style={styles.tempButtonText}>-</Text>
+                <Text style={[styles.tempButtonText, { color: colors.text }]}>-</Text>
               </Pressable>
 
               <View style={{ flex: 1 }}>
@@ -1583,9 +1583,9 @@ export default function EntryComposerScreen() {
                   const current = Number(vaccineTemp) || 37.5;
                   setVaccineTemp((Math.min(42, current + 0.1)).toFixed(1));
                 }}
-                style={styles.tempButton}
+                style={[styles.tempButton, { borderColor: colors.border, backgroundColor: colors.card }]}
               >
-                <Text style={styles.tempButtonText}>+</Text>
+                <Text style={[styles.tempButtonText, { color: colors.text }]}>+</Text>
               </Pressable>
             </View>
 
@@ -1619,9 +1619,9 @@ export default function EntryComposerScreen() {
                 <Pressable
                   key={preset}
                   onPress={() => setVaccineName(preset)}
-                  style={[styles.vaccinePresetBtn, vaccineName === preset && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
+                  style={[styles.vaccinePresetBtn, { borderColor: colors.border, backgroundColor: colors.card }, vaccineName === preset && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
                 >
-                  <Text style={[styles.vaccinePresetText, vaccineName === preset && { color: meta.tone, fontWeight: '900' }]}>{preset}</Text>
+                  <Text style={[styles.vaccinePresetText, { color: colors.text }, vaccineName === preset && { color: meta.tone, fontWeight: '900' }]}>{preset}</Text>
                 </Pressable>
               ))}
               <Pressable
@@ -1650,9 +1650,9 @@ export default function EntryComposerScreen() {
                 <View style={styles.vaccineInputRow}>
                   <Pressable
                     onPress={() => setVaccineDose(String(Math.max(1, Number(vaccineDose) - 1)))}
-                    style={styles.vaccineDoseButton}
+                    style={[styles.vaccineDoseButton, { borderColor: colors.border, backgroundColor: colors.card }]}
                   >
-                    <Text style={styles.vaccineDoseButtonText}>-</Text>
+                    <Text style={[styles.vaccineDoseButtonText, { color: colors.text }]}>-</Text>
                   </Pressable>
 
                   <View style={{ flex: 1, alignItems: 'center' }}>
@@ -1663,9 +1663,9 @@ export default function EntryComposerScreen() {
 
                   <Pressable
                     onPress={() => setVaccineDose(String(Math.min(5, Number(vaccineDose) + 1)))}
-                    style={styles.vaccineDoseButton}
+                    style={[styles.vaccineDoseButton, { borderColor: colors.border, backgroundColor: colors.card }]}
                   >
-                    <Text style={styles.vaccineDoseButtonText}>+</Text>
+                    <Text style={[styles.vaccineDoseButtonText, { color: colors.text }]}>+</Text>
                   </Pressable>
                 </View>
 
@@ -1957,8 +1957,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#161B22',
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -1989,11 +1987,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    color: '#8B949E',
     flexShrink: 0,
   },
   heroTitle: {
-    color: '#F0F6FC',
     fontSize: 16,
     fontWeight: '900',
     flexShrink: 1,
@@ -2004,13 +2000,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2D333B',
     borderWidth: 1,
-    borderColor: '#545D68',
     flexShrink: 0,
   },
   closeButtonLabel: {
-    color: '#F0F6FC',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -2064,11 +2057,8 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
   },
   medIntervalText: {
-    color: '#F0F6FC',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -2095,15 +2085,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 10,
-    backgroundColor: '#1C2128',
   },
   medQuickTitle: {
-    color: '#F0F6FC',
     fontSize: 12,
     fontWeight: '700',
   },
   medQuickSub: {
-    color: '#8B949E',
     fontSize: 11,
     marginTop: 2,
   },
@@ -2114,7 +2101,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0D1117',
   },
   medManualText: {
     fontSize: 12,
@@ -2158,14 +2144,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
     minHeight: 44,
     justifyContent: 'center',
     alignItems: 'center',
   },
   quickChipText: {
-    color: '#F0F6FC',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -2174,14 +2157,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
     minHeight: 44,
     justifyContent: 'center',
     alignItems: 'center',
   },
   symptomChipText: {
-    color: '#F0F6FC',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -2197,12 +2177,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
     alignItems: 'center',
   },
   vaccinePresetText: {
-    color: '#F0F6FC',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -2220,14 +2197,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 10,
-    backgroundColor: '#1C2128',
     borderWidth: 1,
-    borderColor: '#21262D',
     alignItems: 'center',
     justifyContent: 'center',
   },
   vaccineDoseButtonText: {
-    color: '#F0F6FC',
     fontSize: 20,
     fontWeight: '700',
   },
@@ -2262,7 +2236,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   reminderModalContent: {
-    backgroundColor: '#0D1117',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 16,
@@ -2274,7 +2247,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   reminderModalTitle: {
-    color: '#F0F6FC',
     fontSize: 20,
     fontWeight: '900',
     marginBottom: 4,
@@ -2296,12 +2268,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
     alignItems: 'center',
   },
   reminderPresetText: {
-    color: '#F0F6FC',
     fontSize: 11,
     fontWeight: '700',
     textAlign: 'center',
@@ -2383,8 +2352,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
   },
   whoSuggestedBox: {
     paddingHorizontal: 12,
@@ -2416,7 +2383,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFFAA',
   },
   measureQuickBtnText: {
     fontSize: 12,
@@ -2470,13 +2436,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   infoStripText: {
-    color: '#F0F6FC',
     fontSize: 10,
     fontWeight: '800',
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
@@ -2491,13 +2454,10 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
     alignItems: 'center',
     justifyContent: 'center',
   },
   tempPresetText: {
-    color: '#F0F6FC',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -2511,14 +2471,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 10,
-    backgroundColor: '#1C2128',
     borderWidth: 1,
-    borderColor: '#21262D',
     alignItems: 'center',
     justifyContent: 'center',
   },
   tempButtonText: {
-    color: '#F0F6FC',
     fontSize: 22,
     fontWeight: '700',
   },
@@ -2578,19 +2535,15 @@ const styles = StyleSheet.create({
     minHeight: 36,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1A2029',
     paddingHorizontal: 10,
     paddingVertical: 6,
     gap: 2,
   },
   savedChipTitle: {
-    color: '#F0F6FC',
     fontSize: 11,
     fontWeight: '700',
   },
   savedChipSubtitle: {
-    color: '#8B949E',
     fontSize: 9,
     fontWeight: '600',
   },
@@ -2636,13 +2589,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
     minHeight: 36,
     justifyContent: 'center',
   },
   recentFoodChipText: {
-    color: '#F0F6FC',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -2654,12 +2604,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
     minHeight: 36,
   },
   foodPresetLabel: {
-    color: '#F0F6FC',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -2668,14 +2615,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
     minHeight: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
   qtyChipText: {
-    color: '#F0F6FC',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -2695,12 +2639,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#21262D',
-    backgroundColor: '#1C2128',
     alignItems: 'center',
   },
   quickQuantityText: {
-    color: '#F0F6FC',
     fontSize: 12,
     fontWeight: '700',
   },

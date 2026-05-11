@@ -196,7 +196,14 @@
     "alerts": "Waarschuwingen",
     "hide": "Verbergen",
     "show": "Tonen",
-    "restoreAll": "Alles herstellen"
+    "restoreAll": "Alles herstellen",
+    "statsStrip": "Dagelijkse stats",
+    "quickAdd": "Snelacties",
+    "healthFood": "Gezondheid & eten",
+    "recentActivity": "Recente activiteit",
+    "foodHistory": "Voedselgeschiedenis",
+    "growth": "Groei",
+    "hydration": "Hydratatie"
   },
   "home": {
     "addEntry": "Toevoegen",
@@ -283,6 +290,7 @@
     "currentWeightLabel": "Huidige gewicht (kg)",
     "heightLabel": "Lengte (cm)",
     "notesLabel": "Notities",
+    "invalidNumber": "Ongeldige waarde",
     "measurementsTitle": "Metingen",
     "preferencesTitle": "Voorkeuren",
     "languageLabel2": "Taal",

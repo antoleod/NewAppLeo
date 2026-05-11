@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -20,15 +19,13 @@ import { useLocale } from '@/context/LocaleContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { BreastSide, EntryRecord } from '@/types';
-import { buildSmartAlerts, getMeanFeedingInterval } from '@/lib/patterns';
+import { buildSmartAlerts } from '@/lib/patterns';
 import {
   defaultAppSettings,
-  defaultModuleVisibility,
   getActiveBaby,
   getBabies,
   getAppSettings,
   getLastBottleAmount,
-  getModuleVisibility,
   getMomHydration,
   setActiveBabyId,
   setLastBottleAmount,
@@ -41,15 +38,16 @@ import { FullscreenTimerModal } from '@/components/home';
 import { NextFeedingCard } from '@/components/home';
 import { GetEntryIcon } from '@/components/history';
 import { BottleIcon, BreastfeedingIcon } from '@/components/history';
+import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { haptics } from '@/lib/haptics';
 import { shadow, textShadow } from '@/lib/shadow';
 
-type QuickTimerMode = 'breast' | 'bottle' | null;
+const DEFAULT_SECTION_ORDER = [
+  'nextFeed','statsStrip','quickAdd','smartSignals',
+  'milkProgress','healthFood','recentActivity','foodHistory','growth','hydration',
+] as const;
 
-const touchTargetProps = {
-  hitSlop: 8,
-  pressRetentionOffset: 8,
-} as const;
+type QuickTimerMode = 'breast' | 'bottle' | null;
 
 function getHourPeriod(): 'morning' | 'afternoon' | 'evening' {
   const hour = new Date().getHours();
@@ -99,6 +97,64 @@ function calculateBabyAge(birthDate: string) {
     days += lastMonth.getDate();
   }
   return { months, days };
+}
+
+function getEntryDisplayLabel(entry: EntryRecord, t: (key: string) => string): string {
+  switch (entry.type) {
+    case 'feed':
+      return entry.payload?.mode === 'breast' ? t('entry.titleFeedBreast') : t('entry.titleFeedBottle');
+    case 'sleep':
+      return t('entry.titleSleep');
+    case 'diaper':
+      return t('entry.diaper');
+    case 'food':
+      return entry.payload?.foodName || t('entry.titleFoodDefault');
+    case 'temperature':
+      return t('entry.titleTemperatureReading');
+    case 'medication':
+      return entry.payload?.name || t('entry.medicine');
+    case 'vaccine':
+      return entry.payload?.vaccineName || t('entry.vaccine');
+    case 'measurement':
+      return t('entry.measurement');
+    case 'symptom':
+      return t('entry.symptoms');
+    default:
+      return entry.title;
+  }
+}
+
+function getEntryDetail(entry: EntryRecord, t: (key: string) => string, locale: string): string {
+  switch (entry.type) {
+    case 'feed':
+      if (entry.payload?.mode === 'bottle' && entry.payload?.amountMl) return `${entry.payload.amountMl} ml`;
+      if (entry.payload?.mode === 'breast') {
+        const parts = [];
+        if (entry.payload?.durationMin) parts.push(`${entry.payload.durationMin} min`);
+        return parts.join(' · ');
+      }
+      return '';
+    case 'sleep':
+      if (!entry.payload?.durationMin) return '';
+      return entry.payload.durationMin >= 60
+        ? `${Math.floor(entry.payload.durationMin / 60)}h${String(entry.payload.durationMin % 60).padStart(2, '0')}`
+        : `${entry.payload.durationMin} min`;
+    case 'food':
+      return entry.payload?.quantityGrams ? `${entry.payload.quantityGrams}g` : '';
+    case 'temperature':
+      return entry.payload?.tempC ? `${entry.payload.tempC}°C` : '';
+    case 'medication':
+      return entry.payload?.dosage || '';
+    case 'vaccine':
+      return entry.payload?.vaccineDose ? `${t('vaccine.dose')}${entry.payload.vaccineDose}` : '';
+    case 'measurement':
+      return [
+        entry.payload?.weightKg ? `${entry.payload.weightKg} kg` : '',
+        entry.payload?.heightCm ? `${entry.payload.heightCm} cm` : '',
+      ].filter(Boolean).join(' · ');
+    default:
+      return entry.notes || '';
+  }
 }
 
 function getWeightMeasurements(entries: EntryRecord[]) {
@@ -198,82 +254,13 @@ function getFoodStats(entries: EntryRecord[]) {
   };
 }
 
-function GlassCard({ children, style, blur = true }: { children: React.ReactNode; style?: any; blur?: boolean }) {
-  const { theme, colors } = useTheme();
-  const content = (
-    <View
-      style={[
-        {
-          borderRadius: 16,
-          borderWidth: 1,
-          borderColor: theme.border,
-          backgroundColor: theme.bgCard,
-          ...shadow('#000', 0.24, 18, 0, 4),
-          elevation: 6,
-        },
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
-
-  if (!blur) return content;
-
-  return (
-    <BlurView intensity={20} style={[{ borderRadius: 16, overflow: 'hidden' }, style]}>
-      {content}
-    </BlurView>
-  );
-}
-
-function ActionButton({
-  label,
-  icon,
-  onPress,
-  color,
-  style,
-}: {
-  label: string;
-  icon: string;
-  onPress: () => void;
-  color?: string;
-  style?: any;
-}) {
-  const { theme } = useTheme();
-  const btnColor = color ?? theme.blue;
-  return (
-    <Pressable
-      {...touchTargetProps}
-      onPress={onPress}
-      style={({ pressed }) => [
-        {
-          height: 56,
-          paddingHorizontal: 14,
-          borderRadius: 12,
-          backgroundColor: pressed ? `${btnColor}22` : theme.bgCard,
-          borderWidth: 1,
-          borderColor: theme.border,
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          opacity: pressed ? 0.92 : 1,
-        },
-        style,
-      ]}
-    >
-      <Text style={{ fontSize: 18 }}>{icon}</Text>
-      <Text style={{ color: theme.textPrimary, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{label}</Text>
-    </Pressable>
-  );
-}
 
 export default function HomeScreen() {
   const { language } = useLocale();
   const locale = localeTag(language);
   const { t } = useTranslation();
   const { profile, user } = useAuth();
-  const { entries, summary, addEntry, loading } = useAppData();
+  const { entries, summary, addEntry, deleteEntry, loading } = useAppData();
   const { theme, colors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -503,7 +490,6 @@ export default function HomeScreen() {
   const [hydration, setHydration] = useState(0);
   const [babyId, setBabyId] = useState<string | null>(null);
   const [babies, setBabies] = useState<Array<{ id: string; name: string; birthDate: string }>>([]);
-  const [visibility, setVisibility] = useState(defaultModuleVisibility);
   const [appSettings, setAppSettingsState] = useState(defaultAppSettings);
   const [quickTimerMode, setQuickTimerMode] = useState<QuickTimerMode>(null);
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
@@ -517,18 +503,23 @@ export default function HomeScreen() {
   const [now, setNow] = useState(Date.now());
   const [defaultFeedingMode, setDefaultFeedingMode] = useState<'breast' | 'bottle'>('bottle');
   const [deviceDisplayName, setDeviceDisplayName] = useState('');
+  const swipeableRefs = useRef<Map<string, React.RefObject<SwipeableMethods | null>>>(new Map());
 
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
   const lastFeed = useMemo(() => feedEntries[0], [feedEntries]);
   const lastMeasurement = useMemo(() => entries.find((entry) => entry.type === 'measurement'), [entries]);
 
-  const meanInterval = getMeanFeedingInterval(entries);
-  const nextFeedDueIn = useMemo(() => {
-    if (!meanInterval || !lastFeed) return null;
-    return new Date(lastFeed.occurredAt).getTime() + meanInterval - now;
-  }, [lastFeed, meanInterval, now]);
-
-  const totalMilkToday = summary.today.bottleMl;
+  const totalMilkToday = useMemo(() => {
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const todayFeeds = entries.filter(
+      (e) => e.type === 'feed' && new Date(e.occurredAt).getTime() >= startOfDay,
+    );
+    const breastMl = todayFeeds
+      .filter((e) => e.payload?.mode === 'breast')
+      .reduce((sum, e) => sum + (e.payload?.amountMl ?? 0), 0);
+    return summary.today.bottleMl + breastMl;
+  }, [entries, summary.today.bottleMl]);
 
   const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
   const urgentAlerts = smartAlerts.filter((a) => a.tone === 'warning' || a.tone === 'danger');
@@ -541,6 +532,13 @@ export default function HomeScreen() {
   const foodAllergyAlerts = useMemo(() => getFoodAllergyAlerts(entries), [entries]);
   const foodHistory = useMemo(() => getFoodHistory(entries), [entries]);
   const foodStats = useMemo(() => getFoodStats(entries), [entries]);
+
+  const suggestedBreastSide = useMemo<BreastSide>(() => {
+    const lastBreast = feedEntries.find((e) => e.payload?.mode === 'breast');
+    if (lastBreast?.payload?.side === 'left') return 'right';
+    if (lastBreast?.payload?.side === 'right') return 'left';
+    return 'left';
+  }, [feedEntries]);
 
   // Night feeds: 22:00 previous day → 06:00 today
   const nightFeeds = useMemo(() => {
@@ -611,8 +609,7 @@ export default function HomeScreen() {
         currentHydration = await getMomHydration(activeBaby.id);
       }
       setHydration(currentHydration);
-      setVisibility(await getModuleVisibility());
-      const settings = await getAppSettings();
+const settings = await getAppSettings();
       setAppSettingsState(settings);
       const storedFeedingMode = (settings as any).defaultFeedingMode;
       if (storedFeedingMode === 'breast' || storedFeedingMode === 'bottle') {
@@ -651,7 +648,6 @@ export default function HomeScreen() {
     setQuickFeedSide(side);
     setTimerStartedAt(startedAt);
     setTimerElapsedSeconds(0);
-    setQuickAmount(mode === 'bottle' ? 150 : 90);
   }
 
   async function saveQuickTimerEntry() {
@@ -705,6 +701,8 @@ export default function HomeScreen() {
     setAppSettingsState(next);
     setShowHomeCustomizer(false);
   }
+
+
 
   async function switchBaby(nextBaby: { id: string }) {
     await setActiveBabyId(nextBaby.id);
@@ -762,7 +760,7 @@ export default function HomeScreen() {
   const elapsedHours = hoursSince(lastFeed?.occurredAt);
   const elapsedColor = elapsedHours === null ? MUTED : elapsedHours < 2 ? GREEN : elapsedHours < 3 ? '#F2C86F' : RED;
 
-  const recentEntries = entries.slice(0, 4);
+  const recentEntries = entries.slice(0, 6);
 
   const activeFeedTitle =
     quickTimerMode === 'bottle'
@@ -799,6 +797,673 @@ export default function HomeScreen() {
     return 'Parent';
   }, [deviceDisplayName, profile?.authEmail, profile?.caregiverName, profile?.displayName, user?.displayName, user?.email]);
 
+  const dm = appSettings.dashboardMetrics;
+  const sectionOrder: string[] = dm.sectionOrder?.length
+    ? (dm.sectionOrder as unknown as string[])
+    : [...DEFAULT_SECTION_ORDER];
+
+  const CONFIGURABLE_SECTIONS = [
+    { key: 'nextFeed',       label: t('modal.nextFeeding') },
+    { key: 'statsStrip',     label: t('modal.statsStrip') },
+    { key: 'quickAdd',       label: t('modal.quickAdd') },
+    { key: 'smartSignals',   label: t('modal.alerts') },
+    { key: 'milkProgress',   label: t('modal.milkProgress') },
+    { key: 'healthFood',     label: t('modal.healthFood') },
+    { key: 'recentActivity', label: t('modal.recentActivity') },
+    { key: 'foodHistory',    label: t('modal.foodHistory') },
+    { key: 'growth',         label: t('modal.growth') },
+    { key: 'hydration',      label: t('modal.hydration') },
+  ];
+
+  async function moveSection(key: string, direction: 'up' | 'down') {
+    const idx = sectionOrder.indexOf(key);
+    if (idx < 0) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === sectionOrder.length - 1) return;
+    const next = [...sectionOrder];
+    const swap = direction === 'up' ? idx - 1 : idx + 1;
+    [next[idx], next[swap]] = [next[swap], next[idx]];
+    const updated = await updateAppSettings({ dashboardMetrics: { ...dm, sectionOrder: next } as any });
+    setAppSettingsState(updated);
+  }
+
+  function renderSection(key: string): React.ReactNode {
+    switch (key) {
+      case 'nextFeed':
+        if (dm.nextFeed === false) return null;
+        return (
+          <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+            <NextFeedingCard onPress={openNextFeedPicker} />
+          </Animated.View>
+        );
+
+      case 'statsStrip':
+        if (dm.statsStrip === false) return null;
+        return (
+          <Animated.View entering={FadeInDown.duration(260).delay(100)} style={{ paddingHorizontal: 20, marginBottom: 14 }}>
+            <View style={{ flexDirection: 'row', borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD, overflow: 'hidden' }}>
+              {[
+                { emoji: '🍼', value: summary.today.feedCount > 0 ? String(summary.today.feedCount) : '–', label: t('insights.feeds') },
+                {
+                  emoji: '😴',
+                  value: summary.today.sleepMinutes > 0
+                    ? Math.floor(summary.today.sleepMinutes / 60) > 0
+                      ? `${Math.floor(summary.today.sleepMinutes / 60)}h`
+                      : `${summary.today.sleepMinutes}m`
+                    : '–',
+                  label: t('insights.sleep'),
+                },
+                { emoji: '🧷', value: summary.today.diaperCount > 0 ? String(summary.today.diaperCount) : '–', label: t('insights.diapers') },
+              ].map((item, idx, arr) => (
+                <View
+                  key={item.label}
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    borderRightWidth: idx < arr.length - 1 ? 1 : 0,
+                    borderRightColor: BORDER,
+                  }}
+                >
+                  <Text style={{ fontSize: 18, marginBottom: 2 }}>{item.emoji}</Text>
+                  <Text style={{ color: TEXT, fontSize: 17, fontWeight: '700', letterSpacing: -0.3 }}>{item.value}</Text>
+                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500', marginTop: 1 }}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+          </Animated.View>
+        );
+
+      case 'quickAdd':
+        if (dm.quickAdd === false) return null;
+        return (
+          <Animated.View entering={FadeInDown.duration(260).delay(120)} style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+            <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 10, paddingHorizontal: 2 }}>
+              {t('home.addEntry')}
+            </Text>
+            {(() => {
+              const actions = [
+                { type: 'diaper', label: t('entry.diaper'), color: '#F59E0B' },
+                { type: 'temperature', label: t('entry.temperature'), color: '#EF4444' },
+                { type: 'vaccine', label: t('entry.vaccine'), color: '#22C55E' },
+                { type: 'symptom', label: t('entry.symptoms'), color: '#EC4899' },
+                { type: 'food', label: t('entry.food'), color: '#D97706' },
+                { type: 'medication', label: t('entry.medicine'), color: '#06B6D4' },
+                { type: 'measurement', label: t('entry.measurement'), color: '#8B5CF6' },
+                { type: 'sleep', label: t('entry.sleep'), color: '#3B82F6' },
+              ];
+              const renderRow = (rowItems: typeof actions, isFirst: boolean) => (
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: isFirst ? 0 : 8 }}>
+                  {rowItems.map((action) => (
+                    <Pressable
+                      key={action.type}
+                      onPress={() => router.push(`/entry/${action.type}` as any)}
+                      accessibilityRole="button"
+                      accessibilityLabel={action.label}
+                      style={({ pressed }) => ({
+                        flex: 1,
+                        aspectRatio: 1,
+                        borderRadius: 16,
+                        backgroundColor: pressed ? `${action.color}12` : CARD,
+                        borderWidth: 1,
+                        borderColor: pressed ? `${action.color}55` : BORDER,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 7,
+                        paddingHorizontal: 5,
+                        ...shadow('#000', pressed ? 0.08 : 0.14, pressed ? 8 : 12, 0, pressed ? 2 : 4),
+                        elevation: pressed ? 1 : 3,
+                        transform: [{ scale: pressed ? 0.98 : 1 }],
+                      })}
+                    >
+                      <View
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: 14,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: `${action.color}14`,
+                          borderWidth: 1,
+                          borderColor: `${action.color}22`,
+                        }}
+                      >
+                        {GetEntryIcon(action.type, 29, action.color)}
+                      </View>
+                      <Text style={{ color: TEXT_SECONDARY, fontSize: 10.5, fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{action.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              );
+              return (
+                <>
+                  {renderRow(actions.slice(0, 4), true)}
+                  {renderRow(actions.slice(4, 8), false)}
+                </>
+              );
+            })()}
+          </Animated.View>
+        );
+
+      case 'smartSignals':
+        if (dm.smartSignals === false) return null;
+        return (
+          <View>
+            {urgentAlerts.length > 0 && (
+              <Animated.View entering={FadeInDown.duration(260).delay(140)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+                <View style={{ gap: 6 }}>
+                  {urgentAlerts.slice(0, 2).map((alert) => {
+                    const c = alertToneColor(alert.tone);
+                    const iconName =
+                      alert.tone === 'danger' ? 'alert-circle' :
+                      alert.tone === 'warning' ? 'warning' :
+                      alert.tone === 'success' ? 'checkmark-circle' :
+                      'notifications';
+                    return (
+                      <Pressable
+                        key={alert.id}
+                        onPress={() => haptics.selection()}
+                        style={({ pressed }) => ({
+                          paddingHorizontal: 14,
+                          paddingVertical: 12,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 12,
+                          borderRadius: 16,
+                          backgroundColor: pressed ? 'rgba(15, 23, 42, 0.72)' : 'rgba(15, 23, 42, 0.58)',
+                          borderWidth: 1,
+                          borderColor: `${c}45`,
+                          borderLeftWidth: 4,
+                          borderLeftColor: c,
+                          ...shadow('#000', 0.22, 8, 0, 4),
+                          elevation: 4,
+                          opacity: pressed ? 0.9 : 1,
+                          transform: [{ scale: pressed ? 0.98 : 1 }],
+                        })}
+                      >
+                        <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: `${c}22`, alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name={iconName} size={18} color={c} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800', ...textShadow('rgba(0,0,0,0.45)', 0, 1, 2) }} numberOfLines={1}>
+                            {alert.value}
+                          </Text>
+                          <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 11, fontWeight: '600', marginTop: 3, ...textShadow('rgba(0,0,0,0.35)', 0, 1, 1.5) }} numberOfLines={2}>
+                            {alert.body}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </Animated.View>
+            )}
+            {foodAllergyAlerts.length > 0 && (
+              <Animated.View entering={FadeInDown.duration(260).delay(160)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+                <View style={{ paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, backgroundColor: `${YELLOW}10`, borderLeftWidth: 3, borderLeftColor: YELLOW }}>
+                  <Ionicons name="alert-circle-outline" size={18} color={YELLOW} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('food.possibleAllergies')}</Text>
+                    <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
+                      {foodAllergyAlerts.slice(0, 2).map((a) => a.food).join(', ')}
+                    </Text>
+                  </View>
+                </View>
+              </Animated.View>
+            )}
+            {activeMeds.length > 0 && (
+              <Animated.View entering={FadeInDown.duration(260).delay(170)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+                <Pressable
+                  onPress={() => router.push('/entry/medication')}
+                  style={({ pressed }) => ({
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    borderRadius: 12,
+                    backgroundColor: pressed ? `${BLUE}25` : `${BLUE}15`,
+                    borderLeftWidth: 3,
+                    borderLeftColor: BLUE,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Ionicons name="medical-outline" size={18} color={BLUE} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('home.medActive')}</Text>
+                    <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
+                      {activeMeds.map((e) => e.payload?.name).filter(Boolean).join(' · ')}
+                    </Text>
+                  </View>
+                  <Ionicons name="add-circle-outline" size={20} color={BLUE} />
+                </Pressable>
+              </Animated.View>
+            )}
+            {pinnedVaccines.length > 0 && (
+              <Animated.View entering={FadeInDown.duration(260).delay(180)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+                <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('vaccine.scheduled')}</Text>
+                    <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: `${ACCENT}15` }}>
+                      <Text style={{ color: ACCENT, fontSize: 10, fontWeight: '600' }}>{pinnedVaccines.length}</Text>
+                    </View>
+                  </View>
+                  <View style={{ gap: 2 }}>
+                    {pinnedVaccines.map((vaccine, idx) => {
+                      const daysUntil = Math.ceil((new Date(vaccine.payload?.vaccineNextDueDate ?? '').getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                      const isUrgent = daysUntil <= 7;
+                      return (
+                        <Pressable
+                          key={vaccine.id}
+                          onPress={() => router.push({ pathname: '/entry/[type]', params: { type: 'vaccine', id: vaccine.id } })}
+                          style={({ pressed }) => ({
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 10,
+                            paddingVertical: 10,
+                            borderTopWidth: idx > 0 ? 1 : 0,
+                            borderTopColor: BORDER_SOFT,
+                            opacity: pressed ? 0.6 : 1,
+                          })}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: TEXT, fontSize: 13, fontWeight: '500' }}>{vaccine.payload?.vaccineName}</Text>
+                            <Text style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>{t('vaccine.dose')}{vaccine.payload?.vaccineDose}</Text>
+                          </View>
+                          <Text style={{ color: isUrgent ? YELLOW : SOFT, fontSize: 12, fontWeight: '600' }}>
+                            {daysUntil > 0 ? `${daysUntil}d` : t('vaccine.overdue')}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              </Animated.View>
+            )}
+          </View>
+        );
+
+      case 'milkProgress':
+        if (dm.milkProgress === false) return null;
+        return (
+          <Animated.View entering={FadeInDown.duration(260).delay(240)} style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+                <View>
+                  <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 2 }}>{t('milk.milk')}</Text>
+                  <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>{totalMilkToday} <Text style={{ color: MUTED, fontSize: 14, fontWeight: '500' }}>ml</Text></Text>
+                </View>
+                <Text style={{ color: ACCENT, fontSize: 11, fontWeight: '600' }}>{milkStatus}</Text>
+              </View>
+              <View style={{ height: 4, borderRadius: 2, backgroundColor: BORDER_SOFT, overflow: 'hidden' }}>
+                <Animated.View style={[{ height: '100%', backgroundColor: ACCENT, borderRadius: 2 }, milkBarStyle]} />
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                <Text style={{ color: MUTED, fontSize: 11 }}>{t('milk.target')} {milkGoalMin}–{milkGoalMax} ml</Text>
+                {weeklyBottleTrend.thisAvg !== null && weeklyBottleTrend.lastAvg !== null && (
+                  <Text style={{ color: weeklyBottleTrend.thisAvg >= weeklyBottleTrend.lastAvg ? GREEN : RED, fontSize: 11, fontWeight: '700' }}>
+                    {weeklyBottleTrend.thisAvg >= weeklyBottleTrend.lastAvg ? '↑' : '↓'} {Math.abs(weeklyBottleTrend.thisAvg - weeklyBottleTrend.lastAvg)} ml {t('feeding.trendVsLastWeek')}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </Animated.View>
+        );
+
+      case 'healthFood':
+        if (dm.healthFood === false) return null;
+        if (!hasHealthData && !lastFood) return null;
+        return (
+          <Animated.View entering={FadeInDown.duration(260).delay(220)} style={{ paddingHorizontal: 20, marginBottom: 12, flexDirection: 'row', gap: 8 }}>
+            {hasHealthData && (
+              <Pressable
+                onPress={() => router.push('/entry/temperature')}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: BORDER,
+                  backgroundColor: pressed ? BORDER_SOFT : CARD,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                })}
+              >
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: healthStatus.color }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500' }}>{t('health.status')}</Text>
+                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{healthStatus.label}</Text>
+                </View>
+              </Pressable>
+            )}
+            {lastFood && (
+              <Pressable
+                onPress={() => router.push('/entry/food')}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: BORDER,
+                  backgroundColor: pressed ? BORDER_SOFT : CARD,
+                })}
+              >
+                <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 0.5, marginBottom: 3 }}>{t('food.status')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
+                  <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', letterSpacing: -0.3 }}>{foodTodayCount}</Text>
+                  <Text style={{ color: SOFT, fontSize: 12 }}>{t('food.today')}</Text>
+                </View>
+                {lastFood.payload?.foodName && (
+                  <Text style={{ color: GOLD, fontSize: 11, fontWeight: '500', marginTop: 3 }} numberOfLines={1}>
+                    {lastFood.payload.mealTime === 'breakfast' ? '🌅 '
+                      : lastFood.payload.mealTime === 'lunch' ? '🌞 '
+                      : lastFood.payload.mealTime === 'snack' ? '🍪 '
+                      : lastFood.payload.mealTime === 'dinner' ? '🌙 ' : '🍴 '}
+                    {lastFood.payload.foodName}
+                  </Text>
+                )}
+              </Pressable>
+            )}
+          </Animated.View>
+        );
+
+      case 'recentActivity':
+        if (dm.recentActivity === false) return null;
+        if (recentEntries.length === 0) return null;
+        return (
+          <Animated.View entering={FadeInDown.duration(260).delay(310)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+            <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD, overflow: 'hidden' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }}>{t('recent.recent')}</Text>
+                <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: `${ACCENT}15` }}>
+                  <Text style={{ color: ACCENT, fontSize: 10, fontWeight: '700' }}>{recentEntries.length}</Text>
+                </View>
+              </View>
+              <View>
+                {recentEntries.map((entry, idx) => {
+                  const entryColor: Record<string, string> = {
+                    feed: GOLD,
+                    sleep: BLUE,
+                    diaper: '#F59E0B',
+                    food: '#D97706',
+                    temperature: RED,
+                    medication: '#06B6D4',
+                    vaccine: GREEN,
+                    measurement: '#8B5CF6',
+                    symptom: '#EC4899',
+                  };
+                  const color = entryColor[entry.type] ?? MUTED;
+                  const label = getEntryDisplayLabel(entry, t);
+                  const detail = getEntryDetail(entry, t, locale);
+
+                  const renderRightAction = () => (
+                    <Pressable
+                      onPress={() => {
+                        haptics.medium();
+                        Alert.alert(
+                          t('common.delete'),
+                          label,
+                          [
+                            {
+                              text: t('common.cancel'),
+                              style: 'cancel',
+                              onPress: () => swipeableRefs.current.get(entry.id)?.current?.close(),
+                            },
+                            {
+                              text: t('common.delete'),
+                              style: 'destructive',
+                              onPress: () => {
+                                haptics.success();
+                                void deleteEntry(entry.id);
+                              },
+                            },
+                          ]
+                        );
+                      }}
+                      style={{
+                        width: 68,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backgroundColor: RED,
+                        marginBottom: 1,
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#fff" />
+                    </Pressable>
+                  );
+
+                  return (
+                    <ReanimatedSwipeable
+                      key={entry.id}
+                      ref={(() => { if (!swipeableRefs.current.has(entry.id)) swipeableRefs.current.set(entry.id, React.createRef<SwipeableMethods | null>()); return swipeableRefs.current.get(entry.id)!; })()}
+                      renderRightActions={renderRightAction}
+                      rightThreshold={40}
+                      overshootRight={false}
+                      friction={2}
+                    >
+                      <Pressable
+                        onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
+                        style={({ pressed }) => ({
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 12,
+                          paddingVertical: 9,
+                          paddingHorizontal: 2,
+                          borderTopWidth: idx > 0 ? 1 : 0,
+                          borderTopColor: BORDER_SOFT,
+                          backgroundColor: CARD,
+                          opacity: pressed ? 0.65 : 1,
+                        })}
+                      >
+                        <View style={{
+                          width: 34, height: 34, borderRadius: 10,
+                          backgroundColor: `${color}18`,
+                          borderWidth: 1, borderColor: `${color}28`,
+                          alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {entry.type === 'feed'
+                            ? (entry.payload?.mode === 'bottle'
+                              ? <BottleIcon color={color} size={18} />
+                              : <BreastfeedingIcon color={color} size={18} />)
+                            : GetEntryIcon(entry.type, 18, color)}
+                        </View>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{label}</Text>
+                          {detail ? (
+                            <Text style={{ color: MUTED, fontSize: 11, marginTop: 1, fontWeight: '500' }} numberOfLines={1}>{detail}</Text>
+                          ) : null}
+                        </View>
+                        <View style={{ alignItems: 'flex-end', gap: 2, paddingRight: 2 }}>
+                          <Text style={{ color: SOFT, fontSize: 12, fontWeight: '600' }}>{formatClock(entry.occurredAt, locale)}</Text>
+                          <Text style={{ color: MUTED, fontSize: 10 }}>{formatRelative(entry.occurredAt, locale)}</Text>
+                        </View>
+                      </Pressable>
+                    </ReanimatedSwipeable>
+                  );
+                })}
+              </View>
+            </View>
+          </Animated.View>
+        );
+
+      case 'foodHistory':
+        if (dm.foodHistory === false) return null;
+        if (foodHistory.length === 0) return null;
+        return (
+          <Animated.View entering={FadeInDown.duration(260).delay(420)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+            <Pressable onPress={() => router.push('/entry/food')} style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View>
+                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 0.5, marginBottom: 2 }}>{t('food.history')}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>{foodStats.mealsToday}</Text>
+                    <Text style={{ color: SOFT, fontSize: 13, fontWeight: '500' }}>{t('food.today')}</Text>
+                    {foodStats.totalGramsToday > 0 && (
+                      <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: GOLD + '22' }}>
+                        <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700' }}>{foodStats.totalGramsToday}g</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                {foodStats.mostCommon && (
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ color: MUTED, fontSize: 10 }}>{t('food.favorite')}</Text>
+                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '600' }} numberOfLines={1}>{foodStats.mostCommon.name} · {foodStats.mostCommon.count}×</Text>
+                  </View>
+                )}
+              </View>
+              <View style={{ gap: 2 }}>
+                {foodHistory.map((food) => {
+                  const hasAllergy = (food.payload?.foodAllergies?.length ?? 0) > 0;
+                  const ml = food.payload?.mealTime;
+                  const ae = food.payload?.amountEaten;
+                  const liked = food.payload?.foodLiked;
+                  const mealIcon = ml === 'breakfast' ? '🌅' : ml === 'lunch' ? '🌞' : ml === 'snack' ? '🍪' : ml === 'dinner' ? '🌙' : '🍴';
+                  const aeEmoji = ae === 'all' ? '🍽️' : ae === 'half' ? '🥗' : ae === 'little' ? '🥄' : ae === 'none' ? '🚫' : null;
+                  const likedEmoji = liked === 'yes' ? '❤️' : liked === 'no' ? '😣' : null;
+                  const isToday = new Date(food.occurredAt).toDateString() === new Date().toDateString();
+                  return (
+                    <Pressable
+                      key={food.id}
+                      onPress={() => router.push({ pathname: '/entry/[type]', params: { type: 'food', id: food.id } })}
+                      style={({ pressed }) => ({
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 10,
+                        paddingVertical: 9,
+                        paddingHorizontal: 10,
+                        borderRadius: 10,
+                        marginBottom: 2,
+                        backgroundColor: isToday ? (hasAllergy ? 'rgba(231,76,60,0.06)' : GOLD + '0A') : 'transparent',
+                        opacity: pressed ? 0.7 : 1,
+                      })}
+                    >
+                      <Text style={{ fontSize: 16, width: 22, textAlign: 'center' }}>{mealIcon}</Text>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{food.payload?.foodName}</Text>
+                        {(food.payload?.quantityGrams || hasAllergy) && (
+                          <Text style={{ color: MUTED, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
+                            {food.payload?.quantityGrams ? `${food.payload.quantityGrams}g` : ''}
+                            {hasAllergy ? ` · ⚠️ ${food.payload?.foodAllergies?.slice(0, 1).join('')}` : ''}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        {aeEmoji && <Text style={{ fontSize: 13 }}>{aeEmoji}</Text>}
+                        {likedEmoji && <Text style={{ fontSize: 13 }}>{likedEmoji}</Text>}
+                        <Text style={{ color: SOFT, fontSize: 11 }}>{formatClock(food.occurredAt, locale)}</Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </Pressable>
+          </Animated.View>
+        );
+
+      case 'growth':
+        if (dm.growth === false) return null;
+        if (weightMeasurements.length === 0) return null;
+        return (
+          <Animated.View entering={FadeInDown.duration(260).delay(390)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View>
+                  <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 2 }}>{t('growth.growth')}</Text>
+                  <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>
+                    {(weightMeasurements[0]?.weight ?? 0).toFixed(2)} <Text style={{ color: SOFT, fontSize: 14, fontWeight: '500' }}>kg</Text>
+                  </Text>
+                </View>
+                <Text style={{ color: SOFT, fontSize: 11, fontWeight: '500' }}>
+                  {weightMeasurements.length} {t('home.measurements')}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 44 }}>
+                {(() => {
+                  const weights = weightMeasurements.map((w) => w.weight ?? 0).filter((w) => w > 0);
+                  if (weights.length === 0) return null;
+                  const maxWeight = Math.max(...weights);
+                  const minWeight = Math.min(...weights);
+                  const range = maxWeight - minWeight || 1;
+                  return weightMeasurements.map((m, i) => {
+                    const w = m.weight ?? 0;
+                    const height = ((w - minWeight) / range) * 36 + 8;
+                    return (
+                      <View
+                        key={i}
+                        style={{
+                          flex: 1,
+                          height,
+                          borderRadius: 3,
+                          backgroundColor: ACCENT,
+                          opacity: 0.4 + (i / weightMeasurements.length) * 0.6,
+                        }}
+                      />
+                    );
+                  });
+                })()}
+              </View>
+            </View>
+          </Animated.View>
+        );
+
+      case 'hydration':
+        if (dm.hydration === false) return null;
+        return (
+          <Animated.View entering={FadeInDown.duration(260).delay(495)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+                <View>
+                  <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 2 }}>{t('hydration.hydration')}</Text>
+                  <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', letterSpacing: -0.3 }}>
+                    {hydration} <Text style={{ color: SOFT, fontSize: 13, fontWeight: '500' }}>/ {appSettings.hydrationGoalMl} ml</Text>
+                  </Text>
+                </View>
+              </View>
+              <View style={{ height: 4, borderRadius: 2, backgroundColor: BORDER_SOFT, overflow: 'hidden', marginBottom: 12 }}>
+                <View style={{ width: `${Math.max(0, Math.min(100, (hydration / appSettings.hydrationGoalMl) * 100))}%`, height: '100%', backgroundColor: BLUE }} />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {[
+                  { label: '+250 ml', amount: 250 },
+                  { label: '+500 ml', amount: 500 },
+                ].map((item) => (
+                  <Pressable
+                    key={item.label}
+                    onPress={async () => {
+                      if (!babyId) return;
+                      const next = hydration + item.amount;
+                      setHydration(next);
+                      await setMomHydration(babyId, next);
+                    }}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: pressed ? `${BLUE}22` : CARD,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: pressed ? 0.88 : 1,
+                    })}
+                  >
+                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{item.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </Animated.View>
+        );
+
+      default:
+        return null;
+    }
+  }
+
   if (loading && entries.length === 0) {
     return (
       <Page contentStyle={styles.pageContent}>
@@ -831,8 +1496,13 @@ export default function HomeScreen() {
                   letterSpacing: 0.6,
                   marginBottom: 3,
                   opacity: 0.72,
-                  ...textShadow('rgba(0,0,0,0.55)', 0, 1, 3),
+                  ...textShadow('rgba(255,255,255,0.10)', 0, 1, 2),
                   textTransform: 'uppercase',
+                   shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
                 }}>
                   {t(`greeting.${getHourPeriod()}`)}
                 </Text>
@@ -901,19 +1571,9 @@ export default function HomeScreen() {
             </Pressable>
           </Animated.View>
 
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {/* ZONE 1 — AT-A-GLANCE (most used, top fold)             */}
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-
-          {/* 1. Next Feeding Card - "When next?" critical info */}
-          <Animated.View entering={FadeIn.duration(300).delay(60)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-            <NextFeedingCard onPress={openNextFeedPicker} />
-          </Animated.View>
-
-          {/* 2. PRIMARY ACTIONS — Bottle + Breast on the same row */}
+          {/* Primary actions — always visible */}
           <Animated.View entering={FadeInDown.duration(260).delay(80)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              {/* Bottle — primary, wider */}
               <Pressable
                 onPress={() => startQuickTimer('bottle')}
                 accessibilityRole="button"
@@ -921,21 +1581,20 @@ export default function HomeScreen() {
                   flex: 3,
                   height: 58,
                   borderRadius: 16,
-                  backgroundColor: pressed ? `${TEXT}D9` : TEXT,
+                  borderWidth: 1.5,
+                  borderColor: pressed ? BLUE + '80' : BORDER,
+                  backgroundColor: pressed ? BLUE + '14' : CARD,
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexDirection: 'row',
-                  gap: 8,
-                  ...shadow('#000', 0.2, 12, 0, 4),
-                  elevation: 5,
+                  gap: 6,
                   transform: [{ scale: pressed ? 0.97 : 1 }],
                 })}
               >
-                <BottleIcon color="#0D1117" size={26} />
-                <Text style={{ color: '#0D1117', fontSize: 15, fontWeight: '800', letterSpacing: 0.1 }}>{t('feeding.bottle')}</Text>
-                <Text style={{ color: 'rgba(0,0,0,0.40)', fontSize: 12, fontWeight: '700', marginLeft: 2 }}>{quickAmount} ml</Text>
+                <BottleIcon color={TEXT} size={24} />
+                <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('feeding.bottle')}</Text>
+                <Text style={{ color: TEXT_SECONDARY, fontSize: 12, fontWeight: '600', marginLeft: 2 }}>{quickAmount} ml</Text>
               </Pressable>
-              {/* Breast — secondary, narrower */}
               <Pressable
                 onPress={() => setShowNextFeedPicker(true)}
                 accessibilityRole="button"
@@ -959,599 +1618,26 @@ export default function HomeScreen() {
             </View>
           </Animated.View>
 
-          {/* 3. Today at a glance — compact 3-metric strip */}
-          <Animated.View entering={FadeInDown.duration(260).delay(100)} style={{ paddingHorizontal: 20, marginBottom: 14 }}>
-            <View style={{ flexDirection: 'row', borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD, overflow: 'hidden' }}>
-              {[
-                { emoji: '🍼', value: summary.today.feedCount > 0 ? String(summary.today.feedCount) : '–', label: t('insights.feeds') },
-                {
-                  emoji: '😴',
-                  value: summary.today.sleepMinutes > 0
-                    ? Math.floor(summary.today.sleepMinutes / 60) > 0
-                      ? `${Math.floor(summary.today.sleepMinutes / 60)}h`
-                      : `${summary.today.sleepMinutes}m`
-                    : '–',
-                  label: t('insights.sleep'),
-                },
-                { emoji: '🧷', value: summary.today.diaperCount > 0 ? String(summary.today.diaperCount) : '–', label: t('insights.diapers') },
-              ].map((item, idx, arr) => (
-                <View
-                  key={item.label}
-                  style={{
-                    flex: 1,
-                    alignItems: 'center',
-                    paddingVertical: 12,
-                    borderRightWidth: idx < arr.length - 1 ? 1 : 0,
-                    borderRightColor: BORDER,
-                  }}
-                >
-                  <Text style={{ fontSize: 18, marginBottom: 2 }}>{item.emoji}</Text>
-                  <Text style={{ color: TEXT, fontSize: 17, fontWeight: '700', letterSpacing: -0.3 }}>{item.value}</Text>
-                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500', marginTop: 1 }}>{item.label}</Text>
-                </View>
-              ))}
-            </View>
-          </Animated.View>
+          {/* Dynamic ordered sections */}
+          {sectionOrder.map((key) => (
+            <Fragment key={key}>{renderSection(key)}</Fragment>
+          ))}
 
-          {/* 4. Quick-add grid — above fold for instant access */}
-          <Animated.View entering={FadeInDown.duration(260).delay(120)} style={{ paddingHorizontal: 20, marginBottom: 16 }}>
-            <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 10, paddingHorizontal: 2 }}>
-              {t('home.addEntry')}
-            </Text>
-            {(() => {
-              const actions = [
-                { type: 'diaper', label: t('entry.diaper'), color: '#F59E0B' },
-                { type: 'temperature', label: t('entry.temperature'), color: '#EF4444' },
-                { type: 'vaccine', label: t('entry.vaccine'), color: '#22C55E' },
-                { type: 'symptom', label: t('entry.symptoms'), color: '#EC4899' },
-                { type: 'food', label: t('entry.food'), color: '#D97706' },
-                { type: 'medication', label: t('entry.medicine'), color: '#06B6D4' },
-                { type: 'measurement', label: t('entry.measurement'), color: '#8B5CF6' },
-                { type: 'sleep', label: t('entry.sleep'), color: '#3B82F6' },
-              ];
-              const renderRow = (rowItems: typeof actions, isFirst: boolean) => (
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: isFirst ? 0 : 8 }}>
-                  {rowItems.map((action) => (
-                    <Pressable
-                      key={action.type}
-                      onPress={() => router.push(`/entry/${action.type}` as any)}
-                      accessibilityRole="button"
-                      accessibilityLabel={action.label}
-                      style={({ pressed }) => ({
-                        flex: 1,
-                        aspectRatio: 1,
-                        borderRadius: 16,
-                        backgroundColor: pressed ? `${action.color}12` : CARD,
-                        borderWidth: 1,
-                        borderColor: pressed ? `${action.color}55` : BORDER,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 7,
-                        paddingHorizontal: 5,
-                        ...shadow('#000', pressed ? 0.08 : 0.14, pressed ? 8 : 12, 0, pressed ? 2 : 4),
-                        elevation: pressed ? 1 : 3,
-                        transform: [{ scale: pressed ? 0.98 : 1 }],
-                      })}
-                    >
-                      <View
-                        style={{
-                          width: 38,
-                          height: 38,
-                          borderRadius: 14,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: `${action.color}14`,
-                          borderWidth: 1,
-                          borderColor: `${action.color}22`,
-                        }}
-                      >
-                        {GetEntryIcon(action.type, 29, action.color)}
-                      </View>
-                      <Text style={{ color: TEXT_SECONDARY, fontSize: 10.5, fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{action.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              );
-              return (
-                <>
-                  {renderRow(actions.slice(0, 4), true)}
-                  {renderRow(actions.slice(4, 8), false)}
-                </>
-              );
-            })()}
-          </Animated.View>
-
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {/* ZONE 2 — ALERTS & REMINDERS (urgent attention)         */}
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-
-          {/* 4. Urgent alerts - immediate attention needed */}
-          {urgentAlerts.length > 0 && (
-            <Animated.View entering={FadeInDown.duration(260).delay(140)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-              <View style={{ gap: 6 }}>
-                {urgentAlerts.slice(0, 2).map((alert) => {
-                  const c = alertToneColor(alert.tone);
-                  const iconName = 
-                    alert.tone === 'danger' ? 'alert-circle' : 
-                    alert.tone === 'warning' ? 'warning' : 
-                    alert.tone === 'success' ? 'checkmark-circle' : 
-                    'notifications';
-
-                  return (
-                    <Pressable
-  key={alert.id}
-  onPress={() => haptics.selection()}
-  style={({ pressed }) => ({
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 16,
-
-    backgroundColor: pressed
-      ? 'rgba(15, 23, 42, 0.72)'
-      : 'rgba(15, 23, 42, 0.58)',
-
-    borderWidth: 1,
-    borderColor: `${c}45`,
-    borderLeftWidth: 4,
-    borderLeftColor: c,
-
-    ...shadow('#000', 0.22, 8, 0, 4),
-    elevation: 4,
-
-    opacity: pressed ? 0.9 : 1,
-    transform: [{ scale: pressed ? 0.98 : 1 }],
-  })}
-                    >
-                     <View
-    style={{
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      backgroundColor: `${c}22`,
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}
-  >
-    <Ionicons name={iconName} size={18} color={c} />
-  </View>
-
-  <View style={{ flex: 1 }}>
-    <Text
-      style={{
-        color: '#FFFFFF',
-        fontSize: 13,
-        fontWeight: '800',
-        ...textShadow('rgba(0,0,0,0.45)', 0, 1, 2),
-      }}
-      numberOfLines={1}
-    >
-      {alert.value}
-    </Text>
-
-    <Text
-      style={{
-        color: 'rgba(255,255,255,0.78)',
-        fontSize: 11,
-        fontWeight: '600',
-        marginTop: 3,
-        ...textShadow('rgba(0,0,0,0.35)', 0, 1, 1.5),
-      }}
-      numberOfLines={2}
-    >
-      {alert.body}
-    </Text>
-  </View>
-</Pressable>
-                  );
-                })}
-              </View>
-            </Animated.View>
-          )}
-
-          {/* 5. Food allergy alerts */}
-          {foodAllergyAlerts.length > 0 && (
-            <Animated.View entering={FadeInDown.duration(260).delay(160)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-              <View
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  borderRadius: 12,
-                  backgroundColor: `${YELLOW}10`,
-                  borderLeftWidth: 3,
-                  borderLeftColor: YELLOW,
-                }}
-              >
-                <Ionicons name="alert-circle-outline" size={18} color={YELLOW} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>
-                    {t('food.possibleAllergies')}
-                  </Text>
-                  <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
-                    {foodAllergyAlerts.slice(0, 2).map((a) => a.food).join(', ')}
-                  </Text>
-                </View>
-              </View>
-            </Animated.View>
-          )}
-
-          {/* 5b. Active medication banner */}
-          {activeMeds.length > 0 && (
-            <Animated.View entering={FadeInDown.duration(260).delay(170)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-              <Pressable
-                onPress={() => router.push('/entry/medication')}
-                style={({ pressed }) => ({
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  borderRadius: 12,
-                  backgroundColor: pressed ? `${BLUE}25` : `${BLUE}15`,
-                  borderLeftWidth: 3,
-                  borderLeftColor: BLUE,
-                  opacity: pressed ? 0.85 : 1,
-                })}
-              >
-                <Ionicons name="medical-outline" size={18} color={BLUE} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>
-                    {t('home.medActive')}
-                  </Text>
-                  <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
-                    {activeMeds.map((e) => e.payload?.name).filter(Boolean).join(' · ')}
-                  </Text>
-                </View>
-                <Ionicons name="add-circle-outline" size={20} color={BLUE} />
-              </Pressable>
-            </Animated.View>
-          )}
-
-          {/* 6. Pinned vaccines - upcoming reminders */}
-          {pinnedVaccines.length > 0 && (
-            <Animated.View entering={FadeInDown.duration(260).delay(180)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-              <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>
-                    {t('vaccine.scheduled')}
-                  </Text>
-                  <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: `${ACCENT}15` }}>
-                    <Text style={{ color: ACCENT, fontSize: 10, fontWeight: '600' }}>{pinnedVaccines.length}</Text>
-                  </View>
-                </View>
-                <View style={{ gap: 2 }}>
-                  {pinnedVaccines.map((vaccine, idx) => {
-                    const daysUntil = Math.ceil((new Date(vaccine.payload?.vaccineNextDueDate ?? '').getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                    const isUrgent = daysUntil <= 7;
-                    return (
-                      <Pressable
-                        key={vaccine.id}
-                        onPress={() => router.push({ pathname: '/entry/[type]', params: { type: 'vaccine', id: vaccine.id } })}
-                        style={({ pressed }) => ({
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 10,
-                          paddingVertical: 10,
-                          borderTopWidth: idx > 0 ? 1 : 0,
-                          borderTopColor: BORDER_SOFT,
-                          opacity: pressed ? 0.6 : 1,
-                        })}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '500' }}>{vaccine.payload?.vaccineName}</Text>
-                          <Text style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>
-                            {t('vaccine.dose')}{vaccine.payload?.vaccineDose}
-                          </Text>
-                        </View>
-                        <Text style={{ color: isUrgent ? YELLOW : SOFT, fontSize: 12, fontWeight: '600' }}>
-                          {daysUntil > 0 ? `${daysUntil}d` : t('vaccine.overdue')}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-            </Animated.View>
-          )}
-
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {/* ZONE 3 — DAILY OVERVIEW (today's progress)             */}
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-
-          {/* 7. Status row - Health + Food today */}
-          {(hasHealthData || lastFood) && (
-            <Animated.View entering={FadeInDown.duration(260).delay(220)} style={{ paddingHorizontal: 20, marginBottom: 12, flexDirection: 'row', gap: 8 }}>
-              {hasHealthData && (
-                <Pressable
-                  onPress={() => router.push('/entry/temperature')}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    paddingHorizontal: 12,
-                    paddingVertical: 12,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: BORDER,
-                    backgroundColor: pressed ? BORDER_SOFT : CARD,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 10,
-                  })}
-                >
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: healthStatus.color }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500' }}>{t('health.status')}</Text>
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{healthStatus.label}</Text>
-                  </View>
-                </Pressable>
-              )}
-              {lastFood && (
-                <Pressable
-                  onPress={() => router.push('/entry/food')}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    paddingHorizontal: 12,
-                    paddingVertical: 12,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: BORDER,
-                    backgroundColor: pressed ? BORDER_SOFT : CARD,
-                  })}
-                >
-                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 0.5, marginBottom: 3 }}>{t('food.status')}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
-                    <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', letterSpacing: -0.3 }}>{foodTodayCount}</Text>
-                    <Text style={{ color: SOFT, fontSize: 12 }}>{t('food.today')}</Text>
-                  </View>
-                  {lastFood.payload?.foodName && (
-                    <Text style={{ color: GOLD, fontSize: 11, fontWeight: '500', marginTop: 3 }} numberOfLines={1}>
-                      {lastFood.payload.mealTime === 'breakfast' ? '🌅 '
-                        : lastFood.payload.mealTime === 'lunch' ? '🌞 '
-                        : lastFood.payload.mealTime === 'snack' ? '🍪 '
-                        : lastFood.payload.mealTime === 'dinner' ? '🌙 ' : '🍴 '}
-                      {lastFood.payload.foodName}
-                    </Text>
-                  )}
-                </Pressable>
-              )}
-            </Animated.View>
-          )}
-
-          {/* 8. Milk progress today */}
-          <Animated.View entering={FadeInDown.duration(260).delay(240)} style={{ paddingHorizontal: 20, marginBottom: 16 }}>
-            <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-                <View>
-                  <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 2 }}>
-                    {t('milk.milk')}
-                  </Text>
-                  <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>{totalMilkToday} <Text style={{ color: MUTED, fontSize: 14, fontWeight: '500' }}>ml</Text></Text>
-                </View>
-                <Text style={{ color: ACCENT, fontSize: 11, fontWeight: '600' }}>{milkStatus}</Text>
-              </View>
-              <View style={{ height: 4, borderRadius: 2, backgroundColor: BORDER_SOFT, overflow: 'hidden' }}>
-                <Animated.View style={[{ height: '100%', backgroundColor: ACCENT, borderRadius: 2 }, milkBarStyle]} />
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                <Text style={{ color: MUTED, fontSize: 11 }}>
-                  {t('milk.target')} {milkGoalMin}–{milkGoalMax} ml
-                </Text>
-                {weeklyBottleTrend.thisAvg !== null && weeklyBottleTrend.lastAvg !== null && (
-                  <Text style={{ color: weeklyBottleTrend.thisAvg >= weeklyBottleTrend.lastAvg ? GREEN : RED, fontSize: 11, fontWeight: '700' }}>
-                    {weeklyBottleTrend.thisAvg >= weeklyBottleTrend.lastAvg ? '↑' : '↓'} {Math.abs(weeklyBottleTrend.thisAvg - weeklyBottleTrend.lastAvg)} ml {t('feeding.trendVsLastWeek')}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </Animated.View>
-
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {/* ZONE 4 — HISTORY & REFERENCE (scroll for details)      */}
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-
-          {/* 10. Recent activity - unified timeline (most useful history) */}
-          {recentEntries.length > 0 && (
-            <Animated.View entering={FadeInDown.duration(260).delay(310)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-              <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>
-                    {t('recent.recent')}
-                  </Text>
-                </View>
-                <View>
-                  {recentEntries.map((entry, idx) => {
-                    const color =
-                      entry.type === 'feed'
-                        ? GOLD
-                        : entry.type === 'sleep'
-                          ? BLUE
-                          : entry.type === 'diaper'
-                            ? ACCENT
-                            : entry.type === 'medication'
-                              ? ACCENT
-                              : MUTED;
-                    return (
-                      <Pressable
-                        key={entry.id}
-                        onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
-                        style={({ pressed }) => ({
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 12,
-                          paddingVertical: 10,
-                          borderTopWidth: idx > 0 ? 1 : 0,
-                          borderTopColor: BORDER_SOFT,
-                          opacity: pressed ? 0.6 : 1,
-                        })}
-                      >
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color }} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '500' }}>{entry.title}</Text>
-                          <Text style={{ color: MUTED, fontSize: 11, marginTop: 1 }}>
-                            {entry.type === 'feed'
-                              ? `${entry.payload?.amountMl ?? entry.payload?.durationMin ?? 0} ${entry.payload?.mode === 'bottle' ? 'ml' : 'min'}`
-                              : entry.notes ?? entry.type}
-                          </Text>
-                        </View>
-                        <Text style={{ color: SOFT, fontSize: 11, fontWeight: '500' }}>{formatClock(entry.occurredAt, locale)}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-            </Animated.View>
-          )}
-
-          {/* 12. Food history - past meals */}
-          {foodHistory.length > 0 && (
-            <Animated.View entering={FadeInDown.duration(260).delay(420)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-              <Pressable onPress={() => router.push('/entry/food')} style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
-                {/* Header row */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <View>
-                    <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 0.5, marginBottom: 2 }}>{t('food.history')}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>
-                        {foodStats.mealsToday}
-                      </Text>
-                      <Text style={{ color: SOFT, fontSize: 13, fontWeight: '500' }}>{t('food.today')}</Text>
-                      {foodStats.totalGramsToday > 0 && (
-                        <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: GOLD + '22' }}>
-                          <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700' }}>{foodStats.totalGramsToday}g</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                  {foodStats.mostCommon && (
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ color: MUTED, fontSize: 10 }}>{t('food.favorite')}</Text>
-                      <Text style={{ color: TEXT, fontSize: 12, fontWeight: '600' }} numberOfLines={1}>{foodStats.mostCommon.name} · {foodStats.mostCommon.count}×</Text>
-                    </View>
-                  )}
-                </View>
-                {/* Meal entries */}
-                <View style={{ gap: 2 }}>
-                  {foodHistory.map((food, idx) => {
-                    const hasAllergy = (food.payload?.foodAllergies?.length ?? 0) > 0;
-                    const ml = food.payload?.mealTime;
-                    const ae = food.payload?.amountEaten;
-                    const liked = food.payload?.foodLiked;
-                    const mealIcon = ml === 'breakfast' ? '🌅' : ml === 'lunch' ? '🌞' : ml === 'snack' ? '🍪' : ml === 'dinner' ? '🌙' : '🍴';
-                    const aeEmoji = ae === 'all' ? '🍽️' : ae === 'half' ? '🥗' : ae === 'little' ? '🥄' : ae === 'none' ? '🚫' : null;
-                    const likedEmoji = liked === 'yes' ? '❤️' : liked === 'no' ? '😣' : null;
-                    const isToday = new Date(food.occurredAt).toDateString() === new Date().toDateString();
-                    return (
-                      <Pressable
-                        key={food.id}
-                        onPress={() => router.push({ pathname: '/entry/[type]', params: { type: 'food', id: food.id } })}
-                        style={({ pressed }) => ({
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 10,
-                          paddingVertical: 9,
-                          paddingHorizontal: 10,
-                          borderRadius: 10,
-                          marginBottom: 2,
-                          backgroundColor: isToday ? (hasAllergy ? 'rgba(231,76,60,0.06)' : GOLD + '0A') : 'transparent',
-                          opacity: pressed ? 0.7 : 1,
-                        })}
-                      >
-                        <Text style={{ fontSize: 16, width: 22, textAlign: 'center' }}>{mealIcon}</Text>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{food.payload?.foodName}</Text>
-                          {(food.payload?.quantityGrams || hasAllergy) && (
-                            <Text style={{ color: MUTED, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
-                              {food.payload?.quantityGrams ? `${food.payload.quantityGrams}g` : ''}
-                              {hasAllergy ? ` · ⚠️ ${food.payload?.foodAllergies?.slice(0, 1).join('')}` : ''}
-                            </Text>
-                          )}
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          {aeEmoji && <Text style={{ fontSize: 13 }}>{aeEmoji}</Text>}
-                          {likedEmoji && <Text style={{ fontSize: 13 }}>{likedEmoji}</Text>}
-                          <Text style={{ color: SOFT, fontSize: 11 }}>{formatClock(food.occurredAt, locale)}</Text>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </Pressable>
-            </Animated.View>
-          )}
-
-          {/* 13. Growth chart - long-term tracking */}
-          {weightMeasurements.length > 0 && (
-            <Animated.View entering={FadeInDown.duration(260).delay(390)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-              <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <View>
-                    <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 2 }}>
-                      {t('growth.growth')}
-                    </Text>
-                    <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>
-                      {(weightMeasurements[0]?.weight ?? 0).toFixed(2)} <Text style={{ color: SOFT, fontSize: 14, fontWeight: '500' }}>kg</Text>
-                    </Text>
-                  </View>
-                  <Text style={{ color: SOFT, fontSize: 11, fontWeight: '500' }}>
-                    {weightMeasurements.length} {t('home.measurements')}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 44 }}>
-                  {(() => {
-                    const weights = weightMeasurements.map((w) => w.weight ?? 0).filter((w) => w > 0);
-                    if (weights.length === 0) return null;
-                    const maxWeight = Math.max(...weights);
-                    const minWeight = Math.min(...weights);
-                    const range = maxWeight - minWeight || 1;
-                    return weightMeasurements.map((m, i) => {
-                      const w = m.weight ?? 0;
-                      const height = ((w - minWeight) / range) * 36 + 8;
-                      return (
-                        <View
-                          key={i}
-                          style={{
-                            flex: 1,
-                            height,
-                            borderRadius: 3,
-                            backgroundColor: ACCENT,
-                            opacity: 0.4 + (i / weightMeasurements.length) * 0.6,
-                          }}
-                        />
-                      );
-                    });
-                  })()}
-                </View>
-              </View>
-            </Animated.View>
-          )}
-
-          {/* 13b. Missing-data prompt — shown once if key categories never tracked */}
+          {/* Missing data prompt — always last, conditional on data */}
           {entries.length > 5 && (!hasAnySleep || !hasAnyDiaper) && (
             <Animated.View entering={FadeInDown.duration(260).delay(480)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
               <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <Ionicons name="information-circle-outline" size={18} color={MUTED} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', marginBottom: 6 }}>
-                    {t('home.trackMoreTitle')}
-                  </Text>
+                  <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', marginBottom: 6 }}>{t('home.trackMoreTitle')}</Text>
                   <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                     {!hasAnySleep && (
-                      <Pressable
-                        onPress={() => router.push('/entry/sleep')}
-                        style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: pressed ? `${BLUE}25` : `${BLUE}15`, borderWidth: 1, borderColor: `${BLUE}40` })}
-                      >
+                      <Pressable onPress={() => router.push('/entry/sleep')} style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: pressed ? `${BLUE}25` : `${BLUE}15`, borderWidth: 1, borderColor: `${BLUE}40` })}>
                         <Text style={{ color: BLUE, fontSize: 11, fontWeight: '700' }}>😴 {t('entry.sleep')}</Text>
                       </Pressable>
                     )}
                     {!hasAnyDiaper && (
-                      <Pressable
-                        onPress={() => router.push('/entry/diaper')}
-                        style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: pressed ? `${ACCENT}25` : `${ACCENT}15`, borderWidth: 1, borderColor: `${ACCENT}40` })}
-                      >
+                      <Pressable onPress={() => router.push('/entry/diaper')} style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: pressed ? `${ACCENT}25` : `${ACCENT}15`, borderWidth: 1, borderColor: `${ACCENT}40` })}>
                         <Text style={{ color: ACCENT, fontSize: 11, fontWeight: '700' }}>🧷 {t('entry.diaper')}</Text>
                       </Pressable>
                     )}
@@ -1560,54 +1646,6 @@ export default function HomeScreen() {
               </View>
             </Animated.View>
           )}
-
-          {/* 14. Hydration - mom's wellness (least critical for baby tracking) */}
-          <Animated.View entering={FadeInDown.duration(260).delay(495)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-            <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-                <View>
-                  <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginBottom: 2 }}>
-                    {t('hydration.hydration')}
-                  </Text>
-                  <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', letterSpacing: -0.3 }}>
-                    {hydration} <Text style={{ color: SOFT, fontSize: 13, fontWeight: '500' }}>/ {appSettings.hydrationGoalMl} ml</Text>
-                  </Text>
-                </View>
-              </View>
-              <View style={{ height: 4, borderRadius: 2, backgroundColor: BORDER_SOFT, overflow: 'hidden', marginBottom: 12 }}>
-                <View style={{ width: `${Math.max(0, Math.min(100, (hydration / appSettings.hydrationGoalMl) * 100))}%`, height: '100%', backgroundColor: BLUE }} />
-              </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {[
-                  { label: '+250 ml', amount: 250 },
-                  { label: '+500 ml', amount: 500 },
-                ].map((item) => (
-                  <Pressable
-                    key={item.label}
-                    onPress={async () => {
-                      if (!babyId) return;
-                      const next = hydration + item.amount;
-                      setHydration(next);
-                      await setMomHydration(babyId, next);
-                    }}
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      height: 36,
-                      borderRadius: 10,
-                      backgroundColor: pressed ? `${BLUE}22` : CARD,
-                      borderWidth: 1,
-                      borderColor: BORDER,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      opacity: pressed ? 0.88 : 1,
-                    })}
-                  >
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{item.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          </Animated.View>
         </View>
       </ScrollView>
 
@@ -1667,30 +1705,57 @@ export default function HomeScreen() {
           <BlurView intensity={30} style={StyleSheet.absoluteFill} />
           <View style={styles.menuSheet}>
             <Text style={styles.menuTitle}>{t('modal.customize')}</Text>
-            <Text style={styles.menuSubtitle}>
-              {t('modal.toggleSections')}
-            </Text>
-            <View style={styles.customizerGrid}>
-              {[
-                { key: 'nextFeed', label: t('modal.nextFeeding') },
-                { key: 'milkProgress', label: t('modal.milkProgress') },
-                { key: 'smartSignals', label: t('modal.alerts') },
-              ].map((item) => {
-                const enabled = appSettings.dashboardMetrics[item.key as keyof typeof appSettings.dashboardMetrics];
+            <Text style={styles.menuSubtitle}>{t('modal.toggleSections')}</Text>
+
+            <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+              {sectionOrder.map((key, idx) => {
+                const section = CONFIGURABLE_SECTIONS.find((s) => s.key === key);
+                if (!section) return null;
+                const isEnabled = Boolean(dm[key as keyof typeof dm]);
                 return (
-                  <View key={item.key} style={styles.customizerItem}>
-                    <Button
-                      label={`${enabled ? t('modal.hide') : t('modal.show')} ${item.label}`}
-                      onPress={() => void updateDashboardMetric(item.key as keyof typeof appSettings.dashboardMetrics, !enabled)}
-                      variant={enabled ? 'secondary' : 'ghost'}
-                      size="sm"
-                    />
+                  <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+                    <View style={{ gap: 1 }}>
+                      <Pressable
+                        onPress={() => void moveSection(key, 'up')}
+                        style={{ width: 26, height: 20, alignItems: 'center', justifyContent: 'center', opacity: idx === 0 ? 0.2 : 1 }}
+                        disabled={idx === 0}
+                      >
+                        <Ionicons name="chevron-up" size={14} color={MUTED} />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void moveSection(key, 'down')}
+                        style={{ width: 26, height: 20, alignItems: 'center', justifyContent: 'center', opacity: idx === sectionOrder.length - 1 ? 0.2 : 1 }}
+                        disabled={idx === sectionOrder.length - 1}
+                      >
+                        <Ionicons name="chevron-down" size={14} color={MUTED} />
+                      </Pressable>
+                    </View>
+                    <Text style={{ flex: 1, color: isEnabled ? TEXT : MUTED, fontSize: 13, fontWeight: '600' }}>
+                      {section.label}
+                    </Text>
+                    <Pressable
+                      onPress={() => void updateDashboardMetric(key as any, !isEnabled)}
+                      style={({ pressed }) => ({
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        borderRadius: 8,
+                        backgroundColor: pressed
+                          ? (isEnabled ? `${ACCENT}30` : BORDER)
+                          : (isEnabled ? `${ACCENT}18` : 'transparent'),
+                        borderWidth: 1,
+                        borderColor: isEnabled ? ACCENT : BORDER,
+                      })}
+                    >
+                      <Text style={{ color: isEnabled ? ACCENT : MUTED, fontSize: 11, fontWeight: '700' }}>
+                        {isEnabled ? t('modal.hide') : t('modal.show')}
+                      </Text>
+                    </Pressable>
                   </View>
                 );
               })}
-            </View>
+            </ScrollView>
 
-            <View style={{ gap: 6, marginTop: 12, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 12 }}>
+            <View style={{ gap: 6, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 12 }}>
               <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>
                 {t('home.defaultFeeding')}
               </Text>
@@ -1698,10 +1763,7 @@ export default function HomeScreen() {
                 <View style={{ flex: 1 }}>
                   <Button
                     label={`🤱 ${t('feeding.breast')}`}
-                    onPress={() => {
-                      setDefaultFeedingMode('breast');
-                      void updateAppSettings({ defaultFeedingMode: 'breast' } as any);
-                    }}
+                    onPress={() => { setDefaultFeedingMode('breast'); void updateAppSettings({ defaultFeedingMode: 'breast' } as any); }}
                     variant={defaultFeedingMode === 'breast' ? 'secondary' : 'ghost'}
                     size="sm"
                   />
@@ -1709,10 +1771,7 @@ export default function HomeScreen() {
                 <View style={{ flex: 1 }}>
                   <Button
                     label={`🍼 ${t('feeding.bottle')}`}
-                    onPress={() => {
-                      setDefaultFeedingMode('bottle');
-                      void updateAppSettings({ defaultFeedingMode: 'bottle' } as any);
-                    }}
+                    onPress={() => { setDefaultFeedingMode('bottle'); void updateAppSettings({ defaultFeedingMode: 'bottle' } as any); }}
                     variant={defaultFeedingMode === 'bottle' ? 'secondary' : 'ghost'}
                     size="sm"
                   />
@@ -1720,7 +1779,7 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            <View style={{ gap: 8, marginTop: 12 }}>
+            <View style={{ gap: 8 }}>
               <Button label={t('modal.restoreAll')} onPress={() => void restoreHomeCustomization()} variant="secondary" />
               <Button label={t('common.close')} onPress={() => setShowHomeCustomizer(false)} variant="ghost" />
             </View>
@@ -1852,7 +1911,7 @@ export default function HomeScreen() {
                             setShowSaveSheet(false);
                             setTimerStartedAt(null);
                             setTimerElapsedSeconds(0);
-                            setQuickAmount(150);
+                            void getLastBottleAmount().then(setQuickAmount);
                           },
                         },
                       ]

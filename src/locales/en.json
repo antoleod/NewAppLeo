@@ -196,7 +196,14 @@
     "alerts": "Alerts",
     "hide": "Hide",
     "show": "Show",
-    "restoreAll": "Restore all"
+    "restoreAll": "Restore all",
+    "statsStrip": "Daily stats",
+    "quickAdd": "Quick actions",
+    "healthFood": "Health & food",
+    "recentActivity": "Recent activity",
+    "foodHistory": "Food history",
+    "growth": "Growth",
+    "hydration": "Hydration"
   },
   "home": {
     "addEntry": "Add",
@@ -283,6 +290,7 @@
     "currentWeightLabel": "Current weight (kg)",
     "heightLabel": "Height (cm)",
     "notesLabel": "Notes",
+    "invalidNumber": "Invalid number",
     "measurementsTitle": "Measurements",
     "preferencesTitle": "Preferences",
     "languageLabel2": "Language",

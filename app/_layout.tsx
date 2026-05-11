@@ -3,13 +3,13 @@ import { Stack, useSegments, router } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme, View, AppState, StyleSheet, Text, useWindowDimensions, Platform } from 'react-native';
+import { useColorScheme, View, AppState, StyleSheet, Text, useWindowDimensions } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
 import { Fraunces_400Regular_Italic, Fraunces_700Bold } from '@expo-google-fonts/fraunces';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { ThemeProvider } from '@/context/ThemeContext';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { AppDataProvider } from '@/context/AppDataContext';
 import { NightOverlay } from '@/components/shared';
 import { LocaleProvider } from '@/context/LocaleContext';
@@ -29,6 +29,38 @@ function LockOverlay({ isLocked, uiScale, onUnlock }: { isLocked: boolean; uiSca
       <View style={{ width: 200 * uiScale }}>
         <Button label={t('lock.unlock')} onPress={onUnlock} fullWidth />
       </View>
+    </View>
+  );
+}
+
+/**
+ * ThemedShell: renders inside ThemeProvider so it can consume useTheme()
+ * and apply the correct background color to the root view.
+ */
+function ThemedShell({
+  children,
+  isIncognito,
+  isLocked,
+  uiScale,
+  onUnlock,
+}: {
+  children: React.ReactNode;
+  isIncognito: boolean;
+  isLocked: boolean;
+  uiScale: number;
+  onUnlock: () => void;
+}) {
+  const { colors, mode } = useTheme();
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {children}
+      {isIncognito && (
+        <View style={[StyleSheet.absoluteFill, styles.incognitoOverlay, { backgroundColor: colors.background }]}>
+          <Text style={{ fontSize: 40 * uiScale }}>✨</Text>
+          <Text style={{ color: mode === 'dark' ? '#fff' : '#111', marginTop: 10 * uiScale, fontWeight: '600', fontSize: 16 * uiScale }}>App Leo</Text>
+        </View>
+      )}
+      <LockOverlay isLocked={isLocked} uiScale={uiScale} onUnlock={onUnlock} />
     </View>
   );
 }
@@ -138,32 +170,28 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0D1117' }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
           <LocaleProvider>
             <ThemeProvider>
               <ToastProvider>
-              <AppDataProvider>
-                <View style={{ flex: 1, backgroundColor: '#0D1117' }}>
-                  <AuthGuard />
-                  <StatusBar style={statusBarStyle} />
-                  <NightOverlay />
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="(auth)" />
-                    <Stack.Screen name="(app)" />
-                  </Stack>
-
-                  {isIncognito && (
-                    <View style={[StyleSheet.absoluteFill, styles.incognitoOverlay, { backgroundColor: '#1A1C1E' }]}>
-                      <Text style={{ fontSize: 40 * uiScale }}>\u2728</Text>
-                      <Text style={{ color: '#fff', marginTop: 10 * uiScale, fontWeight: '600', fontSize: 16 * uiScale }}>App Leo</Text>
-                    </View>
-                  )}
-
-                  <LockOverlay isLocked={isLocked} uiScale={uiScale} onUnlock={handleUnlock} />
-                </View>
-              </AppDataProvider>
+                <AppDataProvider>
+                  <ThemedShell
+                    isIncognito={isIncognito}
+                    isLocked={isLocked}
+                    uiScale={uiScale}
+                    onUnlock={handleUnlock}
+                  >
+                    <AuthGuard />
+                    <StatusBar style={statusBarStyle} />
+                    <NightOverlay />
+                    <Stack screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="(auth)" />
+                      <Stack.Screen name="(app)" />
+                    </Stack>
+                  </ThemedShell>
+                </AppDataProvider>
               </ToastProvider>
             </ThemeProvider>
           </LocaleProvider>

@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, Text, useWindowDimensions } from 'react-native';
+import { Platform, Text, View, useWindowDimensions } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocale } from '@/context/LocaleContext';
 import {
@@ -65,12 +65,26 @@ export default function TabsLayout() {
             paddingVertical: isDesktopWeb ? 2 : 4,
           },
           tabBarLabelPosition: 'below-icon',
-          tabBarIcon: ({ color, focused }) =>
-            CustomIcon ? (
+          tabBarIcon: ({ color, focused }) => {
+            const icon = CustomIcon ? (
               <CustomIcon color={color} size={22} focused={focused} />
             ) : (
               <Ionicons name="ellipse-outline" color={color} size={20} />
-            ),
+            );
+            if (!focused) return icon;
+            return (
+              <View style={{
+                backgroundColor: `${color}22`,
+                borderRadius: 10,
+                paddingHorizontal: isDesktopWeb ? 14 : 16,
+                paddingVertical: 5,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                {icon}
+              </View>
+            );
+          },
           tabBarLabel: ({ color, focused }) => (
             <Text
               numberOfLines={1}

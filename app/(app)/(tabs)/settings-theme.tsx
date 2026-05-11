@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { themeVariantDescriptions } from '@/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
 import { Button, Card, Page, Segment } from '@/components/shared';
@@ -18,6 +19,7 @@ export default function ThemeSettings() {
     themeMode,
     themeVariant,
     themeStyle,
+    paletteMode,
     backgroundPhotoUri,
     buttonOpacity,
     buttonTransparency,
@@ -87,32 +89,32 @@ export default function ThemeSettings() {
     unavailable: 'Installation non disponible',
   };
 
-  const themes = [
-    {
-      key: 'sage',
-      title: 'Bright Light',
-      description: 'Perfect for daytime with strong readability on a light background.',
-      swatches: ['#E5E5E5', '#1F5EDC', '#1A1A1A'],
+  // Real token values per variant and palette mode — mirrors src/theme.ts variantOverrides
+  const variantSwatches: Record<string, Record<'nuit' | 'jour', [string, string, string]>> = {
+    sage: {
+      nuit: ['#0D1210', '#131A17', '#4d7c6b'],
+      jour: ['#F2F5F1', '#FAFDF9', '#4d7c6b'],
     },
-    {
-      key: 'navy',
-      title: 'Custom Ocean',
-      description: 'Deep marine tones with bright accents.',
-      swatches: ['#13294B', '#00C2E0', '#00E5FF'],
+    rose: {
+      nuit: ['#120D10', '#1A1318', '#D08BA0'],
+      jour: ['#F7F2F4', '#FFF8FA', '#B95B74'],
     },
-    {
-      key: 'rose',
-      title: 'Elegant Purple',
-      description: 'Golden accents over violet for a premium look.',
-      swatches: ['#2B124C', '#F5C518', '#6D28D9'],
+    navy: {
+      nuit: ['#0C0F14', '#121720', '#8EB5EA'],
+      jour: ['#F1F3F7', '#F8FAFD', '#1D4E89'],
     },
-    {
-      key: 'sand',
-      title: 'Sophisticated Night',
-      description: 'Elegant dark mode with warm highlights.',
-      swatches: ['#121212', '#FF6A00', '#FF7A1A'],
+    sand: {
+      nuit: ['#130F0A', '#1C1510', '#D9B97D'],
+      jour: ['#F7F4EF', '#FFFDF8', '#8C6B3F'],
     },
-  ] as const;
+  };
+
+  const themes = (['sage', 'rose', 'navy', 'sand'] as const).map((key) => ({
+    key,
+    title: themeVariantDescriptions[key].label,
+    description: themeVariantDescriptions[key].description,
+    swatches: variantSwatches[key][paletteMode],
+  }));
 
   const surfaceStyles = [
     { key: 'default', label: t('settings.frosted'), description: t('settings.frostedDesc') },
@@ -265,7 +267,7 @@ export default function ThemeSettings() {
                   style={[
                     styles.themeCard,
                     { width: Math.min(320, Math.max(250, width - 70)) },
-                    { borderColor: active ? theme.accent : theme.border, backgroundColor: theme.bgCardAlt },
+                    { borderColor: active ? item.swatches[2] : theme.border, backgroundColor: theme.bgCardAlt },
                   ]}
                 >
                   <View style={styles.swatches}>
@@ -275,9 +277,23 @@ export default function ThemeSettings() {
                   </View>
                   <Text style={[styles.themeTitle, { color: theme.textPrimary }]}>{item.title}</Text>
                   <Text style={[styles.themeBody, { color: theme.textMuted }]}>{item.description}</Text>
-                  <Text style={[styles.themeState, { color: active ? theme.accent : theme.textMuted }]}>
-                    {active ? t('settings.applied') : t('settings.tapToApply')}
-                  </Text>
+                  {/* Per-card accent button so each card previews its own color */}
+                  <View style={[
+                    styles.themeApplyBtn,
+                    {
+                      backgroundColor: active
+                        ? item.swatches[2]
+                        : `${item.swatches[2]}26`,
+                      borderColor: item.swatches[2],
+                    },
+                  ]}>
+                    <Text style={[
+                      styles.themeApplyLabel,
+                      { color: active ? '#ffffff' : item.swatches[2] },
+                    ]}>
+                      {active ? t('settings.applied') : t('settings.tapToApply')}
+                    </Text>
+                  </View>
                 </Pressable>
               );
             })}
@@ -290,7 +306,7 @@ export default function ThemeSettings() {
                   key={`dot-${item.key}`}
                   style={[
                     styles.carouselDot,
-                    { backgroundColor: active ? theme.accent : theme.border, width: active ? 16 : 7 },
+                    { backgroundColor: active ? item.swatches[2] : theme.border, width: active ? 16 : 7 },
                   ]}
                 />
               );
@@ -471,7 +487,16 @@ const styles = StyleSheet.create({
   swatch: { width: 18, height: 18, borderRadius: 999 },
   themeTitle: { fontSize: 14, fontWeight: '800' },
   themeBody: { fontSize: 12, marginTop: 4 },
-  themeState: { fontSize: 12, fontWeight: '800', marginTop: 8 },
+  themeApplyBtn: {
+    marginTop: 10,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+  },
+  themeApplyLabel: { fontSize: 12, fontWeight: '800' },
   styleChip: { flex: 1, borderWidth: 1, borderRadius: 12, padding: 10, alignItems: 'center', gap: 2, position: 'relative' },
   styleChipLabel: { fontSize: 13, fontWeight: '700' },
   styleChipDesc: { fontSize: 11, textAlign: 'center' },

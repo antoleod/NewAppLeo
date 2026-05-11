@@ -77,65 +77,89 @@ function withAlpha(hex: string, alpha: string) {
 
 const variantOverrides: Record<ThemeVariant, Partial<Record<ThemePaletteMode, Partial<Theme>>>> = {
   sage: {
-    nuit: { 
-      accent: '#4d7c6b', 
-      blue: '#c18f54', 
-      green: '#74C69D', 
+    nuit: {
+      bg: '#0D1210',
+      bgCard: '#131A17',
       bgCardAlt: '#1B2A24',
+      border: '#1D2921',
+      accent: '#4d7c6b',
+      blue: '#c18f54',
+      green: '#74C69D',
       borderActive: '#4d7c6b',
     },
-    jour: { 
-      accent: '#4d7c6b', 
-      blue: '#c18f54', 
-      green: '#2F7D57', 
+    jour: {
+      bg: '#F2F5F1',
+      bgCard: '#FAFDF9',
       bgCardAlt: '#EEF4EF',
+      border: '#DDE5DE',
+      accent: '#4d7c6b',
+      blue: '#c18f54',
+      green: '#2F7D57',
       borderActive: '#4d7c6b',
     },
   },
   rose: {
-    nuit: { 
-      accent: '#D08BA0', 
-      green: '#66C28F', 
+    nuit: {
+      bg: '#120D10',
+      bgCard: '#1A1318',
       bgCardAlt: '#241A1F',
+      border: '#261D23',
+      accent: '#D08BA0',
+      green: '#66C28F',
       blue: '#E8A1C3',
       borderActive: '#D08BA0',
     },
-    jour: { 
-      accent: '#B95B74', 
-      green: '#3D865A', 
+    jour: {
+      bg: '#F7F2F4',
+      bgCard: '#FFF8FA',
       bgCardAlt: '#F7ECEF',
+      border: '#E8D8DF',
+      accent: '#B95B74',
+      green: '#3D865A',
       blue: '#D97998',
       borderActive: '#B95B74',
     },
   },
   navy: {
-    nuit: { 
-      accent: '#8EB5EA', 
-      blue: '#7CC2FF', 
+    nuit: {
+      bg: '#0C0F14',
+      bgCard: '#121720',
       bgCardAlt: '#132033',
+      border: '#1A2535',
+      accent: '#8EB5EA',
+      blue: '#7CC2FF',
       green: '#6EC994',
       borderActive: '#8EB5EA',
     },
-    jour: { 
-      accent: '#1D4E89', 
-      blue: '#2D78D0', 
+    jour: {
+      bg: '#F1F3F7',
+      bgCard: '#F8FAFD',
       bgCardAlt: '#EEF3F8',
+      border: '#D5DDE8',
+      accent: '#1D4E89',
+      blue: '#2D78D0',
       green: '#2D7A3A',
       borderActive: '#1D4E89',
     },
   },
   sand: {
-    nuit: { 
-      accent: '#D9B97D', 
-      green: '#7AB58E', 
+    nuit: {
+      bg: '#130F0A',
+      bgCard: '#1C1510',
       bgCardAlt: '#201B16',
+      border: '#2A2018',
+      accent: '#D9B97D',
+      green: '#7AB58E',
       blue: '#E8C493',
       borderActive: '#D9B97D',
     },
-    jour: { 
-      accent: '#8C6B3F', 
-      green: '#4B8A59', 
+    jour: {
+      bg: '#F7F4EF',
+      bgCard: '#FFFDF8',
       bgCardAlt: '#F6F0E6',
+      border: '#E5DDD0',
+      accent: '#8C6B3F',
+      green: '#4B8A59',
       blue: '#B89968',
       borderActive: '#8C6B3F',
     },
@@ -260,6 +284,9 @@ export function getThemeTokens(
   const nextTheme: Theme = {
     ...baseTheme,
     ...variantTheme,
+    navActive: variantTheme.accent ?? baseTheme.accent,
+    navBg: variantTheme.bgCard ?? baseTheme.bgCard,
+    navBorder: variantTheme.border ?? baseTheme.border,
   };
 
   if (custom?.enabled) {
