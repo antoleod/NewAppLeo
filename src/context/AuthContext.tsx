@@ -91,18 +91,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfileLoading(true);
 
       // If Firestore doesn't call back within 8 s (e.g. reconnecting after a
-      // long mobile-browser suspension), unblock the app using the last known
-      // local profile so the user never sees a permanent loading screen.
+      // long mobile-browser suspension), try to unblock the app with the last
+      // known local profile so the user never sees a permanent loading screen.
+      //
+      // CRITICAL: only unblock when we actually have a cached profile. If
+      // local is null AND we set profile = null AND unblock loading, the app
+      // layout treats this as "hasn't completed onboarding" and redirects an
+      // already-onboarded user to the onboarding flow. Leaving loading=true
+      // lets the layout's 10 s recovery screen kick in (with a retry button),
+      // which is the correct behaviour when we genuinely cannot determine
+      // the user's profile state.
       profileTimeoutId = setTimeout(async () => {
         profileTimeoutId = null;
         if (!alive) return;
+        let local: UserProfile | null = null;
         try {
-          const local = await getLocalProfile(nextUser.uid);
-          if (!alive) return;
-          setProfile(local);
+          local = await getLocalProfile(nextUser.uid);
         } catch {}
-        setProfileLoading(false);
-        setLoading(false);
+        if (!alive) return;
+        if (local) {
+          setProfile(local);
+          setProfileLoading(false);
+          setLoading(false);
+        }
+        // else: keep loading; let watchProfile resolve when it can or let
+        // the recovery UI take over after the 10 s threshold.
       }, 8000);
 
       unsubscribeProfile = watchProfile(

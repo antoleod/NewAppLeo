@@ -43,26 +43,23 @@ export default function AppLayout() {
             <Text style={{ color: colors.muted ?? colors.text, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
               {t('errors.loadingTimeoutMessage')}
             </Text>
-            <Pressable
-              onPress={() => {
-                if (Platform.OS === 'web') {
-                  // eslint-disable-next-line no-restricted-globals
-                  (globalThis as any).location?.reload?.();
-                }
-              }}
-              style={({ pressed }) => ({
-                marginTop: 8,
-                paddingHorizontal: 28,
-                paddingVertical: 14,
-                borderRadius: 12,
-                backgroundColor: colors.primary,
-                opacity: pressed ? 0.8 : 1,
-              })}
-            >
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
-                {t('errors.retryConnection')}
-              </Text>
-            </Pressable>
+            {Platform.OS === 'web' && (
+              <Pressable
+                onPress={() => (globalThis as any).location?.reload?.()}
+                style={({ pressed }) => ({
+                  marginTop: 8,
+                  paddingHorizontal: 28,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  backgroundColor: colors.primary,
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
+                  {t('errors.retryConnection')}
+                </Text>
+              </Pressable>
+            )}
           </View>
         </Page>
       );

@@ -33,6 +33,8 @@ export function FullscreenTimerModal({
   elapsedSeconds,
   animatePulse = true,
   onStop,
+  onCancel,
+  cancelLabel,
 }: {
   visible: boolean;
   emoji: string;
@@ -42,6 +44,11 @@ export function FullscreenTimerModal({
   elapsedSeconds: number;
   animatePulse?: boolean;
   onStop: () => void;
+  // Optional escape hatch — when provided, renders a low-emphasis "Cancel"
+  // link beneath the Stop button so the user can abandon a timer they
+  // started by accident without saving an entry. Pump flow doesn't pass this.
+  onCancel?: () => void;
+  cancelLabel?: string;
 }) {
   const { language } = useLocale();
   const { t } = useTranslation();
@@ -108,6 +115,19 @@ export function FullscreenTimerModal({
           >
             <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 17 }}>{t('timer.stop').toUpperCase()}</Text>
           </Pressable>
+          {onCancel && (
+            <Pressable
+              onPress={onCancel}
+              accessibilityRole="button"
+              accessibilityLabel={cancelLabel ?? 'Cancel'}
+              style={{ alignItems: 'center', paddingVertical: 14, marginTop: 4 }}
+              hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}
+            >
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' }}>
+                {cancelLabel ?? 'Cancel'}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </SafeAreaView>
     </Modal>

@@ -13,39 +13,38 @@ import { dateKey, formatLongDate, formatTime, isSameDay, startOfDay, subtractDay
 import { getOmsRow, interpolatePercentileBand, omsBySex, type OmsSex } from '@/lib/omsData';
 import { useWideWeb } from '@/hooks/useWideWeb';
 import { useToast } from '@/components/shared';
-import { useLocale } from '@/context/LocaleContext';
+import { useTranslation } from '@/hooks/useTranslation';
 
-function getFilters(language: string): Array<{ label: string; value: EntryType | 'all' }> {
-  if (language === 'es') return [
-    { label: 'Todo', value: 'all' }, { label: 'Leche', value: 'feed' }, { label: 'Comida', value: 'food' }, { label: 'Sueño', value: 'sleep' },
-    { label: 'Pañal', value: 'diaper' }, { label: 'Bomba', value: 'pump' }, { label: 'Meds', value: 'medication' }, { label: 'Medidas', value: 'measurement' },
-    { label: 'Hito', value: 'milestone' }, { label: 'Síntoma', value: 'symptom' },
-  ];
-  if (language === 'en') return [
-    { label: 'All', value: 'all' }, { label: 'Feed', value: 'feed' }, { label: 'Food', value: 'food' }, { label: 'Sleep', value: 'sleep' },
-    { label: 'Diaper', value: 'diaper' }, { label: 'Pump', value: 'pump' }, { label: 'Meds', value: 'medication' }, { label: 'Measure', value: 'measurement' },
-    { label: 'Milestone', value: 'milestone' }, { label: 'Symptom', value: 'symptom' },
-  ];
-  if (language === 'nl') return [
-    { label: 'Alles', value: 'all' }, { label: 'Voeding', value: 'feed' }, { label: 'Eten', value: 'food' }, { label: 'Slaap', value: 'sleep' },
-    { label: 'Luier', value: 'diaper' }, { label: 'Kolf', value: 'pump' }, { label: 'Meds', value: 'medication' }, { label: 'Meting', value: 'measurement' },
-    { label: 'Mijlpaal', value: 'milestone' }, { label: 'Symptoom', value: 'symptom' },
-  ];
-  return [
-    { label: 'Tout', value: 'all' }, { label: 'Feed', value: 'feed' }, { label: 'Food', value: 'food' }, { label: 'Sleep', value: 'sleep' },
-    { label: 'Diaper', value: 'diaper' }, { label: 'Pump', value: 'pump' }, { label: 'Meds', value: 'medication' }, { label: 'Mesure', value: 'measurement' },
-    { label: 'Milestone', value: 'milestone' }, { label: 'Symptome', value: 'symptom' },
-  ];
-}
+type TFn = (key: string, defaultValue?: string) => string;
 
-function getDetail(entry: EntryRecord) {
+const FILTER_DEFS: Array<{ tKey: string; value: EntryType | 'all' }> = [
+  { tKey: 'history.filterAll', value: 'all' },
+  { tKey: 'history.filterFeed', value: 'feed' },
+  { tKey: 'history.filterFood', value: 'food' },
+  { tKey: 'history.filterSleep', value: 'sleep' },
+  { tKey: 'history.filterDiaper', value: 'diaper' },
+  { tKey: 'history.filterPump', value: 'pump' },
+  { tKey: 'history.filterMedicine', value: 'medication' },
+  { tKey: 'history.filterMeasurement', value: 'measurement' },
+  { tKey: 'history.filterMilestone', value: 'milestone' },
+  { tKey: 'history.filterSymptom', value: 'symptom' },
+];
+
+const LOCALE_MAP: Record<string, string> = {
+  fr: 'fr-FR',
+  en: 'en-US',
+  es: 'es-ES',
+  nl: 'nl-NL',
+};
+
+function getDetail(entry: EntryRecord, t: TFn) {
   switch (entry.type) {
     case 'feed':
       return entry.payload.mode === 'bottle'
         ? `${entry.payload.amountMl ?? 0} ml`
         : `${entry.payload.durationMin ?? 0} min · ${entry.payload.side ?? 'left'}`;
     case 'food':
-      return [entry.payload.foodName, entry.payload.quantity].filter(Boolean).join(' · ') || 'Food';
+      return [entry.payload.foodName, entry.payload.quantity].filter(Boolean).join(' · ') || t('history.entryFood');
     case 'sleep':
       return `${entry.payload.durationMin ?? 0} min`;
     case 'diaper':
@@ -56,7 +55,7 @@ function getDetail(entry: EntryRecord) {
       return [
         entry.payload?.weightKg ? `${entry.payload.weightKg} kg` : null,
         entry.payload?.heightCm ? `${entry.payload.heightCm} cm` : null,
-        (entry.payload as any)?.headCircCm ? `${(entry.payload as any).headCircCm} cm PC` : null,
+        (entry.payload as any)?.headCircCm ? `${(entry.payload as any).headCircCm} cm ${t('history.headCircAbbr')}` : null,
       ]
         .filter(Boolean)
         .join(' · ');
@@ -65,7 +64,7 @@ function getDetail(entry: EntryRecord) {
     case 'milestone':
       return entry.payload.title ?? entry.title;
     case 'symptom':
-      return entry.payload.tags?.join(', ') ?? entry.notes ?? 'Symptome';
+      return entry.payload.tags?.join(', ') ?? entry.notes ?? t('history.entrySymptom');
     default:
       return entry.title;
   }
@@ -94,11 +93,11 @@ function monthsAndDaysSince(birthDate?: string) {
   };
 }
 
-function buildCsv(entries: EntryRecord[]) {
+function buildCsv(entries: EntryRecord[], t: TFn) {
   return [
     'id,type,title,timestamp,detail,notes',
     ...entries.map((entry) =>
-      [entry.id, entry.type, entry.title, entry.occurredAt, getDetail(entry), entry.notes ?? '']
+      [entry.id, entry.type, entry.title, entry.occurredAt, getDetail(entry, t), entry.notes ?? '']
         .map((value) => `"${String(value).replaceAll('"', '""')}"`)
         .join(','),
     ),
@@ -114,8 +113,12 @@ export default function HistoryScreen() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const { isWideWeb } = useWideWeb();
-  const { language, t: tLocale } = useLocale();
-  const FILTERS = useMemo(() => getFilters(language), [language]);
+  const { t, format, language } = useTranslation();
+  const intlLocale = LOCALE_MAP[language] ?? 'fr-FR';
+  const FILTERS = useMemo(
+    () => FILTER_DEFS.map((f) => ({ label: t(f.tKey), value: f.value })),
+    [t, language],
+  );
   const { entries, deleteEntry, addEntry } = useAppData();
   const { profile } = useAuth();
   const { theme } = useTheme();
@@ -145,10 +148,10 @@ export default function HistoryScreen() {
   };
 
   const percentileStatus = (value: number | null | undefined, band: { p3: number; p10: number; p90: number; p97: number }) => {
-    if (!value) return { label: 'Sans donnees', color: MUTED };
-    if (value < band.p3 || value > band.p97) return { label: '⚠ Consulter pediatre', color: RED };
-    if (value < band.p10 || value > band.p90) return { label: 'Attention', color: '#F2C86F' };
-    return { label: '✓ Normal', color: GREEN };
+    if (!value) return { label: t('history.statusNoData'), color: MUTED };
+    if (value < band.p3 || value > band.p97) return { label: `⚠ ${t('history.statusAlert')}`, color: RED };
+    if (value < band.p10 || value > band.p90) return { label: t('history.statusAttention'), color: '#F2C86F' };
+    return { label: `✓ ${t('history.statusNormal')}`, color: GREEN };
   };
 
   const OmsMetricCard = ({
@@ -199,7 +202,7 @@ export default function HistoryScreen() {
     ].filter((value) => Number.isFinite(value));
 
     if (!allValues.length) {
-      return <Text style={{ color: MUTED, textAlign: 'center' }}>Aucune courbe de poids disponible.</Text>;
+      return <Text style={{ color: MUTED, textAlign: 'center' }}>{t('history.chartEmpty')}</Text>;
     }
 
     const minValue = Math.min(...allValues) - 0.2;
@@ -358,7 +361,7 @@ export default function HistoryScreen() {
         entry.title,
         entry.notes,
         entry.type,
-        getDetail(entry),
+        getDetail(entry, t),
         entry.payload?.foodName,
         entry.payload?.name,
         ...(entry.payload?.tags ?? []),
@@ -368,17 +371,19 @@ export default function HistoryScreen() {
         .toLowerCase();
       return haystack.includes(searchQuery);
     });
-  }, [entries, filter, searchQuery]);
+  }, [entries, filter, searchQuery, t]);
   const unifiedTimeline = useMemo(() => groupByDay(timelineEntries), [timelineEntries]);
   const yesterdayEntries = useMemo(
     () => entries.filter((entry) => isSameDay(entry.occurredAt, subtractDays(selectedDate, 1))),
     [entries, selectedDate],
   );
 
-  const currentCsv = useMemo(() => buildCsv(dayEntries), [dayEntries]);
+  const currentCsv = useMemo(() => buildCsv(dayEntries, t), [dayEntries, t]);
   const dayFeedEntries = dayEntries.filter((entry) => entry.type === 'feed');
   const dayFeedCount = dayFeedEntries.length;
   const yesterdayFeedCount = yesterdayEntries.filter((entry) => entry.type === 'feed').length;
+  const feedDelta = dayFeedCount - yesterdayFeedCount;
+  const feedDeltaStr = `${feedDelta >= 0 ? '+' : ''}${feedDelta}`;
   const dayBottleMl = dayFeedEntries.reduce((sum, entry) => sum + (entry.payload.amountMl ?? 0), 0);
   const avgMlPerFeed = dayFeedCount ? Math.round(dayBottleMl / dayFeedCount) : 0;
   const firstFeed = [...dayFeedEntries].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))[0];
@@ -417,7 +422,7 @@ export default function HistoryScreen() {
   );
 
   const weightPoints = weightEntries.map((entry) => ({
-    label: new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short' }).format(new Date(entry.occurredAt)),
+    label: new Intl.DateTimeFormat(intlLocale, { day: '2-digit', month: 'short' }).format(new Date(entry.occurredAt)),
     value: Number(entry.payload.weightKg ?? 0),
   }));
 
@@ -426,7 +431,7 @@ export default function HistoryScreen() {
     const row = getOmsRow(sex, pointAge.monthsFloat);
     const band = interpolatePercentileBand(row.weight.p3, row.weight.p15, row.weight.p50, row.weight.p85, row.weight.p97);
     return {
-      label: new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short' }).format(new Date(entry.occurredAt)),
+      label: new Intl.DateTimeFormat(intlLocale, { day: '2-digit', month: 'short' }).format(new Date(entry.occurredAt)),
       p25: band.p25,
       p75: band.p75,
     };
@@ -441,7 +446,7 @@ export default function HistoryScreen() {
   async function exportCsv() {
     if (globalThis.navigator?.clipboard?.writeText && Platform.OS === 'web') {
       await globalThis.navigator.clipboard.writeText(currentCsv);
-      toast.success('Export du jour copie dans le presse-papiers.');
+      toast.success(t('history.exportedToClipboard'));
       return;
     }
     await Share.share({ message: currentCsv, title: 'AppLeo CSV' });
@@ -498,7 +503,7 @@ export default function HistoryScreen() {
 
   const historySidebar = (
     <>
-        <Heading eyebrow={tLocale('history.eyebrow')} title={tLocale('history.title')} align="left" />
+        <Heading eyebrow={t('history.eyebrow')} title={t('history.title')} align="left" />
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -510,7 +515,7 @@ export default function HistoryScreen() {
               size="sm"
             />
             <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', textAlign: 'center', flex: 1 }}>
-              {new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : language === 'en' ? 'en-US' : language === 'nl' ? 'nl-NL' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
+              {new Intl.DateTimeFormat(intlLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
             </Text>
             <Button
               label=">"
@@ -524,8 +529,8 @@ export default function HistoryScreen() {
             {[
               { label: 'CSV', action: exportCsv, active: false },
               { label: 'PDF', action: exportPdf, active: false },
-              { label: language === 'es' ? 'Compartir' : language === 'en' ? 'Share' : language === 'nl' ? 'Delen' : 'Partager', action: shareDay, active: false },
-              { label: language === 'es' ? 'Hoy' : language === 'en' ? 'Today' : language === 'nl' ? 'Vandaag' : "Aujourd'hui", action: () => setSelectedDate(startOfDay(new Date())), active: true },
+              { label: t('history.share'), action: shareDay, active: false },
+              { label: t('history.today'), action: () => setSelectedDate(startOfDay(new Date())), active: true },
             ].map((item) => (
               <Pressable
                 key={item.label}
@@ -562,7 +567,7 @@ export default function HistoryScreen() {
             <TextInput
               value={searchInput}
               onChangeText={setSearchInput}
-              placeholder={language === 'es' ? 'Buscar (notas, tipo, alimento...)' : language === 'en' ? 'Search (notes, type, food...)' : language === 'nl' ? 'Zoeken (notities, type, voeding...)' : 'Rechercher (notes, type, aliment...)'}
+              placeholder={t('history.searchPlaceholder')}
               placeholderTextColor={MUTED}
               style={{ flex: 1, color: TEXT, fontSize: 14, paddingVertical: 4 }}
               autoCapitalize="none"
@@ -574,7 +579,7 @@ export default function HistoryScreen() {
                 onPress={() => setSearchInput('')}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={language === 'es' ? 'Borrar búsqueda' : language === 'en' ? 'Clear search' : language === 'nl' ? 'Zoeken wissen' : 'Effacer la recherche'}
+                accessibilityLabel={t('history.clearSearch')}
               >
                 <Ionicons name="close-circle" size={18} color={MUTED} />
               </Pressable>
@@ -582,7 +587,7 @@ export default function HistoryScreen() {
           </View>
           {searchQuery && timelineEntries.length === 0 ? (
             <Text style={{ color: MUTED, fontSize: 12, marginTop: 4, fontStyle: 'italic' }}>
-              {language === 'es' ? `Sin resultados para "${searchInput}"` : language === 'en' ? `No results for "${searchInput}"` : language === 'nl' ? `Geen resultaten voor "${searchInput}"` : `Aucun resultat pour "${searchInput}"`}
+              {format('history.noResults', { query: searchInput })}
             </Text>
           ) : null}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 6 }}>
@@ -611,15 +616,15 @@ export default function HistoryScreen() {
         </Card>
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <Heading eyebrow="JOUR" title="Day Summary" subtitle="Resume du jour." />
+          <Heading eyebrow={t('history.summaryEyebrow')} title={t('history.summaryTitle')} subtitle={t('history.summarySubtitle')} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
             {[
-              { label: 'Prises', value: String(dayFeedCount), detail: `${dayFeedCount - yesterdayFeedCount >= 0 ? '+' : ''}${dayFeedCount - yesterdayFeedCount} vs hier` },
-              { label: 'Lait total', value: `${dayBottleMl} ml`, detail: `${profile?.goalFeedingsPerDay ?? 8} prises cible` },
-              { label: 'Sommeil total', value: `${sleepMinutes} min`, detail: 'OMS 720-1020 min' },
-              { label: 'Couches', value: String(diaperCount), detail: 'Jour courant' },
-              { label: 'Medicaments', value: String(medEntries.length), detail: medEntries.map((entry) => entry.payload.name).filter(Boolean).join(', ') || 'Aucun' },
-              { label: 'Mesures', value: String(measureEntries.length), detail: latestMeasure ? getDetail(latestMeasure) : 'Aucune' },
+              { label: t('history.summaryFeeds'), value: String(dayFeedCount), detail: format('history.vsYesterday', { delta: feedDeltaStr }) },
+              { label: t('history.summaryMilk'), value: `${dayBottleMl} ml`, detail: format('history.summaryTarget', { value: profile?.goalFeedingsPerDay ?? 8 }) },
+              { label: t('history.summarySleep'), value: `${sleepMinutes} min`, detail: t('history.summaryOms') },
+              { label: t('history.summaryDiapers'), value: String(diaperCount), detail: t('history.summaryCurrentDay') },
+              { label: t('history.summaryMeds'), value: String(medEntries.length), detail: medEntries.map((entry) => entry.payload.name).filter(Boolean).join(', ') || t('history.summaryNone') },
+              { label: t('history.summaryMeasurements'), value: String(measureEntries.length), detail: latestMeasure ? getDetail(latestMeasure, t) : t('history.summaryNone') },
             ].map((stat) => (
               <View
                 key={stat.label}
@@ -642,9 +647,9 @@ export default function HistoryScreen() {
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' }}>
             {[
-              { label: 'Frequence', value: frequencyBadge },
-              { label: 'Moy. ml/prise', value: `${avgMlPerFeed} ml` },
-              { label: 'Premiere prise', value: firstFeed ? formatTime(firstFeed.occurredAt) : '--' },
+              { label: t('history.summaryFrequency'), value: frequencyBadge },
+              { label: t('history.summaryAvgMl'), value: `${avgMlPerFeed} ml` },
+              { label: t('history.summaryFirstFeed'), value: firstFeed ? formatTime(firstFeed.occurredAt) : '--' },
             ].map((badge) => (
               <View key={badge.label} style={{ paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999, backgroundColor: BG, borderWidth: 1, borderColor: BORDER }}>
                 <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600' }}>{badge.label}</Text>
@@ -659,12 +664,12 @@ export default function HistoryScreen() {
   const historyMain = (
     <>
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <Heading eyebrow="VISTA" title="Panel" subtitle="Activa u oculta bloques." />
+          <Heading eyebrow={t('history.panelEyebrow')} title={t('history.panelTitle')} subtitle={t('history.panelBody')} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {[
-              { key: 'status', label: showTodayStatus ? 'Ocultar estado' : 'Mostrar estado', onPress: () => setShowTodayStatus((v) => !v) },
-              { key: 'insights', label: showInsights ? 'Ocultar insights' : 'Mostrar insights', onPress: () => setShowInsights((v) => !v) },
-              { key: 'groups', label: showTimeGroups ? 'Ocultar franjas' : 'Mostrar franjas', onPress: () => setShowTimeGroups((v) => !v) },
+              { key: 'status', label: t('history.toggleTodayStatus'), onPress: () => setShowTodayStatus((v) => !v) },
+              { key: 'insights', label: t('history.toggleInsights'), onPress: () => setShowInsights((v) => !v) },
+              { key: 'groups', label: t('history.toggleBands'), onPress: () => setShowTimeGroups((v) => !v) },
             ].map((item) => (
               <Pressable key={item.key} onPress={item.onPress} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: BORDER, backgroundColor: BG }}>
                 <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{item.label}</Text>
@@ -675,12 +680,12 @@ export default function HistoryScreen() {
 
         {showTodayStatus ? (
           <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-            <Heading eyebrow="HOY" title="Estado de hoy" subtitle="Resumen rapido." />
+            <Heading eyebrow={t('history.todayStatusEyebrow')} title={t('history.todayStatusTitle')} subtitle={t('history.todayStatusSubtitle')} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {[
-                { label: 'Comidas', value: String(dayFeedCount) },
-                { label: 'Sueno total', value: `${sleepMinutes} min` },
-                { label: 'Ultima toma', value: dayFeedEntries[0] ? formatTime(dayFeedEntries[0].occurredAt) : '--' },
+                { label: t('history.feeds'), value: String(dayFeedCount) },
+                { label: t('history.totalSleep'), value: `${sleepMinutes} min` },
+                { label: t('history.lastFeed'), value: dayFeedEntries[0] ? formatTime(dayFeedEntries[0].occurredAt) : '--' },
               ].map((kpi) => (
                 <View key={kpi.label} style={{ flexBasis: isMobile ? '100%' : '31%', borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: BG, padding: 12, gap: 4 }}>
                   <Text style={{ color: MUTED, fontSize: 12 }}>{kpi.label}</Text>
@@ -693,25 +698,33 @@ export default function HistoryScreen() {
 
         {showInsights ? (
           <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-            <Heading eyebrow="INSIGHTS" title="Insights automáticos" subtitle="Lectura rapida del dia." />
+            <Heading eyebrow={t('history.insightsEyebrow')} title={t('history.insightsTitle')} subtitle={t('history.insightsSubtitle')} />
             <View style={{ gap: 8 }}>
               <View style={{ borderRadius: 10, borderWidth: 1, borderColor: BORDER, backgroundColor: BG, padding: 10 }}>
-                <Text style={{ color: TEXT, fontSize: 13 }}>{`Tomas: ${dayFeedCount - yesterdayFeedCount >= 0 ? '+' : ''}${dayFeedCount - yesterdayFeedCount} vs ayer.`}</Text>
+                <Text style={{ color: TEXT, fontSize: 13 }}>{format('history.feedsVsYesterday', { delta: feedDeltaStr })}</Text>
               </View>
               <View style={{ borderRadius: 10, borderWidth: 1, borderColor: BORDER, backgroundColor: BG, padding: 10 }}>
-                <Text style={{ color: TEXT, fontSize: 13 }}>{`Ventana mas larga sin comer: ${longestFeedGapHours ?? '--'} h.`}</Text>
+                <Text style={{ color: TEXT, fontSize: 13 }}>{format('history.longestFast', { hours: longestFeedGapHours ?? '--' })}</Text>
               </View>
             </View>
           </Card>
         ) : null}
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <Heading eyebrow="POIDS" title="Weight Trend Chart" subtitle="Courbe bebe + repere OMS." />
+          <Heading eyebrow={t('history.weightEyebrow')} title={t('history.weightTitle')} subtitle={t('history.weightSubtitle')} />
           <WeightChart points={weightPoints} bandRows={weightBandRows.length ? weightBandRows : weightPoints.map((point) => ({ label: point.label, p25: point.value - 0.3, p75: point.value + 0.3 }))} />
         </Card>
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <Heading eyebrow="OMS" title="Reference Card" subtitle={`${profile?.babyName ?? 'Bebe'} · ${age.months} mois ${age.days} jours`} />
+          <Heading
+            eyebrow={t('history.omsEyebrow')}
+            title={t('history.omsTitle')}
+            subtitle={format('history.omsBabyAge', {
+              name: profile?.babyName ?? t('history.defaultBabyName'),
+              months: age.months,
+              days: age.days,
+            })}
+          />
           <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             {(['female', 'male'] as const).map((value) => (
               <Pressable
@@ -726,27 +739,25 @@ export default function HistoryScreen() {
                   backgroundColor: omsSex === value ? `${GOLD}22` : BG,
                 }}
               >
-                <Text style={{ color: omsSex === value ? GOLD : TEXT, fontWeight: '700' }}>{value === 'female' ? 'Fille' : 'Garcon'}</Text>
+                <Text style={{ color: omsSex === value ? GOLD : TEXT, fontWeight: '700' }}>{value === 'female' ? t('history.omsFemale') : t('history.omsMale')}</Text>
               </Pressable>
             ))}
           </View>
           <View style={{ gap: 12 }}>
-            <OmsMetricCard label="Poids" value={latestWeight} unit="kg" band={weightBand} />
-            <OmsMetricCard label="Taille" value={latestHeight} unit="cm" band={heightBand} />
-            <OmsMetricCard label="Perimetre cranien" value={latestHeadCirc} unit="cm" band={headBand} />
-            <OmsMetricCard label="IMC" value={bmi} unit="" band={bmiBand} />
+            <OmsMetricCard label={t('history.omsWeight')} value={latestWeight} unit="kg" band={weightBand} />
+            <OmsMetricCard label={t('history.omsHeight')} value={latestHeight} unit="cm" band={heightBand} />
+            <OmsMetricCard label={t('history.omsHead')} value={latestHeadCirc} unit="cm" band={headBand} />
+            <OmsMetricCard label={t('history.omsBmi')} value={bmi} unit="" band={bmiBand} />
           </View>
           <View style={{ marginTop: 6, gap: 8 }}>
-            <Text style={{ color: MUTED, fontSize: 12 }}>
-              Tabla OMS: P50 es el valor medio; el rango P3-P97 es el rango esperado.
-            </Text>
+            <Text style={{ color: MUTED, fontSize: 12 }}>{t('history.omsTableInfo')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ minWidth: isMobile ? 620 : 700, gap: 4 }}>
                 <View style={{ flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: BORDER }}>
-                  <Text style={{ width: 70, color: MUTED, fontWeight: '700', fontSize: 12 }}>Edad</Text>
-                  <Text style={{ width: 180, color: MUTED, fontWeight: '700', fontSize: 12 }}>Peso (kg)</Text>
-                  <Text style={{ width: 180, color: MUTED, fontWeight: '700', fontSize: 12 }}>Talla (cm)</Text>
-                  <Text style={{ width: 170, color: MUTED, fontWeight: '700', fontSize: 12 }}>Perim. craneal (cm)</Text>
+                  <Text style={{ width: 70, color: MUTED, fontWeight: '700', fontSize: 12 }}>{t('history.omsTableAge')}</Text>
+                  <Text style={{ width: 180, color: MUTED, fontWeight: '700', fontSize: 12 }}>{t('history.omsTableWeight')}</Text>
+                  <Text style={{ width: 180, color: MUTED, fontWeight: '700', fontSize: 12 }}>{t('history.omsTableHeight')}</Text>
+                  <Text style={{ width: 170, color: MUTED, fontWeight: '700', fontSize: 12 }}>{t('history.omsTableHead')}</Text>
                 </View>
                 {(showOmsTable ? omsBySex[omsSex] : omsBySex[omsSex].slice(0, 5)).map((row) => {
                   const active = row.month === Math.round(age.monthsFloat);
@@ -762,12 +773,14 @@ export default function HistoryScreen() {
                     >
                       <Text style={{ width: 70, color: active ? GOLD : TEXT, fontSize: 12, fontWeight: active ? '700' : '500' }}>{row.month}m</Text>
                       <Text style={{ width: 180, color: active ? GOLD : TEXT, fontSize: 12 }}>
-                        Medio: {row.weight.p50} | Rango: {row.weight.p3}-{row.weight.p97}
+                        {format('history.omsTableRowValue', { median: row.weight.p50, min: row.weight.p3, max: row.weight.p97 })}
                       </Text>
                       <Text style={{ width: 180, color: active ? GOLD : TEXT, fontSize: 12 }}>
-                        Medio: {row.height.p50} | Rango: {row.height.p3}-{row.height.p97}
+                        {format('history.omsTableRowValue', { median: row.height.p50, min: row.height.p3, max: row.height.p97 })}
                       </Text>
-                      <Text style={{ width: 170, color: active ? GOLD : TEXT, fontSize: 12 }}>Medio: {row.headCirc.p50}</Text>
+                      <Text style={{ width: 170, color: active ? GOLD : TEXT, fontSize: 12 }}>
+                        {format('history.omsTableRowHead', { median: row.headCirc.p50 })}
+                      </Text>
                     </View>
                   );
                 })}
@@ -786,7 +799,7 @@ export default function HistoryScreen() {
               }}
             >
               <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>
-                {showOmsTable ? 'Ocultar tabla OMS' : 'Ver tabla OMS completa'}
+                {showOmsTable ? t('history.omsHideTable') : t('history.omsShowTable')}
               </Text>
             </Pressable>
           </View>
@@ -800,10 +813,17 @@ export default function HistoryScreen() {
                 {items.map((entry, idx) => {
                   const expanded = expandedId === entry.id;
                   const hour = new Date(entry.occurredAt).getHours();
-                  const slot = hour < 12 ? 'Manana' : hour < 18 ? 'Tarde' : 'Noche';
+                  const slot = hour < 12 ? t('history.slotMorning') : hour < 18 ? t('history.slotAfternoon') : t('history.slotEvening');
                   const prev = items[idx - 1];
                   const prevHour = prev ? new Date(prev.occurredAt).getHours() : null;
-                  const prevSlot = prevHour === null ? null : prevHour < 12 ? 'Manana' : prevHour < 18 ? 'Tarde' : 'Noche';
+                  const prevSlot =
+                    prevHour === null
+                      ? null
+                      : prevHour < 12
+                      ? t('history.slotMorning')
+                      : prevHour < 18
+                      ? t('history.slotAfternoon')
+                      : t('history.slotEvening');
                   const showSlot = showTimeGroups && slot !== prevSlot;
                   return (
                     <Animated.View
@@ -829,16 +849,16 @@ export default function HistoryScreen() {
                         <View style={{ width: 14, height: 14, borderRadius: 999, backgroundColor: iconColor(entry.type) }} />
                         <View style={{ flex: 1, gap: 4 }}>
                           <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{entry.type.toUpperCase()}</Text>
-                          <Text style={{ color: MUTED, fontSize: 13 }}>{getDetail(entry)}</Text>
+                          <Text style={{ color: MUTED, fontSize: 13 }}>{getDetail(entry, t)}</Text>
                         </View>
                         <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{formatTime(entry.occurredAt)}</Text>
                       </View>
                       {expanded ? (
                         <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 10 }}>
-                          <Text style={{ color: MUTED, fontSize: 13 }}>{entry.notes || 'Sans note'}</Text>
+                          <Text style={{ color: MUTED, fontSize: 13 }}>{entry.notes || t('history.noNote')}</Text>
                           <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 10, justifyContent: 'flex-end' }}>
-                            <Button label="Editer" onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })} variant="secondary" fullWidth={isMobile} />
-                            <Button label="Supprimer" onPress={() => handleDeleteEntry(entry)} variant="danger" fullWidth={isMobile} />
+                            <Button label={t('common.edit')} onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })} variant="secondary" fullWidth={isMobile} />
+                            <Button label={t('common.delete')} onPress={() => handleDeleteEntry(entry)} variant="danger" fullWidth={isMobile} />
                           </View>
                         </View>
                       ) : null}
@@ -852,9 +872,9 @@ export default function HistoryScreen() {
         ) : (
           <EmptyState
             icon="time-outline"
-            title="Aucune entree"
-            body="Aucune entree ne correspond au filtre pour cette date."
-            action={<Button label="Ajouter une entree" onPress={() => router.push('/entry/feed')} />}
+            title={t('history.emptyTitle')}
+            body={t('history.emptyBody')}
+            action={<Button label={t('history.addEntry')} onPress={() => router.push('/entry/feed')} />}
           />
         )}
     </>
@@ -880,8 +900,8 @@ export default function HistoryScreen() {
           gap: 12,
         }}
       >
-        <Text style={{ color: TEXT, flex: 1, fontSize: 13, fontWeight: '600' }}>Element supprime.</Text>
-        <Button label="Annuler" onPress={handleUndoDelete} variant="secondary" fullWidth={false} />
+        <Text style={{ color: TEXT, flex: 1, fontSize: 13, fontWeight: '600' }}>{t('history.entryDeleted')}</Text>
+        <Button label={t('history.undo')} onPress={handleUndoDelete} variant="secondary" fullWidth={false} />
       </View>
     ) : null;
 

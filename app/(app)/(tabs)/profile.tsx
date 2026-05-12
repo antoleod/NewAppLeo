@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Alert, AppState, Image, Pressable, Text, View } from 'react-native';
+import { Alert, AppState, Platform, Pressable, Share, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeIn, useSharedValue, withSpring } from 'react-native-reanimated';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { Button, Card, EmptyState, Heading, Input, Page, Segment } from '@/components/shared';
+import { Button, Card, Heading, Input, Page, Segment } from '@/components/shared';
 import { DateTimeField } from '@/components/shared';
 import { ExpandableSection } from '@/components/shared';
 import { ProfileSkeleton } from '@/components/profile';
@@ -19,50 +19,82 @@ import { useAppData } from '@/context/AppDataContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useLocale } from '@/context/LocaleContext';
-import { getActiveBaby, getBabies, saveBaby, setActiveBabyId, removeBaby, type BabyProfile } from '@/lib/storage';
+import { getActiveBaby, getBabies, saveBaby, setActiveBabyId, removeBaby, clearLocalSession, type BabyProfile } from '@/lib/storage';
+import { getAgeInMonths, getWHORecommendation } from '@/lib/who-recommendations';
 import { DataImporter } from '@/components/profile';
 import { getLocalPairingSession } from '@/services/pairingService';
-import { flushQueuedOperations, loadQueuedOperations } from '@/lib/sync';
+import { loadQueuedOperations } from '@/lib/sync';
 import { useToast } from '@/components/shared';
 import { haptics } from '@/lib/haptics';
-import {
-  clearCurrentSession,
-  deleteSession,
-  getCurrentSessionId,
-  getSessionsOnce,
-  registerCurrentSession,
-  watchSessions,
-  type SessionItem,
-} from '@/services/sessionService';
+import type { UnitSystem } from '@/types';
+import { clearCurrentSession } from '@/services/sessionService';
 
 const languageOptions = [
-  { label: 'FR', value: 'fr' },
-  { label: 'ES', value: 'es' },
-  { label: 'EN', value: 'en' },
-  { label: 'NL', value: 'nl' },
+  { label: 'Français', value: 'fr' },
+  { label: 'Español', value: 'es' },
+  { label: 'English', value: 'en' },
+  { label: 'Nederlands', value: 'nl' },
 ];
 
-function formatRelativeTime(iso: string, t: (key: string) => string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '?';
-  const diff = Date.now() - date.getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return t('profile.justNow');
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d`;
-  return date.toLocaleDateString();
+const KG_PER_LB = 0.45359237;
+const CM_PER_IN = 2.54;
+
+function kgToLb(kg: number): number { return kg / KG_PER_LB; }
+function lbToKg(lb: number): number { return lb * KG_PER_LB; }
+function cmToIn(cm: number): number { return cm / CM_PER_IN; }
+function inToCm(inches: number): number { return inches * CM_PER_IN; }
+
+function formatWeightDisplay(kg: string | number, units: UnitSystem): string {
+  const n = Number(kg);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return units === 'imperial' ? kgToLb(n).toFixed(1) : String(n);
+}
+
+function formatHeightDisplay(cm: string | number, units: UnitSystem): string {
+  const n = Number(cm);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return units === 'imperial' ? cmToIn(n).toFixed(1) : String(n);
+}
+
+function parseWeightInput(value: string, units: UnitSystem): number | undefined {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return undefined;
+  return units === 'imperial' ? lbToKg(n) : n;
+}
+
+function parseHeightInput(value: string, units: UnitSystem): number | undefined {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return undefined;
+  return units === 'imperial' ? inToCm(n) : n;
+}
+
+function getCorrectedAgeLabel(birthDate: string, prematureWeeks: number, t: (key: string) => string): string | null {
+  if (!birthDate || !prematureWeeks || prematureWeeks <= 0) return null;
+  const birth = new Date(birthDate);
+  if (Number.isNaN(birth.getTime())) return null;
+  const corrected = new Date(birth.getTime() + prematureWeeks * 7 * 24 * 60 * 60 * 1000);
+  const months = getAgeInMonths(corrected.toISOString());
+  return `${t('profile.correctedAge')}: ~${months} ${t('profile.monthsShort')}`;
+}
+
+/**
+ * Strip auth/credential fields before exporting the profile. The export
+ * payload is meant for parents to share with their pediatrician or save
+ * for backup; it must never contain hashes or session secrets.
+ */
+function sanitizeProfileForExport(profile: any) {
+  if (!profile) return null;
+  const {
+    encryptedPassword: _ep,
+    pinHash: _ph,
+    pinSalt: _ps,
+    ...safe
+  } = profile;
+  return safe;
 }
 
 function generateBabyId() {
   return globalThis.crypto?.randomUUID?.() ?? `baby_${Date.now()}`;
-}
-
-function parseNumber(value: string) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function dateToIsoString(date: Date): string {
@@ -81,38 +113,105 @@ function formatDateForDisplay(iso: string, locale: string): string {
   return date.toLocaleDateString(locale === 'es' ? 'es-ES' : locale === 'en' ? 'en-US' : locale === 'nl' ? 'nl-NL' : 'fr-FR', options);
 }
 
+function clampGoal(value: string, min: number, max: number): string {
+  if (value === '') return '';
+  const digits = value.replace(/[^0-9]/g, '');
+  if (digits === '') return '';
+  return String(Math.max(min, Math.min(max, Number(digits))));
+}
+
+const NOTES_MAX = 500;
+
+/**
+ * Sanity ranges for typical 0–3yr babies (in metric, after conversion). If a
+ * value parses to something outside these bounds we surface a soft warning —
+ * not a blocker — to catch unit-system mix-ups (e.g. a parent in Imperial
+ * mode typing "70" thinking kg → 70 lb ≈ 31.7 kg, well above max).
+ */
+const WEIGHT_MIN_KG = 1.5;
+const WEIGHT_MAX_KG = 25;
+const HEIGHT_MIN_CM = 35;
+const HEIGHT_MAX_CM = 115;
+const HEAD_MIN_CM = 28;
+const HEAD_MAX_CM = 55;
+
+function checkWeightRange(input: string, units: UnitSystem): { key: string } | null {
+  if (!input) return null;
+  const kg = parseWeightInput(input, units);
+  if (kg === undefined || !Number.isFinite(kg) || kg <= 0) return null;
+  if (kg < WEIGHT_MIN_KG || kg > WEIGHT_MAX_KG) {
+    if (units === 'imperial' && kg > WEIGHT_MAX_KG) {
+      return { key: 'profile.outOfRangeMaybeKg' };
+    }
+    return { key: 'profile.outOfRangeWeight' };
+  }
+  return null;
+}
+
+function checkHeightRange(input: string, units: UnitSystem): { key: string } | null {
+  if (!input) return null;
+  const cm = parseHeightInput(input, units);
+  if (cm === undefined || !Number.isFinite(cm) || cm <= 0) return null;
+  if (cm < HEIGHT_MIN_CM || cm > HEIGHT_MAX_CM) {
+    if (units === 'imperial' && cm > HEIGHT_MAX_CM) {
+      return { key: 'profile.outOfRangeMaybeCm' };
+    }
+    return { key: 'profile.outOfRangeHeight' };
+  }
+  return null;
+}
+
+function checkHeadCircRange(input: string, units: UnitSystem): { key: string } | null {
+  if (!input) return null;
+  const cm = parseHeightInput(input, units);
+  if (cm === undefined || !Number.isFinite(cm) || cm <= 0) return null;
+  if (cm < HEAD_MIN_CM || cm > HEAD_MAX_CM) {
+    return { key: 'profile.outOfRangeHeadCirc' };
+  }
+  return null;
+}
+
 export default function ProfileScreen() {
   const { colors } = useTheme();
   const { t, format } = useTranslation();
   const { language: localeLanguage, setLanguage: setContextLanguage } = useLocale();
   const { profile, guestMode, saveProfile, signOut, user } = useAuth();
+  const { updateEntry, deleteEntry, addEntry, entries } = useAppData();
   const toast = useToast();
 
+  const initialUnits: UnitSystem = profile?.unitSystem ?? 'metric';
   const [form, setForm] = useState({
     caregiverName: profile?.caregiverName ?? '',
+    partnerName: profile?.partnerName ?? '',
     babyName: profile?.babyName ?? 'Baby',
+    babySex: (profile?.babySex ?? 'unspecified') as 'female' | 'male' | 'unspecified',
     babyBirthDate: isoStringToDate(profile?.babyBirthDate ?? ''),
     birthWeightKg: profile?.birthWeightKg ? String(profile.birthWeightKg) : '',
+    birthHeightCm: profile?.birthHeightCm ? String(profile.birthHeightCm) : '',
+    birthHeadCircCm: profile?.birthHeadCircCm ? String(profile.birthHeadCircCm) : '',
     currentWeightKg: profile?.currentWeightKg ? String(profile.currentWeightKg) : '',
     heightCm: profile?.heightCm ? String(profile.heightCm) : '',
+    headCircCm: profile?.headCircCm ? String(profile.headCircCm) : '',
     babyNotes: profile?.babyNotes ?? '',
     babyPhotoUri: profile?.babyPhotoUri ?? '',
+    prematureWeeks: profile?.prematureWeeks ? String(profile.prematureWeeks) : '',
+    prematureActive: profile?.prematureWeeks ? '1' : '',
+    unitSystem: initialUnits,
+    goalFeedingsPerDay: String(profile?.goalFeedingsPerDay ?? 8),
+    goalSleepHoursPerDay: String(profile?.goalSleepHoursPerDay ?? 14),
+    goalDiapersPerDay: String(profile?.goalDiapersPerDay ?? 6),
   });
   const [babies, setBabies] = useState<BabyProfile[]>([]);
   const [activeBabyId, setActiveBabyIdLocal] = useState<string | null>(null);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [queuedSyncCount, setQueuedSyncCount] = useState(0);
   const [showChildren, setShowChildren] = useState(false);
-  const [showSession, setShowSession] = useState(false);
   const [showAddBabyForm, setShowAddBabyForm] = useState(false);
   const [newBabyName, setNewBabyName] = useState('');
   const [newBabyBirthDate, setNewBabyBirthDate] = useState(new Date());
-  const [sessions, setSessions] = useState<SessionItem[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingBabyId, setDeletingBabyId] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [editingBaby, setEditingBaby] = useState<typeof babies[0] | null>(null);
   const [editingEntry, setEditingEntry] = useState<any>(null);
@@ -122,32 +221,62 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const isEditingRef = useRef(false);
   const [initialForm, setInitialForm] = useState({ ...form });
-  const [fieldErrors, setFieldErrors] = useState<{ birthWeightKg?: string; currentWeightKg?: string; heightCm?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{
+    birthWeightKg?: string;
+    birthHeightCm?: string;
+    birthHeadCircCm?: string;
+    currentWeightKg?: string;
+    heightCm?: string;
+    headCircCm?: string;
+  }>({});
   const isDirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(initialForm), [form, initialForm]);
 
   useEffect(() => {
     if (isEditingRef.current) return;
     const activeBaby = activeBabyId ? babies.find((b) => b.id === activeBabyId) : null;
+    const units: UnitSystem = profile?.unitSystem ?? 'metric';
     const next = activeBaby
       ? {
           caregiverName: profile?.caregiverName ?? '',
+          partnerName: profile?.partnerName ?? '',
           babyName: activeBaby.name,
+          babySex: (activeBaby.sex ?? 'unspecified') as 'female' | 'male' | 'unspecified',
           babyBirthDate: isoStringToDate(activeBaby.birthDate),
           birthWeightKg: activeBaby.birthWeightKg ? String(activeBaby.birthWeightKg) : '',
+          birthHeightCm: activeBaby.birthHeightCm ? String(activeBaby.birthHeightCm) : '',
+          birthHeadCircCm: activeBaby.birthHeadCircCm ? String(activeBaby.birthHeadCircCm) : '',
           currentWeightKg: activeBaby.currentWeightKg ? String(activeBaby.currentWeightKg) : '',
           heightCm: activeBaby.heightCm ? String(activeBaby.heightCm) : '',
+          headCircCm: activeBaby.headCircCm ? String(activeBaby.headCircCm) : '',
           babyNotes: activeBaby.notes ?? '',
           babyPhotoUri: activeBaby.photoUri ?? '',
+          prematureWeeks: profile?.prematureWeeks ? String(profile.prematureWeeks) : '',
+          prematureActive: profile?.prematureWeeks ? '1' : '',
+          unitSystem: units,
+          goalFeedingsPerDay: String(profile?.goalFeedingsPerDay ?? 8),
+          goalSleepHoursPerDay: String(profile?.goalSleepHoursPerDay ?? 14),
+          goalDiapersPerDay: String(profile?.goalDiapersPerDay ?? 6),
         }
       : {
           caregiverName: profile?.caregiverName ?? '',
+          partnerName: profile?.partnerName ?? '',
           babyName: profile?.babyName ?? 'Baby',
+          babySex: (profile?.babySex ?? 'unspecified') as 'female' | 'male' | 'unspecified',
           babyBirthDate: isoStringToDate(profile?.babyBirthDate ?? ''),
           birthWeightKg: profile?.birthWeightKg ? String(profile.birthWeightKg) : '',
+          birthHeightCm: profile?.birthHeightCm ? String(profile.birthHeightCm) : '',
+          birthHeadCircCm: profile?.birthHeadCircCm ? String(profile.birthHeadCircCm) : '',
           currentWeightKg: profile?.currentWeightKg ? String(profile.currentWeightKg) : '',
           heightCm: profile?.heightCm ? String(profile.heightCm) : '',
+          headCircCm: profile?.headCircCm ? String(profile.headCircCm) : '',
           babyNotes: profile?.babyNotes ?? '',
           babyPhotoUri: profile?.babyPhotoUri ?? '',
+          prematureWeeks: profile?.prematureWeeks ? String(profile.prematureWeeks) : '',
+          prematureActive: profile?.prematureWeeks ? '1' : '',
+          unitSystem: units,
+          goalFeedingsPerDay: String(profile?.goalFeedingsPerDay ?? 8),
+          goalSleepHoursPerDay: String(profile?.goalSleepHoursPerDay ?? 14),
+          goalDiapersPerDay: String(profile?.goalDiapersPerDay ?? 6),
         };
     setForm(next);
     setInitialForm(next);
@@ -174,19 +303,6 @@ export default function ProfileScreen() {
     return () => subscription.remove();
   }, [refreshProfileData]);
 
-  useEffect(() => {
-    if (!user || guestMode) return;
-    // Load immediately for instant display, then keep in sync via snapshot
-    void getSessionsOnce(user.uid).then((initial) => { if (initial.length) setSessions(initial); });
-    const unsub = watchSessions(user.uid, setSessions);
-    registerCurrentSession(user.uid, user.email ?? profile?.authEmail ?? '')
-      .then((id) => setCurrentSessionId(id))
-      .catch(() => {
-        getCurrentSessionId(user.uid).then((id) => { if (id) setCurrentSessionId(id); });
-      });
-    return () => unsub();
-  }, [user, guestMode, profile?.authEmail]);
-
   const handleFieldChange = useCallback(
     (field: keyof typeof form, value: string | Date) => {
       isEditingRef.current = true;
@@ -203,9 +319,14 @@ export default function ProfileScreen() {
 
   const handleSave = useCallback(async () => {
     const errors: typeof fieldErrors = {};
-    if (form.birthWeightKg && !Number.isFinite(Number(form.birthWeightKg))) errors.birthWeightKg = t('profile.invalidNumber');
-    if (form.currentWeightKg && !Number.isFinite(Number(form.currentWeightKg))) errors.currentWeightKg = t('profile.invalidNumber');
-    if (form.heightCm && !Number.isFinite(Number(form.heightCm))) errors.heightCm = t('profile.invalidNumber');
+    const numericFields: Array<keyof typeof fieldErrors> = [
+      'birthWeightKg', 'birthHeightCm', 'birthHeadCircCm',
+      'currentWeightKg', 'heightCm', 'headCircCm',
+    ];
+    for (const f of numericFields) {
+      const v = (form as any)[f];
+      if (v && !Number.isFinite(Number(v))) errors[f] = t('profile.invalidNumber');
+    }
     if (Object.keys(errors).length > 0) {
       haptics.warning();
       setFieldErrors(errors);
@@ -215,17 +336,34 @@ export default function ProfileScreen() {
     haptics.medium();
     setSaving(true);
     try {
-      const currentWeight = form.currentWeightKg ? `${form.currentWeightKg}kg` : '';
+      const units = form.unitSystem;
+      const nextBirthWeightKg = form.birthWeightKg ? parseWeightInput(form.birthWeightKg, units) : undefined;
+      const nextBirthHeightCm = form.birthHeightCm ? parseHeightInput(form.birthHeightCm, units) : undefined;
+      const nextBirthHeadCircCm = form.birthHeadCircCm ? parseHeightInput(form.birthHeadCircCm, units) : undefined;
+      const nextCurrentWeightKg = form.currentWeightKg ? parseWeightInput(form.currentWeightKg, units) : undefined;
+      const nextHeightCm = form.heightCm ? parseHeightInput(form.heightCm, units) : undefined;
+      const nextHeadCircCm = form.headCircCm ? parseHeightInput(form.headCircCm, units) : undefined;
+      const previousWeightKg = profile?.currentWeightKg;
+      const previousHeightCm = profile?.heightCm;
+      const previousHeadCircCm = profile?.headCircCm;
+      const weightChanged = nextCurrentWeightKg !== undefined && nextCurrentWeightKg !== previousWeightKg;
+      const heightChanged = nextHeightCm !== undefined && nextHeightCm !== previousHeightCm;
+      const headCircChanged = nextHeadCircCm !== undefined && nextHeadCircCm !== previousHeadCircCm;
+
       const activeBaby = activeBabyId ? babies.find((b) => b.id === activeBabyId) : null;
 
       if (activeBaby) {
         await saveBaby({
           ...activeBaby,
           name: form.babyName.trim(),
+          sex: form.babySex,
           birthDate: dateToIsoString(form.babyBirthDate as Date),
-          birthWeightKg: parseNumber(form.birthWeightKg),
-          currentWeightKg: parseNumber(form.currentWeightKg),
-          heightCm: parseNumber(form.heightCm),
+          birthWeightKg: nextBirthWeightKg,
+          birthHeightCm: nextBirthHeightCm,
+          birthHeadCircCm: nextBirthHeadCircCm,
+          currentWeightKg: nextCurrentWeightKg,
+          heightCm: nextHeightCm,
+          headCircCm: nextHeadCircCm,
           notes: form.babyNotes.trim() || undefined,
           photoUri: form.babyPhotoUri || undefined,
         });
@@ -234,17 +372,72 @@ export default function ProfileScreen() {
 
       await saveProfile({
         caregiverName: form.caregiverName.trim(),
+        partnerName: form.partnerName.trim() || undefined,
         babyName: form.babyName.trim(),
+        babySex: form.babySex,
         babyBirthDate: dateToIsoString(form.babyBirthDate as Date),
-        birthWeightKg: parseNumber(form.birthWeightKg),
-        currentWeightKg: parseNumber(form.currentWeightKg),
-        heightCm: parseNumber(form.heightCm),
+        birthWeightKg: nextBirthWeightKg,
+        birthHeightCm: nextBirthHeightCm,
+        birthHeadCircCm: nextBirthHeadCircCm,
+        currentWeightKg: nextCurrentWeightKg,
+        heightCm: nextHeightCm,
+        headCircCm: nextHeadCircCm,
         babyNotes: form.babyNotes.trim() || undefined,
         babyPhotoUri: form.babyPhotoUri || undefined,
+        prematureWeeks: form.prematureWeeks ? Number(form.prematureWeeks) : undefined,
+        unitSystem: units,
+        goalFeedingsPerDay: Number(form.goalFeedingsPerDay) || 8,
+        goalSleepHoursPerDay: Number(form.goalSleepHoursPerDay) || 14,
+        goalDiapersPerDay: Number(form.goalDiapersPerDay) || 6,
       });
+
+      // Dedupe per-day: update today's measurement entry if there is one, else
+      // create a new one. Keeps the WeightHistoryChart and profile in sync
+      // without littering the timeline with duplicate points.
+      if (weightChanged || heightChanged || headCircChanged) {
+        try {
+          const startOfDay = new Date();
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = startOfDay.getTime() + 86400000;
+          const todaysMeasurement = entries.find(
+            (e) =>
+              e.type === 'measurement' &&
+              new Date(e.occurredAt).getTime() >= startOfDay.getTime() &&
+              new Date(e.occurredAt).getTime() < endOfDay,
+          );
+          if (todaysMeasurement) {
+            await updateEntry(todaysMeasurement.id, {
+              occurredAt: new Date().toISOString(),
+              payload: {
+                ...todaysMeasurement.payload,
+                weightKg: weightChanged ? nextCurrentWeightKg : todaysMeasurement.payload?.weightKg,
+                heightCm: heightChanged ? nextHeightCm : todaysMeasurement.payload?.heightCm,
+                headCircCm: headCircChanged ? nextHeadCircCm : todaysMeasurement.payload?.headCircCm,
+              },
+            });
+          } else {
+            await addEntry({
+              type: 'measurement',
+              title: t('entry.measurement'),
+              occurredAt: new Date().toISOString(),
+              payload: {
+                weightKg: weightChanged ? nextCurrentWeightKg : undefined,
+                heightCm: heightChanged ? nextHeightCm : undefined,
+                headCircCm: headCircChanged ? nextHeadCircCm : undefined,
+              },
+            });
+          }
+        } catch {
+          // Non-blocking: profile save already succeeded.
+        }
+      }
+
       isEditingRef.current = false;
       setInitialForm(form);
       haptics.success();
+      const currentWeight = form.currentWeightKg
+        ? `${form.currentWeightKg}${units === 'imperial' ? 'lb' : 'kg'}`
+        : '';
       const msg = currentWeight ? `${form.babyName} · ${currentWeight}` : form.babyName;
       toast.success(msg);
     } catch (error: any) {
@@ -253,7 +446,7 @@ export default function ProfileScreen() {
     } finally {
       setSaving(false);
     }
-  }, [form, saveProfile, t, toast, activeBabyId, babies, refreshProfileData]);
+  }, [form, profile?.currentWeightKg, profile?.heightCm, profile?.headCircCm, saveProfile, t, toast, activeBabyId, babies, refreshProfileData, addEntry, updateEntry, entries]);
 
   const handlePickPhoto = useCallback(async () => {
     haptics.light();
@@ -272,6 +465,7 @@ export default function ProfileScreen() {
     });
 
     if (!result.canceled) {
+      isEditingRef.current = true;
       photoScale.value = withSpring(1.1, { damping: 8, mass: 1 }, () => {
         photoScale.value = withSpring(1, { damping: 8, mass: 1 });
       });
@@ -279,7 +473,6 @@ export default function ProfileScreen() {
       setForm((current) => ({ ...current, babyPhotoUri: result.assets[0]?.uri ?? current.babyPhotoUri }));
     }
   }, [setForm, t, toast, photoScale]);
-
 
   const handleAddNewBaby = useCallback(async () => {
     if (!newBabyName.trim()) {
@@ -307,22 +500,49 @@ export default function ProfileScreen() {
 
   const handleSetActiveBaby = useCallback(
     async (babyId: string) => {
-      haptics.medium();
       const babyName = babies.find((b) => b.id === babyId)?.name ?? 'Baby';
-      await setActiveBabyId(babyId);
-      setActiveBabyIdLocal(babyId);
-      haptics.success();
-      toast.success(format('profile.activeChildLabel', { name: babyName }));
+      const currentEditingName = activeBabyId
+        ? babies.find((b) => b.id === activeBabyId)?.name ?? form.babyName
+        : form.babyName;
+
+      const performSwitch = async () => {
+        // Clear edit flag so the sync effect repopulates the form with the
+        // newly-active baby's data.
+        isEditingRef.current = false;
+        haptics.medium();
+        await setActiveBabyId(babyId);
+        setActiveBabyIdLocal(babyId);
+        haptics.success();
+        toast.success(format('profile.activeChildLabel', { name: babyName }));
+      };
+
+      if (isDirty && currentEditingName) {
+        Alert.alert(
+          t('profile.discardChangesTitle'),
+          format('profile.discardChangesBody', { name: currentEditingName }),
+          [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('profile.switchAnyway'), style: 'destructive', onPress: () => { void performSwitch(); } },
+          ],
+        );
+        return;
+      }
+      await performSwitch();
     },
-    [babies, format, toast],
+    [activeBabyId, babies, form.babyName, format, isDirty, t, toast],
   );
 
   const handleRemoveBaby = useCallback(
     (babyId: string) => {
       const babyName = babies.find((b) => b.id === babyId)?.name ?? 'Baby';
+      const linkedCount = activeBabyId === babyId ? entries.length : 0;
+      const body =
+        linkedCount > 0
+          ? format('profile.removeChildConfirmRich', { babyName, count: linkedCount })
+          : format('profile.removeChildConfirmEmpty', { babyName });
       Alert.alert(
         t('profile.removeChild'),
-        format('profile.removeChildConfirm', { babyName }),
+        body,
         [
           { text: t('common.cancel'), style: 'cancel' },
           {
@@ -348,54 +568,7 @@ export default function ProfileScreen() {
         ]
       );
     },
-    [activeBabyId, babies, format, refreshProfileData, t, toast],
-  );
-
-  const handleSyncNow = useCallback(async () => {
-    if (!profile) {
-      toast.error(t('profile.signInRequired'));
-      return;
-    }
-
-    setSyncing(true);
-    try {
-      const result = await flushQueuedOperations(profile.uid);
-      const queuedOperations = await loadQueuedOperations();
-      setQueuedSyncCount(queuedOperations.length);
-      haptics.success();
-      toast.success(format('profile.syncFlushed', { count: result.flushed }));
-    } catch (error: any) {
-      haptics.error();
-      const message = String(error?.message ?? '');
-      const code = String(error?.code ?? '');
-      if (code.includes('permission-denied') || /insufficient permissions|missing or insufficient/i.test(message)) {
-        toast.error(t('profile.syncPermissionError'));
-      } else {
-        toast.error(error?.message ?? t('profile.syncError'));
-      }
-      const queuedOperations = await loadQueuedOperations();
-      setQueuedSyncCount(queuedOperations.length);
-    } finally {
-      setSyncing(false);
-    }
-  }, [profile, t, toast]);
-
-  const handleRemoveSession = useCallback(
-    async (sessionId: string) => {
-      haptics.light();
-      if (!user) return;
-      const target = sessions.find((item) => item.id === sessionId);
-      if (!target) return;
-      try {
-        await deleteSession(user.uid, target);
-        haptics.success();
-        toast.success(t('profile.sessionRemoved'));
-      } catch (error: any) {
-        haptics.error();
-        toast.error(error?.message ?? t('errors.saveFailed'));
-      }
-    },
-    [sessions, t, toast, user],
+    [activeBabyId, babies, entries.length, format, refreshProfileData, t, toast],
   );
 
   const handleEditBaby = useCallback(
@@ -413,8 +586,6 @@ export default function ProfileScreen() {
     },
     [refreshProfileData]
   );
-
-  const { updateEntry, deleteEntry } = useAppData();
 
   const handleEditEntry = useCallback(
     (entry: any) => {
@@ -438,7 +609,7 @@ export default function ProfileScreen() {
     [deleteEntry]
   );
 
-  const handleSignOut = useCallback(async () => {
+  const performSignOut = useCallback(async () => {
     setSigningOut(true);
     try {
       if (user?.uid) await clearCurrentSession(user.uid);
@@ -448,11 +619,117 @@ export default function ProfileScreen() {
     }
   }, [signOut, user]);
 
+  const handleSignOut = useCallback(() => {
+    const body = guestMode ? t('profile.logoutConfirmGuestBody') : t('profile.logoutConfirmBody');
+    Alert.alert(
+      t('profile.logoutConfirmTitle'),
+      body,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('profile.logoutConfirmAction'),
+          style: 'destructive',
+          onPress: () => { void performSignOut(); },
+        },
+      ],
+    );
+  }, [guestMode, performSignOut, t]);
+
+  const handleExportData = useCallback(async () => {
+    const proceed = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        t('profile.exportData'),
+        t('profile.exportPrivacyNote'),
+        [
+          { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+          { text: t('common.continue'), onPress: () => resolve(true) },
+        ],
+      );
+    });
+    if (!proceed) return;
+    try {
+      const payload = JSON.stringify({
+        exportedAt: new Date().toISOString(),
+        profile: sanitizeProfileForExport(profile),
+        babies,
+        entries,
+      }, null, 2);
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([payload], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `babyflow-export-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } else {
+        await Share.share({ title: 'BabyFlow data', message: payload });
+      }
+      haptics.success();
+      toast.success(t('profile.dataExported'));
+    } catch (error: any) {
+      haptics.error();
+      toast.error(error?.message ?? t('profile.exportFailed'));
+    }
+  }, [babies, entries, profile, t, toast]);
+
+  const handleDeleteAllData = useCallback(() => {
+    const body = guestMode
+      ? t('profile.deleteAccountConfirmBodyGuest')
+      : t('profile.deleteAccountConfirmBodyCloud');
+    Alert.alert(
+      t('profile.deleteAccountConfirmTitle'),
+      body,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('profile.deleteAccountAction'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearLocalSession(user?.uid);
+              await performSignOut();
+            } catch (error: any) {
+              haptics.error();
+              toast.error(error?.message ?? t('errors.saveFailed'));
+            }
+          },
+        },
+      ],
+    );
+  }, [guestMode, performSignOut, t, toast, user?.uid]);
+
+  const handleSharePairingCode = useCallback(async () => {
+    if (!pairingCode) {
+      router.push('/pair');
+      return;
+    }
+    try {
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(pairingCode);
+        toast.success(t('profile.pairCodeCopied'));
+      } else {
+        await Share.share({ message: pairingCode });
+      }
+      haptics.success();
+    } catch {
+      // user cancelled share – not an error
+    }
+  }, [pairingCode, t, toast]);
+
   const language = localeLanguage;
   const childSummary = useMemo(
     () => (activeBabyId ? babies.find((baby) => baby.id === activeBabyId) : null),
     [activeBabyId, babies],
   );
+
+  // Only show "Editing X" pill when there is more than one baby — otherwise
+  // the parent is implicitly editing the only baby.
+  const showEditingPill = babies.length > 1 && !!childSummary;
+
+  const weightUnit = form.unitSystem === 'imperial' ? 'lb' : 'kg';
+  const lengthUnit = form.unitSystem === 'imperial' ? 'in' : 'cm';
 
   if (isLoading) {
     return (
@@ -473,101 +750,541 @@ export default function ProfileScreen() {
 
       {/* Baby profile card */}
       <Card>
-        {childSummary && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: `${colors.primary}18`, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 14 }}>
-            <Ionicons name="body-outline" size={13} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700', flex: 1 }}>{childSummary.name}</Text>
-            <Text style={{ color: colors.muted, fontSize: 11 }}>{guestMode ? t('profile.modeGuest') : t('profile.modeCloud')}</Text>
-          </View>
-        )}
+        {/* Sync-mode pill — parent-friendly wording, tappable for an explanation */}
+        <Pressable
+          onPress={() => {
+            Alert.alert(
+              guestMode ? t('profile.modeGuest') : t('profile.modeCloud'),
+              guestMode ? t('profile.modeTooltipGuest') : t('profile.modeTooltipCloud'),
+              [{ text: t('common.ok') }],
+            );
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={guestMode ? t('profile.modeGuest') : t('profile.modeCloud')}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: guestMode ? `${colors.muted}18` : `${colors.primary}18`,
+            borderRadius: 10,
+            paddingHorizontal: 10,
+            paddingVertical: 7,
+            marginBottom: 14,
+          }}
+        >
+          <Ionicons name={guestMode ? 'phone-portrait-outline' : 'cloud-done-outline'} size={13} color={guestMode ? colors.muted : colors.primary} />
+          <Text style={{ color: guestMode ? colors.muted : colors.primary, fontSize: 12, fontWeight: '700', flex: 1 }}>
+            {guestMode ? t('profile.modeGuest') : t('profile.modeCloud')}
+          </Text>
+          {showEditingPill ? (
+            <Text style={{ color: colors.muted, fontSize: 11 }} numberOfLines={1}>
+              {format('profile.editingActive', { name: childSummary!.name })}
+            </Text>
+          ) : null}
+          <Ionicons name="information-circle-outline" size={13} color={colors.muted} />
+        </Pressable>
 
-        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 4 }}>
-          <Animated.View style={{ transform: [{ scale: photoScale }] }}>
-            <AvatarInitials name={form.babyName} photoUri={form.babyPhotoUri} size={72} onPress={handlePickPhoto} />
-          </Animated.View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16 }}>{form.babyName || '—'}</Text>
-            {form.currentWeightKg ? (
-              <Text style={{ color: colors.muted, fontSize: 13 }}>{form.currentWeightKg} kg</Text>
-            ) : null}
-            {form.heightCm ? (
-              <Text style={{ color: colors.muted, fontSize: 13 }}>{form.heightCm} cm</Text>
-            ) : null}
-          </View>
+        {/* Hero: centered avatar with name + corrected age below */}
+        <View style={{ alignItems: 'center', marginBottom: 18 }}>
+          <Pressable
+            onPress={handlePickPhoto}
+            accessibilityRole="button"
+            accessibilityLabel={form.babyPhotoUri ? t('profile.changePhoto') : t('profile.addPhoto')}
+            hitSlop={8}
+          >
+            <Animated.View style={{ transform: [{ scale: photoScale }] }}>
+              <AvatarInitials name={form.babyName} photoUri={form.babyPhotoUri} size={88} />
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: colors.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 2,
+                  borderColor: colors.background,
+                }}
+              >
+                <Ionicons name="camera" size={14} color="#fff" />
+              </View>
+            </Animated.View>
+          </Pressable>
+          <Text style={{ color: colors.text, fontWeight: '800', fontSize: 18, marginTop: 10 }} numberOfLines={1}>
+            {form.babyName || '—'}
+          </Text>
+          {(() => {
+            const correctedLabel = getCorrectedAgeLabel(
+              dateToIsoString(form.babyBirthDate as Date),
+              Number(form.prematureWeeks) || 0,
+              t,
+            );
+            return correctedLabel ? (
+              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{correctedLabel}</Text>
+            ) : null;
+          })()}
         </View>
 
-        <Input label={t('profile.babyNameLabel')} value={form.babyName} onChangeText={(value) => handleFieldChange('babyName', value)} autoCapitalize="words" />
-        <DateTimeField label={t('profile.birthDateLabel')} value={form.babyBirthDate as Date} onChange={(value) => handleFieldChange('babyBirthDate', value)} />
-
-        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700', marginTop: 16, marginBottom: 8 }}>{t('profile.measurementsTitle')}</Text>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Input
-              label={`${t('profile.birthWeightLabel')} (kg)`}
-              value={form.birthWeightKg}
-              onChangeText={(value) => handleFieldChange('birthWeightKg', value)}
-              keyboardType="decimal-pad"
-              inputMode="decimal"
-              error={fieldErrors.birthWeightKg}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Input
-              label={`${t('profile.currentWeightLabel')} (kg)`}
-              value={form.currentWeightKg}
-              onChangeText={(value) => handleFieldChange('currentWeightKg', value)}
-              keyboardType="decimal-pad"
-              inputMode="decimal"
-              error={fieldErrors.currentWeightKg}
-            />
-          </View>
+        {/* "About your baby" section */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <Ionicons name="person-outline" size={14} color={colors.primary} />
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>{t('profile.babyInfoSection')}</Text>
         </View>
 
         <Input
-          label={`${t('profile.heightLabel')} (cm)`}
-          value={form.heightCm}
-          onChangeText={(value) => handleFieldChange('heightCm', value)}
-          keyboardType="decimal-pad"
-          inputMode="decimal"
-          error={fieldErrors.heightCm}
+          label={t('profile.babyNameLabel')}
+          value={form.babyName}
+          onChangeText={(value) => handleFieldChange('babyName', value)}
+          autoCapitalize="words"
         />
 
-        <Input label={t('profile.notesLabel')} value={form.babyNotes} onChangeText={(value) => handleFieldChange('babyNotes', value)} multiline />
-      </Card>
+        {/* Baby sex — drives WHO curves accuracy */}
+        <Text style={{ color: colors.muted, fontSize: 11, marginTop: 10, marginBottom: 4 }}>{t('profile.babySexLabel')}</Text>
+        <Segment
+          value={form.babySex}
+          onChange={(value) => handleFieldChange('babySex', value)}
+          options={[
+            { label: t('profile.babySexFemale'), value: 'female' },
+            { label: t('profile.babySexMale'), value: 'male' },
+            { label: t('profile.babySexUnspecified'), value: 'unspecified' },
+          ]}
+        />
 
-      {/* Growth history card */}
-      <Card>
-        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800', marginBottom: 12 }}>{t('profile.weightHistory')}</Text>
-        <WeightHistoryChart limit={5} onEditEntry={handleEditEntry} />
-      </Card>
+        <DateTimeField label={t('profile.birthDateLabel')} value={form.babyBirthDate as Date} onChange={(value) => handleFieldChange('babyBirthDate', value)} />
 
-      {/* Preferences card */}
-      <Card>
-        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800', marginBottom: 12 }}>{t('profile.preferencesTitle')}</Text>
-        <Input label={t('profile.caregiverLabel')} value={form.caregiverName} onChangeText={(value) => handleFieldChange('caregiverName', value)} autoCapitalize="words" />
-        <Segment value={language} onChange={(value) => void setContextLanguage(value as any)} options={languageOptions} />
-        <View style={{ marginTop: 8 }}>
-          <Button label={t('profile.themeImport')} onPress={() => router.push('/(app)/(tabs)/settings-theme' as any)} variant="secondary" />
+        {/* Premature toggle — row-style toggle for a more "settings"-feel */}
+        <Pressable
+          onPress={() => handleFieldChange('prematureActive', form.prematureActive ? '' : '1')}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: Boolean(form.prematureActive) }}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            paddingVertical: 12,
+            paddingHorizontal: 12,
+            marginTop: 10,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: form.prematureActive ? colors.primary : colors.border,
+            backgroundColor: form.prematureActive ? `${colors.primary}10` : pressed ? colors.backgroundAlt : 'transparent',
+          })}
+        >
+          <Ionicons
+            name={form.prematureActive ? 'checkmark-circle' : 'ellipse-outline'}
+            size={20}
+            color={form.prematureActive ? colors.primary : colors.muted}
+          />
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: form.prematureActive ? '700' : '500', flex: 1 }}>
+            {t('profile.prematureToggle')}
+          </Text>
+        </Pressable>
+        {form.prematureActive ? (
+          <View style={{ marginTop: 8 }}>
+            <Input
+              label={t('profile.prematureWeeksLabel')}
+              value={form.prematureWeeks}
+              onChangeText={(value) => {
+                const digits = value.replace(/[^0-9]/g, '');
+                const clamped = digits === '' ? '' : String(Math.min(16, Math.max(0, Number(digits))));
+                handleFieldChange('prematureWeeks', clamped);
+              }}
+              keyboardType="number-pad"
+              inputMode="numeric"
+              placeholder={t('profile.prematurePlaceholder')}
+            />
+            <Text style={{ color: colors.muted, fontSize: 11, marginTop: -4, marginBottom: 4 }}>
+              {t('profile.prematureRangeHint')}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Measurements section header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 18, marginBottom: 8 }}>
+          <Ionicons name="fitness-outline" size={16} color={colors.primary} />
+          <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800', flex: 1 }}>
+            {t('profile.measurementsTitle')}
+          </Text>
         </View>
-      </Card>
 
-      <Card>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.childrenTitle')}</Text>
-          <Button
-            label={showChildren ? t('modal.hide') : t('modal.show')}
-            onPress={() => {
-              haptics.light();
-              setShowChildren((value) => !value);
-            }}
-            variant="ghost"
+        {/* Unit-system selector */}
+        <View style={{ marginBottom: 12 }}>
+          <Segment
+            value={form.unitSystem}
+            onChange={(value) => handleFieldChange('unitSystem', value)}
+            options={[
+              { label: t('profile.unitsMetric'), value: 'metric' },
+              { label: t('profile.unitsImperial'), value: 'imperial' },
+            ]}
           />
         </View>
 
-        <ExpandableSection isExpanded={showChildren}>
-          <>
-            {babies.length > 0 ? (
-              babies.map((baby) => (
+        {/* AT-BIRTH sub-card. Section title provides "at birth" context, so
+            field labels can stay short (no redundant "à la naissance" suffix). */}
+        <View style={{
+          marginTop: 4,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: `${colors.primary}06`,
+          padding: 12,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+            <Ionicons name="ribbon-outline" size={14} color={colors.primary} />
+            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>
+              {t('profile.birthSectionTitle')}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Input
+                label={`${t('profile.weightShort')} (${weightUnit})`}
+                value={form.unitSystem === 'imperial' && form.birthWeightKg ? formatWeightDisplay(form.birthWeightKg, 'imperial') : form.birthWeightKg}
+                onChangeText={(value) => handleFieldChange('birthWeightKg', value)}
+                keyboardType="decimal-pad"
+                inputMode="decimal"
+                error={fieldErrors.birthWeightKg}
+              />
+              {(() => {
+                const w = checkWeightRange(form.birthWeightKg, form.unitSystem);
+                return w ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: 4 }}>⚠ {t(w.key)}</Text> : null;
+              })()}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Input
+                label={`${t('profile.heightShort')} (${lengthUnit})`}
+                value={form.unitSystem === 'imperial' && form.birthHeightCm ? formatHeightDisplay(form.birthHeightCm, 'imperial') : form.birthHeightCm}
+                onChangeText={(value) => handleFieldChange('birthHeightCm', value)}
+                keyboardType="decimal-pad"
+                inputMode="decimal"
+                error={fieldErrors.birthHeightCm}
+              />
+              {(() => {
+                const h = checkHeightRange(form.birthHeightCm, form.unitSystem);
+                return h ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: 4 }}>⚠ {t(h.key)}</Text> : null;
+              })()}
+            </View>
+          </View>
+          <Input
+            label={`${t('profile.headCircShort')} (${lengthUnit})`}
+            value={form.unitSystem === 'imperial' && form.birthHeadCircCm ? formatHeightDisplay(form.birthHeadCircCm, 'imperial') : form.birthHeadCircCm}
+            onChangeText={(value) => handleFieldChange('birthHeadCircCm', value)}
+            keyboardType="decimal-pad"
+            inputMode="decimal"
+            error={fieldErrors.birthHeadCircCm}
+          />
+          {(() => {
+            const hc = checkHeadCircRange(form.birthHeadCircCm, form.unitSystem);
+            return hc ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: -4, marginBottom: 4 }}>⚠ {t(hc.key)}</Text> : null;
+          })()}
+        </View>
+
+        {/* CURRENT sub-card — same pattern as at-birth, separate visual block */}
+        <View style={{
+          marginTop: 12,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: `${colors.primary}06`,
+          padding: 12,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+            <Ionicons name="resize-outline" size={14} color={colors.primary} />
+            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>
+              {t('profile.currentSectionTitle')}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Input
+                label={`${t('profile.weightShort')} (${weightUnit})`}
+                value={form.unitSystem === 'imperial' && form.currentWeightKg ? formatWeightDisplay(form.currentWeightKg, 'imperial') : form.currentWeightKg}
+                onChangeText={(value) => handleFieldChange('currentWeightKg', value)}
+                keyboardType="decimal-pad"
+                inputMode="decimal"
+                error={fieldErrors.currentWeightKg}
+              />
+              {(() => {
+                const w = checkWeightRange(form.currentWeightKg, form.unitSystem);
+                return w ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: 4 }}>⚠ {t(w.key)}</Text> : null;
+              })()}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Input
+                label={`${t('profile.heightShort')} (${lengthUnit})`}
+                value={form.unitSystem === 'imperial' && form.heightCm ? formatHeightDisplay(form.heightCm, 'imperial') : form.heightCm}
+                onChangeText={(value) => handleFieldChange('heightCm', value)}
+                keyboardType="decimal-pad"
+                inputMode="decimal"
+                error={fieldErrors.heightCm}
+              />
+              {(() => {
+                const h = checkHeightRange(form.heightCm, form.unitSystem);
+                return h ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: 4 }}>⚠ {t(h.key)}</Text> : null;
+              })()}
+            </View>
+          </View>
+          <Input
+            label={`${t('profile.headCircShort')} (${lengthUnit})`}
+            value={form.unitSystem === 'imperial' && form.headCircCm ? formatHeightDisplay(form.headCircCm, 'imperial') : form.headCircCm}
+            onChangeText={(value) => handleFieldChange('headCircCm', value)}
+            keyboardType="decimal-pad"
+            inputMode="decimal"
+            error={fieldErrors.headCircCm}
+          />
+          {(() => {
+            const hc = checkHeadCircRange(form.headCircCm, form.unitSystem);
+            return hc ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: -4, marginBottom: 4 }}>⚠ {t(hc.key)}</Text> : null;
+          })()}
+        </View>
+
+        <Input
+          label={t('profile.notesLabel')}
+          value={form.babyNotes}
+          onChangeText={(value) => handleFieldChange('babyNotes', value.slice(0, NOTES_MAX))}
+          placeholder={t('profile.notesPlaceholder')}
+          multiline
+        />
+        {form.babyNotes.length > NOTES_MAX * 0.8 && (
+          <Text style={{
+            color: form.babyNotes.length >= NOTES_MAX ? colors.danger : colors.muted,
+            fontSize: 11,
+            marginTop: -4,
+            marginBottom: 4,
+            textAlign: 'right',
+          }}>
+            {format('profile.notesCharsLeft', { n: NOTES_MAX - form.babyNotes.length })}
+          </Text>
+        )}
+      </Card>
+
+      {/* Growth history card with calming WHO message */}
+      <Card>
+        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800', marginBottom: 4 }}>{t('profile.weightHistory')}</Text>
+        <Text style={{ color: colors.muted, fontSize: 11, marginBottom: 12 }}>{t('profile.tapToEdit')}</Text>
+        <WeightHistoryChart limit={5} onEditEntry={handleEditEntry} />
+        {(() => {
+          const birthIso = dateToIsoString(form.babyBirthDate as Date);
+          if (!birthIso) return null;
+          const prematureWeeksValue = Number(form.prematureWeeks) || 0;
+          const referenceIso = prematureWeeksValue > 0
+            ? new Date(new Date(birthIso).getTime() + prematureWeeksValue * 7 * 86400000).toISOString()
+            : birthIso;
+          const ageMonths = getAgeInMonths(referenceIso);
+          const rec = getWHORecommendation(referenceIso);
+          const latest = entries
+            .filter((e) => e.type === 'measurement' && e.payload?.weightKg)
+            .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())[0];
+          const latestKg = latest?.payload?.weightKg ?? undefined;
+          const ageLabel = `${ageMonths} ${t('profile.monthsShort')}`;
+          if (!latestKg || !rec) {
+            return (
+              <View style={{ marginTop: 12, padding: 10, borderRadius: 10, backgroundColor: `${colors.primary}10` }}>
+                <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17 }}>{t('profile.growthCalm')}</Text>
+              </View>
+            );
+          }
+          let msgKey = 'profile.growthCalmWithRange';
+          if (latestKg < rec.weight.min) msgKey = 'profile.growthBelowRange';
+          else if (latestKg > rec.weight.max) msgKey = 'profile.growthAboveRange';
+          return (
+            <View style={{ marginTop: 12, padding: 10, borderRadius: 10, backgroundColor: `${colors.primary}10` }}>
+              <Text style={{ color: colors.text, fontSize: 12, lineHeight: 17 }}>
+                {format(msgKey, { age: ageLabel })}
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4, fontStyle: 'italic' }}>
+                {t('profile.growthCalm')}
+              </Text>
+            </View>
+          );
+        })()}
+      </Card>
+
+      {/* Daily goals — stepper-style rows make the values easier to tune
+          one-handed than three separate numeric inputs. */}
+      <Card>
+        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800', marginBottom: 4 }}>{t('profile.dailyGoalsTitle')}</Text>
+        <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 14, lineHeight: 17 }}>{t('profile.dailyGoalsBody')}</Text>
+        {([
+          { key: 'goalFeedingsPerDay', label: t('profile.goalFeedingsLabel'), unit: t('profile.goalFeedingsUnit'), min: 1, max: 20, icon: 'water-outline' as const },
+          { key: 'goalSleepHoursPerDay', label: t('profile.goalSleepLabel'), unit: t('profile.goalSleepUnit'), min: 1, max: 24, icon: 'moon-outline' as const },
+          { key: 'goalDiapersPerDay', label: t('profile.goalDiapersLabel'), unit: t('profile.goalDiapersUnit'), min: 1, max: 20, icon: 'happy-outline' as const },
+        ] as const).map((g) => {
+          const current = Number((form as any)[g.key]) || g.min;
+          const dec = () => handleFieldChange(g.key, clampGoal(String(current - 1), g.min, g.max));
+          const inc = () => handleFieldChange(g.key, clampGoal(String(current + 1), g.min, g.max));
+          return (
+            <View
+              key={g.key}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                paddingVertical: 10,
+                borderBottomWidth: 1,
+                borderBottomColor: `${colors.border}80`,
+              }}
+            >
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: `${colors.primary}14`, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={g.icon} size={16} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{g.label}</Text>
+                <Text style={{ color: colors.muted, fontSize: 11, marginTop: 1 }}>
+                  {current} {g.unit}
+                </Text>
+              </View>
+              <Pressable
+                onPress={dec}
+                accessibilityRole="button"
+                accessibilityLabel={`− ${g.label}`}
+                disabled={current <= g.min}
+                hitSlop={8}
+                style={({ pressed }) => ({
+                  width: 32, height: 32, borderRadius: 16,
+                  alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1, borderColor: colors.border,
+                  backgroundColor: pressed ? colors.backgroundAlt : 'transparent',
+                  opacity: current <= g.min ? 0.4 : 1,
+                })}
+              >
+                <Ionicons name="remove" size={16} color={colors.text} />
+              </Pressable>
+              <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800', minWidth: 28, textAlign: 'center' }}>
+                {current}
+              </Text>
+              <Pressable
+                onPress={inc}
+                accessibilityRole="button"
+                accessibilityLabel={`+ ${g.label}`}
+                disabled={current >= g.max}
+                hitSlop={8}
+                style={({ pressed }) => ({
+                  width: 32, height: 32, borderRadius: 16,
+                  alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1, borderColor: colors.border,
+                  backgroundColor: pressed ? colors.backgroundAlt : 'transparent',
+                  opacity: current >= g.max ? 0.4 : 1,
+                })}
+              >
+                <Ionicons name="add" size={16} color={colors.text} />
+              </Pressable>
+            </View>
+          );
+        })}
+      </Card>
+
+      {/* Preferences card — caregiver, partner, language, appearance link */}
+      <Card>
+        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800', marginBottom: 12 }}>{t('profile.preferencesTitle')}</Text>
+        <Input
+          label={t('profile.caregiverLabel')}
+          value={form.caregiverName}
+          onChangeText={(value) => handleFieldChange('caregiverName', value)}
+          autoCapitalize="words"
+        />
+        <Input
+          label={t('profile.partnerLabel')}
+          value={form.partnerName}
+          onChangeText={(value) => handleFieldChange('partnerName', value)}
+          placeholder={t('profile.partnerPlaceholder')}
+          autoCapitalize="words"
+        />
+        <Text style={{ color: colors.muted, fontSize: 11, marginTop: 12, marginBottom: 4 }}>{t('profile.languageLabel2')}</Text>
+        <Segment value={language} onChange={(value) => void setContextLanguage(value as any)} options={languageOptions} />
+
+        {/* Appearance is no longer its own card — just an inline link */}
+        <Pressable
+          onPress={() => router.push('/(app)/(tabs)/settings-theme' as any)}
+          accessibilityRole="button"
+          accessibilityLabel={t('profile.appearanceInline')}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 14,
+            paddingVertical: 10,
+            paddingHorizontal: 12,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: colors.border,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Ionicons name="color-palette-outline" size={16} color={colors.primary} />
+          <Text style={{ flex: 1, color: colors.text, fontSize: 13, fontWeight: '700' }}>{t('profile.appearanceInline')}</Text>
+          <Ionicons name="chevron-forward" size={14} color={colors.muted} />
+        </Pressable>
+      </Card>
+
+      {/* Share with co-parent — always visible; guest mode gets an upgrade CTA */}
+      <Card>
+        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800', marginBottom: 6 }}>{t('profile.pairCardTitle')}</Text>
+        <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 12, lineHeight: 18 }}>
+          {t('profile.pairCardBody')}
+        </Text>
+        {!guestMode && pairingCode ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              padding: 10,
+              borderRadius: 10,
+              backgroundColor: `${colors.primary}10`,
+              marginBottom: 10,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.muted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                {t('profile.pairCodeLabel')}
+              </Text>
+              <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800', letterSpacing: 2, marginTop: 2 }}>{pairingCode}</Text>
+            </View>
+            <Pressable
+              onPress={handleSharePairingCode}
+              accessibilityRole="button"
+              accessibilityLabel={t('profile.pairCodeShare')}
+              style={({ pressed }) => ({
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 8,
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('profile.pairCodeShare')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        <Button
+          label={guestMode ? t('profile.pairCardGuestCta') : t('profile.pairCardCta')}
+          onPress={() => router.push(guestMode ? '/(auth)/register' : '/pair')}
+        />
+      </Card>
+
+      {/* Children section — only when there's more than one baby */}
+      {babies.length > 1 ? (
+        <Card>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{t('profile.childrenTitle')}</Text>
+            <Button
+              label={showChildren ? t('modal.hide') : t('modal.show')}
+              onPress={() => {
+                haptics.light();
+                setShowChildren((value) => !value);
+              }}
+              variant="ghost"
+            />
+          </View>
+
+          <ExpandableSection isExpanded={showChildren}>
+            <>
+              {babies.map((baby) => (
                 <View
                   key={baby.id}
                   style={{
@@ -612,257 +1329,169 @@ export default function ProfileScreen() {
                     </View>
                   </View>
                 </View>
-              ))
-            ) : (
-              <EmptyState
-                icon="person-add-outline"
-                title={t('profile.noBabiesTitle')}
-                body={t('profile.noBabiesBody')}
-              />
-            )}
+              ))}
 
-            {/* Add new baby � inline form */}
-            {showAddBabyForm ? (
-              <View style={{ borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12, marginTop: 12, gap: 8 }}>
-                <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700', marginBottom: 4 }}>{t('profile.addBaby')}</Text>
-                <Input
-                  label={t('profile.babyNameLabel')}
-                  value={newBabyName}
-                  onChangeText={setNewBabyName}
-                  autoCapitalize="words"
-                />
-                <DateTimeField
-                  label={t('profile.birthDateLabel')}
-                  value={newBabyBirthDate}
-                  onChange={(value) => setNewBabyBirthDate(value as Date)}
-                />
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-                  <View style={{ flex: 1 }}>
-                    <Button label={t('common.save')} onPress={() => void handleAddNewBaby()} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Button
-                      label={t('common.cancel')}
-                      onPress={() => {
-                        setShowAddBabyForm(false);
-                        setNewBabyName('');
-                        setNewBabyBirthDate(new Date());
-                      }}
-                      variant="ghost"
-                    />
+              {showAddBabyForm ? (
+                <View style={{ borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12, marginTop: 12, gap: 8 }}>
+                  <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700', marginBottom: 4 }}>{t('profile.addBaby')}</Text>
+                  <Input
+                    label={t('profile.babyNameLabel')}
+                    value={newBabyName}
+                    onChangeText={setNewBabyName}
+                    autoCapitalize="words"
+                  />
+                  <DateTimeField
+                    label={t('profile.birthDateLabel')}
+                    value={newBabyBirthDate}
+                    onChange={(value) => setNewBabyBirthDate(value as Date)}
+                  />
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                    <View style={{ flex: 1 }}>
+                      <Button label={t('common.save')} onPress={() => void handleAddNewBaby()} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Button
+                        label={t('common.cancel')}
+                        onPress={() => {
+                          setShowAddBabyForm(false);
+                          setNewBabyName('');
+                          setNewBabyBirthDate(new Date());
+                        }}
+                        variant="ghost"
+                      />
+                    </View>
                   </View>
                 </View>
+              ) : (
+                <View style={{ marginTop: 10 }}>
+                  <Button
+                    label={t('profile.addBaby')}
+                    onPress={() => {
+                      haptics.light();
+                      setShowAddBabyForm(true);
+                    }}
+                    variant="ghost"
+                  />
+                </View>
+              )}
+            </>
+          </ExpandableSection>
+        </Card>
+      ) : (
+        /* Single baby (or none): slim "Add another baby" row */
+        <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+          {showAddBabyForm ? (
+            <Card>
+              <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700', marginBottom: 4 }}>{t('profile.addBaby')}</Text>
+              <Input
+                label={t('profile.babyNameLabel')}
+                value={newBabyName}
+                onChangeText={setNewBabyName}
+                autoCapitalize="words"
+              />
+              <DateTimeField
+                label={t('profile.birthDateLabel')}
+                value={newBabyBirthDate}
+                onChange={(value) => setNewBabyBirthDate(value as Date)}
+              />
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <Button label={t('common.save')} onPress={() => void handleAddNewBaby()} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    label={t('common.cancel')}
+                    onPress={() => {
+                      setShowAddBabyForm(false);
+                      setNewBabyName('');
+                      setNewBabyBirthDate(new Date());
+                    }}
+                    variant="ghost"
+                  />
+                </View>
               </View>
-            ) : (
-              <View style={{ marginTop: 10 }}>
-                <Button
-                  label={t('profile.addBaby')}
-                  onPress={() => {
-                    haptics.light();
-                    setShowAddBabyForm(true);
-                  }}
-                  variant="ghost"
-                />
-              </View>
-            )}
-          </>
-        </ExpandableSection>
-      </Card>
+            </Card>
+          ) : (
+            <Button
+              label={t('profile.addBaby')}
+              onPress={() => {
+                haptics.light();
+                setShowAddBabyForm(true);
+              }}
+              variant="ghost"
+            />
+          )}
+        </View>
+      )}
 
-      <Card>
-        {/* Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View>
-            <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>
-              {t('profile.sessionTitle')}
-            </Text>
-            {!guestMode && sessions.length > 0 && (
-              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 1 }}>
-                {sessions.length} {t('profile.openSessions').toLowerCase()}
+      {/* Always-visible sync chip — surfaces queued count without digging into Sessions */}
+      {!guestMode && queuedSyncCount > 0 && (
+        <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+          <Pressable
+            onPress={() => router.push('/profile-sessions')}
+            accessibilityRole="button"
+            accessibilityLabel={t('profile.syncNow')}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              padding: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: `${colors.primary}40`,
+              backgroundColor: `${colors.primary}10`,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Ionicons name="cloud-upload-outline" size={16} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }} numberOfLines={1}>
+                {format(queuedSyncCount === 1 ? 'profile.queuedSyncCalm' : 'profile.queuedSyncCalmPlural', { count: queuedSyncCount })}
               </Text>
-            )}
-          </View>
-          <Button
-            label={showSession ? t('modal.hide') : t('modal.show')}
-            onPress={() => { haptics.light(); setShowSession((v) => !v); }}
-            variant="ghost"
-          />
+              <Text style={{ color: colors.muted, fontSize: 11, marginTop: 1 }}>{t('profile.queuedSyncTapHint')}</Text>
+            </View>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Session block — collapsed to a single link row that opens the sub-screen */}
+      {!guestMode && (
+        <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+          <Pressable
+            onPress={() => router.push('/profile-sessions')}
+            accessibilityRole="button"
+            accessibilityLabel={t('profile.openSessionsLink')}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingVertical: 12,
+              paddingHorizontal: 14,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Ionicons name="people-outline" size={16} color={colors.primary} />
+            <Text style={{ flex: 1, color: colors.text, fontSize: 13, fontWeight: '700' }}>{t('profile.openSessionsLink')}</Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.muted} />
+          </Pressable>
+        </View>
+      )}
+
+      {/* Data & privacy — export, import, delete */}
+      <Card>
+        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800', marginBottom: 12 }}>{t('profile.dataPrivacyTitle')}</Text>
+        <View style={{ gap: 8 }}>
+          <Button label={t('profile.exportData')} onPress={() => void handleExportData()} variant="secondary" />
+          <DataImporter />
+          <Button label={t('profile.deleteAccount')} onPress={handleDeleteAllData} variant="danger" />
         </View>
 
-        <ExpandableSection isExpanded={showSession}>
-          {guestMode ? (
-            <View style={{ paddingTop: 8 }}>
-              <Text style={{ color: colors.muted }}>{t('profile.guestSessionInfo')}</Text>
-            </View>
-          ) : (
-            <View style={{ paddingTop: 4 }}>
-              {/* Account meta */}
-              <View style={{ gap: 3, paddingBottom: 10 }}>
-                <Text style={{ color: colors.muted, fontSize: 12 }}>
-                  {user?.email ?? profile?.authEmail ?? t('profile.emailUnknown')}
-                </Text>
-                {pairingCode ? (
-                  <Text style={{ color: colors.muted, fontSize: 12 }}>
-                    {t('profile.pairing')}: {pairingCode}
-                  </Text>
-                ) : null}
-                {queuedSyncCount > 0 ? (
-                  <Text style={{ color: colors.muted, fontSize: 12 }}>
-                    {t('profile.queuedSync')}{queuedSyncCount}
-                  </Text>
-                ) : null}
-              </View>
-
-              {/* Section label */}
-              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13, marginBottom: 4 }}>
-                {t('profile.openSessions')}
-              </Text>
-
-              {/* Session cards */}
-              {sessions.length > 0 ? (
-                sessions.map((item) => {
-                  const isCurrent = item.id === currentSessionId;
-                  const canRevoke = !item.isOwner && !isCurrent;
-                  const timeLabel = item.lastActiveAt ?? item.createdAt;
-                  return (
-                    <View
-                      key={item.id}
-                      style={{
-                        borderWidth: 1,
-                        borderColor: isCurrent ? colors.primary : colors.border,
-                        borderRadius: 14,
-                        padding: 12,
-                        marginTop: 6,
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-                        {/* Platform icon */}
-                        <View
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 10,
-                            backgroundColor: `${colors.primary}18`,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Ionicons
-                            name={item.platform === 'web' ? 'laptop-outline' : 'phone-portrait-outline'}
-                            size={18}
-                            color={isCurrent ? colors.primary : colors.muted}
-                          />
-                        </View>
-
-                        {/* Info */}
-                        <View style={{ flex: 1, gap: 2 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            <Text
-                              style={{
-                                color: colors.text,
-                                fontWeight: '700',
-                                fontSize: 14,
-                                flexShrink: 1,
-                              }}
-                            >
-                              {item.device}
-                            </Text>
-                            {isCurrent && (
-                              <View
-                                style={{
-                                  paddingHorizontal: 7,
-                                  paddingVertical: 2,
-                                  borderRadius: 8,
-                                  backgroundColor: `${colors.primary}22`,
-                                }}
-                              >
-                                <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '800' }}>
-                                  {t('profile.thisDevice')}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                          <Text style={{ color: colors.muted, fontSize: 12 }}>{item.email}</Text>
-                          {timeLabel ? (
-                            <Text style={{ color: colors.muted, fontSize: 11 }}>
-                              {t('profile.sessionStarted')}: {formatRelativeTime(timeLabel, t)}
-                            </Text>
-                          ) : null}
-                        </View>
-
-                        {/* Revoke */}
-                        {canRevoke && (
-                          <Pressable
-                            onPress={() => void handleRemoveSession(item.id)}
-                            style={({ pressed }) => ({
-                              paddingHorizontal: 10,
-                              paddingVertical: 6,
-                              borderRadius: 8,
-                              borderWidth: 1,
-                              borderColor: colors.danger,
-                              opacity: pressed ? 0.5 : 1,
-                              marginTop: 1,
-                            })}
-                            hitSlop={8}
-                          >
-                            <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '700' }}>
-                              {t('profile.revokeSession')}
-                            </Text>
-                          </Pressable>
-                        )}
-                      </View>
-
-                      {/* Owner badge */}
-                      {item.isOwner && (
-                        <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 4,
-                            marginTop: 6,
-                            paddingLeft: 46,
-                          }}
-                        >
-                          <Ionicons name="shield-checkmark-outline" size={11} color={colors.muted} />
-                          <Text style={{ color: colors.muted, fontSize: 11 }}>
-                            {t('profile.ownerSession')}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })
-              ) : (
-                <Text style={{ color: colors.muted, fontSize: 13, marginTop: 4 }}>
-                  {t('profile.noSessions')}
-                </Text>
-              )}
-
-              {/* Action row */}
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Button
-                    label={t('profile.syncNow')}
-                    onPress={handleSyncNow}
-                    variant="ghost"
-                    loading={syncing}
-                    disabled={syncing}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Button
-                    label={t('profile.pairPartner')}
-                    onPress={() => router.push('/pair')}
-                    variant="ghost"
-                  />
-                </View>
-              </View>
-            </View>
-          )}
-        </ExpandableSection>
-
-        {/* Logout � always visible, outside the expandable section */}
-        <View style={{ marginTop: 10 }}>
+        {/* Logout — always visible at the bottom of the privacy card */}
+        <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border }}>
           <Button
             label={t('profile.logout')}
             onPress={handleSignOut}
@@ -873,9 +1502,7 @@ export default function ProfileScreen() {
         </View>
       </Card>
 
-      <DataImporter />
-
-      {isDirty && <View style={{ height: 80 }} />}
+      {isDirty && <View style={{ height: 96 }} />}
     </Page>
 
     {isDirty && (
@@ -888,7 +1515,7 @@ export default function ProfileScreen() {
           right: 0,
           paddingHorizontal: 16,
           paddingTop: 12,
-          paddingBottom: insets.bottom + 12,
+          paddingBottom: insets.bottom + 24,
           backgroundColor: colors.background,
           borderTopWidth: 1,
           borderTopColor: colors.border,

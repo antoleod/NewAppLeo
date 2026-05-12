@@ -239,6 +239,7 @@ export default function EntryComposerScreen() {
   const [notes, setNotes] = useState('');
   const [notesOpen, setNotesOpen] = useState(false);
   const [occurredAt, setOccurredAt] = useState(new Date());
+  const [caregiver, setCaregiver] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [sleepInputMode, setSleepInputMode] = useState<'timer' | 'manual' | null>(editing ? null : null);
   const [sleepTimerRunning, setSleepTimerRunning] = useState(false);
@@ -253,6 +254,11 @@ export default function EntryComposerScreen() {
   const [largeTouchMode, setLargeTouchMode] = useState(false);
   const [savedMedicines, setSavedMedicines] = useState<SavedMedicine[]>([]);
   const [activeSleepDraft, setActiveSleepDraft] = useState<SleepDraft | null>(null);
+  // Tracks the stable client-generated ID for the current sleep session,
+  // either freshly minted (fresh timer) or carried over from a resumed draft.
+  // Stored in the saved entry's payload so a save-then-crash-before-clearDraft
+  // cycle cannot create duplicates on the next resume.
+  const [sleepDraftClientId, setSleepDraftClientId] = useState<string | null>(null);
   const closeScale = useSharedValue(1);
   const closeRotate = useSharedValue(0);
   const closeAnimStyle = useAnimatedStyle(() => ({
@@ -434,6 +440,7 @@ export default function EntryComposerScreen() {
     setOccurredAt(new Date(editing.occurredAt));
     setNotes(editing.notes ?? '');
     setNotesOpen(Boolean(editing.notes));
+    setCaregiver((editing.payload as any)?.caregiver ?? '');
 
     switch (editing.type) {
       case 'feed':
@@ -504,6 +511,65 @@ export default function EntryComposerScreen() {
     });
   }, [editing, type]);
 
+  // Re-render the recovery banner every 30 s so the displayed elapsed time
+  // stays accurate while the parent looks at it.
+  const [, setDraftClock] = useState(0);
+  useEffect(() => {
+    if (!activeSleepDraft) return;
+    const tick = setInterval(() => setDraftClock((current) => current + 1), 30_000);
+    return () => clearInterval(tick);
+  }, [activeSleepDraft]);
+
+  // Persist notes typed during a running sleep timer back into the draft so
+  // they survive a page reload. Debounced 1 s to avoid hammering AsyncStorage
+  // on every keystroke. Only runs for the active timer session (clientId set).
+  useEffect(() => {
+    if (type !== 'sleep' || !sleepTimerRunning || !sleepDraftClientId || sleepStartedAt === null) return;
+    const handle = setTimeout(() => {
+      void saveSleepDraft({
+        clientId: sleepDraftClientId,
+        startedAt: sleepStartedAt,
+        occurredAt: new Date(sleepStartedAt).toISOString(),
+        notes,
+      });
+    }, 1000);
+    return () => clearTimeout(handle);
+  }, [notes, sleepTimerRunning, sleepDraftClientId, sleepStartedAt, type]);
+
+  // Cross-tab sync (web only). AsyncStorage maps to localStorage on web, and
+  // the browser fires a 'storage' event in OTHER tabs whenever a key changes.
+  // We use that to keep two tabs in sync: if Tab B saves/discards the draft,
+  // Tab A's UI catches up instead of acting on stale state.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || type !== 'sleep') return;
+    const win = globalThis as any;
+    if (typeof win.addEventListener !== 'function') return;
+    const handler = (event: any) => {
+      if (event?.key !== 'appleo.sleepDraft') return;
+      void getSleepDraft().then((draft) => {
+        setActiveSleepDraft(draft);
+        // Our running timer's session was finalised by another tab — wind
+        // down gracefully so the user doesn't sit in front of a phantom
+        // timer that no longer corresponds to any persisted state.
+        if (sleepTimerRunning && sleepDraftClientId && !draft) {
+          toast.info(
+            language === 'fr' ? 'Sommeil enregistré depuis un autre onglet.'
+            : language === 'es' ? 'Sueño guardado desde otra pestaña.'
+            : language === 'nl' ? 'Slaap opgeslagen vanuit een ander tabblad.'
+            : 'Sleep saved from another tab.',
+          );
+          setSleepTimerRunning(false);
+          setSleepFullscreenVisible(false);
+          setSleepStartedAt(null);
+          setSleepDraftClientId(null);
+          router.back();
+        }
+      });
+    };
+    win.addEventListener('storage', handler);
+    return () => win.removeEventListener?.('storage', handler);
+  }, [type, sleepTimerRunning, sleepDraftClientId, toast, language]);
+
   useEffect(() => {
     actionsSlideY.value = withTiming(0, { duration: 220 });
     actionsOpacity.value = withTiming(1, { duration: 220 });
@@ -522,7 +588,11 @@ export default function EntryComposerScreen() {
     if (presetAmount && Number.isFinite(presetAmount)) setAmountMl(String(presetAmount));
     if (presetMode) setMode(presetMode);
     if (presetSide) setSide(presetSide);
-  }, [editing, presetAmount, presetMode, presetSide]);
+    // Default the "logged by" field to the primary caregiver. Parent can still
+    // switch to the partner via the Segment shown in the form when both names
+    // are filled in on the profile.
+    if (!caregiver && profile?.caregiverName) setCaregiver(profile.caregiverName);
+  }, [editing, presetAmount, presetMode, presetSide, caregiver, profile?.caregiverName]);
 
   useEffect(() => {
     // Guard: do not auto-start if startedAt is already set — that means either
@@ -535,6 +605,11 @@ export default function EntryComposerScreen() {
     setSleepElapsedSeconds(0);
     setSleepFullscreenVisible(true);
     setSleepTimerRunning(true);
+    // Align occurredAt with the actual timer start time, not the time the form
+    // mounted. Critical: when the entry is saved, occurredAt is what shows in
+    // the history as "when the sleep started".
+    setOccurredAt(new Date(startAt));
+    setSleepDraftClientId(clientId);
     // Persist the draft immediately so the start time survives a page reload
     // or browser-tab kill during a long sleep session.
     void saveSleepDraft({ clientId, startedAt: startAt, occurredAt: new Date(startAt).toISOString(), notes: '' });
@@ -617,7 +692,12 @@ export default function EntryComposerScreen() {
         return foodPayload as EntryPayload;
       }
       case 'sleep':
-        return { durationMin: resolvedDuration, notes };
+        // clientId travels with the saved entry so a subsequent draft-resume
+        // can detect that this exact sleep session was already saved and
+        // refuse to re-save it (prevents duplicates after a save-then-crash).
+        return sleepDraftClientId
+          ? { durationMin: resolvedDuration, notes, clientId: sleepDraftClientId }
+          : { durationMin: resolvedDuration, notes };
       case 'diaper':
         return {
           pee: clamp(Number(pee) || 0, 0, 9),
@@ -680,14 +760,96 @@ export default function EntryComposerScreen() {
     }
   }
 
+  // The most common case: parent wakes up and just wants to mark the sleep
+  // as ended at the current time. This skips the Resume→Stop dance entirely
+  // and saves the entry directly with the elapsed duration. Uses the draft
+  // values directly (not component state) to avoid React state-batching
+  // timing issues — handleSave's buildPayload closure would otherwise see
+  // a stale sleepDraftClientId on this same tick.
+  async function endSleepDraftNow(draft: SleepDraft) {
+    const alreadySaved = entries.some(
+      (entry) => entry.type === 'sleep' && (entry.payload as any)?.clientId === draft.clientId,
+    );
+    if (alreadySaved) {
+      await clearSleepDraft();
+      setActiveSleepDraft(null);
+      router.back();
+      return;
+    }
+    setSaving(true);
+    try {
+      const elapsedMinutes = Math.max(1, Math.round((Date.now() - draft.startedAt) / 60000));
+      await addEntry({
+        type: 'sleep',
+        title: t('entry.titleSleep'),
+        notes: draft.notes,
+        occurredAt: new Date(draft.startedAt).toISOString(),
+        payload: { durationMin: elapsedMinutes, notes: draft.notes, clientId: draft.clientId },
+      });
+      await clearSleepDraft();
+      setActiveSleepDraft(null);
+      haptics.success();
+      router.back();
+    } catch (error: any) {
+      haptics.error();
+      toast.error(error?.message ?? 'Could not save this record.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Discarding a draft at 3 AM by accident would lose hours of tracking, so
+  // require an explicit confirmation before clearing it.
+  function confirmDiscardSleepDraft() {
+    const title =
+      language === 'fr' ? 'Abandonner la session ?'
+      : language === 'es' ? '¿Descartar sesión?'
+      : language === 'nl' ? 'Sessie verwijderen?'
+      : 'Discard this session?';
+    const message =
+      language === 'fr' ? 'Le temps de sommeil enregistré sera définitivement perdu.'
+      : language === 'es' ? 'El tiempo de sueño registrado se perderá definitivamente.'
+      : language === 'nl' ? 'De geregistreerde slaaptijd gaat definitief verloren.'
+      : 'The recorded sleep time will be permanently lost.';
+    const cancelLabel =
+      language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'nl' ? 'Annuleren' : 'Cancel';
+    const discardLabel = t('entry.sleepDraftDiscard');
+    const doDiscard = async () => {
+      await clearSleepDraft();
+      setActiveSleepDraft(null);
+      setSleepDraftClientId(null);
+    };
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm?.(message)) {
+        void doDiscard();
+      }
+      return;
+    }
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: cancelLabel, style: 'cancel' },
+        { text: discardLabel, style: 'destructive', onPress: () => void doDiscard() },
+      ],
+      { cancelable: true },
+    );
+  }
+
   // Restore a persisted sleep draft (e.g. after page reload or tab kill).
-  // Sets the timer back to the original startedAt so elapsed time is correct.
+  // Sets the timer back to the original startedAt so elapsed time is correct,
+  // and aligns occurredAt with the sleep's real start time — otherwise the
+  // saved entry would be timestamped at the moment of save (hours after the
+  // sleep actually started).
   function resumeSleepDraft(draft: SleepDraft) {
     setSleepStartedAt(draft.startedAt);
     setSleepElapsedSeconds(Math.max(0, Math.floor((Date.now() - draft.startedAt) / 1000)));
     setSleepTimerRunning(true);
     setSleepFullscreenVisible(true);
     setSleepInputMode('timer');
+    setOccurredAt(new Date(draft.startedAt));
+    setSleepDraftClientId(draft.clientId);
+    if (draft.notes) setNotes(draft.notes);
     setActiveSleepDraft(null);
   }
 
@@ -695,7 +857,14 @@ export default function EntryComposerScreen() {
     setSaving(true);
     try {
       const timestamp = occurredAt.toISOString();
-      const payload = buildPayload(durationMinOverride);
+      const basePayload = buildPayload(durationMinOverride);
+      // Tag every payload with who logged it, when the parent has set both a
+      // caregiver and a partner name on their profile. We always write to
+      // payload (rather than a separate field on the entry) so existing
+      // entries without it remain valid.
+      const payload: EntryPayload = caregiver
+        ? { ...basePayload, caregiver }
+        : basePayload;
       const titleValue = buildTitle();
       const savedEntry = {
         id: editing?.id ?? `tmp_${Date.now()}`,
@@ -732,9 +901,18 @@ export default function EntryComposerScreen() {
         setLastSavedFoodEntryId(savedEntryId);
         setLastSavedFood({ name: foodName, grams: quantityGrams, mealTimeVal: mealTime || getRecommendedMealTime() });
         setFeedbackSelectedEmoji(null);
-        setShowFoodDoneModal(true);
         setSaving(false);
+        setShowFoodDoneModal(true);
         return;
+      }
+
+      // Sleep success path: clear the persisted draft only after save is
+      // confirmed AND only if this save was tied to a timer session. A manual
+      // "Log past sleep" save with sleepDraftClientId === null must NOT touch
+      // an unrelated draft (the user may have an active timer they want to
+      // resume later).
+      if (type === 'sleep' && !editing && sleepDraftClientId) {
+        void clearSleepDraft();
       }
 
       router.back();
@@ -746,17 +924,79 @@ export default function EntryComposerScreen() {
     }
   }
 
+  // Returns true if this exact sleep session was already saved (matched by
+  // clientId in the entry's payload). Prevents duplicates if a crash between
+  // addEntry and clearSleepDraft left a stale draft for the user to resume.
+  function isSleepDraftAlreadySaved() {
+    if (!sleepDraftClientId) return false;
+    return entries.some(
+      (entry) => entry.type === 'sleep' && (entry.payload as any)?.clientId === sleepDraftClientId,
+    );
+  }
+
   async function handlePrimarySave() {
     if (type === 'sleep' && sleepTimerRunning && sleepStartedAt) {
       const elapsedMinutes = Math.max(1, Math.round((Date.now() - sleepStartedAt) / 60000));
       setSleepStopToken((current) => current + 1);
       setSleepTimerRunning(false);
       setDurationMin(String(elapsedMinutes));
-      void clearSleepDraft();
+      if (isSleepDraftAlreadySaved()) {
+        void clearSleepDraft();
+        router.back();
+        return;
+      }
       await handleSave(elapsedMinutes);
       return;
     }
     await handleSave();
+  }
+
+  // Quietly drop the in-flight timer without saving an entry — the escape
+  // hatch for the "I tapped Start by accident" case. Inside the first 2
+  // minutes we skip confirmation (almost certainly a misstap); after that
+  // we confirm because real sleep tracking might be at risk.
+  async function handleSleepTimerCancel() {
+    const elapsedMs = sleepStartedAt ? Date.now() - sleepStartedAt : 0;
+    const doCancel = async () => {
+      setSleepTimerRunning(false);
+      setSleepFullscreenVisible(false);
+      setSleepStartedAt(null);
+      setSleepDraftClientId(null);
+      setSleepInputMode(null);
+      setActiveSleepDraft(null);
+      await clearSleepDraft();
+    };
+    if (elapsedMs < 2 * 60 * 1000) {
+      await doCancel();
+      return;
+    }
+    const title =
+      language === 'fr' ? 'Annuler le minuteur ?'
+      : language === 'es' ? '¿Cancelar el temporizador?'
+      : language === 'nl' ? 'Timer annuleren?'
+      : 'Cancel timer?';
+    const message =
+      language === 'fr' ? "Le temps de sommeil en cours ne sera pas enregistré."
+      : language === 'es' ? 'El tiempo de sueño en curso no se guardará.'
+      : language === 'nl' ? 'De lopende slaaptijd wordt niet opgeslagen.'
+      : 'The current sleep time will not be saved.';
+    const keepLabel =
+      language === 'fr' ? 'Garder' : language === 'es' ? 'Mantener' : language === 'nl' ? 'Behouden' : 'Keep';
+    const cancelLabel =
+      language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'nl' ? 'Annuleren' : 'Cancel';
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm?.(message)) void doCancel();
+      return;
+    }
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: keepLabel, style: 'cancel' },
+        { text: cancelLabel, style: 'destructive', onPress: () => void doCancel() },
+      ],
+      { cancelable: true },
+    );
   }
 
   async function handleSleepStop() {
@@ -765,9 +1005,11 @@ export default function EntryComposerScreen() {
     setDurationMin(String(elapsedMinutes));
     setSleepTimerRunning(false);
     setSleepFullscreenVisible(false);
-    // Clear before saving so a crash between save and navigate-back cannot
-    // leave a stale draft that would prompt the user to resume a saved session.
-    void clearSleepDraft();
+    if (isSleepDraftAlreadySaved()) {
+      void clearSleepDraft();
+      router.back();
+      return;
+    }
     await handleSave(elapsedMinutes);
   }
 
@@ -893,6 +1135,23 @@ export default function EntryComposerScreen() {
         <View style={styles.sectionCard}>
           <DateTimeField label={t('entry.when')} value={occurredAt} onChange={setOccurredAt} />
         </View>
+
+        {/* "Logged by" — only shown when both names are set on the profile.
+            Surfaces partnerName so it actually has a use; otherwise the
+            entry simply records the primary caregiver implicitly. */}
+        {profile?.caregiverName && profile?.partnerName ? (
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.loggedBy')}</Text>
+            <Segment
+              value={caregiver || profile.caregiverName}
+              onChange={(value) => setCaregiver(value)}
+              options={[
+                { label: profile.caregiverName, value: profile.caregiverName },
+                { label: profile.partnerName, value: profile.partnerName },
+              ]}
+            />
+          </View>
+        ) : null}
 
         {type === 'feed' && (
           <View style={styles.sectionCard}>
@@ -1186,51 +1445,74 @@ export default function EntryComposerScreen() {
           );
         })()}
 
-        {type === 'sleep' && !editing && activeSleepDraft && sleepInputMode === null && !sleepTimerRunning && (
-          <View style={[styles.sectionCard, { borderWidth: 1.5, borderColor: '#58A6FF', backgroundColor: 'rgba(88,166,255,0.07)' }]}>
-            <Text style={{ fontSize: 15, fontWeight: '800', color: '#58A6FF', marginBottom: 4 }}>
-              {t('entry.sleepDraftFound')}
-            </Text>
-            <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 14 }}>
-              {(() => {
-                const startTime = new Date(activeSleepDraft.startedAt).toLocaleTimeString(
-                  language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : language === 'nl' ? 'nl-NL' : 'en-US',
-                  { hour: '2-digit', minute: '2-digit' },
-                );
-                const elapsedMs = Date.now() - activeSleepDraft.startedAt;
-                const h = Math.floor(elapsedMs / 3600000);
-                const m = Math.floor((elapsedMs % 3600000) / 60000);
-                const elapsed = h > 0 ? `${h}h${m > 0 ? ` ${m}min` : ''}` : `${m}min`;
-                return `${startTime} · ${elapsed}`;
-              })()}
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
+        {type === 'sleep' && !editing && activeSleepDraft && sleepInputMode === null && !sleepTimerRunning && (() => {
+          const elapsedMs = Date.now() - activeSleepDraft.startedAt;
+          const h = Math.floor(elapsedMs / 3600000);
+          const m = Math.floor((elapsedMs % 3600000) / 60000);
+          const elapsedLabel = h > 0 ? `${h}h${m > 0 ? ` ${m}min` : ''}` : `${m}min`;
+          const startTime = new Date(activeSleepDraft.startedAt).toLocaleTimeString(
+            language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : language === 'nl' ? 'nl-NL' : 'en-US',
+            { hour: '2-digit', minute: '2-digit' },
+          );
+          const isStale = elapsedMs > 18 * 3600000; // 18 h cutoff for "looks forgotten"
+          return (
+            <View style={[styles.sectionCard, { borderWidth: 1.5, borderColor: '#58A6FF', backgroundColor: 'rgba(88,166,255,0.07)' }]}>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: '#58A6FF', marginBottom: 4 }}>
+                {t('entry.sleepDraftFound')}
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginBottom: isStale ? 8 : 14 }}>
+                {`${startTime} · ${elapsedLabel}`}
+              </Text>
+              {isStale && (
+                <Text style={{ color: '#F0B85A', fontSize: 12, fontWeight: '600', marginBottom: 14, lineHeight: 16 }}>
+                  {`⚠ ${t('entry.sleepDraftStale')}`}
+                </Text>
+              )}
               <Pressable
-                onPress={() => resumeSleepDraft(activeSleepDraft)}
+                onPress={() => void endSleepDraftNow(activeSleepDraft)}
+                disabled={saving}
                 style={({ pressed }) => ({
-                  flex: 2, paddingVertical: 13, borderRadius: 10, alignItems: 'center',
+                  paddingVertical: 15, borderRadius: 12, alignItems: 'center',
                   backgroundColor: pressed ? 'rgba(88,166,255,0.75)' : '#58A6FF',
+                  opacity: saving ? 0.6 : 1,
+                  marginBottom: 10,
                 })}
               >
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
-                  {t('entry.sleepDraftResume')}
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>
+                  {saving ? '…' : `${t('entry.sleepDraftEndNow')} (${elapsedLabel})`}
                 </Text>
               </Pressable>
-              <Pressable
-                onPress={() => void clearSleepDraft().then(() => setActiveSleepDraft(null))}
-                style={({ pressed }) => ({
-                  flex: 1, paddingVertical: 13, borderRadius: 10, alignItems: 'center',
-                  borderWidth: 1, borderColor: colors.border,
-                  backgroundColor: pressed ? `${colors.border}60` : 'transparent',
-                })}
-              >
-                <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 13 }}>
-                  {t('entry.sleepDraftDiscard')}
-                </Text>
-              </Pressable>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <Pressable
+                  onPress={() => resumeSleepDraft(activeSleepDraft)}
+                  disabled={saving}
+                  style={({ pressed }) => ({
+                    flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
+                    borderWidth: 1, borderColor: colors.border,
+                    backgroundColor: pressed ? `${colors.border}60` : 'transparent',
+                  })}
+                >
+                  <Text style={{ color: colors.text, fontWeight: '600', fontSize: 13 }}>
+                    {t('entry.sleepDraftResume')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={confirmDiscardSleepDraft}
+                  disabled={saving}
+                  style={({ pressed }) => ({
+                    flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
+                    borderWidth: 1, borderColor: colors.border,
+                    backgroundColor: pressed ? `${colors.border}60` : 'transparent',
+                  })}
+                >
+                  <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 13 }}>
+                    {t('entry.sleepDraftDiscard')}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
-        )}
+          );
+        })()}
 
         {type === 'sleep' && !editing && sleepInputMode === null && (
           <View style={styles.sectionCard}>
@@ -1827,6 +2109,8 @@ export default function EntryComposerScreen() {
           startedAt={sleepStartedAt}
           elapsedSeconds={sleepElapsedSeconds}
           onStop={() => void handleSleepStop()}
+          onCancel={() => void handleSleepTimerCancel()}
+          cancelLabel={t('entry.sleepTimerCancel')}
         />
       ) : null}
       {type === 'pump' && !editing && pumpStartedAt ? (

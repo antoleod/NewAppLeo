@@ -22,6 +22,8 @@ export interface BabyProfile {
   birthDate: string;
   sex: 'female' | 'male' | 'unspecified';
   birthWeightKg?: number;
+  birthHeightCm?: number;
+  birthHeadCircCm?: number;
   currentWeightKg?: number;
   heightCm?: number;
   headCircCm?: number;
@@ -404,6 +406,7 @@ export async function clearLocalSession(uid?: string) {
     MODULE_VISIBILITY_KEY,
     SAVED_MEDICINES_KEY,
     'appleo.syncQueue',
+    'appleo.sleepDraft',
     ...babies.map((b) => `${ENTRY_PREFIX}:${b.id}`),
     ...babies.map((b) => `${MOM_HYDRATION_PREFIX}:${b.id}`),
   ];
@@ -486,6 +489,8 @@ export async function buildBabyFromProfile(
     birthDate,
     sex,
     birthWeightKg: profile.birthWeightKg,
+    birthHeightCm: profile.birthHeightCm,
+    birthHeadCircCm: profile.birthHeadCircCm,
     currentWeightKg: profile.currentWeightKg,
     heightCm: profile.heightCm,
     headCircCm: profile.headCircCm,

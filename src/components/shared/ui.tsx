@@ -149,12 +149,13 @@ export function Heading({
   action?: React.ReactNode;
   align?: 'left' | 'center';
 }) {
-  const { theme } = useTheme();
+  const { theme, themeStyle, mode } = useTheme();
   const pathname = usePathname();
   const { width } = useWindowDimensions();
   const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
   const scale = isDesktopWeb ? 0.9 : width >= 900 ? 0.98 : 1;
   const isCenter = align === 'center';
+  const isDark = mode === 'dark';
 
   const iconName: keyof typeof Ionicons.glyphMap =
     pathname.includes('settings-theme') ? 'color-palette-outline' :
@@ -165,9 +166,29 @@ export function Heading({
     pathname.includes('/onboarding') ? 'sparkles-outline' :
     'ellipse-outline';
 
-  const gradientColors = isCenter
-    ? [withColorOpacity(theme.accent, 0.13), withColorOpacity(theme.accent, 0.04), 'transparent'] as const
-    : [withColorOpacity(theme.accent, 0.11), withColorOpacity(theme.accent, 0.03), 'transparent'] as const;
+  // Stops adapt to themeStyle so the heading sits well on each surface mode:
+  //  - classic : solid bgCard surface, accent overlay reads cleanly
+  //  - default : frosted, balanced accent
+  //  - photo   : richer accent so it survives a vivid backdrop
+  const stops =
+    themeStyle === 'photo'
+      ? { strong: 0.22, soft: 0.08, fadeBase: 0.18, fadeEnd: 0 }
+      : themeStyle === 'classic'
+        ? { strong: 0.16, soft: 0.06, fadeBase: 0.5, fadeEnd: 0.18 }
+        : { strong: 0.18, soft: 0.06, fadeBase: 0.28, fadeEnd: 0 };
+
+  const cardBase = withColorOpacity(theme.bgCard, stops.fadeBase);
+  const cardEnd = stops.fadeEnd > 0 ? withColorOpacity(theme.bgCard, stops.fadeEnd) : 'transparent';
+  const accentStrong = withColorOpacity(theme.accent, stops.strong);
+  const accentSoft = withColorOpacity(theme.accent, stops.soft);
+
+  const gradientColors = [accentStrong, accentSoft, cardBase, cardEnd] as const;
+
+  const containerBorder = withColorOpacity(theme.accent, isDark ? 0.28 : 0.2);
+  const innerHighlight = withColorOpacity(isDark ? '#ffffff' : '#ffffff', isDark ? 0.06 : 0.45);
+  const eyebrowBg = withColorOpacity(theme.accent, isDark ? 0.18 : 0.14);
+  const eyebrowBorder = withColorOpacity(theme.accent, isDark ? 0.4 : 0.32);
+  const accentRibbon = withColorOpacity(theme.accent, 0.7);
 
   return (
     <View
@@ -177,7 +198,8 @@ export function Heading({
         borderRadius: 18,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: withColorOpacity(theme.accent, 0.15),
+        borderColor: containerBorder,
+        ...shadow(theme.accent, themeStyle === 'classic' ? 0.06 : 0.04, 12, 0, 6),
       }}
     >
       <LinearGradient
@@ -191,6 +213,33 @@ export function Heading({
           alignItems: isCenter ? 'center' : 'flex-start',
         }}
       >
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 1,
+            backgroundColor: innerHighlight,
+          }}
+        />
+        {!isCenter ? (
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 14,
+              bottom: 14,
+              width: 3,
+              borderTopRightRadius: 3,
+              borderBottomRightRadius: 3,
+              backgroundColor: accentRibbon,
+            }}
+          />
+        ) : null}
+
         {eyebrow ? (
           <View
             style={{
@@ -198,7 +247,9 @@ export function Heading({
               alignItems: 'center',
               gap: 6,
               marginBottom: 10,
-              backgroundColor: withColorOpacity(theme.accent, 0.14),
+              backgroundColor: eyebrowBg,
+              borderWidth: 1,
+              borderColor: eyebrowBorder,
               paddingHorizontal: 10,
               paddingVertical: 4,
               borderRadius: 20,

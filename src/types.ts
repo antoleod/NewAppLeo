@@ -1,5 +1,6 @@
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type AppLanguage = 'fr' | 'es' | 'en' | 'nl';
+export type UnitSystem = 'metric' | 'imperial';
 
 export type EntryType =
   | 'feed'
@@ -50,6 +51,14 @@ export interface EntryPayload {
   hasReminder?: boolean;
   foodAllergies?: string[];
   severity?: number;
+  /** Who logged this entry — usually one of the names stored on UserProfile
+   *  (caregiverName or partnerName). Free-form so guest mode and pair-mode
+   *  scenarios both work without referencing a user id. */
+  caregiver?: string;
+  // Stable client-generated ID used by sleep entries to deduplicate after a
+  // save-then-crash cycle where the local sleep draft might otherwise be
+  // resumed and saved twice.
+  clientId?: string;
 }
 
 export interface EntryRecord {
@@ -79,11 +88,16 @@ export interface UserProfile {
   babyBirthDate: string;
   babySex?: 'female' | 'male' | 'unspecified';
   birthWeightKg?: number;
+  birthHeightCm?: number;
+  birthHeadCircCm?: number;
   currentWeightKg?: number;
   heightCm?: number;
   headCircCm?: number;
   babyNotes?: string;
   babyPhotoUri?: string;
+  partnerName?: string;
+  prematureWeeks?: number;
+  unitSystem?: UnitSystem;
   language: AppLanguage;
   goalFeedingsPerDay: number;
   goalSleepHoursPerDay: number;
@@ -109,6 +123,8 @@ export interface OnboardingPayload {
   babyBirthDate: string;
   babySex?: 'female' | 'male' | 'unspecified';
   birthWeightKg?: number;
+  birthHeightCm?: number;
+  birthHeadCircCm?: number;
   currentWeightKg?: number;
   heightCm?: number;
   headCircCm?: number;
