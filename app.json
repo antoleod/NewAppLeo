@@ -15,45 +15,7 @@
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./public/favicon.png",
-      "manifest": {
-        "name": "BabyFlow",
-        "short_name": "BabyFlow",
-        "start_url": "/NewAppLeo/",
-        "display": "standalone",
-        "orientation": "portrait",
-        "background_color": "#0D1117",
-        "theme_color": "#0D1117",
-        "scope": "/NewAppLeo/",
-        "description": "BabyFlow - baby care and tracking. Daily logs for feeding, sleep, diapers and more.",
-        "categories": ["health", "medical", "lifestyle"],
-        "icons": [
-          {
-            "src": "icon-192.png",
-            "sizes": "192x192",
-            "type": "image/png",
-            "purpose": "any"
-          },
-          {
-            "src": "icon-192.png",
-            "sizes": "192x192",
-            "type": "image/png",
-            "purpose": "maskable"
-          },
-          {
-            "src": "icon-512.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "any"
-          },
-          {
-            "src": "icon-512.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "maskable"
-          }
-        ]
-      }
+      "favicon": "./public/favicon.png"
     },
     "ios": {
       "bundleIdentifier": "com.appleo.babytracker",
