@@ -337,7 +337,21 @@
     "buttonTransparencyTitle": "Knopvulling",
     "buttonTransparencyBody": "Past alleen de knopachtergrond aan. Tekst blijft volledig leesbaar.",
     "livePreview": "Live voorbeeld",
-    "restoreRecommended": "Aanbevolen herstellen"
+    "restoreRecommended": "Aanbevolen herstellen",
+    "restoreRecommendedBody": "Reset thema, oppervlak, transparantie en achtergrondfoto naar standaard.",
+    "previewPrimary": "Primair",
+    "previewSecondary": "Secundair",
+    "previewGhost": "Spook",
+    "customThemeActive": "Aangepast thema actief",
+    "customThemeActiveBody": "Variantpaletten zijn vervangen zolang dit actief is.",
+    "customThemeDisable": "Aangepast thema uitschakelen",
+    "pwaTitle": "App installeren (PWA)",
+    "pwaBody": "Installeer BabyFlow op je apparaat om deze als native app te openen.",
+    "pwaInstalled": "Al geïnstalleerd",
+    "pwaInstallNow": "Nu installeren",
+    "pwaInstallSuccess": "App geïnstalleerd",
+    "pwaInstallDismissed": "Installatie geannuleerd",
+    "pwaManualHelp": "• Chrome/Edge: menu > \"App installeren\"\n• iPhone Safari: Deel > \"Zet op beginscherm\""
   },
   "tabs": {
     "home": "Home",

@@ -172,7 +172,7 @@ function checkHeadCircRange(input: string, units: UnitSystem): { key: string } |
 }
 
 export default function ProfileScreen() {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const { t, format } = useTranslation();
   const { language: localeLanguage, setLanguage: setContextLanguage } = useLocale();
   const { profile, guestMode, saveProfile, signOut, user } = useAuth();
@@ -810,7 +810,7 @@ export default function ProfileScreen() {
                   borderColor: colors.background,
                 }}
               >
-                <Ionicons name="camera" size={14} color="#fff" />
+                <Ionicons name="camera" size={14} color={theme.accentText} />
               </View>
             </Animated.View>
           </Pressable>
@@ -951,7 +951,7 @@ export default function ProfileScreen() {
               />
               {(() => {
                 const w = checkWeightRange(form.birthWeightKg, form.unitSystem);
-                return w ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: 4 }}>⚠ {t(w.key)}</Text> : null;
+                return w ? <Text style={{ color: colors.warning, fontSize: 11, marginTop: 4 }}>⚠ {t(w.key)}</Text> : null;
               })()}
             </View>
             <View style={{ flex: 1 }}>
@@ -965,7 +965,7 @@ export default function ProfileScreen() {
               />
               {(() => {
                 const h = checkHeightRange(form.birthHeightCm, form.unitSystem);
-                return h ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: 4 }}>⚠ {t(h.key)}</Text> : null;
+                return h ? <Text style={{ color: colors.warning, fontSize: 11, marginTop: 4 }}>⚠ {t(h.key)}</Text> : null;
               })()}
             </View>
           </View>
@@ -979,7 +979,7 @@ export default function ProfileScreen() {
           />
           {(() => {
             const hc = checkHeadCircRange(form.birthHeadCircCm, form.unitSystem);
-            return hc ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: -4, marginBottom: 4 }}>⚠ {t(hc.key)}</Text> : null;
+            return hc ? <Text style={{ color: colors.warning, fontSize: 11, marginTop: -4, marginBottom: 4 }}>⚠ {t(hc.key)}</Text> : null;
           })()}
         </View>
 
@@ -1010,7 +1010,7 @@ export default function ProfileScreen() {
               />
               {(() => {
                 const w = checkWeightRange(form.currentWeightKg, form.unitSystem);
-                return w ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: 4 }}>⚠ {t(w.key)}</Text> : null;
+                return w ? <Text style={{ color: colors.warning, fontSize: 11, marginTop: 4 }}>⚠ {t(w.key)}</Text> : null;
               })()}
             </View>
             <View style={{ flex: 1 }}>
@@ -1024,7 +1024,7 @@ export default function ProfileScreen() {
               />
               {(() => {
                 const h = checkHeightRange(form.heightCm, form.unitSystem);
-                return h ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: 4 }}>⚠ {t(h.key)}</Text> : null;
+                return h ? <Text style={{ color: colors.warning, fontSize: 11, marginTop: 4 }}>⚠ {t(h.key)}</Text> : null;
               })()}
             </View>
           </View>
@@ -1038,7 +1038,7 @@ export default function ProfileScreen() {
           />
           {(() => {
             const hc = checkHeadCircRange(form.headCircCm, form.unitSystem);
-            return hc ? <Text style={{ color: '#E6A23C', fontSize: 11, marginTop: -4, marginBottom: 4 }}>⚠ {t(hc.key)}</Text> : null;
+            return hc ? <Text style={{ color: colors.warning, fontSize: 11, marginTop: -4, marginBottom: 4 }}>⚠ {t(hc.key)}</Text> : null;
           })()}
         </View>
 
@@ -1257,7 +1257,7 @@ export default function ProfileScreen() {
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('profile.pairCodeShare')}</Text>
+              <Text style={{ color: theme.accentText, fontSize: 12, fontWeight: '700' }}>{t('profile.pairCodeShare')}</Text>
             </Pressable>
           </View>
         ) : null}

@@ -277,7 +277,7 @@ export default function HomeScreen() {
   const GREEN = theme.green;
   const BLUE = theme.blue;
   const RED = theme.red;
-  const YELLOW = '#F2C86F';
+  const YELLOW = theme.yellow;
 
   const getHealthStatus = (entries: EntryRecord[]) => {
     const lastTemp = entries.find((e) => e.type === 'temperature' || (e.type === 'measurement' && e.payload?.tempC));
@@ -290,7 +290,7 @@ export default function HomeScreen() {
 
   const alertToneColor = (tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger') => {
     if (tone === 'danger') return RED;
-    if (tone === 'warning') return '#F2C86F';
+    if (tone === 'warning') return YELLOW;
     if (tone === 'success') return GREEN;
     if (tone === 'secondary') return BLUE;
     return GOLD;
@@ -325,7 +325,7 @@ export default function HomeScreen() {
       paddingHorizontal: 22,
       paddingVertical: 22,
       gap: 18,
-      ...shadow('#000', 0.08, 24, 0, 8),
+      ...shadow(TEXT, 0.08, 24, 0, 8),
       elevation: 8,
     },
     sheetTitle: {
@@ -362,7 +362,7 @@ export default function HomeScreen() {
       paddingHorizontal: 18,
       paddingVertical: 18,
       gap: 10,
-      ...shadow('#000', 0.08, 20, 0, 8),
+      ...shadow(TEXT, 0.08, 20, 0, 8),
       elevation: 7,
     },
     menuTitle: {
@@ -410,7 +410,7 @@ export default function HomeScreen() {
       paddingHorizontal: 18,
       paddingVertical: 18,
       gap: 12,
-      ...shadow('#000', 0.08, 20, 0, 8),
+      ...shadow(TEXT, 0.08, 20, 0, 8),
       elevation: 7,
     },
     switcherTitle: {
@@ -758,7 +758,7 @@ const settings = await getAppSettings();
   const lastFeedType = lastFeed?.payload?.mode === 'bottle' ? t('feeding.bottle') : t('feeding.breast');
   const timeSinceLastFeed = formatRelative(lastFeed?.occurredAt, locale);
   const elapsedHours = hoursSince(lastFeed?.occurredAt);
-  const elapsedColor = elapsedHours === null ? MUTED : elapsedHours < 2 ? GREEN : elapsedHours < 3 ? '#F2C86F' : RED;
+  const elapsedColor = elapsedHours === null ? MUTED : elapsedHours < 2 ? GREEN : elapsedHours < 3 ? YELLOW : RED;
 
   const recentEntries = entries.slice(0, 6);
 
@@ -911,7 +911,7 @@ const settings = await getAppSettings();
                         justifyContent: 'center',
                         gap: 7,
                         paddingHorizontal: 5,
-                        ...shadow('#000', pressed ? 0.08 : 0.14, pressed ? 8 : 12, 0, pressed ? 2 : 4),
+                        ...shadow(TEXT, pressed ? 0.08 : 0.14, pressed ? 8 : 12, 0, pressed ? 2 : 4),
                         elevation: pressed ? 1 : 3,
                         transform: [{ scale: pressed ? 0.98 : 1 }],
                       })}

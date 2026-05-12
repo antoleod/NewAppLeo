@@ -150,7 +150,7 @@ export default function HistoryScreen() {
   const percentileStatus = (value: number | null | undefined, band: { p3: number; p10: number; p90: number; p97: number }) => {
     if (!value) return { label: t('history.statusNoData'), color: MUTED };
     if (value < band.p3 || value > band.p97) return { label: `⚠ ${t('history.statusAlert')}`, color: RED };
-    if (value < band.p10 || value > band.p90) return { label: t('history.statusAttention'), color: '#F2C86F' };
+    if (value < band.p10 || value > band.p90) return { label: t('history.statusAttention'), color: theme.yellow };
     return { label: `✓ ${t('history.statusNormal')}`, color: GREEN };
   };
 

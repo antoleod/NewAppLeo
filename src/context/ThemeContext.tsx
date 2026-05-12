@@ -14,6 +14,7 @@ interface ThemeContextValue {
   backgroundPhotoUri: string;
   buttonOpacity: number;
   buttonTransparency: number;
+  customTheme: { enabled: boolean; primary: string; secondary: string; backgroundAlt: string };
   setThemeVariant: (variant: ThemeVariant) => Promise<void>;
   setThemeStyle: (style: ThemeStyle) => Promise<void>;
   setBackgroundPhotoUri: (uri: string) => Promise<void>;
@@ -91,6 +92,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       backgroundPhotoUri,
       buttonOpacity,
       buttonTransparency,
+      customTheme,
       setThemeVariant: async (variant) => {
         setThemeVariantState(variant);
         await updateAppSettings({ themeVariant: variant });

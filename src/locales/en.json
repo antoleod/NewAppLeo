@@ -337,7 +337,21 @@
     "buttonTransparencyTitle": "Button Fill",
     "buttonTransparencyBody": "Adjusts only the button background. Text stays fully readable.",
     "livePreview": "Live preview",
-    "restoreRecommended": "Restore Recommended"
+    "restoreRecommended": "Restore Recommended",
+    "restoreRecommendedBody": "Reset theme, surface, opacity and background photo to defaults.",
+    "previewPrimary": "Primary",
+    "previewSecondary": "Secondary",
+    "previewGhost": "Ghost",
+    "customThemeActive": "Custom theme active",
+    "customThemeActiveBody": "Variant palettes are overridden until you disable it.",
+    "customThemeDisable": "Disable custom theme",
+    "pwaTitle": "Install app (PWA)",
+    "pwaBody": "Install BabyFlow on your device to open it like a native app.",
+    "pwaInstalled": "Already installed",
+    "pwaInstallNow": "Install now",
+    "pwaInstallSuccess": "App installed",
+    "pwaInstallDismissed": "Install dismissed",
+    "pwaManualHelp": "• Chrome/Edge: menu > \"Install app\"\n• iPhone Safari: Share > \"Add to Home Screen\""
   },
   "tabs": {
     "home": "Home",

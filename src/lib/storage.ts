@@ -160,6 +160,19 @@ export const defaultAppSettings: AppSettings = {
   },
 };
 
+/**
+ * The subset of AppSettings that "Restore Recommended" resets back to defaults.
+ * Centralised so the reset flow doesn't drift as new appearance settings are added.
+ */
+export const defaultAppearanceSettings = {
+  themeVariant: defaultAppSettings.themeVariant,
+  themeStyle: defaultAppSettings.themeStyle,
+  backgroundPhotoUri: defaultAppSettings.backgroundPhotoUri,
+  buttonOpacity: defaultAppSettings.buttonOpacity,
+  buttonTransparency: defaultAppSettings.buttonTransparency,
+  customTheme: defaultAppSettings.customTheme,
+} as const;
+
 function safeParse<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
   try {

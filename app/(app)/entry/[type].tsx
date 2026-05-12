@@ -352,7 +352,7 @@ export default function EntryComposerScreen() {
       return {
         label: language === 'fr' ? 'OK' : 'OK',
         text: language === 'fr' ? 'Choisissez un médicament pour voir le statut.' : 'Select a medicine to see status.',
-        color: '#3FB950',
+        color: theme.green,
       };
     }
     const lastSame = entries.find(
@@ -362,7 +362,7 @@ export default function EntryComposerScreen() {
       return {
         label: language === 'fr' ? 'DUE' : 'DUE',
         text: language === 'fr' ? 'Aucune dose récente trouvée.' : 'No recent dose found.',
-        color: '#E74C3C',
+        color: theme.red,
       };
     }
     const intervalHours = Number(medIntervalHours) || 6;
@@ -371,22 +371,22 @@ export default function EntryComposerScreen() {
       return {
         label: 'DUE',
         text: language === 'fr' ? 'Prochaine dose recommandée maintenant.' : 'Next dose recommended now.',
-        color: '#E74C3C',
+        color: theme.red,
       };
     }
     if (hoursSince >= Math.max(1, intervalHours - 2)) {
       return {
         label: 'SOON',
         text: language === 'fr' ? 'Dose bientôt possible.' : 'Dose will be due soon.',
-        color: '#F0B85A',
+        color: theme.yellow,
       };
     }
     return {
       label: 'OK',
       text: language === 'fr' ? 'Fenêtre de sécurité active.' : 'Safe interval active.',
-      color: '#3FB950',
+      color: theme.green,
     };
-  }, [entries, language, medIntervalHours, name]);
+  }, [entries, language, medIntervalHours, name, theme]);
   const nextDosePreview = useMemo(() => {
     if (!name.trim()) return '';
     const interval = Number(medIntervalHours) || 6;
@@ -1464,7 +1464,7 @@ export default function EntryComposerScreen() {
                 {`${startTime} · ${elapsedLabel}`}
               </Text>
               {isStale && (
-                <Text style={{ color: '#F0B85A', fontSize: 12, fontWeight: '600', marginBottom: 14, lineHeight: 16 }}>
+                <Text style={{ color: theme.yellow, fontSize: 12, fontWeight: '600', marginBottom: 14, lineHeight: 16 }}>
                   {`⚠ ${t('entry.sleepDraftStale')}`}
                 </Text>
               )}
@@ -1697,7 +1697,7 @@ export default function EntryComposerScreen() {
                         placeholder={suggested ? suggested.weight.value.toFixed(1) : '5.2'}
                       />
                       {weightCat && (
-                        <Text style={[styles.whoFeedback, { color: weightCat.category === 'healthy' ? '#3FB950' : '#F2C86F', marginTop: 8 }]}>
+                        <Text style={[styles.whoFeedback, { color: weightCat.category === 'healthy' ? theme.green : theme.yellow, marginTop: 8 }]}>
                           {weightCat.emoji} {weightCat.message}
                         </Text>
                       )}
@@ -1712,7 +1712,7 @@ export default function EntryComposerScreen() {
                         placeholder={suggested ? suggested.height.value.toFixed(1) : '52'}
                       />
                       {heightCat && (
-                        <Text style={[styles.whoFeedback, { color: heightCat.category === 'healthy' ? '#3FB950' : '#F2C86F', marginTop: 8 }]}>
+                        <Text style={[styles.whoFeedback, { color: heightCat.category === 'healthy' ? theme.green : theme.yellow, marginTop: 8 }]}>
                           {heightCat.emoji} {heightCat.message}
                         </Text>
                       )}
@@ -1993,16 +1993,16 @@ export default function EntryComposerScreen() {
             {vaccineTemp && (
               <View style={styles.tempStatusContainer}>
                 {Number(vaccineTemp) < 37.5 ? (
-                  <View style={[styles.tempStatus, { backgroundColor: 'rgba(63,185,80,0.16)', borderColor: '#3FB950' }]}>
-                    <Text style={[styles.tempStatusText, { color: '#3FB950' }]}>{"✅"} Normal</Text>
+                  <View style={[styles.tempStatus, { backgroundColor: `${theme.green}28`, borderColor: theme.green }]}>
+                    <Text style={[styles.tempStatusText, { color: theme.green }]}>{"✅"} Normal</Text>
                   </View>
                 ) : Number(vaccineTemp) < 38 ? (
-                  <View style={[styles.tempStatus, { backgroundColor: 'rgba(242,200,111,0.16)', borderColor: '#F2C86F' }]}>
-                    <Text style={[styles.tempStatusText, { color: '#F2C86F' }]}>{"⚠️"} {language === 'fr' ? 'Fébricule' : language === 'es' ? 'Febrícula' : language === 'nl' ? 'Lichte koorts' : 'Mild fever'}</Text>
+                  <View style={[styles.tempStatus, { backgroundColor: `${theme.yellow}28`, borderColor: theme.yellow }]}>
+                    <Text style={[styles.tempStatusText, { color: theme.yellow }]}>{"⚠️"} {language === 'fr' ? 'Fébricule' : language === 'es' ? 'Febrícula' : language === 'nl' ? 'Lichte koorts' : 'Mild fever'}</Text>
                   </View>
                 ) : (
-                  <View style={[styles.tempStatus, { backgroundColor: 'rgba(231,76,60,0.16)', borderColor: '#E74C3C' }]}>
-                    <Text style={[styles.tempStatusText, { color: '#E74C3C' }]}>{"🔥"} {language === 'fr' ? 'Fièvre' : language === 'es' ? 'Fiebre' : language === 'nl' ? 'Koorts' : 'Fever'}</Text>
+                  <View style={[styles.tempStatus, { backgroundColor: `${theme.red}28`, borderColor: theme.red }]}>
+                    <Text style={[styles.tempStatusText, { color: theme.red }]}>{"🔥"} {language === 'fr' ? 'Fièvre' : language === 'es' ? 'Fiebre' : language === 'nl' ? 'Koorts' : 'Fever'}</Text>
                   </View>
                 )}
               </View>
@@ -2154,7 +2154,7 @@ export default function EntryComposerScreen() {
             paddingHorizontal: 24,
             paddingTop: 16,
             paddingBottom: Math.max(44, insets.bottom + 24),
-            ...shadow('#000', 0.3, 24, 0, -6),
+            ...shadow(theme.textPrimary, 0.3, 24, 0, -6),
             elevation: 20,
           }}>
             {/* Drag handle */}

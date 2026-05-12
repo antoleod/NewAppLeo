@@ -26,6 +26,7 @@ const nuit = {
   green: '#3FB950',
   blue: '#58A6FF',
   red: '#E74C3C',
+  yellow: '#F2C86F',
   muted: '#8B949E',
   textPrimary: '#FFFFFF',
   textSecondary: '#C9D1D9',
@@ -52,6 +53,7 @@ const jour: typeof nuit = {
   green: '#2D7A3A',
   blue: '#1A5FA5',
   red: '#C0392B',
+  yellow: '#B07418',
   muted: '#6B7280',
   textPrimary: '#111111',
   textSecondary: '#374151',
@@ -151,6 +153,7 @@ const variantOverrides: Record<ThemeVariant, Partial<Record<ThemePaletteMode, Pa
       accent: '#D9B97D',
       green: '#7AB58E',
       blue: '#E8C493',
+      yellow: '#F5A623',
       borderActive: '#D9B97D',
     },
     jour: {
@@ -161,10 +164,28 @@ const variantOverrides: Record<ThemeVariant, Partial<Record<ThemePaletteMode, Pa
       accent: '#8C6B3F',
       green: '#4B8A59',
       blue: '#B89968',
+      yellow: '#A35F00',
       borderActive: '#8C6B3F',
     },
   },
 };
+
+/**
+ * Returns the three preview swatches for a theme variant in a given palette mode.
+ * Reads directly from the base theme + variantOverrides so the carousel preview
+ * in settings always reflects the actual applied colors.
+ */
+export function getVariantSwatches(
+  variant: ThemeVariant,
+  paletteMode: ThemePaletteMode,
+): [string, string, string] {
+  const base = themes[paletteMode];
+  const override = variantOverrides[variant]?.[paletteMode] ?? {};
+  const bg = override.bg ?? base.bg;
+  const bgCard = override.bgCard ?? base.bgCard;
+  const accent = override.accent ?? base.accent;
+  return [bg, bgCard, accent];
+}
 
 export const themeVariantDescriptions: Record<ThemeVariant, { label: string; description: string; emoji: string }> = {
   sage: {
@@ -203,8 +224,8 @@ function toCompatColors(theme: Theme) {
     secondarySoft: withAlpha(theme.blue, '22'),
     success: theme.green,
     successSoft: withAlpha(theme.green, '22'),
-    warning: theme.accent,
-    warningSoft: withAlpha(theme.accent, '22'),
+    warning: theme.yellow,
+    warningSoft: withAlpha(theme.yellow, '22'),
     danger: theme.red,
     dangerSoft: withAlpha(theme.red, '22'),
     cardBorder: theme.border,

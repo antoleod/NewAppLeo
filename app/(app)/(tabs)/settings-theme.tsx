@@ -1,50 +1,46 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+  type GestureResponderEvent,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
-import { themeVariantDescriptions } from '@/theme';
+import {
+  getVariantSwatches,
+  themeVariantDescriptions,
+  type ThemeStyle,
+  type ThemeVariant,
+} from '@/theme';
 import { useAuth } from '@/context/AuthContext';
-import { useLocale } from '@/context/LocaleContext';
-import { Button, Card, Page, Segment } from '@/components/shared';
+import { Button, Card, Page, Segment, useToast } from '@/components/shared';
 import { BackgroundPhotoSelector } from '@/components/profile';
 import { SettingsImporter } from '@/components/profile';
 import { DataExporter } from '@/components/profile';
-import { getAppSettings, setAppSettings } from '@/lib/storage';
+import { defaultAppearanceSettings, getAppSettings, setAppSettings } from '@/lib/storage';
 import { useTranslation } from '@/hooks/useTranslation';
+import { confirmAction } from '@/lib/confirm';
+import { haptics } from '@/lib/haptics';
 
-const pwaTextMap = {
-  fr: {
-    title: "Installer l'app (PWA)",
-    body: "Installez BabyFlow sur votre appareil pour l'ouvrir comme une app native.",
-    installed: 'Déjà installée',
-    installNow: 'Installer maintenant',
-    manualHelp: `• Chrome/Edge : menu > "Installer l'application"\n• iPhone Safari : Partager > "Ajouter à l'écran d'accueil"`,
-  },
-  es: {
-    title: 'Instalar app (PWA)',
-    body: 'Instala BabyFlow en tu dispositivo para abrirla como app nativa.',
-    installed: 'Ya está instalada',
-    installNow: 'Instalar ahora',
-    manualHelp: '• Chrome/Edge: menú > "Instalar aplicación"\n• iPhone Safari: Compartir > "Añadir a pantalla de inicio"',
-  },
-  en: {
-    title: 'Install app (PWA)',
-    body: 'Install BabyFlow on your device to open it like a native app.',
-    installed: 'Already installed',
-    installNow: 'Install now',
-    manualHelp: '• Chrome/Edge: menu > "Install app"\n• iPhone Safari: Share > "Add to Home Screen"',
-  },
-  nl: {
-    title: 'App installeren (PWA)',
-    body: 'Installeer BabyFlow op je apparaat om deze als native app te openen.',
-    installed: 'Al geïnstalleerd',
-    installNow: 'Nu installeren',
-    manualHelp: '• Chrome/Edge: menu > "App installeren"\n• iPhone Safari: Deel > "Zet op beginscherm"',
-  },
-} as const;
+const VARIANT_KEYS: readonly ThemeVariant[] = ['sage', 'rose', 'navy', 'sand'];
+
+const SLIDER_HEIGHT = 44;
+const THUMB_SIZE = 28;
+
+function clampOpacity(value: unknown) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0.2, Math.min(1, n)) : 1;
+}
 
 export default function ThemeSettings() {
   const { width } = useWindowDimensions();
   const { t } = useTranslation();
+  const toast = useToast();
   const {
     theme,
     themeMode,
@@ -54,72 +50,63 @@ export default function ThemeSettings() {
     backgroundPhotoUri,
     buttonOpacity,
     buttonTransparency,
+    customTheme,
     setThemeVariant,
     setThemeStyle,
     setBackgroundPhotoUri,
     setButtonOpacity,
     setButtonTransparency,
+    setCustomTheme,
   } = useTheme();
   const { setThemeMode } = useAuth();
-  const { language } = useLocale();
 
-  const normalizeOpacity = (opacity: unknown) => {
-    const numericOpacity = Number(opacity);
-    return Number.isFinite(numericOpacity) ? Math.max(0.2, Math.min(1, numericOpacity)) : 1;
-  };
-
-  const [opacityValue, setOpacityValue] = useState(() => normalizeOpacity(buttonOpacity));
+  const [opacityValue, setOpacityValue] = useState(() => clampOpacity(buttonOpacity));
   const [opacityTrackWidth, setOpacityTrackWidth] = useState(0);
   const opacityPercent = ((opacityValue - 0.2) / 0.8) * 100;
-  const [transparencyValue, setTransparencyValue] = useState(() => normalizeOpacity(buttonTransparency));
+  const [transparencyValue, setTransparencyValue] = useState(() => clampOpacity(buttonTransparency));
   const [transparencyTrackWidth, setTransparencyTrackWidth] = useState(0);
   const transparencyPercent = ((transparencyValue - 0.2) / 0.8) * 100;
   const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
-  const pwaText = React.useMemo(
-    () => pwaTextMap[language as keyof typeof pwaTextMap] ?? pwaTextMap.fr,
-    [language],
+
+  const carouselScrollRef = useRef<ScrollView>(null);
+  const cardWidth = Math.min(320, Math.max(250, width - 70));
+  const snapInterval = cardWidth + 12;
+
+  // Reads the live theme.ts tokens — no more drift risk from hardcoded duplication.
+  const themes = useMemo(
+    () =>
+      VARIANT_KEYS.map((key) => ({
+        key,
+        title: themeVariantDescriptions[key].label,
+        description: themeVariantDescriptions[key].description,
+        swatches: getVariantSwatches(key, paletteMode),
+      })),
+    [paletteMode],
   );
 
-  // Real token values per variant and palette mode — mirrors src/theme.ts variantOverrides
-  const variantSwatches: Record<string, Record<'nuit' | 'jour', [string, string, string]>> = {
-    sage: {
-      nuit: ['#0D1210', '#131A17', '#4d7c6b'],
-      jour: ['#F2F5F1', '#FAFDF9', '#4d7c6b'],
-    },
-    rose: {
-      nuit: ['#120D10', '#1A1318', '#D08BA0'],
-      jour: ['#F7F2F4', '#FFF8FA', '#B95B74'],
-    },
-    navy: {
-      nuit: ['#0C0F14', '#121720', '#8EB5EA'],
-      jour: ['#F1F3F7', '#F8FAFD', '#1D4E89'],
-    },
-    sand: {
-      nuit: ['#130F0A', '#1C1510', '#D9B97D'],
-      jour: ['#F7F4EF', '#FFFDF8', '#8C6B3F'],
-    },
-  };
-
-  const themes = (['sage', 'rose', 'navy', 'sand'] as const).map((key) => ({
-    key,
-    title: themeVariantDescriptions[key].label,
-    description: themeVariantDescriptions[key].description,
-    swatches: variantSwatches[key][paletteMode],
-  }));
-
-  const surfaceStyles = [
-    { key: 'default', label: t('settings.frosted'), description: t('settings.frostedDesc') },
-    { key: 'photo',   label: t('settings.vivid'),   description: t('settings.vividDesc') },
-    { key: 'classic', label: t('settings.solid'),   description: t('settings.solidDesc') },
-  ] as const;
+  const surfaceStyles = useMemo(
+    () =>
+      (
+        [
+          { key: 'default', labelKey: 'settings.frosted', descKey: 'settings.frostedDesc' },
+          { key: 'photo', labelKey: 'settings.vivid', descKey: 'settings.vividDesc' },
+          { key: 'classic', labelKey: 'settings.solid', descKey: 'settings.solidDesc' },
+        ] as const
+      ).map((item) => ({
+        key: item.key as ThemeStyle,
+        label: t(item.labelKey),
+        description: t(item.descKey),
+      })),
+    [t],
+  );
 
   useEffect(() => {
-    setOpacityValue(normalizeOpacity(buttonOpacity));
+    setOpacityValue(clampOpacity(buttonOpacity));
   }, [buttonOpacity]);
 
   useEffect(() => {
-    setTransparencyValue(normalizeOpacity(buttonTransparency));
+    setTransparencyValue(clampOpacity(buttonTransparency));
   }, [buttonTransparency]);
 
   useEffect(() => {
@@ -130,12 +117,10 @@ export default function ThemeSettings() {
     };
     checkInstalled();
 
-    // Pick up the event captured early in index.html (before React mounted)
     if ((window as any).__pwaInstallPrompt) {
       setInstallPromptEvent((window as any).__pwaInstallPrompt);
     }
 
-    // Also listen in case the event fires after this component mounts
     const handleBeforeInstallPrompt = (event: any) => {
       event.preventDefault();
       (window as any).__pwaInstallPrompt = event;
@@ -152,16 +137,22 @@ export default function ThemeSettings() {
   async function handleInstallPwa() {
     if (!installPromptEvent) return;
     installPromptEvent.prompt();
-    await installPromptEvent.userChoice?.catch(() => null);
+    const choice = await installPromptEvent.userChoice?.catch(() => null);
     (window as any).__pwaInstallPrompt = null;
     setInstallPromptEvent(null);
+    if (choice?.outcome === 'accepted') {
+      toast.success(t('settings.pwaInstallSuccess'));
+    } else if (choice?.outcome === 'dismissed') {
+      toast.info(t('settings.pwaInstallDismissed'));
+    }
   }
 
   async function updateButtonOpacity(value: number, persist: boolean) {
-    const nextOpacity = normalizeOpacity(value);
-    setOpacityValue(nextOpacity);
+    const next = clampOpacity(value);
+    setOpacityValue(next);
     if (persist) {
-      await setButtonOpacity(nextOpacity);
+      await setButtonOpacity(next);
+      haptics.selection();
     }
   }
 
@@ -170,15 +161,16 @@ export default function ThemeSettings() {
     const locationX = Number(event.nativeEvent.locationX);
     if (!Number.isFinite(locationX)) return;
     const ratio = Math.max(0, Math.min(1, locationX / opacityTrackWidth));
-    const nextOpacity = Math.round((0.2 + ratio * 0.8) * 100) / 100;
-    void updateButtonOpacity(nextOpacity, persist);
+    const next = Math.round((0.2 + ratio * 0.8) * 100) / 100;
+    void updateButtonOpacity(next, persist);
   }
 
   async function updateButtonTransparency(value: number, persist: boolean) {
-    const nextOpacity = normalizeOpacity(value);
-    setTransparencyValue(nextOpacity);
+    const next = clampOpacity(value);
+    setTransparencyValue(next);
     if (persist) {
-      await setButtonTransparency(nextOpacity);
+      await setButtonTransparency(next);
+      haptics.selection();
     }
   }
 
@@ -187,44 +179,60 @@ export default function ThemeSettings() {
     const locationX = Number(event.nativeEvent.locationX);
     if (!Number.isFinite(locationX)) return;
     const ratio = Math.max(0, Math.min(1, locationX / transparencyTrackWidth));
-    const nextOpacity = Math.round((0.2 + ratio * 0.8) * 100) / 100;
-    void updateButtonTransparency(nextOpacity, persist);
+    const next = Math.round((0.2 + ratio * 0.8) * 100) / 100;
+    void updateButtonTransparency(next, persist);
+  }
+
+  async function handleSelectVariant(key: ThemeVariant) {
+    haptics.selection();
+    await setThemeVariant(key);
+  }
+
+  async function handleSelectStyle(key: ThemeStyle) {
+    haptics.selection();
+    await setThemeStyle(key);
+  }
+
+  async function handleSelectMode(value: 'system' | 'light' | 'dark') {
+    haptics.selection();
+    await setThemeMode(value);
+  }
+
+  async function handleDisableCustomTheme() {
+    await setCustomTheme({ enabled: false });
+    haptics.success();
+    toast.success(t('settings.customThemeDisable'));
   }
 
   async function handleResetRecommended() {
-    Alert.alert(
-      t('settings.restoreRecommended'),
-      '',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.ok'),
-          style: 'default',
-          onPress: async () => {
-            try {
-              const current = await getAppSettings();
-              const next = {
-                ...current,
-                themeVariant: 'sage' as const,
-                themeStyle: 'default' as const,
-                buttonOpacity: 1,
-                buttonTransparency: 1,
-                customTheme: { ...current.customTheme, enabled: false },
-              };
-              await setAppSettings(next);
-              await setThemeVariant('sage');
-              await setThemeStyle('default');
-              await setBackgroundPhotoUri('');
-              await setButtonOpacity(1);
-              await setButtonTransparency(1);
-              await setThemeMode('system');
-            } catch (error: any) {
-              Alert.alert(t('settings.appearanceTitle'), error?.message ?? 'Could not restore.');
-            }
-          },
-        },
-      ]
-    );
+    const ok = await confirmAction({
+      title: t('settings.restoreRecommended'),
+      message: t('settings.restoreRecommendedBody'),
+      confirmLabel: t('common.ok'),
+      cancelLabel: t('common.cancel'),
+    });
+    if (!ok) return;
+    try {
+      // Atomic disk write first, then sync React state via context setters.
+      // Setters do persist again but their writes are idempotent — the bulk
+      // write above guarantees a consistent on-disk snapshot regardless.
+      const current = await getAppSettings();
+      await setAppSettings({ ...current, ...defaultAppearanceSettings });
+      await setThemeVariant(defaultAppearanceSettings.themeVariant);
+      await setThemeStyle(defaultAppearanceSettings.themeStyle);
+      await setBackgroundPhotoUri(defaultAppearanceSettings.backgroundPhotoUri);
+      await setButtonOpacity(defaultAppearanceSettings.buttonOpacity);
+      await setButtonTransparency(defaultAppearanceSettings.buttonTransparency);
+      await setCustomTheme(defaultAppearanceSettings.customTheme);
+      await setThemeMode('system');
+      haptics.success();
+    } catch (error: any) {
+      toast.error(error?.message ?? t('settings.appearanceTitle'));
+    }
+  }
+
+  function scrollCarouselToIndex(index: number) {
+    carouselScrollRef.current?.scrollTo({ x: index * snapInterval, animated: true });
   }
 
   return (
@@ -233,14 +241,36 @@ export default function ThemeSettings() {
         <Text style={[styles.title, { color: theme.textPrimary }]}>{t('settings.appearanceTitle')}</Text>
         <Text style={[styles.subtitle, { color: theme.textMuted }]}>{t('settings.appearanceSubtitle')}</Text>
 
+        {customTheme?.enabled ? (
+          <Card style={{ borderColor: theme.accent, gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name="color-wand" size={18} color={theme.accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.textPrimary, fontSize: 14, fontWeight: '700' }}>
+                  {t('settings.customThemeActive')}
+                </Text>
+                <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 2 }}>
+                  {t('settings.customThemeActiveBody')}
+                </Text>
+              </View>
+            </View>
+            <Button
+              label={t('settings.customThemeDisable')}
+              onPress={() => void handleDisableCustomTheme()}
+              variant="secondary"
+            />
+          </Card>
+        ) : null}
+
         {/* Theme palette */}
         <Card>
           <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{t('settings.themeLabel')}</Text>
           <Text style={[styles.sectionBody, { color: theme.textMuted }]}>{t('settings.themeBody')}</Text>
           <ScrollView
+            ref={carouselScrollRef}
             horizontal
             showsHorizontalScrollIndicator={false}
-            snapToInterval={Math.min(320, Math.max(250, width - 70)) + 12}
+            snapToInterval={snapInterval}
             decelerationRate="fast"
             contentContainerStyle={styles.carouselTrack}
           >
@@ -249,52 +279,58 @@ export default function ThemeSettings() {
               return (
                 <Pressable
                   key={item.key}
-                  onPress={() => void setThemeVariant(item.key as any)}
+                  onPress={() => void handleSelectVariant(item.key)}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.title}
+                  accessibilityState={{ selected: active }}
                   style={[
                     styles.themeCard,
-                    { width: Math.min(320, Math.max(250, width - 70)) },
+                    { width: cardWidth },
                     { borderColor: active ? item.swatches[2] : theme.border, backgroundColor: theme.bgCardAlt },
                   ]}
                 >
                   <View style={styles.swatches}>
-                    {item.swatches.map((color) => (
-                      <View key={color} style={[styles.swatch, { backgroundColor: color }]} />
+                    {item.swatches.map((color, idx) => (
+                      <View key={`${item.key}-sw-${idx}`} style={[styles.swatch, { backgroundColor: color }]} />
                     ))}
                   </View>
                   <Text style={[styles.themeTitle, { color: theme.textPrimary }]}>{item.title}</Text>
                   <Text style={[styles.themeBody, { color: theme.textMuted }]}>{item.description}</Text>
-                  {/* Per-card accent button so each card previews its own color */}
-                  <View style={[
-                    styles.themeApplyBtn,
-                    {
-                      backgroundColor: active
-                        ? item.swatches[2]
-                        : `${item.swatches[2]}26`,
-                      borderColor: item.swatches[2],
-                    },
-                  ]}>
-                    <Text style={[
-                      styles.themeApplyLabel,
-                      { color: active ? '#ffffff' : item.swatches[2] },
-                    ]}>
-                      {active ? t('settings.applied') : t('settings.tapToApply')}
-                    </Text>
-                  </View>
+                  {active ? (
+                    <View
+                      style={[
+                        styles.statusRow,
+                        { backgroundColor: `${item.swatches[2]}1A`, borderColor: item.swatches[2] },
+                      ]}
+                    >
+                      <Ionicons name="checkmark-circle" size={14} color={item.swatches[2]} />
+                      <Text style={[styles.statusLabel, { color: item.swatches[2] }]}>{t('settings.applied')}</Text>
+                    </View>
+                  ) : (
+                    <Text style={[styles.tapHint, { color: theme.textMuted }]}>{t('settings.tapToApply')}</Text>
+                  )}
                 </Pressable>
               );
             })}
           </ScrollView>
           <View style={styles.carouselDots}>
-            {themes.map((item) => {
+            {themes.map((item, idx) => {
               const active = themeVariant === item.key;
               return (
-                <View
+                <Pressable
                   key={`dot-${item.key}`}
-                  style={[
-                    styles.carouselDot,
-                    { backgroundColor: active ? item.swatches[2] : theme.border, width: active ? 16 : 7 },
-                  ]}
-                />
+                  onPress={() => scrollCarouselToIndex(idx)}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.title}
+                  hitSlop={8}
+                >
+                  <View
+                    style={[
+                      styles.carouselDot,
+                      { backgroundColor: active ? item.swatches[2] : theme.border, width: active ? 16 : 7 },
+                    ]}
+                  />
+                </Pressable>
               );
             })}
           </View>
@@ -310,7 +346,10 @@ export default function ThemeSettings() {
               return (
                 <Pressable
                   key={item.key}
-                  onPress={() => void setThemeStyle(item.key as any)}
+                  onPress={() => void handleSelectStyle(item.key)}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  accessibilityState={{ selected: active }}
                   style={[
                     styles.styleChip,
                     {
@@ -323,9 +362,7 @@ export default function ThemeSettings() {
                     {item.label}
                   </Text>
                   <Text style={[styles.styleChipDesc, { color: theme.textMuted }]}>{item.description}</Text>
-                  {active && (
-                    <View style={[styles.styleChipDot, { backgroundColor: theme.accent }]} />
-                  )}
+                  {active && <View style={[styles.styleChipDot, { backgroundColor: theme.accent }]} />}
                 </Pressable>
               );
             })}
@@ -338,7 +375,7 @@ export default function ThemeSettings() {
           <Text style={[styles.sectionBody, { color: theme.textMuted }]}>{t('settings.modeBody')}</Text>
           <Segment
             value={themeMode}
-            onChange={(value) => setThemeMode(value as any)}
+            onChange={(value) => void handleSelectMode(value as 'system' | 'light' | 'dark')}
             options={[
               { label: t('profile.themeSystem'), value: 'system' },
               { label: t('profile.themeLight'), value: 'light' },
@@ -369,14 +406,30 @@ export default function ThemeSettings() {
             onResponderGrant={(event) => updateOpacityFromEvent(event, false)}
             onResponderMove={(event) => updateOpacityFromEvent(event, false)}
             onResponderRelease={(event) => updateOpacityFromEvent(event, true)}
+            accessibilityRole="adjustable"
+            accessibilityLabel={t('settings.buttonOpacityTitle')}
+            accessibilityValue={{ now: Math.round(opacityValue * 100), min: 20, max: 100 }}
             style={[styles.opacityTrack, { backgroundColor: theme.bgCardAlt, borderColor: theme.border }]}
           >
             <View style={[styles.opacityFill, { width: `${opacityPercent}%`, backgroundColor: theme.accent }]} />
-            <View style={[styles.opacityThumb, { left: `${opacityPercent}%`, backgroundColor: theme.accent, borderColor: theme.bgCard }]} />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.opacityThumb,
+                {
+                  left: `${Math.max(0, Math.min(100, opacityPercent))}%`,
+                  backgroundColor: theme.accent,
+                  borderColor: theme.bgCard,
+                  transform: [{ translateX: -THUMB_SIZE / 2 }],
+                },
+              ]}
+            />
           </View>
           <View style={styles.opacityScale}>
             <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>20%</Text>
-            <Text style={[styles.opacityScaleText, { color: theme.accent, fontWeight: '800' }]}>{Math.round(opacityValue * 100)}%</Text>
+            <Text style={[styles.opacityScaleText, { color: theme.accent, fontWeight: '800' }]}>
+              {Math.round(opacityValue * 100)}%
+            </Text>
             <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>100%</Text>
           </View>
 
@@ -389,56 +442,74 @@ export default function ThemeSettings() {
             onResponderGrant={(event) => updateTransparencyFromEvent(event, false)}
             onResponderMove={(event) => updateTransparencyFromEvent(event, false)}
             onResponderRelease={(event) => updateTransparencyFromEvent(event, true)}
+            accessibilityRole="adjustable"
+            accessibilityLabel={t('settings.buttonTransparencyTitle')}
+            accessibilityValue={{ now: Math.round(transparencyValue * 100), min: 20, max: 100 }}
             style={[styles.opacityTrack, { backgroundColor: theme.bgCardAlt, borderColor: theme.border }]}
           >
             <View style={[styles.opacityFill, { width: `${transparencyPercent}%`, backgroundColor: theme.accent }]} />
-            <View style={[styles.opacityThumb, { left: `${transparencyPercent}%`, backgroundColor: theme.accent, borderColor: theme.bgCard }]} />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.opacityThumb,
+                {
+                  left: `${Math.max(0, Math.min(100, transparencyPercent))}%`,
+                  backgroundColor: theme.accent,
+                  borderColor: theme.bgCard,
+                  transform: [{ translateX: -THUMB_SIZE / 2 }],
+                },
+              ]}
+            />
           </View>
           <View style={styles.opacityScale}>
             <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>20%</Text>
-            <Text style={[styles.opacityScaleText, { color: theme.accent, fontWeight: '800' }]}>{Math.round(transparencyValue * 100)}%</Text>
+            <Text style={[styles.opacityScaleText, { color: theme.accent, fontWeight: '800' }]}>
+              {Math.round(transparencyValue * 100)}%
+            </Text>
             <Text style={[styles.opacityScaleText, { color: theme.textMuted }]}>100%</Text>
           </View>
 
-          {/* Live preview — uses the same Button component that reads these settings */}
+          {/* Live preview — uses the actual Button component so the sliders affect what you see */}
           <Text style={[styles.controlLabel, { color: theme.textMuted }]}>{t('settings.livePreview')}</Text>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
             <View style={{ flex: 1 }}>
-              <Button label="Primary" onPress={() => {}} variant="primary" />
+              <Button label={t('settings.previewPrimary')} onPress={() => {}} variant="primary" />
             </View>
             <View style={{ flex: 1 }}>
-              <Button label="Secondary" onPress={() => {}} variant="secondary" />
+              <Button label={t('settings.previewSecondary')} onPress={() => {}} variant="secondary" />
             </View>
             <View style={{ flex: 1 }}>
-              <Button label="Ghost" onPress={() => {}} variant="ghost" />
+              <Button label={t('settings.previewGhost')} onPress={() => {}} variant="ghost" />
             </View>
           </View>
         </Card>
 
         <Card>
-          <Button label={t('settings.restoreRecommended')} onPress={() => void handleResetRecommended()} variant="secondary" />
+          <Button
+            label={t('settings.restoreRecommended')}
+            onPress={() => void handleResetRecommended()}
+            variant="secondary"
+          />
         </Card>
 
         {Platform.OS === 'web' ? (
           <Card>
-            <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{pwaText.title}</Text>
-            <Text style={[styles.sectionBody, { color: theme.textMuted }]}>
-              {pwaText.body}
-            </Text>
+            <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{t('settings.pwaTitle')}</Text>
+            <Text style={[styles.sectionBody, { color: theme.textMuted }]}>{t('settings.pwaBody')}</Text>
             {isPwaInstalled ? (
               <View style={[styles.pwaInstalledBadge, { borderColor: theme.border, backgroundColor: theme.bgCardAlt }]}>
-                <Text style={{ color: theme.textPrimary, fontWeight: '700' }}>{pwaText.installed}</Text>
+                <Text style={{ color: theme.textPrimary, fontWeight: '700' }}>{t('settings.pwaInstalled')}</Text>
               </View>
             ) : installPromptEvent ? (
               <Button
-                label={pwaText.installNow}
+                label={t('settings.pwaInstallNow')}
                 onPress={() => void handleInstallPwa()}
                 variant="primary"
               />
             ) : (
               <View style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 10, padding: 12 }}>
                 <Text style={{ color: theme.textMuted, fontSize: 12, lineHeight: 20 }}>
-                  {pwaText.manualHelp}
+                  {t('settings.pwaManualHelp')}
                 </Text>
               </View>
             )}
@@ -466,23 +537,39 @@ const styles = StyleSheet.create({
   swatch: { width: 18, height: 18, borderRadius: 999 },
   themeTitle: { fontSize: 14, fontWeight: '800' },
   themeBody: { fontSize: 12, marginTop: 4 },
-  themeApplyBtn: {
+  statusRow: {
     marginTop: 10,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    alignSelf: 'flex-start',
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
   },
-  themeApplyLabel: { fontSize: 12, fontWeight: '800' },
+  statusLabel: { fontSize: 12, fontWeight: '800' },
+  tapHint: { marginTop: 10, fontSize: 11, fontStyle: 'italic' },
   styleChip: { flex: 1, borderWidth: 1, borderRadius: 12, padding: 10, alignItems: 'center', gap: 2, position: 'relative' },
   styleChipLabel: { fontSize: 13, fontWeight: '700' },
   styleChipDesc: { fontSize: 11, textAlign: 'center' },
   styleChipDot: { width: 6, height: 6, borderRadius: 3, marginTop: 4 },
-  opacityTrack: { height: 34, borderRadius: 999, borderWidth: 1, justifyContent: 'center', overflow: 'hidden', position: 'relative' },
+  opacityTrack: {
+    height: SLIDER_HEIGHT,
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
   opacityFill: { position: 'absolute', left: 0, top: 0, bottom: 0 },
-  opacityThumb: { position: 'absolute', width: 22, height: 22, marginLeft: -11, borderRadius: 999, borderWidth: 3 },
+  opacityThumb: {
+    position: 'absolute',
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: 999,
+    borderWidth: 3,
+  },
   opacityScale: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   opacityScaleText: { fontSize: 11, fontWeight: '700' },
   controlLabel: { fontSize: 12, fontWeight: '800', marginTop: 16, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },

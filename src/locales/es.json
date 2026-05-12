@@ -337,7 +337,21 @@
     "buttonTransparencyTitle": "Relleno de botones",
     "buttonTransparencyBody": "Ajusta solo el fondo del botón. El texto permanece legible.",
     "livePreview": "Vista previa en vivo",
-    "restoreRecommended": "Restaurar recomendados"
+    "restoreRecommended": "Restaurar recomendados",
+    "restoreRecommendedBody": "Restablece tema, superficie, opacidad y foto de fondo a los valores por defecto.",
+    "previewPrimary": "Principal",
+    "previewSecondary": "Secundario",
+    "previewGhost": "Fantasma",
+    "customThemeActive": "Tema personalizado activo",
+    "customThemeActiveBody": "Las paletas de variantes están anuladas mientras esté activo.",
+    "customThemeDisable": "Desactivar tema personalizado",
+    "pwaTitle": "Instalar app (PWA)",
+    "pwaBody": "Instala BabyFlow en tu dispositivo para abrirla como app nativa.",
+    "pwaInstalled": "Ya está instalada",
+    "pwaInstallNow": "Instalar ahora",
+    "pwaInstallSuccess": "App instalada",
+    "pwaInstallDismissed": "Instalación cancelada",
+    "pwaManualHelp": "• Chrome/Edge: menú > «Instalar aplicación»\n• iPhone Safari: Compartir > «Añadir a pantalla de inicio»"
   },
   "tabs": {
     "home": "Inicio",

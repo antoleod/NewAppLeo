@@ -166,29 +166,35 @@ export function Heading({
     pathname.includes('/onboarding') ? 'sparkles-outline' :
     'ellipse-outline';
 
-  // Stops adapt to themeStyle so the heading sits well on each surface mode:
-  //  - classic : solid bgCard surface, accent overlay reads cleanly
-  //  - default : frosted, balanced accent
-  //  - photo   : richer accent so it survives a vivid backdrop
+  // Stops adapt to themeStyle AND to dark/light so the heading sits well on each surface mode.
+  // Light mode needs richer accent + a slightly tinted (not white) base so it doesn't wash out;
+  // dark mode keeps subtler stops because the dark surface naturally grounds the gradient.
   const stops =
     themeStyle === 'photo'
-      ? { strong: 0.22, soft: 0.08, fadeBase: 0.18, fadeEnd: 0 }
+      ? { strong: 0.26, soft: 0.10, fadeBase: 0.18, fadeEnd: 0 }
       : themeStyle === 'classic'
-        ? { strong: 0.16, soft: 0.06, fadeBase: 0.5, fadeEnd: 0.18 }
-        : { strong: 0.18, soft: 0.06, fadeBase: 0.28, fadeEnd: 0 };
+        ? isDark
+          ? { strong: 0.16, soft: 0.06, fadeBase: 0.5, fadeEnd: 0.18 }
+          : { strong: 0.22, soft: 0.10, fadeBase: 0.55, fadeEnd: 0.22 }
+        : isDark
+          ? { strong: 0.18, soft: 0.06, fadeBase: 0.28, fadeEnd: 0 }
+          : { strong: 0.26, soft: 0.12, fadeBase: 0.14, fadeEnd: 0 };
 
-  const cardBase = withColorOpacity(theme.bgCard, stops.fadeBase);
-  const cardEnd = stops.fadeEnd > 0 ? withColorOpacity(theme.bgCard, stops.fadeEnd) : 'transparent';
+  // Light mode uses bgCardAlt (slightly tinted) instead of bgCard (pure white) so the
+  // heading reads a touch darker / more grounded against the page.
+  const fadeSurface = isDark ? theme.bgCard : theme.bgCardAlt;
+  const cardBase = withColorOpacity(fadeSurface, stops.fadeBase);
+  const cardEnd = stops.fadeEnd > 0 ? withColorOpacity(fadeSurface, stops.fadeEnd) : 'transparent';
   const accentStrong = withColorOpacity(theme.accent, stops.strong);
   const accentSoft = withColorOpacity(theme.accent, stops.soft);
 
   const gradientColors = [accentStrong, accentSoft, cardBase, cardEnd] as const;
 
-  const containerBorder = withColorOpacity(theme.accent, isDark ? 0.28 : 0.2);
-  const innerHighlight = withColorOpacity(isDark ? '#ffffff' : '#ffffff', isDark ? 0.06 : 0.45);
-  const eyebrowBg = withColorOpacity(theme.accent, isDark ? 0.18 : 0.14);
-  const eyebrowBorder = withColorOpacity(theme.accent, isDark ? 0.4 : 0.32);
-  const accentRibbon = withColorOpacity(theme.accent, 0.7);
+  const containerBorder = withColorOpacity(theme.accent, isDark ? 0.28 : 0.28);
+  const innerHighlight = withColorOpacity('#ffffff', isDark ? 0.06 : 0.22);
+  const eyebrowBg = withColorOpacity(theme.accent, isDark ? 0.18 : 0.18);
+  const eyebrowBorder = withColorOpacity(theme.accent, isDark ? 0.4 : 0.38);
+  const accentRibbon = withColorOpacity(theme.accent, isDark ? 0.7 : 0.8);
 
   return (
     <View

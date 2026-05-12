@@ -91,7 +91,7 @@ function ToastHost({ toast, onDismiss }: { toast: ToastInternal | null; onDismis
       : toast.variant === 'error'
         ? theme.red
         : toast.variant === 'warning'
-          ? '#F2C86F'
+          ? theme.yellow
           : theme.blue;
 
   return (
