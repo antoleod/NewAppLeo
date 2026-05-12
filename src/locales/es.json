@@ -65,7 +65,22 @@
     "savedTitle": "¡Guardado!",
     "savedSubtitle": "Comida registrada.",
     "todayMeals": "Comidas de hoy",
-    "noFoodYet": "Sin comidas registradas hoy"
+    "noFoodYet": "Sin comidas registradas hoy",
+    "mealLabel": "Comida",
+    "foodLabel2": "Alimento",
+    "quantityLabel2": "Cantidad",
+    "firstMeal": "Primera comida",
+    "mealsCount": "comidas",
+    "mealCountOne": "comida",
+    "firstTry": "✨ ¡Primera vez!",
+    "chipLast": "Última",
+    "chipUsual": "Habitual",
+    "chipLess": "Menos",
+    "chipMore": "Más",
+    "suggestionFromHistory": "Según las comidas recientes de Leo",
+    "suggestionFromAge": "Sugerido para esta edad",
+    "suggestionFromCategory": "Cantidad habitual para esta categoría",
+    "suggestionFromMeal": "Habitual a esta hora del día"
   },
   "feeding": {
     "lastFeeding": "ÚLTIMA TOMA",
@@ -162,7 +177,10 @@
     "titleSleep": "Sesión de sueño",
     "titlePump": "Sesión de extracción",
     "titleMilestone": "Hito",
-    "titleTemperatureReading": "Lectura de temperatura"
+    "titleTemperatureReading": "Lectura de temperatura",
+    "sleepDraftFound": "Sesión de sueño activa",
+    "sleepDraftResume": "Retomar sesión",
+    "sleepDraftDiscard": "Descartar"
   },
   "onboarding": {
     "caregiver_name": "Tu nombre",
@@ -276,7 +294,10 @@
   },
   "errors": {
     "saveFailed": "Error al guardar",
-    "couldNotSave": "No se pudo guardar este registro."
+    "couldNotSave": "No se pudo guardar este registro.",
+    "loadingTimeout": "Conexión demasiado lenta",
+    "loadingTimeoutMessage": "La app está teniendo problemas para conectarse. Comprueba tu red.",
+    "retryConnection": "Reintentar"
   },
   "settings": {
     "appearanceTitle": "Apariencia",

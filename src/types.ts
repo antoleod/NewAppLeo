@@ -16,6 +16,7 @@ export type EntryType =
 
 export type FeedMode = 'breast' | 'bottle';
 export type BreastSide = 'left' | 'right' | 'both';
+export type FoodCategory = 'puree' | 'fruit' | 'cereals' | 'yogurt' | 'vegetables' | 'water' | 'other';
 
 export interface EntryPayload {
   mode?: FeedMode;
@@ -23,6 +24,7 @@ export interface EntryPayload {
   durationMin?: number;
   amountMl?: number;
   foodName?: string;
+  foodCategory?: FoodCategory;
   quantity?: string;
   quantityGrams?: number;
   foodLiked?: 'yes' | 'no' | 'neutral';

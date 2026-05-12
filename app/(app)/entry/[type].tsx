@@ -19,12 +19,15 @@ import { DateTimeField } from '@/components/shared';
 import { VaccineReminderModal } from '@/components/home';
 import { FullscreenTimerModal } from '@/components/home';
 import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
+import { clearSleepDraft, getSleepDraft, saveSleepDraft, type SleepDraft } from '@/lib/sleepDraft';
 import commonMedications from '@/data/common-medications.json';
 import * as ImagePicker from 'expo-image-picker';
 import { scheduleVaccineReminder } from '@/lib/notifications';
 import { scheduleMedicationReminder } from '@/lib/notifications';
 import { getSuggestedValues, getWeightCategory, getHeightCategory } from '@/lib/who-recommendations';
 import { getRecommendedQuantity, getFoodRecommendationMessage } from '@/lib/food-recommendations';
+import { suggestFoodQuantities, inferCategoryFromName, type QuantityChip } from '@/lib/food-suggestions';
+import type { FoodCategory } from '@/types';
 import { getSeasonalRecommendations } from '@/lib/seasonal-recommendations';
 import { haptics } from '@/lib/haptics';
 import { useToast } from '@/components/shared';
@@ -249,6 +252,7 @@ export default function EntryComposerScreen() {
   const [pumpFullscreenVisible, setPumpFullscreenVisible] = useState(false);
   const [largeTouchMode, setLargeTouchMode] = useState(false);
   const [savedMedicines, setSavedMedicines] = useState<SavedMedicine[]>([]);
+  const [activeSleepDraft, setActiveSleepDraft] = useState<SleepDraft | null>(null);
   const closeScale = useSharedValue(1);
   const closeRotate = useSharedValue(0);
   const closeAnimStyle = useAnimatedStyle(() => ({
@@ -490,6 +494,16 @@ export default function EntryComposerScreen() {
     }
   }, [editing]);
 
+  // On mount for a new sleep entry: check if a previous session was left open
+  // (e.g. after a browser-tab kill or page reload). The draft is preserved in
+  // AsyncStorage and expires after 24 h.
+  useEffect(() => {
+    if (type !== 'sleep' || editing) return;
+    void getSleepDraft().then((draft) => {
+      if (draft) setActiveSleepDraft(draft);
+    });
+  }, [editing, type]);
+
   useEffect(() => {
     actionsSlideY.value = withTiming(0, { duration: 220 });
     actionsOpacity.value = withTiming(1, { duration: 220 });
@@ -511,13 +525,20 @@ export default function EntryComposerScreen() {
   }, [editing, presetAmount, presetMode, presetSide]);
 
   useEffect(() => {
-    if (type !== 'sleep' || editing || sleepInputMode !== 'timer') return;
+    // Guard: do not auto-start if startedAt is already set — that means either
+    // (a) the user just resumed from a saved draft, or (b) the effect re-fired
+    // due to a dep change but the timer is already running.
+    if (type !== 'sleep' || editing || sleepInputMode !== 'timer' || sleepStartedAt !== null) return;
     const startAt = Date.now();
+    const clientId = globalThis.crypto?.randomUUID?.() ?? `sleep_${startAt}_${Math.random().toString(36).slice(2, 8)}`;
     setSleepStartedAt(startAt);
     setSleepElapsedSeconds(0);
     setSleepFullscreenVisible(true);
     setSleepTimerRunning(true);
-  }, [editing, type, sleepInputMode]);
+    // Persist the draft immediately so the start time survives a page reload
+    // or browser-tab kill during a long sleep session.
+    void saveSleepDraft({ clientId, startedAt: startAt, occurredAt: new Date(startAt).toISOString(), notes: '' });
+  }, [editing, type, sleepInputMode, sleepStartedAt]);
 
   useEffect(() => {
     if (type !== 'sleep' || !sleepTimerRunning || !sleepStartedAt) return;
@@ -545,15 +566,23 @@ export default function EntryComposerScreen() {
   }, [pumpStartedAt, pumpTimerRunning, type]);
 
   useEffect(() => {
-    if (type !== 'food' || editing || !foodName || !profile?.babyBirthDate) return;
+    if (type !== 'food' || editing || !foodName || quantityGrams) return;
     const selectedPreset = foodPresets.find((p) => p.value === foodName || Object.values(p.labels).includes(foodName));
-    if (selectedPreset && !quantityGrams) {
-      const recommendedQty = getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value);
-      if (recommendedQty) {
-        setQuantityGrams(String(recommendedQty));
-      }
+    const resolvedCategory: FoodCategory = selectedPreset
+      ? (selectedPreset.value as FoodCategory)
+      : inferCategoryFromName(foodName);
+    if (resolvedCategory === 'other') return;
+    const sug = suggestFoodQuantities({
+      entries,
+      babyBirthDate: profile?.babyBirthDate ?? null,
+      category: resolvedCategory,
+      foodName,
+      mealTime: mealTime || undefined,
+    });
+    if (sug.usualAmount) {
+      setQuantityGrams(String(sug.usualAmount));
     }
-  }, [foodName, editing, type, quantityGrams, profile?.babyBirthDate]);
+  }, [foodName, editing, type, quantityGrams, profile?.babyBirthDate, entries, mealTime]);
 
   function resetFoodForm() {
     setFoodName('');
@@ -583,6 +612,8 @@ export default function EntryComposerScreen() {
         if (foodLiked) foodPayload.foodLiked = foodLiked;
         if (amountEaten) foodPayload.amountEaten = amountEaten;
         if (mealTime) foodPayload.mealTime = mealTime;
+        const resolvedCategory: FoodCategory = inferCategoryFromName(foodName);
+        if (resolvedCategory !== 'other') foodPayload.foodCategory = resolvedCategory;
         return foodPayload as EntryPayload;
       }
       case 'sleep':
@@ -649,6 +680,17 @@ export default function EntryComposerScreen() {
     }
   }
 
+  // Restore a persisted sleep draft (e.g. after page reload or tab kill).
+  // Sets the timer back to the original startedAt so elapsed time is correct.
+  function resumeSleepDraft(draft: SleepDraft) {
+    setSleepStartedAt(draft.startedAt);
+    setSleepElapsedSeconds(Math.max(0, Math.floor((Date.now() - draft.startedAt) / 1000)));
+    setSleepTimerRunning(true);
+    setSleepFullscreenVisible(true);
+    setSleepInputMode('timer');
+    setActiveSleepDraft(null);
+  }
+
   async function handleSave(durationMinOverride?: number) {
     setSaving(true);
     try {
@@ -710,6 +752,7 @@ export default function EntryComposerScreen() {
       setSleepStopToken((current) => current + 1);
       setSleepTimerRunning(false);
       setDurationMin(String(elapsedMinutes));
+      void clearSleepDraft();
       await handleSave(elapsedMinutes);
       return;
     }
@@ -722,6 +765,9 @@ export default function EntryComposerScreen() {
     setDurationMin(String(elapsedMinutes));
     setSleepTimerRunning(false);
     setSleepFullscreenVisible(false);
+    // Clear before saving so a crash between save and navigate-back cannot
+    // leave a stale draft that would prompt the user to resume a saved session.
+    void clearSleepDraft();
     await handleSave(elapsedMinutes);
   }
 
@@ -898,15 +944,32 @@ export default function EntryComposerScreen() {
           const lang = language as 'fr' | 'en' | 'es' | 'nl';
           const getFoodLabel = (preset: typeof foodPresets[number]) => preset.labels[lang] ?? preset.labels.en;
           const selectedPreset = foodPresets.find((p) => p.value === foodName || Object.values(p.labels).includes(foodName));
-          const recommendedQty = selectedPreset && profile?.babyBirthDate
-            ? getRecommendedQuantity(profile.babyBirthDate, selectedPreset.value)
-            : null;
           const isFirstTry = foodName.trim().length > 0 && !foodPreferencesMap[foodName];
-          const quantityOptions = (() => {
-            if (!profile?.babyBirthDate || !selectedPreset) return [20, 50, 100, 150];
-            const base = recommendedQty ?? 50;
-            return [Math.max(5, base - 20), base, base + 20, base + 40].map(Math.round).filter((v, i, a) => a.indexOf(v) === i);
-          })();
+          const resolvedCategory: FoodCategory = selectedPreset
+            ? (selectedPreset.value as FoodCategory)
+            : inferCategoryFromName(foodName);
+          const suggestion = suggestFoodQuantities({
+            entries,
+            babyBirthDate: profile?.babyBirthDate ?? null,
+            category: resolvedCategory,
+            foodName,
+            mealTime: mealTime || undefined,
+          });
+          const chipKindLabel: Record<QuantityChip['kind'], string> = {
+            last: t('food.chipLast'),
+            usual: t('food.chipUsual'),
+            less: t('food.chipLess'),
+            more: t('food.chipMore'),
+            baseline: t('food.chipUsual'),
+          };
+          const suggestionRationale =
+            suggestion.source === 'foodName' || suggestion.source === 'category'
+              ? t('food.suggestionFromHistory')
+              : suggestion.source === 'categoryMeal'
+              ? t('food.suggestionFromMeal')
+              : suggestion.source === 'age'
+              ? t('food.suggestionFromAge')
+              : '';
           const reactionOptions = [
             { emoji: '🤧', value: 'allergy', labels: { fr: 'Allergie', en: 'Allergy', es: 'Alergia', nl: 'Allergie' } },
             { emoji: '😬', value: 'intolerance', labels: { fr: 'Intolérance', en: 'Intolerance', es: 'Intolerancia', nl: 'Intolerantie' } },
@@ -914,11 +977,11 @@ export default function EntryComposerScreen() {
             { emoji: '🤮', value: 'vomit', labels: { fr: 'Vomissement', en: 'Vomit', es: 'Vómito', nl: 'Braken' } },
             { emoji: '💩', value: 'diarrhea', labels: { fr: 'Diarrhée', en: 'Diarrhea', es: 'Diarrea', nl: 'Diarree' } },
           ];
-          const firstTryLabel = { fr: '✨ Premier essai', en: '✨ First try!', es: '✨ ¡Primera vez!', nl: '✨ Eerste keer!' };
           const mealTimeIcons: Record<string, string> = { breakfast: '🌅', lunch: '🌞', snack: '🍪', dinner: '🌙' };
           const moreLabel = { fr: 'Réaction, allergie…', en: 'Reaction, allergy…', es: 'Reacción, alergia…', nl: 'Reactie, allergie…' };
           const lessLabel = { fr: 'Masquer', en: 'Hide', es: 'Ocultar', nl: 'Verbergen' };
           const activeMealTime = mealTime || getRecommendedMealTime();
+          const qtyStep = suggestion.unit === 'ml' ? 10 : 5;
 
           return (
             <View style={styles.sectionCard}>
@@ -929,8 +992,8 @@ export default function EntryComposerScreen() {
                   <View style={[styles.todayCountBadge, { backgroundColor: `${meta.tone}18`, borderColor: `${meta.tone}40`, alignSelf: 'flex-start' }]}>
                     <Text style={{ color: meta.tone, fontSize: 11, fontWeight: '700' }}>
                       {todayFoodEntries.length === 0
-                        ? (lang === 'fr' ? 'Premier repas' : lang === 'es' ? 'Primera comida' : lang === 'nl' ? 'Eerste maaltijd' : 'First meal')
-                        : `${todayFoodEntries.length} ${lang === 'fr' ? 'repas' : lang === 'es' ? (todayFoodEntries.length > 1 ? 'comidas' : 'comida') : lang === 'nl' ? (todayFoodEntries.length > 1 ? 'maaltijden' : 'maaltijd') : (todayFoodEntries.length > 1 ? 'meals' : 'meal')}`}
+                        ? t('food.firstMeal')
+                        : `${todayFoodEntries.length} ${todayFoodEntries.length > 1 ? t('food.mealsCount') : t('food.mealCountOne')}`}
                     </Text>
                   </View>
                 </View>
@@ -938,7 +1001,7 @@ export default function EntryComposerScreen() {
 
               {/* Row 1b: Meal time segmented selector — labeled, language-aware */}
               <Text style={{ color: colors.muted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
-                {lang === 'fr' ? 'Repas' : lang === 'es' ? 'Comida' : lang === 'nl' ? 'Maaltijd' : 'Meal'}
+                {t('food.mealLabel')}
               </Text>
               <View style={{ flexDirection: 'row', gap: 5, marginBottom: 14 }}>
                 {mealTimes.map((meal) => {
@@ -975,11 +1038,11 @@ export default function EntryComposerScreen() {
               {/* Row 2: first-try badge + food name input (hero) */}
               {isFirstTry && (
                 <Text style={{ color: meta.tone, fontSize: 11, fontWeight: '700', marginBottom: 6 }}>
-                  {firstTryLabel[lang] ?? firstTryLabel.en}
+                  {t('food.firstTry')}
                 </Text>
               )}
               <Input
-                label={lang === 'fr' ? 'Aliment' : lang === 'es' ? 'Alimento' : lang === 'nl' ? 'Voedsel' : 'Food'}
+                label={t('food.foodLabel2')}
                 value={foodName}
                 onChangeText={setFoodName}
                 placeholder={lang === 'fr' ? 'Pomme, compote, quinoa…' : lang === 'es' ? 'Manzana, compota…' : lang === 'nl' ? 'Appel, compote…' : 'Apple, compote, quinoa…'}
@@ -1027,36 +1090,45 @@ export default function EntryComposerScreen() {
                 </View>
               )}
 
-              {/* Row 5: Quantity — preset chips + custom input + stepper */}
+              {/* Row 5: Quantity — adaptive chips + custom input + stepper */}
               <View style={{ marginTop: 14 }}>
-                <Text style={{ color: colors.muted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
-                  {lang === 'fr' ? 'Quantité' : lang === 'es' ? 'Cantidad' : lang === 'nl' ? 'Hoeveelheid' : 'Quantity'}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <Text style={{ color: colors.muted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                    {t('food.quantityLabel2')}
+                  </Text>
+                  {suggestionRationale ? (
+                    <Text style={{ color: colors.muted, fontSize: 10, fontStyle: 'italic', flexShrink: 1, textAlign: 'right', marginLeft: 8 }} numberOfLines={1}>
+                      {suggestionRationale}
+                    </Text>
+                  ) : null}
+                </View>
                 <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                  {quantityOptions.map((g) => {
-                    const active = quantityGrams === String(g);
+                  {suggestion.chips.map((chip) => {
+                    const active = quantityGrams === String(chip.value);
+                    const showKindLabel = chip.kind !== 'baseline' && (suggestion.source === 'foodName' || suggestion.source === 'category' || suggestion.source === 'categoryMeal');
                     return (
                       <Pressable
-                        key={g}
-                        onPress={() => setQuantityGrams(active ? '' : String(g))}
-                        style={[styles.qtyChip, { borderColor: colors.border, backgroundColor: colors.card }, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
+                        key={`${chip.kind}-${chip.value}`}
+                        onPress={() => setQuantityGrams(active ? '' : String(chip.value))}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${chipKindLabel[chip.kind]} ${chip.value}${chip.unit}`}
+                        style={[styles.qtyChip, { borderColor: colors.border, backgroundColor: colors.card, flexDirection: 'column', alignItems: 'center', paddingVertical: 8 }, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
                       >
-                        <Text style={[styles.qtyChipText, { color: colors.text }, active && { color: meta.tone, fontWeight: '800' }]}>{g}g</Text>
+                        {showKindLabel && (
+                          <Text style={{ fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, color: active ? meta.tone : colors.muted, marginBottom: 1 }}>
+                            {chipKindLabel[chip.kind]}
+                          </Text>
+                        )}
+                        <Text style={[styles.qtyChipText, { color: colors.text }, active && { color: meta.tone, fontWeight: '800' }]}>
+                          {chip.value}{chip.unit}
+                        </Text>
                       </Pressable>
                     );
                   })}
-                  {recommendedQty && !quantityOptions.includes(recommendedQty) && (
-                    <Pressable
-                      onPress={() => setQuantityGrams(String(recommendedQty))}
-                      style={[styles.qtyChip, { borderStyle: 'dashed', borderColor: colors.border, backgroundColor: colors.card }, quantityGrams === String(recommendedQty) && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
-                    >
-                      <Text style={[styles.qtyChipText, { color: colors.text }, quantityGrams === String(recommendedQty) && { color: meta.tone, fontWeight: '800' }]}>{recommendedQty}g ✓</Text>
-                    </Pressable>
-                  )}
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Pressable
-                    onPress={() => setQuantityGrams(String(Math.max(0, (Number(quantityGrams) || 0) - 5)))}
+                    onPress={() => setQuantityGrams(String(Math.max(0, (Number(quantityGrams) || 0) - qtyStep)))}
                     style={[styles.tempButton, { backgroundColor: `${meta.tone}14`, borderColor: `${meta.tone}50` }]}
                   >
                     <Text style={[styles.tempButtonText, { color: meta.tone }]}>−</Text>
@@ -1066,14 +1138,14 @@ export default function EntryComposerScreen() {
                       label=""
                       value={quantityGrams}
                       onChangeText={setQuantityGrams}
-                      placeholder={recommendedQty ? String(recommendedQty) : '50'}
+                      placeholder={suggestion.usualAmount ? String(suggestion.usualAmount) : suggestion.unit === 'ml' ? '100' : '50'}
                       keyboardType="number-pad"
                       inputMode="numeric"
                     />
                   </View>
-                  <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '700', minWidth: 14 }}>g</Text>
+                  <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '700', minWidth: 14 }}>{suggestion.unit}</Text>
                   <Pressable
-                    onPress={() => setQuantityGrams(String((Number(quantityGrams) || 0) + 5))}
+                    onPress={() => setQuantityGrams(String((Number(quantityGrams) || 0) + qtyStep))}
                     style={[styles.tempButton, { backgroundColor: `${meta.tone}14`, borderColor: `${meta.tone}50` }]}
                   >
                     <Text style={[styles.tempButtonText, { color: meta.tone }]}>+</Text>
@@ -1113,6 +1185,52 @@ export default function EntryComposerScreen() {
             </View>
           );
         })()}
+
+        {type === 'sleep' && !editing && activeSleepDraft && sleepInputMode === null && !sleepTimerRunning && (
+          <View style={[styles.sectionCard, { borderWidth: 1.5, borderColor: '#58A6FF', backgroundColor: 'rgba(88,166,255,0.07)' }]}>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: '#58A6FF', marginBottom: 4 }}>
+              {t('entry.sleepDraftFound')}
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 14 }}>
+              {(() => {
+                const startTime = new Date(activeSleepDraft.startedAt).toLocaleTimeString(
+                  language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : language === 'nl' ? 'nl-NL' : 'en-US',
+                  { hour: '2-digit', minute: '2-digit' },
+                );
+                const elapsedMs = Date.now() - activeSleepDraft.startedAt;
+                const h = Math.floor(elapsedMs / 3600000);
+                const m = Math.floor((elapsedMs % 3600000) / 60000);
+                const elapsed = h > 0 ? `${h}h${m > 0 ? ` ${m}min` : ''}` : `${m}min`;
+                return `${startTime} · ${elapsed}`;
+              })()}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Pressable
+                onPress={() => resumeSleepDraft(activeSleepDraft)}
+                style={({ pressed }) => ({
+                  flex: 2, paddingVertical: 13, borderRadius: 10, alignItems: 'center',
+                  backgroundColor: pressed ? 'rgba(88,166,255,0.75)' : '#58A6FF',
+                })}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                  {t('entry.sleepDraftResume')}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => void clearSleepDraft().then(() => setActiveSleepDraft(null))}
+                style={({ pressed }) => ({
+                  flex: 1, paddingVertical: 13, borderRadius: 10, alignItems: 'center',
+                  borderWidth: 1, borderColor: colors.border,
+                  backgroundColor: pressed ? `${colors.border}60` : 'transparent',
+                })}
+              >
+                <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 13 }}>
+                  {t('entry.sleepDraftDiscard')}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {type === 'sleep' && !editing && sleepInputMode === null && (
           <View style={styles.sectionCard}>

@@ -65,7 +65,22 @@
     "savedTitle": "Saved!",
     "savedSubtitle": "Meal logged.",
     "todayMeals": "Today's meals",
-    "noFoodYet": "No meals logged yet today"
+    "noFoodYet": "No meals logged yet today",
+    "mealLabel": "Meal",
+    "foodLabel2": "Food",
+    "quantityLabel2": "Quantity",
+    "firstMeal": "First meal",
+    "mealsCount": "meals",
+    "mealCountOne": "meal",
+    "firstTry": "✨ First try!",
+    "chipLast": "Last",
+    "chipUsual": "Usual",
+    "chipLess": "Less",
+    "chipMore": "More",
+    "suggestionFromHistory": "Based on Leo's recent meals",
+    "suggestionFromAge": "Suggested for this age",
+    "suggestionFromCategory": "Usual amount for this category",
+    "suggestionFromMeal": "Usual at this time of day"
   },
   "feeding": {
     "lastFeeding": "LAST FEEDING",
@@ -162,7 +177,10 @@
     "titleSleep": "Sleep session",
     "titlePump": "Pump session",
     "titleMilestone": "Milestone",
-    "titleTemperatureReading": "Temperature reading"
+    "titleTemperatureReading": "Temperature reading",
+    "sleepDraftFound": "Active sleep session found",
+    "sleepDraftResume": "Resume session",
+    "sleepDraftDiscard": "Discard"
   },
   "onboarding": {
     "caregiver_name": "Your name",
@@ -276,7 +294,10 @@
   },
   "errors": {
     "saveFailed": "Save failed",
-    "couldNotSave": "Could not save this record."
+    "couldNotSave": "Could not save this record.",
+    "loadingTimeout": "Taking too long to connect",
+    "loadingTimeoutMessage": "The app is having trouble connecting. Please check your network.",
+    "retryConnection": "Retry"
   },
   "settings": {
     "appearanceTitle": "Appearance",

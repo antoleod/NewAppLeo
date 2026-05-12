@@ -65,7 +65,22 @@
     "savedTitle": "Opgeslagen!",
     "savedSubtitle": "Maaltijd geregistreerd.",
     "todayMeals": "Maaltijden van vandaag",
-    "noFoodYet": "Nog geen maaltijden vandaag"
+    "noFoodYet": "Nog geen maaltijden vandaag",
+    "mealLabel": "Maaltijd",
+    "foodLabel2": "Voedsel",
+    "quantityLabel2": "Hoeveelheid",
+    "firstMeal": "Eerste maaltijd",
+    "mealsCount": "maaltijden",
+    "mealCountOne": "maaltijd",
+    "firstTry": "✨ Eerste keer!",
+    "chipLast": "Laatste",
+    "chipUsual": "Gebruikelijk",
+    "chipLess": "Minder",
+    "chipMore": "Meer",
+    "suggestionFromHistory": "Op basis van Leo's recente maaltijden",
+    "suggestionFromAge": "Voorgesteld voor deze leeftijd",
+    "suggestionFromCategory": "Gebruikelijke hoeveelheid voor deze categorie",
+    "suggestionFromMeal": "Gebruikelijk op dit moment van de dag"
   },
   "feeding": {
     "lastFeeding": "LAATSTE VOEDING",
@@ -162,7 +177,10 @@
     "titleSleep": "Slaapsessie",
     "titlePump": "Kolfsessie",
     "titleMilestone": "Mijlpaal",
-    "titleTemperatureReading": "Temperatuurmeting"
+    "titleTemperatureReading": "Temperatuurmeting",
+    "sleepDraftFound": "Actieve slaaapsessie gevonden",
+    "sleepDraftResume": "Sessie hervatten",
+    "sleepDraftDiscard": "Verwijderen"
   },
   "onboarding": {
     "caregiver_name": "Jouw naam",
@@ -276,7 +294,10 @@
   },
   "errors": {
     "saveFailed": "Opslaan mislukt",
-    "couldNotSave": "Dit record kon niet worden opgeslagen."
+    "couldNotSave": "Dit record kon niet worden opgeslagen.",
+    "loadingTimeout": "Verbinding duurt te lang",
+    "loadingTimeoutMessage": "De app heeft moeite om verbinding te maken. Controleer je netwerk.",
+    "retryConnection": "Opnieuw proberen"
   },
   "settings": {
     "appearanceTitle": "Uiterlijk",

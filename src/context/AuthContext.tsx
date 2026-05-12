@@ -11,6 +11,7 @@ import {
 } from '@/services/userProfileService';
 import { consumeGoogleRedirectResult, registerAccount, signInWithEmail, signInWithGoogle, signOutUser } from '@/services/authService';
 import { clearGuestProfile, clearLocalSession, createGuestProfile, getGuestProfile, setGuestProfile } from '@/lib/storage';
+import { getLocalProfile } from '@/services/localStore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { registerCurrentSession as createSession } from '@/services/sessionService';
 
@@ -69,9 +70,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     };
 
+    // Holds the pending profile-load timeout so it can be cancelled when the
+    // Firestore listener fires first (normal case) or when auth changes again.
+    let profileTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
       unsubscribeProfile?.();
       unsubscribeProfile = undefined;
+
+      // Cancel any outstanding profile-load timeout from the previous auth state.
+      if (profileTimeoutId) { clearTimeout(profileTimeoutId); profileTimeoutId = null; }
+
       setGuestMode(false);
       setUser(nextUser);
       if (!nextUser) {
@@ -80,14 +89,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setProfileLoading(true);
+
+      // If Firestore doesn't call back within 8 s (e.g. reconnecting after a
+      // long mobile-browser suspension), unblock the app using the last known
+      // local profile so the user never sees a permanent loading screen.
+      profileTimeoutId = setTimeout(async () => {
+        profileTimeoutId = null;
+        if (!alive) return;
+        try {
+          const local = await getLocalProfile(nextUser.uid);
+          if (!alive) return;
+          setProfile(local);
+        } catch {}
+        setProfileLoading(false);
+        setLoading(false);
+      }, 8000);
+
       unsubscribeProfile = watchProfile(
         nextUser.uid,
         (nextProfile) => {
+          if (profileTimeoutId) { clearTimeout(profileTimeoutId); profileTimeoutId = null; }
           setProfile(nextProfile);
           setProfileLoading(false);
           setLoading(false);
         },
         () => {
+          if (profileTimeoutId) { clearTimeout(profileTimeoutId); profileTimeoutId = null; }
           setProfileLoading(false);
           setLoading(false);
         },
@@ -96,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       alive = false;
+      if (profileTimeoutId) { clearTimeout(profileTimeoutId); profileTimeoutId = null; }
       unsubscribeProfile?.();
       unsubscribe();
     };

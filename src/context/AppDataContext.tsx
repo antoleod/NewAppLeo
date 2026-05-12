@@ -217,16 +217,35 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       const q = query(entriesRef(uid), orderBy('occurredAt', 'desc'), limit(ENTRIES_PAGE_LIMIT));
 
+      // If Firestore doesn't respond within 8 seconds (e.g. reconnecting after
+      // a long browser suspension), fall back to local cache so the app never
+      // hangs forever on a loading screen.
+      let settled = false;
+      const fallbackTimer = setTimeout(async () => {
+        if (settled || cancelledRef.current) return;
+        settled = true;
+        remoteAvailableRef.current = false;
+        const localEntries = await getLocalEntries(uid);
+        if (!cancelledRef.current) {
+          setEntries(localEntries);
+          setLoading(false);
+        }
+      }, 8000);
+
       unsubscribeRef.current = onSnapshot(
         q,
         (snapshot) => {
           if (cancelledRef.current) return;
+          settled = true;
+          clearTimeout(fallbackTimer);
           remoteAvailableRef.current = true;
           setEntries(snapshot.docs.map((item) => normalizeEntry(item.id, item.data())));
           setLoading(false);
         },
         async (error) => {
           if (cancelledRef.current) return;
+          settled = true;
+          clearTimeout(fallbackTimer);
 
           remoteAvailableRef.current = false;
 

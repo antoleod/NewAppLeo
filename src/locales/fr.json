@@ -65,7 +65,22 @@
     "savedTitle": "Enregistré !",
     "savedSubtitle": "Repas bien noté.",
     "todayMeals": "Repas du jour",
-    "noFoodYet": "Pas encore de repas aujourd'hui"
+    "noFoodYet": "Pas encore de repas aujourd'hui",
+    "mealLabel": "Repas",
+    "foodLabel2": "Aliment",
+    "quantityLabel2": "Quantité",
+    "firstMeal": "Premier repas",
+    "mealsCount": "repas",
+    "mealCountOne": "repas",
+    "firstTry": "✨ Premier essai",
+    "chipLast": "Dernier",
+    "chipUsual": "Habituel",
+    "chipLess": "Moins",
+    "chipMore": "Plus",
+    "suggestionFromHistory": "Selon les repas récents de Leo",
+    "suggestionFromAge": "Suggéré pour cet âge",
+    "suggestionFromCategory": "Quantité habituelle pour cette catégorie",
+    "suggestionFromMeal": "Habituel à ce moment de la journée"
   },
   "feeding": {
     "lastFeeding": "DERNIÈRE PRISE",
@@ -162,7 +177,10 @@
     "titleSleep": "Session sommeil",
     "titlePump": "Session tire-lait",
     "titleMilestone": "Étape",
-    "titleTemperatureReading": "Mesure de température"
+    "titleTemperatureReading": "Mesure de température",
+    "sleepDraftFound": "Session de sommeil en cours",
+    "sleepDraftResume": "Reprendre la session",
+    "sleepDraftDiscard": "Abandonner"
   },
   "onboarding": {
     "caregiver_name": "Votre prénom",
@@ -276,7 +294,10 @@
   },
   "errors": {
     "saveFailed": "Échec de l'enregistrement",
-    "couldNotSave": "Impossible d'enregistrer ce registre."
+    "couldNotSave": "Impossible d'enregistrer ce registre.",
+    "loadingTimeout": "Connexion trop longue",
+    "loadingTimeoutMessage": "L'application a du mal à se connecter. Vérifiez votre réseau.",
+    "retryConnection": "Réessayer"
   },
   "settings": {
     "appearanceTitle": "Apparence",
