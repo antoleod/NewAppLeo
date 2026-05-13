@@ -81,6 +81,11 @@ async function mergeSensitiveFields(firestoreProfile: UserProfile, uid: string):
     encryptedPassword: local.encryptedPassword ?? firestoreProfile.encryptedPassword,
     pinHash: local.pinHash ?? firestoreProfile.pinHash,
     pinSalt: local.pinSalt ?? firestoreProfile.pinSalt,
+    // If a Firestore write failed silently during onboarding (e.g. denied rules,
+    // offline), the local fallback still has hasCompletedOnboarding=true.
+    // Without this merge, the next load would read stale Firestore data and
+    // redirect the user back to onboarding forever.
+    hasCompletedOnboarding: firestoreProfile.hasCompletedOnboarding || local.hasCompletedOnboarding === true,
   };
 }
 
@@ -289,4 +294,15 @@ export async function resolveUsernameToProfile(username: string) {
 export function verifyPinAgainstProfile(pin: string, profile: UserProfile) {
   if (!profile.pinSalt || !profile.pinHash) return false;
   return hashPin(pin, profile.pinSalt) === profile.pinHash;
+}
+
+/**
+ * Persist a new PIN on the profile (generates fresh salt + hash).
+ * Used by the onboarding "PIN" path so the chosen PIN actually integrates
+ * with the existing pinHash/pinSalt verification flow.
+ */
+export async function setOnboardingPin(uid: string, pin: string) {
+  const pinSalt = await generateSalt();
+  const pinHash = hashPin(pin, pinSalt);
+  await updateProfile(uid, { pinSalt, pinHash });
 }

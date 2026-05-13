@@ -189,7 +189,33 @@
   "onboarding": {
     "caregiver_name": "Tu nombre",
     "birth_date": "Fecha de nacimiento",
-    "pin_invalid": "El PIN debe tener 4 dígitos"
+    "pin_invalid": "El PIN debe tener 4 dígitos",
+    "welcome": "Bienvenido",
+    "language": "Idioma",
+    "baby": "Bebé",
+    "goals": "Objetivos",
+    "step": "Paso",
+    "babyNameLabel": "Nombre del bebé *",
+    "dateCannotBeFuture": "La fecha no puede ser futura",
+    "sexNeutral": "Neutro",
+    "sexFemale": "Niña",
+    "sexMale": "Niño",
+    "weight": "Peso (kg)",
+    "height": "Talla (cm)",
+    "pinLabel": "PIN de 4 dígitos",
+    "pinConfirm": "Confirmar PIN",
+    "goalFeedings": "Objetivo tomas / día",
+    "goalSleep": "Objetivo sueño / día",
+    "goalDiapers": "Objetivo pañales / día",
+    "currentWeightLabel": "Peso actual (kg)",
+    "hint": "Sugerido:",
+    "savedFailed": "Error al guardar",
+    "pathGuestTitle": "Invitado",
+    "pathGuestBody": "Sin código. Los datos se guardan en este dispositivo.",
+    "pathPinTitle": "PIN",
+    "pathPinBody": "Protege tus datos con un código de 4 dígitos. Funciona sin conexión.",
+    "pathAccountTitle": "Cuenta",
+    "pathAccountBody": "Sincroniza entre dispositivos con una cuenta en la nube."
   },
   "measurement": {
     "whoSuggested": "Rango Sugerido OMS",
@@ -731,6 +757,8 @@
     "stop": "Detener",
     "left": "Izquierdo",
     "right": "Derecho",
-    "both": "Ambos"
+    "both": "Ambos",
+    "sleeping": "Durmiendo",
+    "tapToExpand": "Toca para ampliar"
   }
 }

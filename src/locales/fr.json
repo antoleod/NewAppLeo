@@ -189,7 +189,33 @@
   "onboarding": {
     "caregiver_name": "Votre prénom",
     "birth_date": "Date de naissance",
-    "pin_invalid": "Le code PIN doit avoir 4 chiffres"
+    "pin_invalid": "Le code PIN doit avoir 4 chiffres",
+    "welcome": "Bienvenue",
+    "language": "Langue",
+    "baby": "Bébé",
+    "goals": "Objectifs",
+    "step": "Étape",
+    "babyNameLabel": "Nom du bébé *",
+    "dateCannotBeFuture": "La date ne peut pas être future",
+    "sexNeutral": "Neutre",
+    "sexFemale": "Fille",
+    "sexMale": "Garçon",
+    "weight": "Poids (kg)",
+    "height": "Taille (cm)",
+    "pinLabel": "PIN 4 chiffres",
+    "pinConfirm": "Confirmer le PIN",
+    "goalFeedings": "Objectif prises / jour",
+    "goalSleep": "Objectif sommeil / jour",
+    "goalDiapers": "Objectif couches / jour",
+    "currentWeightLabel": "Poids actuel (kg)",
+    "hint": "Suggéré:",
+    "savedFailed": "Échec de l'enregistrement",
+    "pathGuestTitle": "Invité",
+    "pathGuestBody": "Aucun code requis. Données stockées sur cet appareil.",
+    "pathPinTitle": "PIN",
+    "pathPinBody": "Protège tes données avec un code à 4 chiffres. Fonctionne hors ligne.",
+    "pathAccountTitle": "Compte",
+    "pathAccountBody": "Synchronise sur plusieurs appareils avec un compte cloud."
   },
   "measurement": {
     "whoSuggested": "Suggestion selon OMS",
@@ -731,6 +757,8 @@
     "stop": "Arrêter",
     "left": "Gauche",
     "right": "Droite",
-    "both": "Les deux"
+    "both": "Les deux",
+    "sleeping": "En train de dormir",
+    "tapToExpand": "Toucher pour agrandir"
   }
 }

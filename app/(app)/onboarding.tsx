@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { Alert, Pressable, Text, View, useWindowDimensions, Animated, StyleSheet, Platform, useColorScheme, Image } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions, Animated, StyleSheet, Platform, useColorScheme, Image } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -13,7 +13,10 @@ import { buildBabyFromProfile } from '@/lib/storage';
 import { DateTimeField } from '@/components/shared';
 import { useOnboarding, type OnboardingPath } from '@/hooks/useOnboarding';
 import { useTheme } from '@/context/ThemeContext';
-import { useLocale } from '@/context/LocaleContext';
+import { getTranslation } from '@/lib/i18n';
+import { confirmAction } from '@/lib/confirm';
+import { setOnboardingPin } from '@/services/userProfileService';
+import type { AppLanguage } from '@/types';
 import ConfettiCannon from 'react-native-confetti-cannon';
 
 const BACKGROUND_IMAGES: Record<string, string> = {
@@ -24,7 +27,6 @@ const BACKGROUND_IMAGES: Record<string, string> = {
 };
 
 type BabySex = 'female' | 'male' | 'unspecified';
-type AppLanguage = 'fr' | 'es' | 'en' | 'nl';
 
 const languageOptions = [
   { label: 'Français', value: 'fr', flag: '🇫🇷' },
@@ -51,64 +53,31 @@ const getZodiacSign = (date: Date, lang: string) => {
   return { name: isNL ? 'Steenbok' : 'Capricorn', symbol: '♑', color: '#95A5A6', trait: isNL ? 'Ambitieus.' : 'Ambitious.' };
 };
 
-const pathCards: Array<{ key: OnboardingPath; title: string; body: string }> = [
-  { key: 'guest', title: 'Guest', body: 'No code needed. Data stays on this device.' },
-  { key: 'pin', title: 'PIN', body: 'Protect your data with a 4-digit code. Works offline.' },
-  { key: 'account', title: 'Account', body: 'Sync across devices with a cloud account.' },
-];
+const PATH_KEYS: readonly OnboardingPath[] = ['guest', 'pin', 'account'];
 
-const pathBodies: Record<string, Record<string, string>> = {
-  guest: {
-    en: 'No code needed. Data stays on this device.',
-    fr: 'Aucun code requis. Données stockées sur cet appareil.',
-    nl: 'Geen code nodig. Gegevens blijven op dit apparaat.',
-    es: 'Sin código. Los datos se guardan en este dispositivo.',
-  },
-  pin: {
-    en: 'Protect your data with a 4-digit code. Works offline.',
-    fr: 'Protège tes données avec un code à 4 chiffres. Fonctionne hors ligne.',
-    nl: 'Bescherm je gegevens met een 4-cijferige code. Werkt offline.',
-    es: 'Protege tus datos con un código de 4 dígitos. Funciona sin conexión.',
-  },
-  account: {
-    en: 'Sync across devices with a cloud account.',
-    fr: 'Synchronise sur plusieurs appareils avec un compte cloud.',
-    nl: 'Synchroniseer op meerdere apparaten met een cloudaccount.',
-    es: 'Sincroniza entre dispositivos con una cuenta en la nube.',
-  },
-};
-
-const pathTitles: Record<string, Record<string, string>> = {
-  guest: { en: 'Guest', fr: 'Invité', nl: 'Gast', es: 'Invitado' },
-  pin: { en: 'PIN', fr: 'PIN', nl: 'PIN', es: 'PIN' },
-  account: { en: 'Account', fr: 'Compte', nl: 'Account', es: 'Cuenta' },
-};
-
-const getPathCards = (lang: string) => pathCards.map(p => ({
-  ...p,
-  title: pathTitles[p.key]?.[lang] ?? p.title,
-  body: pathBodies[p.key]?.[lang] ?? p.body,
-}));
+const getPathCards = (t: (key: string) => string) =>
+  PATH_KEYS.map((key) => ({
+    key,
+    title: t(`onboarding.path${key.charAt(0).toUpperCase()}${key.slice(1)}Title`),
+    body: t(`onboarding.path${key.charAt(0).toUpperCase()}${key.slice(1)}Body`),
+  }));
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function computeAutoGoals(birthDate: Date, currentWeightKg?: number) {
+function computeAutoGoals(birthDate: Date, birthWeightKg?: number) {
   const ageDays = Math.max(0, Math.floor((Date.now() - birthDate.getTime()) / 86400000));
   const ageMonths = ageDays / 30.4375;
 
-  // Ajuste según estándares ONEM y pediatría general
-  // Alimentación: Los recién nacidos necesitan tomas más frecuentes
+  // Pediatric baselines — newborns need more frequent feeds, sleep tapers
+  // gradually, diapers stabilise once solid food kicks in.
   let feedings = ageMonths < 1 ? 10 : ageMonths < 3 ? 7 : ageMonths < 6 ? 6 : ageMonths < 12 ? 5 : 4;
-  
-  // Sueño: Disminuye gradualmente de 17h a 13h el primer año
   const sleep = ageMonths < 1 ? 17 : ageMonths < 4 ? 15 : ageMonths < 12 ? 14 : 13;
-  
-  // Pañales: Frecuente al inicio, se estabiliza con la alimentación sólida
   const diapers = ageMonths < 2 ? 8 : ageMonths < 6 ? 6 : ageMonths < 12 ? 5 : 4;
 
-  if (typeof currentWeightKg === 'number' && currentWeightKg > 0 && ageMonths < 4 && currentWeightKg < 3.5) {
+  // Low birth weight in the first months → bump feedings by 1
+  if (typeof birthWeightKg === 'number' && birthWeightKg > 0 && ageMonths < 4 && birthWeightKg < 3.0) {
     feedings += 1;
   }
 
@@ -124,7 +93,10 @@ export default function OnboardingScreen() {
   const { theme, colors } = useTheme();
   const scheme = useColorScheme();
   const { user, profile, guestMode, signInGuest, completeUserOnboarding } = useAuth();
-  const { t } = useLocale();
+  // Local language picker state — translations follow it live so the user
+  // sees the UI in their selected language even before it's persisted.
+  const [language, setLanguage] = useState<AppLanguage>(profile?.language ?? 'fr');
+  const t = (key: string, fallback?: string) => getTranslation(language, key, fallback);
   const isDesktop = width >= 1280;
   const uiScale = isDesktop ? 0.8 : 1.0;
   const isTablet = width >= 768;
@@ -139,7 +111,6 @@ export default function OnboardingScreen() {
   const [heightCm, setHeightCm] = useState(profile?.heightCm ? String(profile.heightCm) : '');
   const [headCircCm, setHeadCircCm] = useState(profile?.headCircCm ? String(profile.headCircCm) : '');
   const [babyNotes, setBabyNotes] = useState(profile?.babyNotes ?? '');
-  const [language, setLanguage] = useState<AppLanguage>(profile?.language ?? 'fr');
   const [goalFeedingsPerDay, setGoalFeedingsPerDay] = useState(profile?.goalFeedingsPerDay ? String(profile.goalFeedingsPerDay) : '');
   const [goalSleepHoursPerDay, setGoalSleepHoursPerDay] = useState(profile?.goalSleepHoursPerDay ? String(profile.goalSleepHoursPerDay) : '');
   const [goalDiapersPerDay, setGoalDiapersPerDay] = useState(profile?.goalDiapersPerDay ? String(profile.goalDiapersPerDay) : '');
@@ -156,7 +127,6 @@ export default function OnboardingScreen() {
   const zodiacRotation = useSharedValue(0);
   const zodiacSlide = useSharedValue(0);
   const avatarScale = useSharedValue(1);
-  const [isDateConfirmed, setIsDateConfirmed] = useState(true);
   const prevPhotoRef = useRef<string | null>(babyPhotoUri);
 
   // Animación de latido suave para el avatar al seleccionar foto por primera vez
@@ -188,7 +158,7 @@ export default function OnboardingScreen() {
   const zodiac = useMemo(() => getZodiacSign(babyBirthDate, language), [babyBirthDate, language]);
   const zodiacTint = useSharedValue('transparent');
 
-  const autoHint = language === 'nl' ? 'Sugg.:' : language === 'es' ? 'Sugerido:' : language === 'fr' ? 'Suggéré:' : 'Hint:';
+  const autoHint = t('onboarding.hint');
 
   useEffect(() => {
     goldValue.value = withTiming(isObjectivesStep && goalsFilled ? 1 : 0, { duration: 1000 });
@@ -270,9 +240,9 @@ export default function OnboardingScreen() {
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
-      aspect: [1, 1], // Esto obliga a elegir un cuadrado (el rostro)
+      aspect: [1, 1],
       quality: 0.8,
     });
 
@@ -283,18 +253,22 @@ export default function OnboardingScreen() {
   };
 
   const autoGoals = useMemo(
-    () => computeAutoGoals(babyBirthDate, Number(currentWeightKg) || undefined),
-    [babyBirthDate, currentWeightKg],
+    () => computeAutoGoals(babyBirthDate, Number(birthWeightKg) || undefined),
+    [babyBirthDate, birthWeightKg],
   );
 
   const progressStyle = useAnimatedStyle(() => ({
     width: `${progress}%`,
   }));
 
+  // Initial path selection — runs only on mount. We deliberately don't depend on
+  // guestMode because doing so would clobber a user-selected 'pin' path the moment
+  // anything toggles guest mode elsewhere (e.g. a sign-out side-effect).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setPath(guestMode ? 'guest' : 'account');
     setStep((current) => (current < 1 ? 1 : current));
-  }, [guestMode, setPath, setStep]);
+  }, []);
 
   const canContinueProfile = useMemo(() => {
     const isDateValid = babyBirthDate.getTime() <= Date.now();
@@ -335,10 +309,20 @@ export default function OnboardingScreen() {
       if (path === 'pin') {
         if (pin.length !== 4 || confirmPin.length !== 4 || pin !== confirmPin) {
           shake.value = withSequence(withTiming(-8, { duration: 70 }), withTiming(8, { duration: 70 }), withTiming(0, { duration: 70 }));
-          Alert.alert(t('auth.register_failed','Registration failed'), t('onboarding.pin_invalid'));
+          await confirmAction({
+            title: t('onboarding.savedFailed'),
+            message: t('onboarding.pin_invalid'),
+            confirmLabel: t('common.ok'),
+            cancelLabel: t('common.cancel'),
+          });
           return;
         }
-        await AsyncStorage.setItem('appleo.localPin', pin);
+        // Hash + persist the PIN on the user profile so it actually integrates
+        // with the pinHash/pinSalt verification flow (previously the PIN was
+        // saved to a loose AsyncStorage key that nothing read).
+        if (user?.uid) {
+          await setOnboardingPin(user.uid, pin);
+        }
       }
 
       await AsyncStorage.setItem('appleo.onboardingPath', path);
@@ -350,7 +334,7 @@ export default function OnboardingScreen() {
         sleepHoursPerDay: Number.isFinite(parsedSleep) && parsedSleep > 0 ? clamp(Math.round(parsedSleep), 8, 18) : autoGoals.sleep,
         diapersPerDay: Number.isFinite(parsedDiapers) && parsedDiapers > 0 ? clamp(Math.round(parsedDiapers), 2, 12) : autoGoals.diapers,
       };
-      await completeUserOnboarding({
+      const onboardingPayload = {
         caregiverName: caregiverName.trim() || 'Parent',
         babyName: babyName.trim() || 'Baby',
         babyBirthDate: babyBirthDate.toISOString(),
@@ -364,34 +348,35 @@ export default function OnboardingScreen() {
         goalFeedingsPerDay: finalGoals.feedingsPerDay,
         goalSleepHoursPerDay: finalGoals.sleepHoursPerDay,
         goalDiapersPerDay: finalGoals.diapersPerDay,
-      });
+      };
+      await completeUserOnboarding(onboardingPayload);
 
-      if (profile) {
-        await buildBabyFromProfile(
-          {
-            ...profile,
-            caregiverName: caregiverName.trim() || profile.caregiverName,
-            babyName: babyName.trim() || 'Baby',
-            babyBirthDate: babyBirthDate.toISOString(),
-            babySex,
-            birthWeightKg: Number(birthWeightKg) || undefined,
-            currentWeightKg: Number(currentWeightKg) || undefined,
-            heightCm: Number(heightCm) || undefined,
-            headCircCm: Number(headCircCm) || undefined,
-            babyNotes: babyNotes.trim() || undefined,
-            language,
-          },
-          babyName.trim() || 'Baby',
-          babyBirthDate.toISOString(),
-          babySex,
-        );
-      }
+      // Build the baby record from the form values directly (not from the
+      // stale closure `profile`) so we don't carry over outdated fields.
+      const mergedProfile = {
+        ...(profile ?? {}),
+        ...onboardingPayload,
+        babyPhotoUri,
+      };
+      await buildBabyFromProfile(
+        mergedProfile as Parameters<typeof buildBabyFromProfile>[0],
+        onboardingPayload.babyName,
+        onboardingPayload.babyBirthDate,
+        babySex,
+      );
 
-      router.replace('/home');
+      setShowConfetti(true);
+      // small delay so the confetti is visible before the navigation
+      setTimeout(() => router.replace('/home'), 600);
     } catch (error: any) {
-      const message = error?.message ?? 'Verifie les champs et recommence.';
+      const message = error?.message ?? t('onboarding.savedFailed');
       setSubmitError(message);
-      Alert.alert(t('auth.register_failed','Registration failed'), message);
+      await confirmAction({
+        title: t('onboarding.savedFailed'),
+        message,
+        confirmLabel: t('common.ok'),
+        cancelLabel: t('common.cancel'),
+      });
     } finally {
       setSaving(false);
     }
@@ -415,13 +400,13 @@ export default function OnboardingScreen() {
                   <Ionicons name="chevron-back" size={24 * uiScale} color={colors.primary} />
                 </Pressable>
               )}
-            <Heading 
+            <Heading
               title={
-                step === 0 ? (language === 'nl' ? "Welkom" : language === 'es' ? "Bienvenido" : language === 'en' ? "Welcome" : "Bienvenue") : 
-                step === 1 ? (language === 'nl' ? "Taal" : language === 'es' ? "Idioma" : language === 'en' ? "Language" : "Langue") : 
-                step === 2 ? (babyName || (language === 'nl' ? "Baby" : language === 'es' ? "Bebé" : "Bébé")) : 
-                (language === 'nl' ? "Doelen" : language === 'es' ? "Objetivos" : "Objectifs")
-              } 
+                step === 0 ? t('onboarding.welcome') :
+                step === 1 ? t('onboarding.language') :
+                step === 2 ? (babyName || t('onboarding.baby')) :
+                t('onboarding.goals')
+              }
             />
           {isObjectivesStep && (
             <Pressable onPress={finishOnboarding} style={{ position: 'absolute', right: -10 * uiScale, padding: 8 }}>
@@ -433,7 +418,7 @@ export default function OnboardingScreen() {
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 * uiScale }}>
               <Text style={{ fontSize: 9 * uiScale, fontWeight: '900', color: colors.muted, textTransform: 'uppercase', letterSpacing: 1 }}>
-                {language === 'fr' ? 'Étape' : language === 'es' ? 'Paso' : language === 'nl' ? 'Stap' : 'Step'} {step + 1} / {path === 'pin' ? 5 : 4}
+                {t('onboarding.step')} {step + 1} / {path === 'pin' ? 5 : 4}
               </Text>
             </View>
             <View style={{ height: 4 * uiScale, borderRadius: 10, backgroundColor: theme.progressBg, overflow: 'hidden' }}>
@@ -444,17 +429,12 @@ export default function OnboardingScreen() {
           <View>
             {step === 0 && (
           <Reanimated.View entering={FadeIn.duration(220)} style={{ gap: 12 * uiScale }}>
-            {getPathCards(language).map((item) => {
+            {getPathCards(t).map((item) => {
               const active = path === item.key;
               return (
                 <Pressable
                   key={item.key}
-                  onPress={async () => {
-                    setPath(item.key);
-                    if (item.key === 'guest' && !profile && !guestMode) {
-                      await signInGuest();
-                    }
-                  }}
+                  onPress={() => setPath(item.key)}
                   style={{
                     borderRadius: 16 * uiScale,
                     borderWidth: 1,
@@ -469,7 +449,20 @@ export default function OnboardingScreen() {
                 </Pressable>
               );
             })}
-            <Button label={t('common.continue')} onPress={next} />
+            <Button
+              label={t('common.continue')}
+              onPress={async () => {
+                // Guard against double-tap while signInGuest is in-flight.
+                if (saving) return;
+                if (path === 'guest' && !profile && !guestMode) {
+                  setSaving(true);
+                  try { await signInGuest(); } finally { setSaving(false); }
+                }
+                next();
+              }}
+              loading={saving}
+              disabled={saving}
+            />
           </Reanimated.View>
             )}
 
@@ -574,8 +567,8 @@ export default function OnboardingScreen() {
                 autoCapitalize="words"
                 error={showValidation && !caregiverName.trim() ? '•' : undefined}
               />
-              <Input 
-                label={language === 'nl' ? "Baby's naam *" : language === 'es' ? 'Nombre del bebé *' : 'Nom du bébé *'} 
+              <Input
+                label={t('onboarding.babyNameLabel')}
                 value={babyName} 
                 onChangeText={setBabyName} 
                 placeholder="Baby"
@@ -594,15 +587,15 @@ export default function OnboardingScreen() {
               </Reanimated.View>
               {babyBirthDate.getTime() > Date.now() && (
                 <Text style={{ color: colors.danger, fontSize: 11 * uiScale, marginLeft: 4 * uiScale, marginTop: -4 * uiScale }}>
-                  {language === 'nl' ? 'Datum kan niet in de toekomst zijn' : language === 'es' ? 'La fecha no puede ser futura' : language === 'fr' ? 'La date ne peut pas être future' : 'Date cannot be in the future'}
+                  {t('onboarding.dateCannotBeFuture')}
                 </Text>
               )}
             </View>
             <View style={{ flexDirection: 'row', gap: 10 * uiScale }}>
               {([
-                { value: 'unspecified' as const, label: language === 'nl' ? 'Neutraal' : language === 'es' ? 'Neutro' : 'Neutre', icon: 'remove-circle-outline' as const },
-                { value: 'female' as const, label: language === 'nl' ? 'Meisje' : language === 'es' ? 'Niña' : 'Fille', icon: 'female-outline' as const },
-                { value: 'male' as const, label: language === 'nl' ? 'Jongen' : language === 'es' ? 'Niño' : 'Garçon', icon: 'male-outline' as const },
+                { value: 'unspecified' as const, label: t('onboarding.sexNeutral'), icon: 'remove-circle-outline' as const },
+                { value: 'female' as const, label: t('onboarding.sexFemale'), icon: 'female-outline' as const },
+                { value: 'male' as const, label: t('onboarding.sexMale'), icon: 'male-outline' as const },
               ] as const).map((item) => {
                 const active = babySex === item.value;
                 return (
@@ -632,7 +625,7 @@ export default function OnboardingScreen() {
             <View style={{ flexDirection: 'row', gap: 12 * uiScale, marginTop: 4 * uiScale }}>
                <View style={{ flex: 1, gap: 8 * uiScale }}>
                   <Input 
-                    label={language === 'fr' ? 'Poids (kg)' : language === 'nl' ? 'Gewicht (kg)' : 'Weight (kg)'} 
+                    label={t('onboarding.weight')}
                     value={birthWeightKg} 
                     onChangeText={setBirthWeightKg} 
                     keyboardType="decimal-pad" 
@@ -657,7 +650,7 @@ export default function OnboardingScreen() {
                </View>
                <View style={{ flex: 1, gap: 8 * uiScale }}>
                   <Input 
-                    label={language === 'fr' ? 'Taille (cm)' : language === 'nl' ? 'Lengte (cm)' : 'Height (cm)'} 
+                    label={t('onboarding.height')}
                     value={heightCm} 
                     onChangeText={setHeightCm} 
                     keyboardType="decimal-pad" 
@@ -688,8 +681,8 @@ export default function OnboardingScreen() {
             {step === 3 && path === 'pin' && (
               <Reanimated.View entering={FadeInRight.duration(220)} style={{ gap: 16 * uiScale }}>
             <Reanimated.View style={{ transform: [{ translateX: shake }] }}>
-              <Input label={language === 'nl' ? '4-cijferige pincode' : 'PIN 4 chiffres'} value={pin} onChangeText={setPin} keyboardType="number-pad" inputMode="numeric" />
-              <Input label={language === 'nl' ? 'Bevestig pincode' : 'Confirmer le PIN'} value={confirmPin} onChangeText={setConfirmPin} keyboardType="number-pad" inputMode="numeric" />
+              <Input label={t('onboarding.pinLabel')} value={pin} onChangeText={setPin} keyboardType="number-pad" inputMode="numeric" secureTextEntry />
+              <Input label={t('onboarding.pinConfirm')} value={confirmPin} onChangeText={setConfirmPin} keyboardType="number-pad" inputMode="numeric" secureTextEntry />
             </Reanimated.View>
             <Button label={t('common.continue')} onPress={next} disabled={pin.length < 4 || confirmPin.length < 4} />
           </Reanimated.View>
@@ -698,7 +691,7 @@ export default function OnboardingScreen() {
             {((step === 3 && path !== 'pin') || (step === 4 && path === 'pin')) && (
               <Reanimated.View entering={FadeInRight.duration(220)} style={{ gap: 16 * uiScale }}>
             <Input
-              label={language === 'nl' ? 'Doel voedingen / dag' : language === 'es' ? 'Objetivo tomas / día' : language === 'en' ? 'Daily feeding goal' : 'Objectif prises / jour'}
+              label={t('onboarding.goalFeedings')}
               value={goalFeedingsPerDay}
               onChangeText={setGoalFeedingsPerDay}
               keyboardType="numeric"
@@ -706,7 +699,7 @@ export default function OnboardingScreen() {
               hint={`${autoHint} ${autoGoals.feedings}`}
             />
             <Input
-              label={language === 'nl' ? 'Doel slaap / dag' : language === 'es' ? 'Objetivo sueño / día' : language === 'en' ? 'Daily sleep goal' : 'Objectif sommeil / jour'}
+              label={t('onboarding.goalSleep')}
               value={goalSleepHoursPerDay}
               onChangeText={setGoalSleepHoursPerDay}
               keyboardType="numeric"
@@ -714,7 +707,7 @@ export default function OnboardingScreen() {
               hint={`${autoHint} ${autoGoals.sleep}`}
             />
             <Input
-              label={language === 'nl' ? 'Doel luiers / dag' : language === 'es' ? 'Objetivo pañales / día' : language === 'en' ? 'Daily diapers goal' : 'Objectif couches / jour'}
+              label={t('onboarding.goalDiapers')}
               value={goalDiapersPerDay}
               onChangeText={setGoalDiapersPerDay}
               keyboardType="numeric"

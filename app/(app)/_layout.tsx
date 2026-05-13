@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Stack, Redirect, useSegments } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { View, ActivityIndicator, Text, Platform, Pressable } from 'react-native';
-import { Page } from '@/components/shared';
+import { MinimizedSleepTimer, Page } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -84,9 +84,12 @@ export default function AppLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="entry/[type]" options={{ presentation: 'modal', title: 'Entry' }} />
-    </Stack>
+    <View style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="entry/[type]" options={{ presentation: 'modal', title: 'Entry' }} />
+      </Stack>
+      <MinimizedSleepTimer />
+    </View>
   );
 }

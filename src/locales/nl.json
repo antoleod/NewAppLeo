@@ -189,7 +189,33 @@
   "onboarding": {
     "caregiver_name": "Jouw naam",
     "birth_date": "Geboortedatum",
-    "pin_invalid": "PIN moet 4 cijfers hebben"
+    "pin_invalid": "PIN moet 4 cijfers hebben",
+    "welcome": "Welkom",
+    "language": "Taal",
+    "baby": "Baby",
+    "goals": "Doelen",
+    "step": "Stap",
+    "babyNameLabel": "Naam van de baby *",
+    "dateCannotBeFuture": "Datum kan niet in de toekomst zijn",
+    "sexNeutral": "Neutraal",
+    "sexFemale": "Meisje",
+    "sexMale": "Jongen",
+    "weight": "Gewicht (kg)",
+    "height": "Lengte (cm)",
+    "pinLabel": "4-cijferige pincode",
+    "pinConfirm": "Bevestig pincode",
+    "goalFeedings": "Doel voedingen / dag",
+    "goalSleep": "Doel slaap / dag",
+    "goalDiapers": "Doel luiers / dag",
+    "currentWeightLabel": "Huidig gewicht (kg)",
+    "hint": "Sugg.:",
+    "savedFailed": "Opslaan mislukt",
+    "pathGuestTitle": "Gast",
+    "pathGuestBody": "Geen code nodig. Gegevens blijven op dit apparaat.",
+    "pathPinTitle": "PIN",
+    "pathPinBody": "Bescherm je gegevens met een 4-cijferige code. Werkt offline.",
+    "pathAccountTitle": "Account",
+    "pathAccountBody": "Synchroniseer op meerdere apparaten met een cloudaccount."
   },
   "measurement": {
     "whoSuggested": "WHO Aanbevolen Bereik",
@@ -731,6 +757,8 @@
     "stop": "Stoppen",
     "left": "Links",
     "right": "Rechts",
-    "both": "Beide"
+    "both": "Beide",
+    "sleeping": "Aan het slapen",
+    "tapToExpand": "Tik om uit te klappen"
   }
 }

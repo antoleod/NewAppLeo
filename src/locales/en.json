@@ -189,7 +189,33 @@
   "onboarding": {
     "caregiver_name": "Your name",
     "birth_date": "Birth date",
-    "pin_invalid": "PIN must be 4 digits"
+    "pin_invalid": "PIN must be 4 digits",
+    "welcome": "Welcome",
+    "language": "Language",
+    "baby": "Baby",
+    "goals": "Goals",
+    "step": "Step",
+    "babyNameLabel": "Baby's name *",
+    "dateCannotBeFuture": "Date cannot be in the future",
+    "sexNeutral": "Neutral",
+    "sexFemale": "Girl",
+    "sexMale": "Boy",
+    "weight": "Weight (kg)",
+    "height": "Height (cm)",
+    "pinLabel": "4-digit PIN",
+    "pinConfirm": "Confirm PIN",
+    "goalFeedings": "Daily feeding goal",
+    "goalSleep": "Daily sleep goal",
+    "goalDiapers": "Daily diapers goal",
+    "currentWeightLabel": "Current weight (kg)",
+    "hint": "Hint:",
+    "savedFailed": "Save failed",
+    "pathGuestTitle": "Guest",
+    "pathGuestBody": "No code needed. Data stays on this device.",
+    "pathPinTitle": "PIN",
+    "pathPinBody": "Protect your data with a 4-digit code. Works offline.",
+    "pathAccountTitle": "Account",
+    "pathAccountBody": "Sync across devices with a cloud account."
   },
   "measurement": {
     "whoSuggested": "WHO Suggested Range",
@@ -731,6 +757,8 @@
     "stop": "Stop",
     "left": "Left",
     "right": "Right",
-    "both": "Both"
+    "both": "Both",
+    "sleeping": "Sleeping",
+    "tapToExpand": "Tap to expand"
   }
 }
