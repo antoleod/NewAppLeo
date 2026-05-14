@@ -81,12 +81,21 @@ function getAgeBaseline(ageMonths: number, category: FoodCategory): number {
   if (ageMonths < 6) {
     return category === 'water' ? 30 : 20;
   }
-  let closest = rows[0];
+  // Find the row whose maxMonths is the smallest one ≥ ageMonths.
+  // Rows are age buckets (≤6mo, 7-8mo, 9-11mo, 12-18mo, 19-24mo, 2-3y) so
+  // a 10mo baby belongs to the 9-11mo bucket (maxMonths=11), NOT the 7-8mo
+  // one. The previous logic chose the largest maxMonths ≤ ageMonths which
+  // returned the bucket "one age group too young" for every non-edge case.
+  let chosen: PortionRow | null = null;
   for (const row of rows) {
-    if (row.maxMonths <= ageMonths && row.maxMonths > closest.maxMonths) closest = row;
+    if (row.maxMonths >= ageMonths) {
+      if (!chosen || row.maxMonths < chosen.maxMonths) chosen = row;
+    }
   }
+  // Older than the last bucket: use the highest one.
+  if (!chosen) chosen = rows[rows.length - 1];
   const key = category === 'other' ? 'puree' : category;
-  return closest.food_recommendations[key] ?? 50;
+  return chosen.food_recommendations[key] ?? 50;
 }
 
 interface FoodEntryShape {

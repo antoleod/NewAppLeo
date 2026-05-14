@@ -888,7 +888,10 @@ export default function EntryComposerScreen() {
             <Text style={[styles.heroTitle, { color: colors.text }]}>{typeLabel}</Text>
           </View>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace('/home');
+            }}
             onPressIn={() => {
               closeScale.value = withSpring(0.88, { damping: 10, stiffness: 300 });
               closeRotate.value = withTiming(45, { duration: 180 });
@@ -897,9 +900,9 @@ export default function EntryComposerScreen() {
               closeScale.value = withSpring(1, { damping: 8, stiffness: 200 });
               closeRotate.value = withSpring(0, { damping: 8, stiffness: 200 });
             }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityRole="button"
-            accessibilityLabel="Close"
+            accessibilityLabel={t('common.close')}
           >
             <Animated.View style={[styles.closeButton, closeAnimStyle, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Ionicons name="close" size={20} color={colors.text} />
@@ -1310,7 +1313,12 @@ export default function EntryComposerScreen() {
         {editing && (
           <View style={styles.secondaryActionsRow}>
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => {
+                if (router.canGoBack()) router.back();
+                else router.replace('/home');
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.cancel')}
               style={({ pressed }) => [
                 styles.secondaryActionBtn,
                 { borderColor: colors.border, backgroundColor: pressed ? colors.border : 'transparent' },
