@@ -19,10 +19,19 @@ import { QuantityPicker } from '@/components/shared';
 import { DateTimeField } from '@/components/shared';
 import { VaccineReminderModal } from '@/components/home';
 import { DiaperLevelPicker, FullscreenTimerModal } from '@/components/home';
-import { MilestoneSection, SymptomSection } from '@/components/entries';
+import {
+  DiaperSection,
+  FeedSection,
+  MeasurementSection,
+  MedicationSection,
+  MilestoneSection,
+  PumpSection,
+  SymptomSection,
+  TemperatureSection,
+  VaccineSection,
+} from '@/components/entries';
 import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
 import { clearSleepDraft, getSleepDraft, saveSleepDraft, type SleepDraft } from '@/lib/sleepDraft';
-import commonMedications from '@/data/common-medications.json';
 import * as ImagePicker from 'expo-image-picker';
 import { scheduleVaccineReminder } from '@/lib/notifications';
 import { scheduleMedicationReminder } from '@/lib/notifications';
@@ -143,14 +152,7 @@ export default function EntryComposerScreen() {
   const [quantityGrams, setQuantityGrams] = useState('');
   const meta = typeMeta[type];
   const typeLabel = typeLabelsI18n[type]?.[language] ?? typeLabelsI18n[type]?.en ?? type;
-  const { profile, saveProfile } = useAuth();
-  const recentMedicationEntries = useMemo(
-    () =>
-      entries
-        .filter((entry) => entry.type === 'medication' && typeof entry.payload?.name === 'string')
-        .slice(0, 5),
-    [entries],
-  );
+  const { profile } = useAuth();
   const recentFoodEntries = useMemo(
     () =>
       entries
@@ -191,95 +193,6 @@ export default function EntryComposerScreen() {
   const seasonalRecommendations = useMemo(() => {
     return getSeasonalRecommendations();
   }, []);
-  const medStatus = useMemo(() => {
-    const currentName = name.trim().toLowerCase();
-    if (!currentName) {
-      return {
-        label: language === 'fr' ? 'OK' : 'OK',
-        text: language === 'fr' ? 'Choisissez un médicament pour voir le statut.' : 'Select a medicine to see status.',
-        color: theme.green,
-      };
-    }
-    const lastSame = entries.find(
-      (entry) => entry.type === 'medication' && (entry.payload?.name ?? '').trim().toLowerCase() === currentName,
-    );
-    if (!lastSame) {
-      return {
-        label: language === 'fr' ? 'DUE' : 'DUE',
-        text: language === 'fr' ? 'Aucune dose récente trouvée.' : 'No recent dose found.',
-        color: theme.red,
-      };
-    }
-    const intervalHours = Number(medIntervalHours) || 6;
-    const hoursSince = (Date.now() - new Date(lastSame.occurredAt).getTime()) / 36e5;
-    if (hoursSince >= intervalHours) {
-      return {
-        label: 'DUE',
-        text: language === 'fr' ? 'Prochaine dose recommandée maintenant.' : 'Next dose recommended now.',
-        color: theme.red,
-      };
-    }
-    if (hoursSince >= Math.max(1, intervalHours - 2)) {
-      return {
-        label: 'SOON',
-        text: language === 'fr' ? 'Dose bientôt possible.' : 'Dose will be due soon.',
-        color: theme.yellow,
-      };
-    }
-    return {
-      label: 'OK',
-      text: language === 'fr' ? 'Fenêtre de sécurité active.' : 'Safe interval active.',
-      color: theme.green,
-    };
-  }, [entries, language, medIntervalHours, name, theme]);
-  const nextDosePreview = useMemo(() => {
-    if (!name.trim()) return '';
-    const interval = Number(medIntervalHours) || 6;
-    const lastSame = entries.find(
-      (entry) => entry.type === 'medication' && (entry.payload?.name ?? '').trim().toLowerCase() === name.trim().toLowerCase(),
-    );
-    const baseTime = lastSame ? new Date(lastSame.occurredAt).getTime() : occurredAt.getTime();
-    const nextAt = new Date(baseTime + interval * 60 * 60 * 1000);
-    const locale = language === 'fr' ? 'fr-FR' : 'en-US';
-    return `${nextAt.toLocaleDateString(locale)} ${nextAt.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
-  }, [entries, language, medIntervalHours, name, occurredAt]);
-  const normalizedMedName = name.trim().toLowerCase();
-  const existingSavedMedicine = useMemo(
-    () => savedMedicines.find((item) => item.name.trim().toLowerCase() === normalizedMedName),
-    [normalizedMedName, savedMedicines],
-  );
-  const isMedicationDirty = useMemo(() => {
-    if (!existingSavedMedicine) return Boolean(name.trim());
-    return (existingSavedMedicine.dosage ?? '').trim() !== dosage.trim();
-  }, [dosage, existingSavedMedicine, name]);
-  const medicationSuggestions = useMemo(() => {
-    const query = name.trim().toLowerCase();
-    if (!query) return [] as Array<{ name: string; dosage?: string }>;
-    const fromSaved = savedMedicines.map((item) => ({ name: item.name, dosage: item.dosage }));
-    const fromCommon = (commonMedications as Array<any>).map((item) => ({
-      name: String(item.name),
-      dosage: (getRecommendedDose(String(item.name)) || item.defaultDosage || '') as string,
-    }));
-    const merged = [...fromSaved, ...fromCommon].filter(
-      (item, idx, arr) => arr.findIndex((x) => x.name.toLowerCase() === item.name.toLowerCase()) === idx,
-    );
-    return merged
-      .filter((item) => item.name.toLowerCase().includes(query))
-      .filter((item) => item.name.toLowerCase() !== query)
-      .slice(0, 6);
-  }, [name, savedMedicines, profile?.currentWeightKg]);
-
-  function getRecommendedDose(medName: string) {
-    const med = (commonMedications as Array<any>).find((item) => item.name.toLowerCase() === medName.trim().toLowerCase());
-    if (!med) return '';
-    const kg = Number(profile?.currentWeightKg ?? 0);
-    if (Number.isFinite(kg) && kg > 0 && Array.isArray(med.dosingByKg)) {
-      const byKg = med.dosingByKg.find((row: any) => kg <= Number(row.maxKg));
-      if (byKg?.dosage) return byKg.dosage as string;
-    }
-    return med.defaultDosage ?? '';
-  }
-
   useEffect(() => {
     if (!editing) return;
     setOccurredAt(new Date(editing.occurredAt));
@@ -1016,49 +929,13 @@ export default function EntryComposerScreen() {
         ) : null}
 
         {type === 'feed' && (
-          <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.type')}</Text>
-            <Segment
-              value={mode}
-              onChange={(value) => setMode(value as 'breast' | 'bottle')}
-              options={[
-                { label: t('entry.breast'), value: 'breast' },
-                { label: t('entry.bottle'), value: 'bottle' },
-              ]}
-            />
-            {mode === 'bottle' ? (
-              <>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{t('entry.amount')}</Text>
-                <View style={styles.chipRow}>
-                  <Pressable onPress={() => setAmountMl('150')} style={[styles.quickChip, { borderColor: colors.border, backgroundColor: colors.card }, amountMl === '150' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                    <Text style={[styles.quickChipText, { color: colors.text }, amountMl === '150' && { color: meta.tone, fontWeight: '900' }]}>150</Text>
-                  </Pressable>
-                  <Pressable onPress={() => setAmountMl('180')} style={[styles.quickChip, { borderColor: colors.border, backgroundColor: colors.card }, amountMl === '180' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                    <Text style={[styles.quickChipText, { color: colors.text }, amountMl === '180' && { color: meta.tone, fontWeight: '900' }]}>180</Text>
-                  </Pressable>
-                  <Pressable onPress={() => setAmountMl('240')} style={[styles.quickChip, { borderColor: colors.border, backgroundColor: colors.card }, amountMl === '240' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                    <Text style={[styles.quickChipText, { color: colors.text }, amountMl === '240' && { color: meta.tone, fontWeight: '900' }]}>240</Text>
-                  </Pressable>
-                </View>
-                <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
-              </>
-            ) : (
-              <>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{t('entry.duration')}</Text>
-                <TimerWidget
-                  label={t('entry.durationMin')}
-                  valueMinutes={Number(durationMin) || 0}
-                  onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
-                  allowSides
-                  side={side as 'left' | 'right' | 'both'}
-                  onSideChange={(nextSide) => setSide(nextSide)}
-                  largeTouchMode={largeTouchMode}
-                />
-                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{t('entry.estimatedAmount')}</Text>
-                <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
-              </>
-            )}
-          </View>
+          <FeedSection
+            mode={mode} setMode={setMode}
+            amountMl={amountMl} setAmountMl={setAmountMl}
+            durationMin={durationMin} setDurationMin={setDurationMin}
+            side={side} setSide={setSide}
+            largeTouchMode={largeTouchMode}
+          />
         )}
 
         {type === 'food' && (() => {
@@ -1454,341 +1331,44 @@ export default function EntryComposerScreen() {
           </View>
         )}
 
-        {type === 'diaper' && (() => {
-          const peeN = Number(pee) || 0;
-          const poopN = Number(poop) || 0;
-          const vomitN = Number(vomit) || 0;
-          const total = peeN + poopN + vomitN;
-          return (
-            <View style={styles.sectionCard}>
-              <Animated.View entering={FadeIn.duration(220)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingHorizontal: 4 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
-                    {peeN > 0 ? `\u{1F4A7} ${peeN > 3 ? peeN : peeN === 3 ? '3+' : peeN}` : ''}
-                    {peeN > 0 && (poopN > 0 || vomitN > 0) ? '  ·  ' : ''}
-                    {poopN > 0 ? `\u{1F4A9} ${poopN > 3 ? poopN : poopN === 3 ? '3+' : poopN}` : ''}
-                    {poopN > 0 && vomitN > 0 ? '  ·  ' : ''}
-                    {vomitN > 0 ? `\u{1F92E} ${vomitN > 3 ? vomitN : vomitN === 3 ? '3+' : vomitN}` : ''}
-                  </Text>
-                </View>
-                {total > 0 ? (
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: `${colors.primary}1A`, borderWidth: 1, borderColor: `${colors.primary}55` }}>
-                    <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '800' }}>{total}</Text>
-                  </View>
-                ) : null}
-              </Animated.View>
-              <View style={styles.diaperMinimalStack}>
-                <Animated.View entering={FadeInDown.duration(260).delay(60)}>
-                  <DiaperLevelPicker
-                    emoji={'\u{1F4A7}'}
-                    label={t('diaper.pee')}
-                    value={peeN}
-                    onChange={(val) => setPee(String(val))}
-                    color="#58A6FF"
-                  />
-                </Animated.View>
-                <Animated.View entering={FadeInDown.duration(260).delay(140)}>
-                  <DiaperLevelPicker
-                    emoji={'\u{1F4A9}'}
-                    label={t('diaper.poop')}
-                    value={poopN}
-                    onChange={(val) => setPoop(String(val))}
-                    color="#A371F7"
-                  />
-                </Animated.View>
-                <Animated.View entering={FadeInDown.duration(260).delay(220)}>
-                  <DiaperLevelPicker
-                    emoji={'\u{1F92E}'}
-                    label={t('diaper.vomit')}
-                    value={vomitN}
-                    onChange={(val) => setVomit(String(val))}
-                    color="#F0B85A"
-                  />
-                </Animated.View>
-              </View>
-            </View>
-          );
-        })()}
+        {type === 'diaper' && (
+          <DiaperSection
+            pee={pee} setPee={setPee}
+            poop={poop} setPoop={setPoop}
+            vomit={vomit} setVomit={setVomit}
+          />
+        )}
 
         {type === 'pump' && (
-          <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.duration')}</Text>
-            <TimerWidget label={t('entry.sessionMin')} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
-            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{t('entry.amount')}</Text>
-            <QuantityPicker value={Number(amountMl) || 0} onChange={(value) => setAmountMl(String(value))} largeTouchMode={largeTouchMode} />
-          </View>
+          <PumpSection
+            durationMin={durationMin}
+            setDurationMin={setDurationMin}
+            amountMl={amountMl}
+            setAmountMl={setAmountMl}
+            largeTouchMode={largeTouchMode}
+          />
         )}
 
         {type === 'measurement' && (
-          <View style={styles.sectionCard}>
-            {(() => {
-              const suggested = profile?.babyBirthDate ? getSuggestedValues(profile.babyBirthDate, t) : null;
-              const weightCat = weightKg && profile?.babyBirthDate ? getWeightCategory(Number(weightKg), profile.babyBirthDate, t) : null;
-              const heightCat = heightCm && profile?.babyBirthDate ? getHeightCategory(Number(heightCm), profile.babyBirthDate, t) : null;
-
-              return (
-                <>
-                  {lastMeasurementEntry ? (
-                    <View style={[styles.measureMetaStrip, { borderColor: colors.border }]}>
-                      <Text style={[styles.measureMetaText, { color: colors.muted }]}>
-                        {t('measurement.lastMeasurement')}{' '}
-                        {new Date(lastMeasurementEntry.occurredAt).toLocaleDateString({ fr: 'fr-FR', es: 'es-ES', nl: 'nl-BE', en: 'en-US' }[language] ?? 'en-US')}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {suggested && (
-                    <View style={[styles.whoSuggestedBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
-                      <Text style={[styles.whoSuggestedTitle, { color: meta.tone }]}>{t('entry.whoSuggested')}</Text>
-                      <Text style={[styles.whoSuggestedMessage, { color: colors.muted }]}>{suggested.message}</Text>
-                      <View style={styles.measureQuickActions}>
-                        <Pressable
-                          onPress={() => {
-                            setWeightKg(suggested.weight.value.toFixed(1));
-                            setHeightCm(suggested.height.value.toFixed(1));
-                          }}
-                          style={[styles.measureQuickBtn, { borderColor: meta.tone, backgroundColor: `${meta.tone}12` }]}
-                        >
-                          <Text style={[styles.measureQuickBtnText, { color: meta.tone }]}>
-                            {t('measurement.useSuggestion')}
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={() => {
-                            setWeightKg('');
-                            setHeightCm('');
-                            setHeadCircCm('');
-                            setTempC('');
-                          }}
-                          style={[styles.measureQuickBtn, { borderColor: colors.border, backgroundColor: 'transparent' }]}
-                        >
-                          <Text style={[styles.measureQuickBtnText, { color: colors.muted }]}>
-                            {t('measurement.clear')}
-                          </Text>
-                        </Pressable>
-                      </View>
-                      <View style={styles.whoSuggestedRow}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.whoSuggestedLabel, { color: colors.muted }]}>
-                            {t('entry.weight')}
-                          </Text>
-                          <Text style={[styles.whoSuggestedValue, { color: meta.tone }]}>
-                            {suggested.weight.value.toFixed(1)} kg
-                          </Text>
-                          <Text style={[styles.whoSuggestedRange, { color: colors.muted }]}>
-                            {suggested.weight.min.toFixed(1)} - {suggested.weight.max.toFixed(1)} kg
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.whoSuggestedLabel, { color: colors.muted }]}>
-                            {t('entry.height')}
-                          </Text>
-                          <Text style={[styles.whoSuggestedValue, { color: meta.tone }]}>
-                            {suggested.height.value.toFixed(1)} cm
-                          </Text>
-                          <Text style={[styles.whoSuggestedRange, { color: colors.muted }]}>
-                            {suggested.height.min.toFixed(1)} - {suggested.height.max.toFixed(1)} cm
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  )}
-
-                  <View style={{ marginTop: suggested ? 12 : 0 }}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.currentMeasurements')}</Text>
-
-                    <View style={{ marginTop: 12 }}>
-                      <Input
-                        label={t('entry.weight')}
-                        value={weightKg}
-                        onChangeText={setWeightKg}
-                        keyboardType="decimal-pad"
-                        placeholder={suggested ? suggested.weight.value.toFixed(1) : '5.2'}
-                      />
-                      {weightCat && (
-                        <Text style={[styles.whoFeedback, { color: weightCat.category === 'healthy' ? theme.green : theme.yellow, marginTop: 8 }]}>
-                          {weightCat.emoji} {weightCat.message}
-                        </Text>
-                      )}
-                    </View>
-
-                    <View style={{ marginTop: 12 }}>
-                      <Input
-                        label={t('entry.height')}
-                        value={heightCm}
-                        onChangeText={setHeightCm}
-                        keyboardType="decimal-pad"
-                        placeholder={suggested ? suggested.height.value.toFixed(1) : '52'}
-                      />
-                      {heightCat && (
-                        <Text style={[styles.whoFeedback, { color: heightCat.category === 'healthy' ? theme.green : theme.yellow, marginTop: 8 }]}>
-                          {heightCat.emoji} {heightCat.message}
-                        </Text>
-                      )}
-                    </View>
-
-                    <Input label={t('entry.headCirc')} value={headCircCm} onChangeText={setHeadCircCm} keyboardType="decimal-pad" placeholder="35" />
-                    <Input label={t('entry.temperatureLabel')} value={tempC} onChangeText={setTempC} keyboardType="decimal-pad" placeholder="37.5" />
-                  </View>
-                </>
-              );
-            })()}
-          </View>
+          <MeasurementSection
+            weightKg={weightKg} setWeightKg={setWeightKg}
+            heightCm={heightCm} setHeightCm={setHeightCm}
+            headCircCm={headCircCm} setHeadCircCm={setHeadCircCm}
+            tempC={tempC} setTempC={setTempC}
+            babyBirthDate={profile?.babyBirthDate}
+            lastMeasurementEntry={lastMeasurementEntry}
+          />
         )}
 
         {type === 'medication' && (
-          <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{typeLabel}</Text>
-            <View style={styles.medQuickRow}>
-              {(commonMedications as Array<any>).map((med) => (
-                <Pressable
-                  key={med.name}
-                  onPress={() => {
-                    setName(med.name);
-                    setDosage(getRecommendedDose(med.name) || med.defaultDosage || '');
-                  }}
-                  style={[styles.medQuickBtn, { borderColor: meta.tone, backgroundColor: colors.card }]}
-                >
-                  <Text style={[styles.medQuickTitle, { color: colors.text }]}>{med.name}</Text>
-                  <Text style={[styles.medQuickSub, { color: colors.muted }]}>{getRecommendedDose(med.name) || med.defaultDosage || ''}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <Pressable
-              onPress={() => {
-                setName('');
-                setDosage('');
-              }}
-              style={[styles.medManualBtn, { borderColor: meta.tone, backgroundColor: colors.background }]}
-            >
-              <Text style={[styles.medManualText, { color: meta.tone }]}>
-                {{ fr: 'Ajouter manuellement', es: 'Agregar manualmente', nl: 'Handmatig toevoegen', en: 'Add manually' }[language] ?? 'Add manually'}
-              </Text>
-            </Pressable>
-            {savedMedicines.length > 0 && (
-              <View style={styles.savedWrap}>
-                <View style={styles.savedRow}>
-                  {savedMedicines.slice(0, 4).map((med) => (
-                    <Pressable
-                      key={`${med.name}-${med.dosage}`}
-                      onPress={() => {
-                        setName(med.name);
-                        if (med.dosage) setDosage(med.dosage);
-                      }}
-                      style={[styles.savedChip, { borderColor: colors.border, backgroundColor: colors.card }, name === med.name && { borderColor: meta.tone }]}
-                    >
-                      <Text style={[styles.savedChipTitle, { color: colors.text }]}>{med.name}</Text>
-                      {med.dosage && <Text style={[styles.savedChipSubtitle, { color: colors.muted }]}>{med.dosage}</Text>}
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            )}
-            {name.trim() && (
-              <Pressable
-                onPress={async () => {
-                  const next = await upsertSavedMedicine({ name, dosage });
-                  setSavedMedicines(next);
-                  const profileList = profile?.customMedicines ?? [];
-                  const now = new Date().toISOString();
-                  const merged = [
-                    { name: name.trim(), dosage: dosage.trim() || undefined, updatedAt: now },
-                    ...profileList.filter((item) => item.name.toLowerCase() !== name.trim().toLowerCase()),
-                  ].slice(0, 24);
-                  await saveProfile({ customMedicines: merged });
-                }}
-                style={[styles.savePresetButton, { marginTop: 8 }]}
-              >
-                <Text style={styles.savePresetText}>
-                  {!existingSavedMedicine
-                    ? language === 'fr'
-                      ? 'Ajouter ce medicament'
-                      : 'Add this medicine'
-                    : isMedicationDirty
-                      ? language === 'fr'
-                        ? 'Mettre a jour la dose'
-                        : 'Update dosage'
-                      : language === 'fr'
-                        ? 'Deja enregistre'
-                        : 'Already saved'}
-                </Text>
-              </Pressable>
-            )}
-            <Input label={t('entry.medicationName')} value={name} onChangeText={setName} />
-            {medicationSuggestions.length > 0 && (
-              <View style={[styles.savedWrap, { marginTop: 6 }]}>
-                <View style={styles.savedRow}>
-                  {medicationSuggestions.map((med) => (
-                    <Pressable
-                      key={`suggest-${med.name}`}
-                      onPress={() => {
-                        setName(med.name);
-                        if (med.dosage) setDosage(med.dosage);
-                      }}
-                      style={[styles.savedChip, { borderColor: colors.border, backgroundColor: colors.card }]}
-                    >
-                      <Text style={[styles.savedChipTitle, { color: colors.text }]}>{med.name}</Text>
-                      {med.dosage ? <Text style={[styles.savedChipSubtitle, { color: colors.muted }]}>{med.dosage}</Text> : null}
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            )}
-            <Input label={t('entry.dosage')} value={dosage} onChangeText={setDosage} />
-            <View style={styles.medIntervalHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {language === 'fr' ? 'Intervalle recommandé' : 'Recommended interval'}
-              </Text>
-              {name.trim() ? <Text style={[styles.medStatusLabel, { color: medStatus.color }]}>{medStatus.label}</Text> : null}
-            </View>
-            <View style={styles.medIntervalRow}>
-              {['4', '6', '8'].map((value) => {
-                const active = medIntervalHours === value;
-                return (
-                  <Pressable
-                    key={value}
-                    onPress={() => setMedIntervalHours(value)}
-                    style={[styles.medIntervalBtn, { borderColor: colors.border, backgroundColor: colors.card }, active && { borderColor: meta.tone, backgroundColor: meta.toneSoft }]}
-                  >
-                    <Text style={[styles.medIntervalText, { color: colors.text }, active && { color: meta.tone }]}>{value}h</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            {name.trim() ? (
-              <Text style={[styles.medNextDoseText, { color: colors.muted }]}>
-                {language === 'fr' ? 'Prochaine dose:' : 'Next dose:'} {nextDosePreview}
-              </Text>
-            ) : null}
-            <Text style={[styles.medStatusText, { color: colors.text }]}>
-              {name.trim()
-                ? medStatus.text
-                : language === 'fr'
-                  ? 'Choisissez ou ajoutez un medicament pour voir le statut.'
-                  : 'Choose or add a medicine to see status.'}
-            </Text>
-            <View style={styles.medTimelineWrap}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {language === 'fr' ? 'Doses recentes' : 'Recent doses'}
-              </Text>
-              {recentMedicationEntries.length === 0 ? (
-                <Text style={[styles.medTimelineEmpty, { color: colors.muted }]}>
-                  {language === 'fr' ? 'Aucune dose enregistree aujourd hui.' : 'No medication logged yet.'}
-                </Text>
-              ) : (
-                recentMedicationEntries.map((entry) => (
-                  <View key={entry.id} style={styles.medTimelineItem}>
-                    <View style={[styles.medTimelineDot, { backgroundColor: meta.tone }]} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.medTimelineName, { color: colors.text }]}>{entry.payload?.name}</Text>
-                      <Text style={[styles.medTimelineMeta, { color: colors.muted }]}>
-                        {(entry.payload?.dosage || '').trim() || '—'} · {new Date(entry.occurredAt).toLocaleTimeString(language === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-                      </Text>
-                    </View>
-                  </View>
-                ))
-              )}
-            </View>
-          </View>
+          <MedicationSection
+            typeLabel={typeLabel}
+            name={name} setName={setName}
+            dosage={dosage} setDosage={setDosage}
+            medIntervalHours={medIntervalHours} setMedIntervalHours={setMedIntervalHours}
+            savedMedicines={savedMedicines} setSavedMedicines={setSavedMedicines}
+            occurredAt={occurredAt}
+          />
         )}
 
         {type === 'milestone' && (
@@ -1807,156 +1387,19 @@ export default function EntryComposerScreen() {
         )}
 
         {type === 'temperature' && (
-          <View style={styles.sectionCard}>
-            <View style={styles.tempPresets}>
-              <Pressable onPress={() => setTemperatureValue('36.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, temperatureValue === '36.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                <Text style={[styles.tempPresetText, { color: colors.text }, temperatureValue === '36.5' && { color: meta.tone, fontWeight: '900' }]}>36.5</Text>
-              </Pressable>
-              <Pressable onPress={() => setTemperatureValue('37.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, temperatureValue === '37.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                <Text style={[styles.tempPresetText, { color: colors.text }, temperatureValue === '37.5' && { color: meta.tone, fontWeight: '900' }]}>37.5</Text>
-              </Pressable>
-              <Pressable onPress={() => setTemperatureValue('38.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, temperatureValue === '38.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                <Text style={[styles.tempPresetText, { color: colors.text }, temperatureValue === '38.5' && { color: meta.tone, fontWeight: '900' }]}>38.5</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.tempInputRow}>
-              <Pressable
-                onPress={() => {
-                  const current = Number(temperatureValue) || 37.5;
-                  setTemperatureValue((Math.max(35, current - 0.1)).toFixed(1));
-                }}
-                style={[styles.tempButton, { borderColor: colors.border, backgroundColor: colors.card }]}
-              >
-                <Text style={[styles.tempButtonText, { color: colors.text }]}>-</Text>
-              </Pressable>
-
-              <View style={{ flex: 1 }}>
-                <Input
-                  label="°C"
-                  value={temperatureValue}
-                  onChangeText={(text) => {
-                    const cleanText = text.replace(/[^0-9.]/g, '');
-                    if (cleanText === '' || /^\d*\.?\d{0,2}$/.test(cleanText)) {
-                      setTemperatureValue(cleanText);
-                    }
-                  }}
-                  placeholder="37.5"
-                  keyboardType="decimal-pad"
-                  inputMode="decimal"
-                />
-              </View>
-
-              <Pressable
-                onPress={() => {
-                  const current = Number(temperatureValue) || 37.5;
-                  setTemperatureValue((Math.min(42, current + 0.1)).toFixed(1));
-                }}
-                style={[styles.tempButton, { borderColor: colors.border, backgroundColor: colors.card }]}
-              >
-                <Text style={[styles.tempButtonText, { color: colors.text }]}>+</Text>
-              </Pressable>
-            </View>
-
-            {temperatureValue && (
-              <View style={styles.tempStatusContainer}>
-                {Number(temperatureValue) < 37.5 ? (
-                  <View style={[styles.tempStatus, { backgroundColor: `${theme.green}28`, borderColor: theme.green }]}>
-                    <Text style={[styles.tempStatusText, { color: theme.green }]}>{"✅"} Normal</Text>
-                  </View>
-                ) : Number(temperatureValue) < 38 ? (
-                  <View style={[styles.tempStatus, { backgroundColor: `${theme.yellow}28`, borderColor: theme.yellow }]}>
-                    <Text style={[styles.tempStatusText, { color: theme.yellow }]}>{"⚠️"} {language === 'fr' ? 'Fébricule' : language === 'es' ? 'Febrícula' : language === 'nl' ? 'Lichte koorts' : 'Mild fever'}</Text>
-                  </View>
-                ) : (
-                  <View style={[styles.tempStatus, { backgroundColor: `${theme.red}28`, borderColor: theme.red }]}>
-                    <Text style={[styles.tempStatusText, { color: theme.red }]}>{"🔥"} {language === 'fr' ? 'Fièvre' : language === 'es' ? 'Fiebre' : language === 'nl' ? 'Koorts' : 'Fever'}</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
+          <TemperatureSection value={temperatureValue} onChange={setTemperatureValue} />
         )}
 
         {type === 'vaccine' && (
-          <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'fr' ? 'Vaccin' : 'Vaccine'}</Text>
-
-            <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 10 }]}>{language === 'fr' ? 'Choisir un vaccin:' : 'Choose a vaccine:'}</Text>
-            <View style={styles.vaccinePresetsGrid}>
-              {vaccinePresets.map((preset) => (
-                <Pressable
-                  key={preset}
-                  onPress={() => setVaccineName(preset)}
-                  style={[styles.vaccinePresetBtn, { borderColor: colors.border, backgroundColor: colors.card }, vaccineName === preset && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
-                >
-                  <Text style={[styles.vaccinePresetText, { color: colors.text }, vaccineName === preset && { color: meta.tone, fontWeight: '900' }]}>{preset}</Text>
-                </Pressable>
-              ))}
-              <Pressable
-                onPress={() => setVaccineName('')}
-                style={[styles.vaccinePresetBtn, styles.vaccineAddBtnInGrid, { borderColor: meta.tone }]}
-              >
-                <Text style={[styles.vaccinePresetText, { color: meta.tone, fontSize: 20 }]}>+</Text>
-              </Pressable>
-            </View>
-
-            {vaccineName === '' && (
-              <>
-                <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 10, marginTop: 12 }]}>{language === 'fr' ? 'Nom du vaccin' : 'Vaccine name'}</Text>
-                <Input
-                  label=""
-                  value={vaccineName}
-                  onChangeText={setVaccineName}
-                  placeholder={language === 'fr' ? 'Entrez le nom du vaccin...' : 'Enter vaccine name...'}
-                />
-              </>
-            )}
-
-            {vaccineName && (
-              <>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Numero de dose' : 'Dose number'}</Text>
-                <View style={styles.vaccineInputRow}>
-                  <Pressable
-                    onPress={() => setVaccineDose(String(Math.max(1, Number(vaccineDose) - 1)))}
-                    style={[styles.vaccineDoseButton, { borderColor: colors.border, backgroundColor: colors.card }]}
-                  >
-                    <Text style={[styles.vaccineDoseButtonText, { color: colors.text }]}>-</Text>
-                  </Pressable>
-
-                  <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text style={[styles.vaccineDoseDisplay, { color: meta.tone }]}>
-                      {language === 'fr' ? 'Dose ' : 'Dose '}{vaccineDose}
-                    </Text>
-                  </View>
-
-                  <Pressable
-                    onPress={() => setVaccineDose(String(Math.min(5, Number(vaccineDose) + 1)))}
-                    style={[styles.vaccineDoseButton, { borderColor: colors.border, backgroundColor: colors.card }]}
-                  >
-                    <Text style={[styles.vaccineDoseButtonText, { color: colors.text }]}>+</Text>
-                  </Pressable>
-                </View>
-
-                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>{language === 'fr' ? 'Prochaine dose' : 'Next dose scheduled'}</Text>
-                <Text style={[styles.sectionBody, { color: colors.muted, marginBottom: 8 }]}>{language === 'fr' ? 'Date prevue pour la prochaine dose' : 'When is the next dose scheduled'}</Text>
-                <DateTimeField label={t('entry.when')} value={vaccineNextDueDate} onChange={setVaccineNextDueDate} />
-              </>
-            )}
-
-            <Pressable
-              onPress={() => setShowReminderFlow(true)}
-              style={[
-                styles.reminderToggle,
-                { borderColor: meta.tone, backgroundColor: meta.toneSoft },
-              ]}
-            >
-              <Text style={[styles.reminderToggleCheckbox, { color: meta.tone }]}>+</Text>
-              <Text style={[styles.reminderToggleLabel, { color: meta.tone }]}>
-                {language === 'fr' ? 'Ajouter un rappel pour plus tard' : 'Add reminder for later'}
-              </Text>
-            </Pressable>
-          </View>
+          <VaccineSection
+            vaccineName={vaccineName}
+            setVaccineName={setVaccineName}
+            vaccineDose={vaccineDose}
+            setVaccineDose={setVaccineDose}
+            vaccineNextDueDate={vaccineNextDueDate}
+            setVaccineNextDueDate={setVaccineNextDueDate}
+            onOpenReminder={() => setShowReminderFlow(true)}
+          />
         )}
 
         <View style={styles.notesToggleWrap}>
