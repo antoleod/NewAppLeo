@@ -62,6 +62,13 @@ service cloud.firestore {
         allow read, create, update, delete: if isSignedIn() && request.auth.uid == uid;
       }
 
+      match /activeSessions/{slotId} {
+        // Cross-device timer mirror. Only the account owner reads/writes —
+        // paired members do NOT share active timers (would confuse the UX
+        // of who is currently nursing/feeding). Pairing has its own sessions.
+        allow read, create, update, delete: if isSignedIn() && request.auth.uid == uid;
+      }
+
       match /sessions/{sessionId} {
         allow read: if isSignedIn() && request.auth.uid == uid;
         allow create: if isSignedIn() && (
