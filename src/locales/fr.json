@@ -242,7 +242,8 @@
     "title": "Journal des couches",
     "pee": "Pipi",
     "poop": "Caca",
-    "vomit": "Vomi"
+    "vomit": "Vomi",
+    "savedToast": "Couche enregistrée"
   },
   "modal": {
     "chooseSide": "Choisir le côté",

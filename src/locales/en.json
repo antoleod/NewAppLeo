@@ -242,7 +242,8 @@
     "title": "Diaper log",
     "pee": "Pee",
     "poop": "Poop",
-    "vomit": "Vomit"
+    "vomit": "Vomit",
+    "savedToast": "Diaper logged"
   },
   "modal": {
     "chooseSide": "Choose side",

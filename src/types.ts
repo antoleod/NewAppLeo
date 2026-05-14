@@ -51,6 +51,9 @@ export interface EntryPayload {
   hasReminder?: boolean;
   foodAllergies?: string[];
   severity?: number;
+  /** Recommended interval (hours) between medication doses. Used to schedule
+   *  the next-dose reminder; preserved on the payload so editing restores it. */
+  intervalHours?: number;
   /** Who logged this entry — usually one of the names stored on UserProfile
    *  (caregiverName or partnerName). Free-form so guest mode and pair-mode
    *  scenarios both work without referencing a user id. */

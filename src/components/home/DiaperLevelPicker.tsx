@@ -1,5 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  interpolateColor,
+} from 'react-native-reanimated';
 import { useTheme } from '@/context/ThemeContext';
 import { haptics } from '@/lib/haptics';
 
@@ -12,64 +19,128 @@ type Props = {
 };
 
 const OPTIONS = [0, 1, 2, 3] as const;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+type ChipProps = {
+  opt: 0 | 1 | 2 | 3;
+  selected: boolean;
+  color: string;
+  borderColor: string;
+  bgIdle: string;
+  bgPressed: string;
+  textIdle: string;
+  optLabel: string;
+  ariaLabel: string;
+  onPress: () => void;
+};
+
+const Chip = React.memo(function Chip({
+  selected, color, borderColor, bgIdle, bgPressed, textIdle, optLabel, ariaLabel, onPress,
+}: ChipProps) {
+  const progress = useSharedValue(selected ? 1 : 0);
+  const press = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withSpring(selected ? 1 : 0, { damping: 18, stiffness: 220, mass: 0.6 });
+  }, [progress, selected]);
+
+  const animStyle = useAnimatedStyle(() => {
+    const scale = withSpring(1 + progress.value * 0.04 - press.value * 0.06, {
+      damping: 14, stiffness: 220, mass: 0.5,
+    });
+    const bg = interpolateColor(
+      progress.value,
+      [0, 1],
+      [bgIdle, `${color}26`],
+    );
+    return {
+      transform: [{ scale }],
+      backgroundColor: bg,
+      borderColor: progress.value > 0.5 ? color : borderColor,
+      borderWidth: 1 + progress.value,
+    };
+  });
+
+  const textStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(progress.value, [0, 1], [textIdle, color]),
+  }));
+
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      onPressIn={() => { press.value = withTiming(1, { duration: 80 }); }}
+      onPressOut={() => { press.value = withTiming(0, { duration: 140 }); }}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={ariaLabel}
+      style={[
+        {
+          flex: 1,
+          minHeight: 46,
+          borderRadius: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        animStyle,
+      ]}
+    >
+      <Animated.Text style={[{ fontSize: 16, fontWeight: '800' }, textStyle]}>
+        {optLabel}
+      </Animated.Text>
+    </AnimatedPressable>
+  );
+});
 
 export const DiaperLevelPicker = React.memo(function DiaperLevelPicker({
   emoji, label, value, onChange, color,
 }: Props) {
   const { theme } = useTheme();
-  const displayValue = value > 3 ? value : value;
   const selectedOpt = value > 3 ? 3 : OPTIONS.includes(value as any) ? value : 0;
 
+  const badgeProgress = useSharedValue(value > 0 ? 1 : 0);
+  useEffect(() => {
+    badgeProgress.value = withSpring(value > 0 ? 1 : 0, { damping: 14, stiffness: 240, mass: 0.5 });
+  }, [badgeProgress, value]);
+
+  const badgeStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 0.85 + badgeProgress.value * 0.25 }],
+    opacity: 0.5 + badgeProgress.value * 0.5,
+  }));
+
   return (
-    <View
-      accessible={false}
-      accessibilityLabel={`${label}: ${displayValue}`}
-      style={{ gap: 8 }}
-    >
+    <View accessibilityLabel={`${label}: ${value}`} style={{ gap: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <Text accessibilityElementsHidden style={{ fontSize: 22, minWidth: 26 }}>{emoji}</Text>
+        <Animated.Text accessibilityElementsHidden style={[{ fontSize: 24, minWidth: 28 }, badgeStyle]}>
+          {emoji}
+        </Animated.Text>
         <Text style={{ color: theme.textPrimary, fontSize: 14, fontWeight: '700', flex: 1 }} numberOfLines={1}>
           {label}
         </Text>
-        <Text style={{ color, fontSize: 18, fontWeight: '900', minWidth: 32, textAlign: 'right' }}>
+        <Animated.Text style={[{ color, fontSize: 20, fontWeight: '900', minWidth: 34, textAlign: 'right' }, badgeStyle]}>
           {value > 3 ? value : selectedOpt === 3 ? '3+' : selectedOpt}
-        </Text>
+        </Animated.Text>
       </View>
       <View style={{ flexDirection: 'row', gap: 6 }}>
         {OPTIONS.map((opt) => {
           const selected = selectedOpt === opt;
           const optLabel = opt === 3 ? '3+' : String(opt);
           return (
-            <Pressable
+            <Chip
               key={opt}
+              opt={opt}
+              selected={selected}
+              color={color}
+              borderColor={theme.border}
+              bgIdle={theme.bgCard}
+              bgPressed={theme.bgCardAlt}
+              textIdle={theme.textPrimary}
+              optLabel={optLabel}
+              ariaLabel={`${label} ${optLabel}`}
               onPress={() => {
                 if (selectedOpt !== opt) haptics.selection();
                 onChange(opt);
               }}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
-              accessibilityLabel={`${label} ${optLabel}`}
-              style={({ pressed }) => ({
-                flex: 1,
-                minHeight: 44,
-                borderRadius: 10,
-                borderWidth: selected ? 2 : 1,
-                borderColor: selected ? color : theme.border,
-                backgroundColor: selected
-                  ? `${color}22`
-                  : (pressed ? theme.bgCardAlt : theme.bgCard),
-                alignItems: 'center',
-                justifyContent: 'center',
-              })}
-            >
-              <Text style={{
-                color: selected ? color : theme.textPrimary,
-                fontSize: 16,
-                fontWeight: '800',
-              }}>
-                {optLabel}
-              </Text>
-            </Pressable>
+            />
           );
         })}
       </View>

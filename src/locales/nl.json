@@ -242,7 +242,8 @@
     "title": "Luierlog",
     "pee": "Plas",
     "poop": "Poep",
-    "vomit": "Spuug"
+    "vomit": "Spuug",
+    "savedToast": "Luier geregistreerd"
   },
   "modal": {
     "chooseSide": "Kies zijde",

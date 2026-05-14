@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn, useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,12 +13,13 @@ import { useAuth } from '@/context/AuthContext';
 import { useTimer } from '@/context/TimerContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { clamp } from '@/utils/date';
-import { BreastSide, EntryPayload, EntryType } from '@/types';
+import { BreastSide, EntryPayload, EntryRecord, EntryType } from '@/types';
 import { TimerWidget } from '@/components/home';
 import { QuantityPicker } from '@/components/shared';
 import { DateTimeField } from '@/components/shared';
 import { VaccineReminderModal } from '@/components/home';
 import { DiaperLevelPicker, FullscreenTimerModal } from '@/components/home';
+import { MilestoneSection, SymptomSection } from '@/components/entries';
 import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
 import { clearSleepDraft, getSleepDraft, saveSleepDraft, type SleepDraft } from '@/lib/sleepDraft';
 import commonMedications from '@/data/common-medications.json';
@@ -35,125 +36,17 @@ import { useToast } from '@/components/shared';
 import { shareEntry, shareEntryAsImage, buildShareMessage } from '@/lib/shareEntry';
 import { ShareCard } from '@/components/history';
 import { shadow } from '@/lib/shadow';
-
-const typeLabelsI18n: Record<EntryType, Record<string, string>> = {
-  feed:        { fr: 'Biberon',    en: 'Feed',        es: 'Biberón',    nl: 'Voeding'  },
-  food:        { fr: 'Repas',      en: 'Food',        es: 'Comida',     nl: 'Eten'     },
-  sleep:       { fr: 'Sommeil',    en: 'Sleep',       es: 'Sueño',      nl: 'Slaap'    },
-  diaper:      { fr: 'Couche',     en: 'Diaper',      es: 'Pañal',      nl: 'Luier'    },
-  pump:        { fr: 'Tirage',     en: 'Pump',        es: 'Extracción', nl: 'Kolven'   },
-  measurement: { fr: 'Mesure',     en: 'Measurement', es: 'Medición',   nl: 'Meting'   },
-  medication:  { fr: 'Médicament', en: 'Medication',  es: 'Medicamento',nl: 'Medicijn' },
-  milestone:   { fr: 'Étape',      en: 'Milestone',   es: 'Hito',       nl: 'Mijlpaal' },
-  symptom:     { fr: 'Symptôme',   en: 'Symptom',     es: 'Síntoma',    nl: 'Symptoom' },
-  temperature: { fr: 'Température',en: 'Temperature', es: 'Temperatura',nl: 'Temperatuur'},
-  vaccine:     { fr: 'Vaccin',     en: 'Vaccine',     es: 'Vacuna',     nl: 'Vaccin'   },
-};
-
-const symptomOptions = [
-  { label: 'Irritable', value: 'irritable' },
-  { label: 'Cry', value: 'cry' },
-  { label: 'Green stool', value: 'green stool' },
-  { label: 'Colic', value: 'colic' },
-];
-
-const vaccinePresets = ['BCG', 'Hepatitis B', 'DTP', 'Polio', 'MMR', 'Varicella', 'Rotavirus', 'PCV'];
-
-const foodPresets = [
-  { icon: '🥣', value: 'puree', labels: { fr: 'Purée', en: 'Purée', es: 'Puré', nl: 'Puree' } },
-  { icon: '🍎', value: 'fruit', labels: { fr: 'Fruit', en: 'Fruit', es: 'Fruta', nl: 'Fruit' } },
-  { icon: '🌾', value: 'cereals', labels: { fr: 'Céréales', en: 'Cereals', es: 'Cereales', nl: 'Granen' } },
-  { icon: '🥛', value: 'yogurt', labels: { fr: 'Yaourt', en: 'Yogurt', es: 'Yogur', nl: 'Yoghurt' } },
-  { icon: '🥕', value: 'vegetables', labels: { fr: 'Légumes', en: 'Veggies', es: 'Verduras', nl: 'Groenten' } },
-  { icon: '💧', value: 'water', labels: { fr: 'Eau', en: 'Water', es: 'Agua', nl: 'Water' } },
-];
-
-const mealTimes = [
-  { value: 'breakfast', labels: { fr: '🌅 Petit-déj', en: '🌅 Breakfast', es: '🌅 Desayuno', nl: '🌅 Ontbijt' }, startHour: 6, endHour: 10 },
-  { value: 'lunch', labels: { fr: '🌞 Déjeuner', en: '🌞 Lunch', es: '🌞 Almuerzo', nl: '🌞 Lunch' }, startHour: 11, endHour: 14 },
-  { value: 'snack', labels: { fr: '🍪 Goûter', en: '🍪 Snack', es: '🍪 Merienda', nl: '🍪 Snack' }, startHour: 15, endHour: 17 },
-  { value: 'dinner', labels: { fr: '🌙 Dîner', en: '🌙 Dinner', es: '🌙 Cena', nl: '🌙 Diner' }, startHour: 18, endHour: 21 },
-];
-
-const foodDefaultQuantities: Record<string, number> = {
-  puree: 50,
-  fruit: 40,
-  cereals: 30,
-  yogurt: 80,
-  vegetables: 60,
-  water: 100,
-};
-
-function getRecommendedMealTime(): 'breakfast' | 'lunch' | 'snack' | 'dinner' {
-  const hour = new Date().getHours();
-  const meal = mealTimes.find((m) => hour >= m.startHour && hour < m.endHour);
-  return (meal?.value as any) || 'lunch';
-}
-
-const typeMeta: Record<
-  EntryType,
-  {
-    icon: keyof typeof Ionicons.glyphMap;
-    tone: string;
-    toneSoft: string;
-  }
-> = {
-  feed: {
-    icon: 'water-outline',
-    tone: '#C9A227',
-    toneSoft: 'rgba(201,162,39,0.16)',
-  },
-  food: {
-    icon: 'restaurant-outline',
-    tone: '#F0B85A',
-    toneSoft: 'rgba(240,184,90,0.16)',
-  },
-  sleep: {
-    icon: 'moon-outline',
-    tone: '#58A6FF',
-    toneSoft: 'rgba(88,166,255,0.16)',
-  },
-  diaper: {
-    icon: 'happy-outline',
-    tone: '#E74C3C',
-    toneSoft: 'rgba(231,76,60,0.16)',
-  },
-  pump: {
-    icon: 'water',
-    tone: '#3FB950',
-    toneSoft: 'rgba(63,185,80,0.16)',
-  },
-  measurement: {
-    icon: 'resize-outline',
-    tone: '#A371F7',
-    toneSoft: 'rgba(163,113,247,0.16)',
-  },
-  medication: {
-    icon: 'medkit-outline',
-    tone: '#7CC2FF',
-    toneSoft: 'rgba(124,194,255,0.16)',
-  },
-  milestone: {
-    icon: 'sparkles-outline',
-    tone: '#D9B97D',
-    toneSoft: 'rgba(217,185,125,0.16)',
-  },
-  symptom: {
-    icon: 'pulse-outline',
-    tone: '#8EB5EA',
-    toneSoft: 'rgba(142,181,234,0.16)',
-  },
-  temperature: {
-    icon: 'thermometer-outline',
-    tone: '#E74C3C',
-    toneSoft: 'rgba(231,76,60,0.16)',
-  },
-  vaccine: {
-    icon: 'medical-outline',
-    tone: '#3FB950',
-    toneSoft: 'rgba(63,185,80,0.16)',
-  },
-};
+import {
+  typeLabelsI18n,
+  typeMeta,
+  symptomOptions,
+  vaccinePresets,
+  foodPresets,
+  mealTimes,
+  foodDefaultQuantities,
+  getRecommendedMealTime,
+  buildEntryTitle,
+} from '@/lib/entryComposer';
 
 export default function EntryComposerScreen() {
   const { colors, theme } = useTheme();
@@ -227,7 +120,7 @@ export default function EntryComposerScreen() {
     transform: [{ translateY: actionsSlideY.value }],
     opacity: actionsOpacity.value,
   }));
-  const [vaccineTemp, setVaccineTemp] = useState('');
+  const [temperatureValue, setTemperatureValue] = useState('');
   const [vaccineName, setVaccineName] = useState('');
   const [vaccineDose, setVaccineDose] = useState('1');
   const [vaccineNextDueDate, setVaccineNextDueDate] = useState(new Date());
@@ -235,12 +128,9 @@ export default function EntryComposerScreen() {
   const [reminderStep, setReminderStep] = useState<'vaccine' | 'date'>('vaccine');
   const [reminderVaccineName, setReminderVaccineName] = useState('');
   const [reminderVaccineDate, setReminderVaccineDate] = useState(new Date());
-  const [showMedicationReminderFlow, setShowMedicationReminderFlow] = useState(false);
   const [sharingImage, setSharingImage] = useState(false);
   const [showSharePreview, setShowSharePreview] = useState(false);
   const shareCardRef = useRef<View>(null);
-  const [reminderMedicationName, setReminderMedicationName] = useState('');
-  const [reminderMedicationDate, setReminderMedicationDate] = useState(new Date());
   const [foodAllergies, setFoodAllergies] = useState<string[]>([]);
   const [foodLiked, setFoodLiked] = useState<'yes' | 'no' | 'neutral' | null>(null);
   const [amountEaten, setAmountEaten] = useState<'all' | 'half' | 'little' | 'none' | null>(null);
@@ -257,14 +147,14 @@ export default function EntryComposerScreen() {
   const recentMedicationEntries = useMemo(
     () =>
       entries
-        .filter((entry) => entry.type === 'medication' && typeof (entry.payload as any)?.name === 'string')
+        .filter((entry) => entry.type === 'medication' && typeof entry.payload?.name === 'string')
         .slice(0, 5),
     [entries],
   );
   const recentFoodEntries = useMemo(
     () =>
       entries
-        .filter((entry) => entry.type === 'food' && typeof (entry.payload as any)?.foodName === 'string')
+        .filter((entry) => entry.type === 'food' && typeof entry.payload?.foodName === 'string')
         .slice(0, 4),
     [entries],
   );
@@ -279,10 +169,11 @@ export default function EntryComposerScreen() {
   const foodPreferencesMap = useMemo(() => {
     const map: Record<string, { liked: number; neutral: number; disliked: number }> = {};
     entries
-      .filter((entry) => entry.type === 'food' && (entry.payload as any)?.foodName)
+      .filter((entry) => entry.type === 'food' && entry.payload?.foodName)
       .forEach((entry) => {
-        const foodName = (entry.payload as any).foodName;
-        const liked = (entry.payload as any).foodLiked;
+        const foodName = entry.payload?.foodName;
+        if (!foodName) return;
+        const liked = entry.payload?.foodLiked;
         if (!map[foodName]) {
           map[foodName] = { liked: 0, neutral: 0, disliked: 0 };
         }
@@ -310,7 +201,7 @@ export default function EntryComposerScreen() {
       };
     }
     const lastSame = entries.find(
-      (entry) => entry.type === 'medication' && ((entry.payload as any)?.name ?? '').trim().toLowerCase() === currentName,
+      (entry) => entry.type === 'medication' && (entry.payload?.name ?? '').trim().toLowerCase() === currentName,
     );
     if (!lastSame) {
       return {
@@ -345,7 +236,7 @@ export default function EntryComposerScreen() {
     if (!name.trim()) return '';
     const interval = Number(medIntervalHours) || 6;
     const lastSame = entries.find(
-      (entry) => entry.type === 'medication' && ((entry.payload as any)?.name ?? '').trim().toLowerCase() === name.trim().toLowerCase(),
+      (entry) => entry.type === 'medication' && (entry.payload?.name ?? '').trim().toLowerCase() === name.trim().toLowerCase(),
     );
     const baseTime = lastSame ? new Date(lastSame.occurredAt).getTime() : occurredAt.getTime();
     const nextAt = new Date(baseTime + interval * 60 * 60 * 1000);
@@ -394,7 +285,7 @@ export default function EntryComposerScreen() {
     setOccurredAt(new Date(editing.occurredAt));
     setNotes(editing.notes ?? '');
     setNotesOpen(Boolean(editing.notes));
-    setCaregiver((editing.payload as any)?.caregiver ?? '');
+    setCaregiver(editing.payload?.caregiver ?? '');
 
     switch (editing.type) {
       case 'feed':
@@ -408,9 +299,9 @@ export default function EntryComposerScreen() {
         setQuantity(editing.payload?.quantity ?? '');
         setQuantityGrams(editing.payload?.quantityGrams ? String(editing.payload.quantityGrams) : '');
         setFoodAllergies((editing.payload?.foodAllergies as string[]) ?? []);
-        setFoodLiked((editing.payload?.foodLiked as any) ?? null);
-        setAmountEaten((editing.payload?.amountEaten as any) ?? null);
-        setMealTime((editing.payload?.mealTime as any) ?? '');
+        setFoodLiked(editing.payload?.foodLiked ?? null);
+        setAmountEaten(editing.payload?.amountEaten ?? null);
+        setMealTime(editing.payload?.mealTime ?? '');
         break;
       case 'sleep':
       case 'pump':
@@ -433,6 +324,9 @@ export default function EntryComposerScreen() {
       case 'medication':
         setName(editing.payload?.name ?? '');
         setDosage(editing.payload?.dosage ?? '');
+        if (editing.payload?.intervalHours) {
+          setMedIntervalHours(String(editing.payload.intervalHours));
+        }
         break;
       case 'milestone':
         setTitle(editing.payload?.title ?? '');
@@ -440,10 +334,10 @@ export default function EntryComposerScreen() {
         setPhotoUri(editing.payload?.photoUri ?? '');
         break;
       case 'symptom':
-        setSymptoms((editing.payload as any)?.tags ?? ((editing.payload?.notes ?? '') as string).split(',').map((value) => value.trim()).filter(Boolean));
+        setSymptoms(editing.payload?.tags ?? (editing.payload?.notes ?? '').split(',').map((value) => value.trim()).filter(Boolean));
         break;
       case 'temperature':
-        setVaccineTemp(editing.payload?.tempC ? String(editing.payload.tempC) : '');
+        setTemperatureValue(editing.payload?.tempC ? String(editing.payload.tempC) : '');
         break;
       case 'vaccine':
         setVaccineName(editing.payload?.vaccineName ?? '');
@@ -698,13 +592,13 @@ export default function EntryComposerScreen() {
           notes,
         };
       case 'medication':
-        return { name, dosage, notes };
+        return { name, dosage, notes, intervalHours: Number(medIntervalHours) || 6 };
       case 'milestone':
         return { title: title || 'Milestone', icon, photoUri: photoUri || undefined, notes };
       case 'symptom':
         return { notes, tags: symptoms };
       case 'temperature':
-        return { tempC: vaccineTemp ? Number(vaccineTemp) : undefined, notes };
+        return { tempC: temperatureValue ? Number(temperatureValue) : undefined, notes };
       case 'vaccine':
         return {
           vaccineName,
@@ -716,30 +610,15 @@ export default function EntryComposerScreen() {
   }
 
   function buildTitle() {
-    switch (type) {
-      case 'feed':
-        return mode === 'bottle' ? t('entry.titleFeedBottle') : t('entry.titleFeedBreast');
-      case 'food':
-        return foodName || t('entry.titleFoodDefault');
-      case 'sleep':
-        return t('entry.titleSleep');
-      case 'diaper':
-        return t('diaper.title');
-      case 'pump':
-        return t('entry.titlePump');
-      case 'measurement':
-        return t('entry.measurement');
-      case 'medication':
-        return name || t('entry.medicine');
-      case 'milestone':
-        return title || t('entry.titleMilestone');
-      case 'symptom':
-        return t('entry.symptoms');
-      case 'temperature':
-        return vaccineTemp ? `${t('entry.temperature')}: ${vaccineTemp}°C` : t('entry.titleTemperatureReading');
-      case 'vaccine':
-        return vaccineName || t('entry.vaccine');
-    }
+    return buildEntryTitle({
+      type, t,
+      feedMode: mode,
+      foodName,
+      medicationName: name,
+      milestoneTitle: title,
+      temperatureValue,
+      vaccineName,
+    });
   }
 
   // The most common case: parent wakes up and just wants to mark the sleep
@@ -750,7 +629,7 @@ export default function EntryComposerScreen() {
   // a stale sleepDraftClientId on this same tick.
   async function endSleepDraftNow(draft: SleepDraft) {
     const alreadySaved = entries.some(
-      (entry) => entry.type === 'sleep' && (entry.payload as any)?.clientId === draft.clientId,
+      (entry) => entry.type === 'sleep' && entry.payload?.clientId === draft.clientId,
     );
     if (alreadySaved) {
       await clearSleepDraft();
@@ -848,31 +727,23 @@ export default function EntryComposerScreen() {
         ? { ...basePayload, caregiver }
         : basePayload;
       const titleValue = buildTitle();
-      const savedEntry = {
-        id: editing?.id ?? `tmp_${Date.now()}`,
-        type,
-        title: titleValue,
-        notes,
-        occurredAt: timestamp,
-        payload,
-      } as any;
 
       let savedEntryId = editing?.id ?? '';
       if (editing) {
-        await updateEntry(editing.id, { type, title: titleValue, notes, occurredAt: timestamp, payload } as any);
+        await updateEntry(editing.id, { type, title: titleValue, notes, occurredAt: timestamp, payload });
       } else {
         savedEntryId = await addEntry({ type, title: titleValue, notes, occurredAt: timestamp, payload });
       }
       if (type === 'medication' && name.trim()) {
         setSavedMedicines(await upsertSavedMedicine({ name, dosage }));
-        const reminderEntry = {
+        const reminderEntry: EntryRecord = {
           id: editing?.id ?? `med_${Date.now()}`,
           type,
           title: titleValue,
           notes,
           occurredAt: timestamp,
           payload,
-        } as any;
+        };
         await scheduleMedicationReminder(reminderEntry, profile?.babyName ?? 'Baby', Number(medIntervalHours) || 6);
       }
 
@@ -897,6 +768,15 @@ export default function EntryComposerScreen() {
         void clearSleepDraft();
       }
 
+      // Diaper: always close the modal and land on home so the user sees
+      // their entry immediately in recent activity.
+      if (type === 'diaper' && !editing) {
+        toast.success(t('diaper.savedToast'));
+        if (router.canGoBack()) router.back();
+        else router.replace('/home');
+        return;
+      }
+
       router.back();
     } catch (error: any) {
       haptics.error();
@@ -912,7 +792,7 @@ export default function EntryComposerScreen() {
   function isSleepDraftAlreadySaved() {
     if (!sleepDraftClientId) return false;
     return entries.some(
-      (entry) => entry.type === 'sleep' && (entry.payload as any)?.clientId === sleepDraftClientId,
+      (entry) => entry.type === 'sleep' && entry.payload?.clientId === sleepDraftClientId,
     );
   }
 
@@ -1251,7 +1131,7 @@ export default function EntryComposerScreen() {
                   return (
                     <Pressable
                       key={meal.value}
-                      onPress={() => setMealTime(mealTime === meal.value ? '' : meal.value as any)}
+                      onPress={() => setMealTime(mealTime === meal.value ? '' : meal.value)}
                       style={({ pressed }) => ({
                         flex: 1,
                         paddingHorizontal: 6,
@@ -1312,7 +1192,7 @@ export default function EntryComposerScreen() {
               {recentFoodEntries.length > 0 && (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                   {recentFoodEntries.map((entry) => {
-                    const fn = (entry.payload as any).foodName as string;
+                    const fn = entry.payload?.foodName as string;
                     const prefs = foodPreferencesMap[fn];
                     const heart = prefs && prefs.liked > prefs.disliked + prefs.neutral ? '❤️ ' : '';
                     const active = foodName === fn;
@@ -1574,35 +1454,63 @@ export default function EntryComposerScreen() {
           </View>
         )}
 
-        {type === 'diaper' && (
-          <View style={styles.sectionCard}>
-            <View style={styles.diaperMinimalStack}>
-              <DiaperLevelPicker
-                emoji={'\u{1F4A7}'}
-                label={t('diaper.pee')}
-                value={Number(pee) || 0}
-                onChange={(val) => setPee(String(val))}
-                color="#58A6FF"
-              />
-              <DiaperLevelPicker
-                emoji={'\u{1F4A9}'}
-                label={t('diaper.poop')}
-                value={Number(poop) || 0}
-                onChange={(val) => setPoop(String(val))}
-                color="#A371F7"
-              />
-              <DiaperLevelPicker
-                emoji={'\u{1F92E}'}
-                label={t('diaper.vomit')}
-                value={Number(vomit) || 0}
-                onChange={(val) => setVomit(String(val))}
-                color="#F0B85A"
-              />
+        {type === 'diaper' && (() => {
+          const peeN = Number(pee) || 0;
+          const poopN = Number(poop) || 0;
+          const vomitN = Number(vomit) || 0;
+          const total = peeN + poopN + vomitN;
+          return (
+            <View style={styles.sectionCard}>
+              <Animated.View entering={FadeIn.duration(220)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingHorizontal: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
+                    {peeN > 0 ? `\u{1F4A7} ${peeN > 3 ? peeN : peeN === 3 ? '3+' : peeN}` : ''}
+                    {peeN > 0 && (poopN > 0 || vomitN > 0) ? '  ·  ' : ''}
+                    {poopN > 0 ? `\u{1F4A9} ${poopN > 3 ? poopN : poopN === 3 ? '3+' : poopN}` : ''}
+                    {poopN > 0 && vomitN > 0 ? '  ·  ' : ''}
+                    {vomitN > 0 ? `\u{1F92E} ${vomitN > 3 ? vomitN : vomitN === 3 ? '3+' : vomitN}` : ''}
+                  </Text>
+                </View>
+                {total > 0 ? (
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: `${colors.primary}1A`, borderWidth: 1, borderColor: `${colors.primary}55` }}>
+                    <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '800' }}>{total}</Text>
+                  </View>
+                ) : null}
+              </Animated.View>
+              <View style={styles.diaperMinimalStack}>
+                <Animated.View entering={FadeInDown.duration(260).delay(60)}>
+                  <DiaperLevelPicker
+                    emoji={'\u{1F4A7}'}
+                    label={t('diaper.pee')}
+                    value={peeN}
+                    onChange={(val) => setPee(String(val))}
+                    color="#58A6FF"
+                  />
+                </Animated.View>
+                <Animated.View entering={FadeInDown.duration(260).delay(140)}>
+                  <DiaperLevelPicker
+                    emoji={'\u{1F4A9}'}
+                    label={t('diaper.poop')}
+                    value={poopN}
+                    onChange={(val) => setPoop(String(val))}
+                    color="#A371F7"
+                  />
+                </Animated.View>
+                <Animated.View entering={FadeInDown.duration(260).delay(220)}>
+                  <DiaperLevelPicker
+                    emoji={'\u{1F92E}'}
+                    label={t('diaper.vomit')}
+                    value={vomitN}
+                    onChange={(val) => setVomit(String(val))}
+                    color="#F0B85A"
+                  />
+                </Animated.View>
+              </View>
             </View>
-          </View>
-        )}
+          );
+        })()}
 
-        {type === 'pump' && editing && (
+        {type === 'pump' && (
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.duration')}</Text>
             <TimerWidget label={t('entry.sessionMin')} valueMinutes={Number(durationMin) || 0} onChangeMinutes={(minutes) => setDurationMin(String(minutes))} largeTouchMode={largeTouchMode} />
@@ -1858,18 +1766,6 @@ export default function EntryComposerScreen() {
                   ? 'Choisissez ou ajoutez un medicament pour voir le statut.'
                   : 'Choose or add a medicine to see status.'}
             </Text>
-            <Pressable
-              onPress={() => setShowMedicationReminderFlow(true)}
-              style={[
-                styles.reminderToggle,
-                { borderColor: meta.tone, backgroundColor: meta.toneSoft, marginTop: 12 },
-              ]}
-            >
-              <Text style={[styles.reminderToggleCheckbox, { color: meta.tone }]}>+</Text>
-              <Text style={[styles.reminderToggleLabel, { color: meta.tone }]}>
-                {language === 'fr' ? 'Rappel pour la prochaine dose' : 'Reminder for next dose'}
-              </Text>
-            </Pressable>
             <View style={styles.medTimelineWrap}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 {language === 'fr' ? 'Doses recentes' : 'Recent doses'}
@@ -1883,9 +1779,9 @@ export default function EntryComposerScreen() {
                   <View key={entry.id} style={styles.medTimelineItem}>
                     <View style={[styles.medTimelineDot, { backgroundColor: meta.tone }]} />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.medTimelineName, { color: colors.text }]}>{(entry.payload as any)?.name}</Text>
+                      <Text style={[styles.medTimelineName, { color: colors.text }]}>{entry.payload?.name}</Text>
                       <Text style={[styles.medTimelineMeta, { color: colors.muted }]}>
-                        {((entry.payload as any)?.dosage || '').trim() || '—'} · {new Date(entry.occurredAt).toLocaleTimeString(language === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                        {(entry.payload?.dosage || '').trim() || '—'} · {new Date(entry.occurredAt).toLocaleTimeString(language === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                       </Text>
                     </View>
                   </View>
@@ -1896,67 +1792,39 @@ export default function EntryComposerScreen() {
         )}
 
         {type === 'milestone' && (
-          <View style={styles.sectionCard}>
-            <Input label={t('entry.titleLabel')} value={title} onChangeText={setTitle} placeholder={language === 'fr' ? 'Premier sourire...' : 'First smile...'} />
-            <Input label="Icon" value={icon} onChangeText={setIcon} placeholder="?" />
-            <Button
-              label={photoUri ? (language === 'fr' ? '?? Remplacer' : '?? Replace') : language === 'fr' ? '?? Ajouter' : '?? Add'}
-              onPress={async () => {
-                const result = await ImagePicker.launchImageLibraryAsync({
-                  mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                  quality: 0.7,
-                });
-                if (!result.canceled && result.assets[0]?.uri) {
-                  setPhotoUri(result.assets[0].uri);
-                }
-              }}
-              variant="ghost"
-            />
-          </View>
+          <MilestoneSection
+            title={title}
+            setTitle={setTitle}
+            icon={icon}
+            setIcon={setIcon}
+            photoUri={photoUri}
+            setPhotoUri={setPhotoUri}
+          />
         )}
 
         {type === 'symptom' && (
-          <View style={styles.sectionCard}>
-            <View style={styles.chipRow}>
-              {symptomOptions.map((option) => (
-                <Pressable
-                  key={option.value}
-                  onPress={() =>
-                    setSymptoms((current) => {
-                      const newSymptoms = current.includes(option.value)
-                        ? current.filter((s) => s !== option.value)
-                        : Array.from(new Set([option.value, ...current])).slice(0, 4);
-                      return newSymptoms;
-                    })
-                  }
-                  style={[styles.symptomChip, { borderColor: colors.border, backgroundColor: colors.card }, symptoms.includes(option.value) && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
-                >
-                  <Text style={[styles.symptomChipText, { color: colors.text }, symptoms.includes(option.value) && { color: meta.tone, fontWeight: '900' }]}>{option.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
+          <SymptomSection symptoms={symptoms} onChange={setSymptoms} />
         )}
 
         {type === 'temperature' && (
           <View style={styles.sectionCard}>
             <View style={styles.tempPresets}>
-              <Pressable onPress={() => setVaccineTemp('36.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, vaccineTemp === '36.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                <Text style={[styles.tempPresetText, { color: colors.text }, vaccineTemp === '36.5' && { color: meta.tone, fontWeight: '900' }]}>36.5</Text>
+              <Pressable onPress={() => setTemperatureValue('36.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, temperatureValue === '36.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                <Text style={[styles.tempPresetText, { color: colors.text }, temperatureValue === '36.5' && { color: meta.tone, fontWeight: '900' }]}>36.5</Text>
               </Pressable>
-              <Pressable onPress={() => setVaccineTemp('37.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, vaccineTemp === '37.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                <Text style={[styles.tempPresetText, { color: colors.text }, vaccineTemp === '37.5' && { color: meta.tone, fontWeight: '900' }]}>37.5</Text>
+              <Pressable onPress={() => setTemperatureValue('37.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, temperatureValue === '37.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                <Text style={[styles.tempPresetText, { color: colors.text }, temperatureValue === '37.5' && { color: meta.tone, fontWeight: '900' }]}>37.5</Text>
               </Pressable>
-              <Pressable onPress={() => setVaccineTemp('38.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, vaccineTemp === '38.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
-                <Text style={[styles.tempPresetText, { color: colors.text }, vaccineTemp === '38.5' && { color: meta.tone, fontWeight: '900' }]}>38.5</Text>
+              <Pressable onPress={() => setTemperatureValue('38.5')} style={[styles.tempPreset, { borderColor: colors.border, backgroundColor: colors.card }, temperatureValue === '38.5' && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}>
+                <Text style={[styles.tempPresetText, { color: colors.text }, temperatureValue === '38.5' && { color: meta.tone, fontWeight: '900' }]}>38.5</Text>
               </Pressable>
             </View>
 
             <View style={styles.tempInputRow}>
               <Pressable
                 onPress={() => {
-                  const current = Number(vaccineTemp) || 37.5;
-                  setVaccineTemp((Math.max(35, current - 0.1)).toFixed(1));
+                  const current = Number(temperatureValue) || 37.5;
+                  setTemperatureValue((Math.max(35, current - 0.1)).toFixed(1));
                 }}
                 style={[styles.tempButton, { borderColor: colors.border, backgroundColor: colors.card }]}
               >
@@ -1966,11 +1834,11 @@ export default function EntryComposerScreen() {
               <View style={{ flex: 1 }}>
                 <Input
                   label="°C"
-                  value={vaccineTemp}
+                  value={temperatureValue}
                   onChangeText={(text) => {
                     const cleanText = text.replace(/[^0-9.]/g, '');
                     if (cleanText === '' || /^\d*\.?\d{0,2}$/.test(cleanText)) {
-                      setVaccineTemp(cleanText);
+                      setTemperatureValue(cleanText);
                     }
                   }}
                   placeholder="37.5"
@@ -1981,8 +1849,8 @@ export default function EntryComposerScreen() {
 
               <Pressable
                 onPress={() => {
-                  const current = Number(vaccineTemp) || 37.5;
-                  setVaccineTemp((Math.min(42, current + 0.1)).toFixed(1));
+                  const current = Number(temperatureValue) || 37.5;
+                  setTemperatureValue((Math.min(42, current + 0.1)).toFixed(1));
                 }}
                 style={[styles.tempButton, { borderColor: colors.border, backgroundColor: colors.card }]}
               >
@@ -1990,13 +1858,13 @@ export default function EntryComposerScreen() {
               </Pressable>
             </View>
 
-            {vaccineTemp && (
+            {temperatureValue && (
               <View style={styles.tempStatusContainer}>
-                {Number(vaccineTemp) < 37.5 ? (
+                {Number(temperatureValue) < 37.5 ? (
                   <View style={[styles.tempStatus, { backgroundColor: `${theme.green}28`, borderColor: theme.green }]}>
                     <Text style={[styles.tempStatusText, { color: theme.green }]}>{"✅"} Normal</Text>
                   </View>
-                ) : Number(vaccineTemp) < 38 ? (
+                ) : Number(temperatureValue) < 38 ? (
                   <View style={[styles.tempStatus, { backgroundColor: `${theme.yellow}28`, borderColor: theme.yellow }]}>
                     <Text style={[styles.tempStatusText, { color: theme.yellow }]}>{"⚠️"} {language === 'fr' ? 'Fébricule' : language === 'es' ? 'Febrícula' : language === 'nl' ? 'Lichte koorts' : 'Mild fever'}</Text>
                   </View>
@@ -2260,7 +2128,7 @@ export default function EntryComposerScreen() {
         <Modal visible={showSharePreview} transparent animationType="fade" onRequestClose={() => setShowSharePreview(false)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <View ref={shareCardRef} collapsable={false}>
-              <ShareCard entry={editing as any} babyName={profile?.babyName} lang={language as any} />
+              <ShareCard entry={editing} babyName={profile?.babyName} lang={language} />
             </View>
 
             <View style={{ width: '100%', gap: 10, marginTop: 24 }}>
@@ -2268,11 +2136,12 @@ export default function EntryComposerScreen() {
                 onPress={() => {
                   setSharingImage(true);
                   setTimeout(() => {
+                    if (!editing) return;
                     void shareEntryAsImage(
                       () => captureRef(shareCardRef, { format: 'png', quality: 1.0, result: 'tmpfile' }),
-                      editing as any,
+                      editing,
                       profile?.babyName ?? '',
-                      language as any,
+                      language,
                     ).finally(() => {
                       setSharingImage(false);
                       setShowSharePreview(false);
@@ -2318,7 +2187,7 @@ export default function EntryComposerScreen() {
     </Page>
 
     {/* Fixed footer — outside scroll, always accessible */}
-    {!((type === 'sleep' || type === 'pump') && !editing) && (
+    {!(type === 'sleep' && !editing) && (
       <Animated.View style={[styles.actionsStickyContainer, actionsAnimStyle, {
         position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 50,
         backgroundColor: theme.bgCardAlt,
@@ -2333,6 +2202,9 @@ export default function EntryComposerScreen() {
       }]}>
         <Pressable
           onPress={saving ? undefined : () => void handlePrimarySave()}
+          accessibilityRole="button"
+          accessibilityState={{ busy: saving, disabled: saving }}
+          accessibilityLabel={editing ? t('common.update', 'Update') : t('common.save')}
           style={({ pressed }) => [
             styles.primaryActionBtn,
             { backgroundColor: theme.accent, opacity: saving ? 0.7 : pressed ? 0.88 : 1 },

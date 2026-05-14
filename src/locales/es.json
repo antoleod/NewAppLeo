@@ -242,7 +242,8 @@
     "title": "Registro de pañal",
     "pee": "Pipí",
     "poop": "Caca",
-    "vomit": "Vómito"
+    "vomit": "Vómito",
+    "savedToast": "Pañal registrado"
   },
   "modal": {
     "chooseSide": "Elegir lado",
