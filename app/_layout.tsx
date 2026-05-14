@@ -11,7 +11,8 @@ import { Fraunces_400Regular_Italic, Fraunces_700Bold } from '@expo-google-fonts
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { AppDataProvider } from '@/context/AppDataContext';
-import { NightOverlay } from '@/components/shared';
+import { TimerProvider } from '@/context/TimerContext';
+import { MiniTimerBar, NightOverlay } from '@/components/shared';
 import { LocaleProvider } from '@/context/LocaleContext';
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -177,20 +178,23 @@ export default function RootLayout() {
             <ThemeProvider>
               <ToastProvider>
                 <AppDataProvider>
-                  <ThemedShell
-                    isIncognito={isIncognito}
-                    isLocked={isLocked}
-                    uiScale={uiScale}
-                    onUnlock={handleUnlock}
-                  >
-                    <AuthGuard />
-                    <StatusBar style={statusBarStyle} />
-                    <NightOverlay />
-                    <Stack screenOptions={{ headerShown: false }}>
-                      <Stack.Screen name="(auth)" />
-                      <Stack.Screen name="(app)" />
-                    </Stack>
-                  </ThemedShell>
+                  <TimerProvider>
+                    <ThemedShell
+                      isIncognito={isIncognito}
+                      isLocked={isLocked}
+                      uiScale={uiScale}
+                      onUnlock={handleUnlock}
+                    >
+                      <AuthGuard />
+                      <StatusBar style={statusBarStyle} />
+                      <NightOverlay />
+                      <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="(auth)" />
+                        <Stack.Screen name="(app)" />
+                      </Stack>
+                      <MiniTimerBar />
+                    </ThemedShell>
+                  </TimerProvider>
                 </AppDataProvider>
               </ToastProvider>
             </ThemeProvider>

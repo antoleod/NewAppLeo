@@ -3,6 +3,7 @@ export * from './AvatarInitials';
 export * from './DateTimeField';
 export * from './ExpandableSection';
 export * from './MinimizedSleepTimer';
+export * from './MiniTimerBar';
 export * from './NightOverlay';
 export * from './QuantityPicker';
 export * from './Toast';

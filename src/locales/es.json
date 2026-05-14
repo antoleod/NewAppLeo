@@ -110,7 +110,7 @@
     "possible": "Posible ahora",
     "soon": "Pronto",
     "waiting": "Todavía no",
-    "lastFeedDetail": "Última toma a las {time} · hace {hours} h",
+    "lastFeedDetail": "Última toma a las {time} · hace {hours}",
     "noFeed": "No hay tomas registradas",
     "suggested": "Sugerido:"
   },
@@ -664,9 +664,11 @@
     "title": "Historial",
     "subtitle": "Explora, filtra y exporta entradas por día.",
     "today": "Hoy",
+    "yesterday": "Ayer",
     "share": "Compartir",
     "searchPlaceholder": "Buscar (notas, tipo, alimento...)",
     "noResults": "Sin resultados para \"{query}\"",
+    "resultsCount": "{count} resultados",
     "emptyTitle": "Sin entradas",
     "emptyBody": "Ninguna entrada coincide con el filtro para esta fecha.",
     "addEntry": "Añadir una entrada",
@@ -769,6 +771,11 @@
     "right": "Derecho",
     "both": "Ambos",
     "sleeping": "Durmiendo",
+    "feedingBreast": "Lactancia",
+    "feedingBottle": "Biberón",
+    "pumping": "Extracción",
+    "minimize": "Minimizar",
+    "running": "En curso",
     "tapToExpand": "Toca para ampliar"
   }
 }

@@ -110,7 +110,7 @@
     "possible": "Possible now",
     "soon": "Soon",
     "waiting": "Not yet",
-    "lastFeedDetail": "Last feeding at {time} · {hours} h ago",
+    "lastFeedDetail": "Last feeding at {time} · {hours} ago",
     "noFeed": "No feeding recorded",
     "suggested": "Suggested:"
   },
@@ -664,9 +664,11 @@
     "title": "History",
     "subtitle": "Browse, filter, and export entries by day.",
     "today": "Today",
+    "yesterday": "Yesterday",
     "share": "Share",
     "searchPlaceholder": "Search (notes, type, food...)",
     "noResults": "No results for \"{query}\"",
+    "resultsCount": "{count} results",
     "emptyTitle": "No entries",
     "emptyBody": "No entries match the filter for this date.",
     "addEntry": "Add an entry",
@@ -769,6 +771,11 @@
     "right": "Right",
     "both": "Both",
     "sleeping": "Sleeping",
+    "feedingBreast": "Breastfeeding",
+    "feedingBottle": "Bottle feeding",
+    "pumping": "Pumping",
+    "minimize": "Minimize",
+    "running": "Running",
     "tapToExpand": "Tap to expand"
   }
 }

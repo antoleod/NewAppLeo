@@ -17,6 +17,7 @@ import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useTimer } from '@/context/TimerContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { BreastSide, EntryRecord } from '@/types';
 import { buildSmartAlerts } from '@/lib/patterns';
@@ -588,9 +589,13 @@ export default function HomeScreen() {
   const [babyId, setBabyId] = useState<string | null>(null);
   const [babies, setBabies] = useState<Array<{ id: string; name: string; birthDate: string }>>([]);
   const [appSettings, setAppSettingsState] = useState(defaultAppSettings);
-  const [quickTimerMode, setQuickTimerMode] = useState<QuickTimerMode>(null);
-  const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
-  const [timerElapsedSeconds, setTimerElapsedSeconds] = useState(0);
+  const { active: activeTimer, elapsedSeconds: globalElapsed, start: startTimer, stop: stopTimer, minimize: minimizeTimer } = useTimer();
+  const quickTimerMode: QuickTimerMode = activeTimer && (activeTimer.kind === 'breast' || activeTimer.kind === 'bottle')
+    ? activeTimer.kind
+    : null;
+  const timerStartedAt = quickTimerMode ? activeTimer!.startedAt : null;
+  const timerElapsedSeconds = quickTimerMode ? globalElapsed : 0;
+  const isTimerMinimized = Boolean(activeTimer?.minimized && quickTimerMode);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
   const [showBabySwitcher, setShowBabySwitcher] = useState(false);
   const [showHomeCustomizer, setShowHomeCustomizer] = useState(false);
@@ -726,55 +731,44 @@ const settings = await getAppSettings();
   }, []);
 
   useEffect(() => {
-    if (!quickTimerMode || !timerStartedAt) return;
-    const timer = setInterval(() => {
-      setTimerElapsedSeconds(Math.floor((Date.now() - timerStartedAt) / 1000));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [quickTimerMode, timerStartedAt]);
-
-  useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
   function startQuickTimer(mode: 'breast' | 'bottle', side: BreastSide = 'left') {
-    const startedAt = Date.now();
     haptics.medium();
-    setQuickTimerMode(mode);
     setQuickFeedSide(side);
-    setTimerStartedAt(startedAt);
-    setTimerElapsedSeconds(0);
+    startTimer(mode, { side });
   }
 
   async function saveQuickTimerEntry() {
-    if (!timerStartedAt) return;
+    if (!timerStartedAt || !quickTimerMode) return;
+    const elapsed = timerElapsedSeconds;
+    const mode = quickTimerMode;
     await addEntry({
       type: 'feed',
-      title: quickTimerMode === 'breast' ? t('entry.titleFeedBreast') : t('entry.titleFeedBottle'),
+      title: mode === 'breast' ? t('entry.titleFeedBreast') : t('entry.titleFeedBottle'),
       occurredAt: new Date(timerStartedAt).toISOString(),
       payload:
-        quickTimerMode === 'breast'
+        mode === 'breast'
           ? {
               mode: 'breast',
               side: quickFeedSide,
-              durationMin: Math.max(1, Math.round(timerElapsedSeconds / 60)),
+              durationMin: Math.max(1, Math.round(elapsed / 60)),
               amountMl: quickAmount,
             }
           : {
               mode: 'bottle',
               amountMl: quickAmount,
-              durationMin: Math.max(1, Math.round(timerElapsedSeconds / 60)),
+              durationMin: Math.max(1, Math.round(elapsed / 60)),
             },
     });
     haptics.success();
-    if (quickTimerMode === 'bottle') {
+    if (mode === 'bottle') {
       void setLastBottleAmount(quickAmount);
     }
-    setQuickTimerMode(null);
+    stopTimer();
     setShowSaveSheet(false);
-    setTimerStartedAt(null);
-    setTimerElapsedSeconds(0);
     setQuickAmount(await getLastBottleAmount());
     setQuickFeedSide('left');
   }
@@ -989,47 +983,71 @@ const settings = await getAppSettings();
                 { type: 'measurement', label: t('entry.measurement'), color: '#8B5CF6' },
                 { type: 'sleep', label: t('entry.sleep'), color: '#3B82F6' },
               ];
+              const timerKindForType: Record<string, 'sleep' | 'pump' | undefined> = {
+                sleep: 'sleep',
+                pump: 'pump',
+              };
               const renderRow = (rowItems: typeof actions, isFirst: boolean) => (
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: isFirst ? 0 : 8 }}>
-                  {rowItems.map((action) => (
-                    <Pressable
-                      key={action.type}
-                      onPress={() => router.push(`/entry/${action.type}` as any)}
-                      accessibilityRole="button"
-                      accessibilityLabel={action.label}
-                      style={({ pressed }) => ({
-                        flex: 1,
-                        aspectRatio: 1,
-                        borderRadius: 16,
-                        backgroundColor: pressed ? `${action.color}12` : CARD,
-                        borderWidth: 1,
-                        borderColor: pressed ? `${action.color}55` : BORDER,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 7,
-                        paddingHorizontal: 5,
-                        ...shadow(TEXT, pressed ? 0.08 : 0.14, pressed ? 8 : 12, 0, pressed ? 2 : 4),
-                        elevation: pressed ? 1 : 3,
-                        transform: [{ scale: pressed ? 0.98 : 1 }],
-                      })}
-                    >
-                      <View
-                        style={{
-                          width: 38,
-                          height: 38,
-                          borderRadius: 14,
+                  {rowItems.map((action) => {
+                    const tk = timerKindForType[action.type];
+                    const running = Boolean(tk && activeTimer?.kind === tk);
+                    return (
+                      <Pressable
+                        key={action.type}
+                        onPress={() => router.push(`/entry/${action.type}` as any)}
+                        accessibilityRole="button"
+                        accessibilityLabel={running ? `${action.label} · ${t('timer.running')}` : action.label}
+                        style={({ pressed }) => ({
+                          flex: 1,
+                          aspectRatio: 1,
+                          borderRadius: 16,
+                          backgroundColor: pressed ? `${action.color}12` : CARD,
+                          borderWidth: running ? 2 : 1,
+                          borderColor: running ? action.color : (pressed ? `${action.color}55` : BORDER),
                           alignItems: 'center',
                           justifyContent: 'center',
-                          backgroundColor: `${action.color}14`,
-                          borderWidth: 1,
-                          borderColor: `${action.color}22`,
-                        }}
+                          gap: 7,
+                          paddingHorizontal: 5,
+                          ...shadow(TEXT, pressed ? 0.08 : 0.14, pressed ? 8 : 12, 0, pressed ? 2 : 4),
+                          elevation: pressed ? 1 : 3,
+                          transform: [{ scale: pressed ? 0.98 : 1 }],
+                        })}
                       >
-                        {GetEntryIcon(action.type, 29, action.color)}
-                      </View>
-                      <Text style={{ color: TEXT_SECONDARY, fontSize: 10.5, fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{action.label}</Text>
-                    </Pressable>
-                  ))}
+                        <View
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 14,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: `${action.color}14`,
+                            borderWidth: 1,
+                            borderColor: `${action.color}22`,
+                          }}
+                        >
+                          {GetEntryIcon(action.type, 29, action.color)}
+                        </View>
+                        <Text style={{ color: TEXT_SECONDARY, fontSize: 10.5, fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{action.label}</Text>
+                        {running ? (
+                          <View
+                            accessibilityElementsHidden
+                            style={{
+                              position: 'absolute',
+                              top: 6,
+                              right: 6,
+                              minWidth: 10,
+                              height: 10,
+                              borderRadius: 5,
+                              backgroundColor: action.color,
+                              borderWidth: 2,
+                              borderColor: CARD,
+                            }}
+                          />
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
                 </View>
               );
               return (
@@ -1749,45 +1767,59 @@ const settings = await getAppSettings();
           <Animated.View entering={FadeInDown.duration(260).delay(80)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Pressable
-                onPress={() => startQuickTimer('bottle')}
+                onPress={() => (activeTimer?.kind === 'bottle' ? minimizeTimer() : startQuickTimer('bottle'))}
                 accessibilityRole="button"
-                style={({ pressed }) => ({
-                  flex: 3,
-                  height: 58,
-                  borderRadius: 16,
-                  borderWidth: 1.5,
-                  borderColor: pressed ? BLUE + '80' : BORDER,
-                  backgroundColor: pressed ? BLUE + '14' : CARD,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'row',
-                  gap: 6,
-                  transform: [{ scale: pressed ? 0.97 : 1 }],
-                })}
+                accessibilityLabel={activeTimer?.kind === 'bottle' ? `${t('feeding.bottle')} · ${t('timer.running')}` : t('feeding.bottle')}
+                style={({ pressed }) => {
+                  const running = activeTimer?.kind === 'bottle';
+                  return {
+                    flex: 3,
+                    height: 58,
+                    borderRadius: 16,
+                    borderWidth: running ? 2 : 1.5,
+                    borderColor: running ? BLUE : (pressed ? BLUE + '80' : BORDER),
+                    backgroundColor: running ? BLUE + '12' : (pressed ? BLUE + '14' : CARD),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'row',
+                    gap: 6,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                  };
+                }}
               >
                 <BottleIcon color={TEXT} size={24} />
                 <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('feeding.bottle')}</Text>
                 <Text style={{ color: TEXT_SECONDARY, fontSize: 12, fontWeight: '600', marginLeft: 2 }}>{quickAmount} ml</Text>
+                {activeTimer?.kind === 'bottle' ? (
+                  <View accessibilityElementsHidden style={{ position: 'absolute', top: 6, right: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: BLUE, borderWidth: 2, borderColor: CARD }} />
+                ) : null}
               </Pressable>
               <Pressable
-                onPress={() => setShowNextFeedPicker(true)}
+                onPress={() => (activeTimer?.kind === 'breast' ? minimizeTimer() : setShowNextFeedPicker(true))}
                 accessibilityRole="button"
-                style={({ pressed }) => ({
-                  flex: 2,
-                  height: 58,
-                  borderRadius: 16,
-                  borderWidth: 1.5,
-                  borderColor: pressed ? ACCENT + '80' : BORDER,
-                  backgroundColor: pressed ? ACCENT + '14' : CARD,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'row',
-                  gap: 6,
-                  transform: [{ scale: pressed ? 0.97 : 1 }],
-                })}
+                accessibilityLabel={activeTimer?.kind === 'breast' ? `${t('feeding.breast')} · ${t('timer.running')}` : t('feeding.breast')}
+                style={({ pressed }) => {
+                  const running = activeTimer?.kind === 'breast';
+                  return {
+                    flex: 2,
+                    height: 58,
+                    borderRadius: 16,
+                    borderWidth: running ? 2 : 1.5,
+                    borderColor: running ? ACCENT : (pressed ? ACCENT + '80' : BORDER),
+                    backgroundColor: running ? ACCENT + '12' : (pressed ? ACCENT + '14' : CARD),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'row',
+                    gap: 6,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                  };
+                }}
               >
                 <BreastfeedingIcon color={TEXT} size={24} />
                 <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('feeding.breast')}</Text>
+                {activeTimer?.kind === 'breast' ? (
+                  <View accessibilityElementsHidden style={{ position: 'absolute', top: 6, right: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT, borderWidth: 2, borderColor: CARD }} />
+                ) : null}
               </Pressable>
             </View>
           </Animated.View>
@@ -2045,7 +2077,7 @@ const settings = await getAppSettings();
       </Modal>
 
       <FullscreenTimerModal
-        visible={Boolean(quickTimerMode && timerStartedAt && !showSaveSheet)}
+        visible={Boolean(quickTimerMode && timerStartedAt && !showSaveSheet && !isTimerMinimized)}
         emoji={quickTimerMode === 'bottle' ? '\u{1F37C}' : '\u{1F931}'}
         title={activeFeedTitle}
         subtitlePrefix={activeFeedSubtitlePrefix}
@@ -2053,6 +2085,7 @@ const settings = await getAppSettings();
         elapsedSeconds={timerElapsedSeconds}
         animatePulse={appSettings.effects.emojiPulse}
         onStop={() => setShowSaveSheet(true)}
+        onMinimize={minimizeTimer}
       />
 
       <Modal visible={showSaveSheet} transparent animationType="slide" onRequestClose={() => setShowSaveSheet(false)}>
@@ -2081,10 +2114,8 @@ const settings = await getAppSettings();
                           text: t('entry.discardConfirm'),
                           style: 'destructive',
                           onPress: () => {
-                            setQuickTimerMode(null);
+                            stopTimer();
                             setShowSaveSheet(false);
-                            setTimerStartedAt(null);
-                            setTimerElapsedSeconds(0);
                             void getLastBottleAmount().then(setQuickAmount);
                           },
                         },

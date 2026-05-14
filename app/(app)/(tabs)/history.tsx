@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, Share, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Button, Card, EmptyState, Heading, Page } from '@/components/shared';
+import { GetEntryIcon } from '@/components/history';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -104,6 +105,104 @@ function buildCsv(entries: EntryRecord[], t: TFn) {
   ].join('\n');
 }
 
+const TYPE_LABEL_KEY: Record<string, string> = {
+  feed: 'history.filterFeed',
+  food: 'history.filterFood',
+  sleep: 'history.filterSleep',
+  diaper: 'history.filterDiaper',
+  pump: 'history.filterPump',
+  medication: 'history.filterMedicine',
+  measurement: 'history.filterMeasurement',
+  vaccine: 'history.filterVaccine',
+  symptom: 'history.filterSymptom',
+  temperature: 'history.filterTemperature',
+  milestone: 'history.filterMilestone',
+};
+
+function getTypeLabel(type: EntryType, t: TFn) {
+  const key = TYPE_LABEL_KEY[type];
+  return key ? t(key) : type;
+}
+
+type RowTokens = {
+  text: string; muted: string; soft: string; border: string; bg: string; tint: string;
+};
+
+type HistoryEntryRowProps = {
+  entry: EntryRecord;
+  expanded: boolean;
+  detail: string;
+  typeLabel: string;
+  timeLabel: string;
+  tint: string;
+  tokens: RowTokens;
+  isMobile: boolean;
+  editLabel: string;
+  deleteLabel: string;
+  noNoteLabel: string;
+  onToggle: (id: string) => void;
+  onEdit: (entry: EntryRecord) => void;
+  onDelete: (entry: EntryRecord) => void;
+};
+
+const HistoryEntryRow = React.memo(function HistoryEntryRow({
+  entry, expanded, detail, typeLabel, timeLabel, tint, tokens,
+  isMobile, editLabel, deleteLabel, noNoteLabel,
+  onToggle, onEdit, onDelete,
+}: HistoryEntryRowProps) {
+  return (
+    <Pressable
+      onPress={() => onToggle(entry.id)}
+      accessibilityRole="button"
+      accessibilityLabel={`${typeLabel} · ${timeLabel}`}
+      accessibilityState={{ expanded }}
+      style={({ pressed }) => ({
+        padding: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: expanded ? tint : tokens.border,
+        backgroundColor: pressed ? tokens.border : tokens.bg,
+        gap: 10,
+      })}
+    >
+      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+        <View style={{
+          width: 32, height: 32, borderRadius: 16,
+          alignItems: 'center', justifyContent: 'center',
+          backgroundColor: tint + '22',
+        }}>
+          {GetEntryIcon(entry.type, 18, tint)}
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <Text style={{ color: tokens.text, fontSize: 13, fontWeight: '700', letterSpacing: 0.2 }} numberOfLines={1}>
+            {typeLabel}
+          </Text>
+          <Text style={{ color: tokens.muted, fontSize: 12, fontWeight: '500' }} numberOfLines={2}>
+            {detail}
+          </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+          <Text style={{ color: tokens.text, fontSize: 13, fontWeight: '700' }}>{timeLabel}</Text>
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={14}
+            color={tokens.soft}
+          />
+        </View>
+      </View>
+      {expanded ? (
+        <View style={{ gap: 10, borderTopWidth: 1, borderTopColor: tokens.border, paddingTop: 10 }}>
+          <Text style={{ color: tokens.muted, fontSize: 13 }}>{entry.notes || noNoteLabel}</Text>
+          <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 10, justifyContent: 'flex-end' }}>
+            <Button label={editLabel} onPress={() => onEdit(entry)} variant="secondary" fullWidth={isMobile} />
+            <Button label={deleteLabel} onPress={() => onDelete(entry)} variant="danger" fullWidth={isMobile} />
+          </View>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+});
+
 function progressPercent(value: number | null | undefined, min: number, max: number) {
   if (!value || max <= min) return 0;
   return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
@@ -134,6 +233,16 @@ export default function HistoryScreen() {
   const PURPLE = theme.blue;
   const TEXT = theme.textPrimary;
   const MUTED = theme.textMuted;
+  const SOFT = theme.textMuted;
+
+  const rowTokens = useMemo<RowTokens>(() => ({
+    text: theme.textPrimary,
+    muted: theme.textMuted,
+    soft: SOFT,
+    border: theme.border,
+    bg: theme.bg,
+    tint: theme.accent,
+  }), [theme]);
 
   const iconColor = (type: EntryType) => {
     if (type === 'feed') return GOLD;
@@ -351,6 +460,12 @@ export default function HistoryScreen() {
     return () => clearTimeout(handle);
   }, [searchInput]);
 
+  useEffect(() => {
+    if (!undoEntry) return;
+    const handle = setTimeout(() => setUndoEntry(null), 6000);
+    return () => clearTimeout(handle);
+  }, [undoEntry]);
+
   const timelineEntries = useMemo(() => {
     const filtered = entries
       .filter((entry) => filter === 'all' || entry.type === filter)
@@ -501,52 +616,100 @@ export default function HistoryScreen() {
     setUndoEntry(null);
   }
 
+  const isOnToday = isSameDay(selectedDate, new Date());
+  const todayDelta = Math.round((startOfDay(new Date()).getTime() - startOfDay(selectedDate).getTime()) / 86400000);
+  const dayRelativeLabel = todayDelta === 0 ? t('history.today') : todayDelta === 1 ? t('history.yesterday') : null;
+
   const historySidebar = (
     <>
         <Heading eyebrow={t('history.eyebrow')} title={t('history.title')} align="left" />
 
         <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <Button
-              label="<"
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Pressable
               onPress={() => setSelectedDate((current) => subtractDays(current, 1))}
-              variant="ghost"
-              fullWidth={false}
-              size="sm"
-            />
-            <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', textAlign: 'center', flex: 1 }}>
-              {new Intl.DateTimeFormat(intlLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
-            </Text>
-            <Button
-              label=">"
+              accessibilityRole="button"
+              accessibilityLabel={t('history.prevDay')}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                width: 38, height: 38, borderRadius: 19,
+                alignItems: 'center', justifyContent: 'center',
+                backgroundColor: pressed ? BORDER : BG,
+                borderWidth: 1, borderColor: BORDER,
+              })}
+            >
+              <Ionicons name="chevron-back" size={18} color={TEXT} />
+            </Pressable>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              {dayRelativeLabel ? (
+                <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: `${GOLD}1F`, marginBottom: 4 }}>
+                  <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>{dayRelativeLabel}</Text>
+                </View>
+              ) : null}
+              <Text style={{ color: TEXT, fontSize: 16, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
+                {new Intl.DateTimeFormat(intlLocale, { weekday: 'long', day: 'numeric', month: 'long' }).format(selectedDate)}
+              </Text>
+              <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginTop: 2 }}>
+                {dayEntries.length} · {new Intl.DateTimeFormat(intlLocale, { year: 'numeric' }).format(selectedDate)}
+              </Text>
+            </View>
+            <Pressable
               onPress={() => setSelectedDate((current) => subtractDays(current, -1))}
-              variant="ghost"
-              fullWidth={false}
-              size="sm"
-            />
+              accessibilityRole="button"
+              accessibilityLabel={t('history.nextDay')}
+              disabled={isOnToday}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                width: 38, height: 38, borderRadius: 19,
+                alignItems: 'center', justifyContent: 'center',
+                backgroundColor: pressed ? BORDER : BG,
+                borderWidth: 1, borderColor: BORDER,
+                opacity: isOnToday ? 0.35 : 1,
+              })}
+            >
+              <Ionicons name="chevron-forward" size={18} color={TEXT} />
+            </Pressable>
           </View>
-          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            <Pressable
+              onPress={() => setSelectedDate(startOfDay(new Date()))}
+              accessibilityRole="button"
+              accessibilityLabel={t('history.today')}
+              disabled={isOnToday}
+              style={({ pressed }) => ({
+                flex: 1, minWidth: 90, minHeight: 38,
+                paddingHorizontal: 14, borderRadius: 20,
+                borderWidth: 1, borderColor: isOnToday ? `${GOLD}88` : BORDER,
+                backgroundColor: isOnToday ? `${GOLD}1A` : (pressed ? BORDER : BG),
+                alignItems: 'center', justifyContent: 'center',
+                flexDirection: 'row', gap: 6,
+                opacity: isOnToday ? 0.55 : 1,
+              })}
+            >
+              <Ionicons name="today-outline" size={14} color={isOnToday ? GOLD : TEXT} />
+              <Text style={{ color: isOnToday ? GOLD : TEXT, fontWeight: '700', fontSize: 13 }}>{t('history.today')}</Text>
+            </Pressable>
             {[
-              { label: 'CSV', action: exportCsv, active: false },
-              { label: 'PDF', action: exportPdf, active: false },
-              { label: t('history.share'), action: shareDay, active: false },
-              { label: t('history.today'), action: () => setSelectedDate(startOfDay(new Date())), active: true },
+              { label: 'CSV', action: exportCsv, icon: 'document-text-outline' as const },
+              { label: 'PDF', action: exportPdf, icon: 'document-outline' as const },
+              { label: t('history.share'), action: shareDay, icon: 'share-outline' as const },
             ].map((item) => (
               <Pressable
                 key={item.label}
                 onPress={item.action}
-                style={{
-                  minHeight: 42,
-                  paddingHorizontal: 18,
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: item.active ? GOLD : BORDER,
-                  backgroundColor: item.active ? `${GOLD}22` : BG,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                style={({ pressed }) => ({
+                  minHeight: 38, paddingHorizontal: 14,
+                  borderRadius: 20, borderWidth: 1,
+                  borderColor: BORDER,
+                  backgroundColor: pressed ? BORDER : BG,
+                  alignItems: 'center', justifyContent: 'center',
+                  flexDirection: 'row', gap: 6,
+                })}
               >
-                <Text style={{ color: item.active ? GOLD : TEXT, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
+                <Ionicons name={item.icon} size={14} color={TEXT} />
+                <Text style={{ color: TEXT, fontWeight: '700', fontSize: 13 }}>{item.label}</Text>
               </Pressable>
             ))}
           </View>
@@ -585,30 +748,41 @@ export default function HistoryScreen() {
               </Pressable>
             ) : null}
           </View>
-          {searchQuery && timelineEntries.length === 0 ? (
-            <Text style={{ color: MUTED, fontSize: 12, marginTop: 4, fontStyle: 'italic' }}>
-              {format('history.noResults', { query: searchInput })}
-            </Text>
+          {searchQuery ? (
+            timelineEntries.length === 0 ? (
+              <Text style={{ color: MUTED, fontSize: 12, marginTop: 4, fontStyle: 'italic' }}>
+                {format('history.noResults', { query: searchInput })}
+              </Text>
+            ) : (
+              <Text style={{ color: GOLD, fontSize: 12, marginTop: 4, fontWeight: '600' }}>
+                {format('history.resultsCount', { count: timelineEntries.length })}
+              </Text>
+            )
           ) : null}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 6 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 6 }}>
             {FILTERS.map((item) => {
               const active = filter === item.value;
+              const tint = item.value === 'all' ? GOLD : iconColor(item.value as EntryType);
               return (
                 <Pressable
                   key={item.value}
                   onPress={() => setFilter(item.value)}
-                  style={{
-                    minHeight: 40,
-                    paddingHorizontal: 16,
-                    borderRadius: 20,
-                    borderWidth: 1,
-                    borderColor: active ? GOLD : BORDER,
-                    backgroundColor: active ? GOLD : BG,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={item.label}
+                  style={({ pressed }) => ({
+                    minHeight: 38, paddingHorizontal: 13,
+                    borderRadius: 20, borderWidth: 1,
+                    borderColor: active ? tint : BORDER,
+                    backgroundColor: active ? tint : (pressed ? BORDER : BG),
+                    alignItems: 'center', justifyContent: 'center',
+                    flexDirection: 'row', gap: 6,
+                  })}
                 >
-                  <Text style={{ color: active ? BG : TEXT, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
+                  {item.value !== 'all' ? (
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: active ? BG : tint }} />
+                  ) : null}
+                  <Text style={{ color: active ? BG : TEXT, fontWeight: '700', fontSize: 13 }}>{item.label}</Text>
                 </Pressable>
               );
             })}
@@ -667,12 +841,30 @@ export default function HistoryScreen() {
           <Heading eyebrow={t('history.panelEyebrow')} title={t('history.panelTitle')} subtitle={t('history.panelBody')} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {[
-              { key: 'status', label: t('history.toggleTodayStatus'), onPress: () => setShowTodayStatus((v) => !v) },
-              { key: 'insights', label: t('history.toggleInsights'), onPress: () => setShowInsights((v) => !v) },
-              { key: 'groups', label: t('history.toggleBands'), onPress: () => setShowTimeGroups((v) => !v) },
+              { key: 'status', label: t('history.toggleTodayStatus'), on: showTodayStatus, onPress: () => setShowTodayStatus((v) => !v) },
+              { key: 'insights', label: t('history.toggleInsights'), on: showInsights, onPress: () => setShowInsights((v) => !v) },
+              { key: 'groups', label: t('history.toggleBands'), on: showTimeGroups, onPress: () => setShowTimeGroups((v) => !v) },
             ].map((item) => (
-              <Pressable key={item.key} onPress={item.onPress} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: BORDER, backgroundColor: BG }}>
-                <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>{item.label}</Text>
+              <Pressable
+                key={item.key}
+                onPress={item.onPress}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: item.on }}
+                accessibilityLabel={item.label}
+                style={({ pressed }) => ({
+                  flexDirection: 'row', alignItems: 'center', gap: 6,
+                  paddingHorizontal: 12, paddingVertical: 8,
+                  borderRadius: 999, borderWidth: 1,
+                  borderColor: item.on ? GOLD : BORDER,
+                  backgroundColor: item.on ? `${GOLD}1A` : (pressed ? BORDER : BG),
+                })}
+              >
+                <Ionicons
+                  name={item.on ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={14}
+                  color={item.on ? GOLD : MUTED}
+                />
+                <Text style={{ color: item.on ? GOLD : TEXT, fontSize: 12, fontWeight: '700' }}>{item.label}</Text>
               </Pressable>
             ))}
           </View>
@@ -806,69 +998,77 @@ export default function HistoryScreen() {
         </Card>
 
         {unifiedTimeline.length ? (
-          unifiedTimeline.map(([day, items]) => (
-            <Card key={day} style={{ backgroundColor: CARD, borderColor: BORDER }}>
-              <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700' }}>{formatLongDate(day)}</Text>
-              <View style={{ gap: 10 }}>
-                {items.map((entry, idx) => {
-                  const expanded = expandedId === entry.id;
-                  const hour = new Date(entry.occurredAt).getHours();
-                  const slot = hour < 12 ? t('history.slotMorning') : hour < 18 ? t('history.slotAfternoon') : t('history.slotEvening');
-                  const prev = items[idx - 1];
-                  const prevHour = prev ? new Date(prev.occurredAt).getHours() : null;
-                  const prevSlot =
-                    prevHour === null
-                      ? null
-                      : prevHour < 12
-                      ? t('history.slotMorning')
-                      : prevHour < 18
-                      ? t('history.slotAfternoon')
-                      : t('history.slotEvening');
-                  const showSlot = showTimeGroups && slot !== prevSlot;
-                  return (
-                    <Animated.View
-                      key={entry.id}
-                      entering={FadeInDown.duration(220).delay(Math.min(idx * 30, 240))}
-                      layout={LinearTransition.springify().damping(18)}
-                    >
-                    {showSlot ? (
-                      <Text style={{ color: GOLD, fontSize: 12, fontWeight: '700', marginBottom: 6 }}>{slot}</Text>
-                    ) : null}
-                    <Pressable
-                      onPress={() => setExpandedId((current) => (current === entry.id ? null : entry.id))}
-                      style={{
-                        padding: 14,
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: BORDER,
-                        backgroundColor: BG,
-                        gap: 10,
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-                        <View style={{ width: 14, height: 14, borderRadius: 999, backgroundColor: iconColor(entry.type) }} />
-                        <View style={{ flex: 1, gap: 4 }}>
-                          <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{entry.type.toUpperCase()}</Text>
-                          <Text style={{ color: MUTED, fontSize: 13 }}>{getDetail(entry, t)}</Text>
-                        </View>
-                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{formatTime(entry.occurredAt)}</Text>
-                      </View>
-                      {expanded ? (
-                        <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 10 }}>
-                          <Text style={{ color: MUTED, fontSize: 13 }}>{entry.notes || t('history.noNote')}</Text>
-                          <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 10, justifyContent: 'flex-end' }}>
-                            <Button label={t('common.edit')} onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })} variant="secondary" fullWidth={isMobile} />
-                            <Button label={t('common.delete')} onPress={() => handleDeleteEntry(entry)} variant="danger" fullWidth={isMobile} />
+          unifiedTimeline.map(([day, items]) => {
+            const dayDate = new Date(day);
+            const todayKey = dateKey(new Date());
+            const yesterdayKey = dateKey(subtractDays(new Date(), 1));
+            const dayLabel = day === todayKey
+              ? t('history.today')
+              : day === yesterdayKey
+                ? t('history.yesterday')
+                : formatLongDate(day);
+            const dayMeta = day === todayKey || day === yesterdayKey
+              ? new Intl.DateTimeFormat(intlLocale, { day: 'numeric', month: 'short' }).format(dayDate)
+              : null;
+            return (
+              <Card key={day} style={{ backgroundColor: CARD, borderColor: BORDER }}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
+                  <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700' }}>{dayLabel}</Text>
+                  {dayMeta ? <Text style={{ color: MUTED, fontSize: 12, fontWeight: '500' }}>· {dayMeta}</Text> : null}
+                  <View style={{ flex: 1 }} />
+                  <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600' }}>{items.length}</Text>
+                </View>
+                <View style={{ gap: 8 }}>
+                  {items.map((entry, idx) => {
+                    const expanded = expandedId === entry.id;
+                    const hour = new Date(entry.occurredAt).getHours();
+                    const slot = hour < 12 ? t('history.slotMorning') : hour < 18 ? t('history.slotAfternoon') : t('history.slotEvening');
+                    const prev = items[idx - 1];
+                    const prevHour = prev ? new Date(prev.occurredAt).getHours() : null;
+                    const prevSlot =
+                      prevHour === null
+                        ? null
+                        : prevHour < 12
+                        ? t('history.slotMorning')
+                        : prevHour < 18
+                        ? t('history.slotAfternoon')
+                        : t('history.slotEvening');
+                    const showSlot = showTimeGroups && slot !== prevSlot;
+                    return (
+                      <Animated.View
+                        key={entry.id}
+                        entering={FadeInDown.duration(220).delay(Math.min(idx * 30, 240))}
+                        layout={LinearTransition.springify().damping(18)}
+                      >
+                        {showSlot ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: idx === 0 ? 0 : 6, marginBottom: 6 }}>
+                            <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>{slot}</Text>
+                            <View style={{ flex: 1, height: 1, backgroundColor: BORDER }} />
                           </View>
-                        </View>
-                      ) : null}
-                    </Pressable>
-                    </Animated.View>
-                  );
-                })}
-              </View>
-            </Card>
-          ))
+                        ) : null}
+                        <HistoryEntryRow
+                          entry={entry}
+                          expanded={expanded}
+                          detail={getDetail(entry, t)}
+                          typeLabel={getTypeLabel(entry.type, t)}
+                          timeLabel={formatTime(entry.occurredAt)}
+                          tint={iconColor(entry.type)}
+                          tokens={rowTokens}
+                          isMobile={isMobile}
+                          editLabel={t('common.edit')}
+                          deleteLabel={t('common.delete')}
+                          noNoteLabel={t('history.noNote')}
+                          onToggle={(id) => setExpandedId((current) => (current === id ? null : id))}
+                          onEdit={(e) => router.push({ pathname: '/entry/[type]', params: { type: e.type, id: e.id } })}
+                          onDelete={handleDeleteEntry}
+                        />
+                      </Animated.View>
+                    );
+                  })}
+                </View>
+              </Card>
+            );
+          })
         ) : (
           <EmptyState
             icon="time-outline"
@@ -882,7 +1082,8 @@ export default function HistoryScreen() {
 
   const undoBar =
     undoEntry ? (
-      <View
+      <Animated.View
+        entering={FadeInDown.duration(220)}
         style={{
           position: 'absolute',
           left: 16,
@@ -900,9 +1101,12 @@ export default function HistoryScreen() {
           gap: 12,
         }}
       >
+        <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: `${RED}1A` }}>
+          <Ionicons name="trash-outline" size={16} color={RED} />
+        </View>
         <Text style={{ color: TEXT, flex: 1, fontSize: 13, fontWeight: '600' }}>{t('history.entryDeleted')}</Text>
         <Button label={t('history.undo')} onPress={handleUndoDelete} variant="secondary" fullWidth={false} />
-      </View>
+      </Animated.View>
     ) : null;
 
   return (

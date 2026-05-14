@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Animated, Modal, Platform, Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocale } from '@/context/LocaleContext';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -35,6 +36,7 @@ export function FullscreenTimerModal({
   onStop,
   onCancel,
   cancelLabel,
+  onMinimize,
 }: {
   visible: boolean;
   emoji: string;
@@ -44,11 +46,9 @@ export function FullscreenTimerModal({
   elapsedSeconds: number;
   animatePulse?: boolean;
   onStop: () => void;
-  // Optional escape hatch — when provided, renders a low-emphasis "Cancel"
-  // link beneath the Stop button so the user can abandon a timer they
-  // started by accident without saving an entry. Pump flow doesn't pass this.
   onCancel?: () => void;
   cancelLabel?: string;
+  onMinimize?: () => void;
 }) {
   const { language } = useLocale();
   const { t } = useTranslation();
@@ -83,6 +83,31 @@ export function FullscreenTimerModal({
   return (
     <Modal visible={visible} animationType="fade" presentationStyle="fullScreen">
       <SafeAreaView style={{ flex: 1, backgroundColor: '#000000' }} edges={['top', 'bottom']}>
+        {onMinimize ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingTop: 8, paddingHorizontal: 8, zIndex: 10 }}>
+            <SafeAreaView edges={['top']}>
+              <Pressable
+                onPress={onMinimize}
+                accessibilityRole="button"
+                accessibilityLabel={t('timer.minimize')}
+                hitSlop={12}
+                style={({ pressed }) => ({
+                  alignSelf: 'flex-start',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 999,
+                  backgroundColor: pressed ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.10)',
+                })}
+              >
+                <Ionicons name="chevron-down" size={18} color="#ffffff" />
+                <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700' }}>{t('timer.minimize')}</Text>
+              </Pressable>
+            </SafeAreaView>
+          </View>
+        ) : null}
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24, gap: 22 }}>
           <Animated.Text style={{ fontSize: 72, transform: [{ scale: pulse }] }}>{emoji}</Animated.Text>
           <Text style={{ color: '#ffffff', fontSize: 22, fontWeight: '700' }}>{title}</Text>

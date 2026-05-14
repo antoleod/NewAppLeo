@@ -110,7 +110,7 @@
     "possible": "Nu mogelijk",
     "soon": "Binnenkort",
     "waiting": "Nog niet",
-    "lastFeedDetail": "Laatste voeding om {time} · {hours} u geleden",
+    "lastFeedDetail": "Laatste voeding om {time} · {hours} geleden",
     "noFeed": "Geen voeding geregistreerd",
     "suggested": "Aanbevolen:"
   },
@@ -664,9 +664,11 @@
     "title": "Historiek",
     "subtitle": "Bekijk, filter en exporteer items per dag.",
     "today": "Vandaag",
+    "yesterday": "Gisteren",
     "share": "Delen",
     "searchPlaceholder": "Zoeken (notities, type, voeding...)",
     "noResults": "Geen resultaten voor \"{query}\"",
+    "resultsCount": "{count} resultaten",
     "emptyTitle": "Geen items",
     "emptyBody": "Geen items komen overeen met het filter voor deze datum.",
     "addEntry": "Item toevoegen",
@@ -769,6 +771,11 @@
     "right": "Rechts",
     "both": "Beide",
     "sleeping": "Aan het slapen",
+    "feedingBreast": "Borstvoeding",
+    "feedingBottle": "Flesvoeding",
+    "pumping": "Afkolven",
+    "minimize": "Minimaliseren",
+    "running": "Bezig",
     "tapToExpand": "Tik om uit te klappen"
   }
 }

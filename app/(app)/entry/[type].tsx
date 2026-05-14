@@ -10,6 +10,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useLocale } from '@/context/LocaleContext';
 import { useAuth } from '@/context/AuthContext';
+import { useTimer } from '@/context/TimerContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { clamp } from '@/utils/date';
 import { BreastSide, EntryPayload, EntryType } from '@/types';
@@ -209,6 +210,7 @@ export default function EntryComposerScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string }>();
   const { entries, addEntry, updateEntry, deleteEntry, entryById } = useAppData();
+  const { active: globalTimer, start: startGlobalTimer, stop: stopGlobalTimer, minimize: minimizeGlobalTimer } = useTimer();
   const toast = useToast();
   const type = (params.type as EntryType) || 'feed';
   const editing = params.id ? entryById(String(params.id)) : undefined;
@@ -639,6 +641,34 @@ export default function EntryComposerScreen() {
     }, 1000);
     return () => clearInterval(timer);
   }, [pumpStartedAt, pumpTimerRunning, type]);
+
+  useEffect(() => {
+    if (type === 'sleep' && sleepTimerRunning && sleepStartedAt) {
+      if (globalTimer?.kind !== 'sleep') startGlobalTimer('sleep', undefined, sleepStartedAt);
+    } else if (type === 'sleep' && !sleepTimerRunning && globalTimer?.kind === 'sleep') {
+      stopGlobalTimer();
+    }
+  }, [sleepTimerRunning, sleepStartedAt, type, globalTimer?.kind, startGlobalTimer, stopGlobalTimer]);
+
+  useEffect(() => {
+    if (type === 'pump' && pumpTimerRunning && pumpStartedAt) {
+      if (globalTimer?.kind !== 'pump') startGlobalTimer('pump', undefined, pumpStartedAt);
+    } else if (type === 'pump' && !pumpTimerRunning && globalTimer?.kind === 'pump') {
+      stopGlobalTimer();
+    }
+  }, [pumpTimerRunning, pumpStartedAt, type, globalTimer?.kind, startGlobalTimer, stopGlobalTimer]);
+
+  useEffect(() => {
+    if (type === 'sleep' && sleepTimerRunning) {
+      setSleepFullscreenVisible(globalTimer?.kind === 'sleep' && !globalTimer.minimized);
+    }
+  }, [globalTimer?.kind, globalTimer?.minimized, sleepTimerRunning, type]);
+
+  useEffect(() => {
+    if (type === 'pump' && pumpTimerRunning) {
+      setPumpFullscreenVisible(globalTimer?.kind === 'pump' && !globalTimer.minimized);
+    }
+  }, [globalTimer?.kind, globalTimer?.minimized, pumpTimerRunning, type]);
 
   useEffect(() => {
     if (type !== 'food' || editing || !foodName || quantityGrams) return;
@@ -2111,6 +2141,7 @@ export default function EntryComposerScreen() {
           onStop={() => void handleSleepStop()}
           onCancel={() => void handleSleepTimerCancel()}
           cancelLabel={t('entry.sleepTimerCancel')}
+          onMinimize={() => { minimizeGlobalTimer(); setSleepFullscreenVisible(false); }}
         />
       ) : null}
       {type === 'pump' && !editing && pumpStartedAt ? (
@@ -2122,6 +2153,7 @@ export default function EntryComposerScreen() {
           startedAt={pumpStartedAt}
           elapsedSeconds={pumpElapsedSeconds}
           onStop={() => void handlePumpStop()}
+          onMinimize={() => { minimizeGlobalTimer(); setPumpFullscreenVisible(false); }}
         />
       ) : null}
 
