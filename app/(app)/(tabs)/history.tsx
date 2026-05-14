@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Button, Card, EmptyState, Heading, Page } from '@/components/shared';
-import { GetEntryIcon } from '@/components/history';
+import { GetEntryIcon, FoodHistoryCard } from '@/components/history';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -996,6 +996,8 @@ export default function HistoryScreen() {
             </Pressable>
           </View>
         </Card>
+
+        <FoodHistoryCard entries={entries} showSeeAll={false} />
 
         {unifiedTimeline.length ? (
           unifiedTimeline.map(([day, items]) => {

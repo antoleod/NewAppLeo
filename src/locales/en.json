@@ -88,9 +88,12 @@
     "chipLess": "Less",
     "chipMore": "More",
     "suggestionFromHistory": "Based on Leo's recent meals",
+    "suggestionFromFood": "Usual for Leo",
     "suggestionFromAge": "Suggested for this age",
     "suggestionFromCategory": "Usual amount for this category",
-    "suggestionFromMeal": "Usual at this time of day"
+    "suggestionFromMeal": "Usual at this time of day",
+    "suggestionDiscovery": "Small amount to discover",
+    "chipDiscovery": "Discover"
   },
   "feeding": {
     "lastFeeding": "LAST FEEDING",

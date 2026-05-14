@@ -104,16 +104,21 @@ export const FoodSection = React.memo(function FoodSection({
     less: t('food.chipLess'),
     more: t('food.chipMore'),
     baseline: t('food.chipUsual'),
+    discovery: t('food.chipDiscovery'),
   };
 
   const suggestionRationale =
-    suggestion.source === 'foodName' || suggestion.source === 'category'
-      ? t('food.suggestionFromHistory')
-      : suggestion.source === 'categoryMeal'
-        ? t('food.suggestionFromMeal')
-        : suggestion.source === 'age'
-          ? t('food.suggestionFromAge')
-          : '';
+    suggestion.source === 'foodName'
+      ? t('food.suggestionFromFood')
+      : suggestion.source === 'category'
+        ? t('food.suggestionFromHistory')
+        : suggestion.source === 'categoryMeal'
+          ? t('food.suggestionFromMeal')
+          : suggestion.source === 'categoryNewFood'
+            ? t('food.suggestionDiscovery')
+            : suggestion.source === 'age'
+              ? t('food.suggestionFromAge')
+              : '';
 
   const activeMealTime = mealTime || getRecommendedMealTime();
   const qtyStep = suggestion.unit === 'ml' ? 10 : 5;
@@ -237,7 +242,12 @@ export const FoodSection = React.memo(function FoodSection({
         <View style={styles.qtyChipRow}>
           {suggestion.chips.map((chip) => {
             const active = quantityGrams === String(chip.value);
-            const showKind = chip.kind !== 'baseline' && (suggestion.source === 'foodName' || suggestion.source === 'category' || suggestion.source === 'categoryMeal');
+            const showKind = chip.kind !== 'baseline' && (
+              suggestion.source === 'foodName' ||
+              suggestion.source === 'category' ||
+              suggestion.source === 'categoryMeal' ||
+              suggestion.source === 'categoryNewFood'
+            );
             return (
               <Pressable
                 key={`${chip.kind}-${chip.value}`}

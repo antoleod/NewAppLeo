@@ -88,9 +88,12 @@
     "chipLess": "Minder",
     "chipMore": "Meer",
     "suggestionFromHistory": "Op basis van Leo's recente maaltijden",
+    "suggestionFromFood": "Gebruikelijk voor Leo",
     "suggestionFromAge": "Voorgesteld voor deze leeftijd",
     "suggestionFromCategory": "Gebruikelijke hoeveelheid voor deze categorie",
-    "suggestionFromMeal": "Gebruikelijk op dit moment van de dag"
+    "suggestionFromMeal": "Gebruikelijk op dit moment van de dag",
+    "suggestionDiscovery": "Kleine hoeveelheid om te ontdekken",
+    "chipDiscovery": "Ontdekken"
   },
   "feeding": {
     "lastFeeding": "LAATSTE VOEDING",
