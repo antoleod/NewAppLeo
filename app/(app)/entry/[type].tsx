@@ -22,10 +22,12 @@ import { DiaperLevelPicker, FullscreenTimerModal } from '@/components/home';
 import {
   DiaperSection,
   FeedSection,
+  FoodSection,
   MeasurementSection,
   MedicationSection,
   MilestoneSection,
   PumpSection,
+  SleepSection,
   SymptomSection,
   TemperatureSection,
   VaccineSection,
@@ -938,397 +940,35 @@ export default function EntryComposerScreen() {
           />
         )}
 
-        {type === 'food' && (() => {
-          const lang = language as 'fr' | 'en' | 'es' | 'nl';
-          const getFoodLabel = (preset: typeof foodPresets[number]) => preset.labels[lang] ?? preset.labels.en;
-          const selectedPreset = foodPresets.find((p) => p.value === foodName || Object.values(p.labels).includes(foodName));
-          const isFirstTry = foodName.trim().length > 0 && !foodPreferencesMap[foodName];
-          const resolvedCategory: FoodCategory = selectedPreset
-            ? (selectedPreset.value as FoodCategory)
-            : inferCategoryFromName(foodName);
-          const suggestion = suggestFoodQuantities({
-            entries,
-            babyBirthDate: profile?.babyBirthDate ?? null,
-            category: resolvedCategory,
-            foodName,
-            mealTime: mealTime || undefined,
-          });
-          const chipKindLabel: Record<QuantityChip['kind'], string> = {
-            last: t('food.chipLast'),
-            usual: t('food.chipUsual'),
-            less: t('food.chipLess'),
-            more: t('food.chipMore'),
-            baseline: t('food.chipUsual'),
-          };
-          const suggestionRationale =
-            suggestion.source === 'foodName' || suggestion.source === 'category'
-              ? t('food.suggestionFromHistory')
-              : suggestion.source === 'categoryMeal'
-              ? t('food.suggestionFromMeal')
-              : suggestion.source === 'age'
-              ? t('food.suggestionFromAge')
-              : '';
-          const reactionOptions = [
-            { emoji: '🤧', value: 'allergy', labels: { fr: 'Allergie', en: 'Allergy', es: 'Alergia', nl: 'Allergie' } },
-            { emoji: '😬', value: 'intolerance', labels: { fr: 'Intolérance', en: 'Intolerance', es: 'Intolerancia', nl: 'Intolerantie' } },
-            { emoji: '🔴', value: 'rash', labels: { fr: 'Éruption', en: 'Rash', es: 'Erupción', nl: 'Uitslag' } },
-            { emoji: '🤮', value: 'vomit', labels: { fr: 'Vomissement', en: 'Vomit', es: 'Vómito', nl: 'Braken' } },
-            { emoji: '💩', value: 'diarrhea', labels: { fr: 'Diarrhée', en: 'Diarrhea', es: 'Diarrea', nl: 'Diarree' } },
-          ];
-          const mealTimeIcons: Record<string, string> = { breakfast: '🌅', lunch: '🌞', snack: '🍪', dinner: '🌙' };
-          const moreLabel = { fr: 'Réaction, allergie…', en: 'Reaction, allergy…', es: 'Reacción, alergia…', nl: 'Reactie, allergie…' };
-          const lessLabel = { fr: 'Masquer', en: 'Hide', es: 'Ocultar', nl: 'Verbergen' };
-          const activeMealTime = mealTime || getRecommendedMealTime();
-          const qtyStep = suggestion.unit === 'ml' ? 10 : 5;
-
-          return (
-            <View style={styles.sectionCard}>
-
-              {/* Row 1a: today count badge */}
-              {!editing && (
-                <View style={{ marginBottom: 6 }}>
-                  <View style={[styles.todayCountBadge, { backgroundColor: `${meta.tone}18`, borderColor: `${meta.tone}40`, alignSelf: 'flex-start' }]}>
-                    <Text style={{ color: meta.tone, fontSize: 11, fontWeight: '700' }}>
-                      {todayFoodEntries.length === 0
-                        ? t('food.firstMeal')
-                        : `${todayFoodEntries.length} ${todayFoodEntries.length > 1 ? t('food.mealsCount') : t('food.mealCountOne')}`}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Row 1b: Meal time segmented selector — labeled, language-aware */}
-              <Text style={{ color: colors.muted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
-                {t('food.mealLabel')}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 5, marginBottom: 14 }}>
-                {mealTimes.map((meal) => {
-                  const active = activeMealTime === meal.value;
-                  const fullLabel = meal.labels[lang] ?? meal.labels.en;
-                  return (
-                    <Pressable
-                      key={meal.value}
-                      onPress={() => setMealTime(mealTime === meal.value ? '' : meal.value)}
-                      style={({ pressed }) => ({
-                        flex: 1,
-                        paddingHorizontal: 6,
-                        paddingVertical: 9,
-                        borderRadius: 10,
-                        minHeight: 42,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 2,
-                        borderWidth: active ? 2 : 1,
-                        borderColor: active ? meta.tone : colors.border,
-                        backgroundColor: active ? meta.toneSoft : pressed ? `${colors.card}88` : 'transparent',
-                        transform: [{ scale: pressed ? 0.96 : 1 }],
-                      })}
-                    >
-                      <Text style={{ fontSize: 14, lineHeight: 18 }}>{mealTimeIcons[meal.value]}</Text>
-                      <Text style={{ fontSize: 10, fontWeight: active ? '800' : '500', color: active ? meta.tone : colors.muted, textAlign: 'center' }}>
-                        {fullLabel.replace(/^\S+\s*/, '')}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {/* Row 2: first-try badge + food name input (hero) */}
-              {isFirstTry && (
-                <Text style={{ color: meta.tone, fontSize: 11, fontWeight: '700', marginBottom: 6 }}>
-                  {t('food.firstTry')}
-                </Text>
-              )}
-              <Input
-                label={t('food.foodLabel2')}
-                value={foodName}
-                onChangeText={setFoodName}
-                placeholder={lang === 'fr' ? 'Pomme, compote, quinoa…' : lang === 'es' ? 'Manzana, compota…' : lang === 'nl' ? 'Appel, compote…' : 'Apple, compote, quinoa…'}
-              />
-
-              {/* Row 3: Preset chips (compact icon + label) */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
-                {foodPresets.map((preset) => {
-                  const active = selectedPreset?.value === preset.value;
-                  return (
-                    <Pressable
-                      key={preset.value}
-                      onPress={() => setFoodName(active ? '' : preset.value)}
-                      style={[styles.foodPresetPill, { borderColor: colors.border, backgroundColor: colors.card }, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
-                    >
-                      <Text style={{ fontSize: 14 }}>{preset.icon}</Text>
-                      <Text style={[styles.foodPresetLabel, { color: colors.text }, active && { color: meta.tone, fontWeight: '800' }]}>
-                        {getFoodLabel(preset)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {/* Row 4: Recent chips (compact, no title) */}
-              {recentFoodEntries.length > 0 && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                  {recentFoodEntries.map((entry) => {
-                    const fn = entry.payload?.foodName as string;
-                    const prefs = foodPreferencesMap[fn];
-                    const heart = prefs && prefs.liked > prefs.disliked + prefs.neutral ? '❤️ ' : '';
-                    const active = foodName === fn;
-                    return (
-                      <Pressable
-                        key={entry.id}
-                        onPress={() => setFoodName(fn)}
-                        style={[styles.recentFoodChip, { borderColor: colors.border, backgroundColor: colors.card }, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone }]}
-                      >
-                        <Text style={[styles.recentFoodChipText, { color: colors.text }, active && { color: meta.tone }]}>
-                          {heart}{fn}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-
-              {/* Row 5: Quantity — adaptive chips + custom input + stepper */}
-              <View style={{ marginTop: 14 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Text style={{ color: colors.muted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                    {t('food.quantityLabel2')}
-                  </Text>
-                  {suggestionRationale ? (
-                    <Text style={{ color: colors.muted, fontSize: 10, fontStyle: 'italic', flexShrink: 1, textAlign: 'right', marginLeft: 8 }} numberOfLines={1}>
-                      {suggestionRationale}
-                    </Text>
-                  ) : null}
-                </View>
-                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                  {suggestion.chips.map((chip) => {
-                    const active = quantityGrams === String(chip.value);
-                    const showKindLabel = chip.kind !== 'baseline' && (suggestion.source === 'foodName' || suggestion.source === 'category' || suggestion.source === 'categoryMeal');
-                    return (
-                      <Pressable
-                        key={`${chip.kind}-${chip.value}`}
-                        onPress={() => setQuantityGrams(active ? '' : String(chip.value))}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${chipKindLabel[chip.kind]} ${chip.value}${chip.unit}`}
-                        style={[styles.qtyChip, { borderColor: colors.border, backgroundColor: colors.card, flexDirection: 'column', alignItems: 'center', paddingVertical: 8 }, active && { backgroundColor: meta.toneSoft, borderColor: meta.tone, borderWidth: 2 }]}
-                      >
-                        {showKindLabel && (
-                          <Text style={{ fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, color: active ? meta.tone : colors.muted, marginBottom: 1 }}>
-                            {chipKindLabel[chip.kind]}
-                          </Text>
-                        )}
-                        <Text style={[styles.qtyChipText, { color: colors.text }, active && { color: meta.tone, fontWeight: '800' }]}>
-                          {chip.value}{chip.unit}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Pressable
-                    onPress={() => setQuantityGrams(String(Math.max(0, (Number(quantityGrams) || 0) - qtyStep)))}
-                    style={[styles.tempButton, { backgroundColor: `${meta.tone}14`, borderColor: `${meta.tone}50` }]}
-                  >
-                    <Text style={[styles.tempButtonText, { color: meta.tone }]}>−</Text>
-                  </Pressable>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      label=""
-                      value={quantityGrams}
-                      onChangeText={setQuantityGrams}
-                      placeholder={suggestion.usualAmount ? String(suggestion.usualAmount) : suggestion.unit === 'ml' ? '100' : '50'}
-                      keyboardType="number-pad"
-                      inputMode="numeric"
-                    />
-                  </View>
-                  <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '700', minWidth: 14 }}>{suggestion.unit}</Text>
-                  <Pressable
-                    onPress={() => setQuantityGrams(String((Number(quantityGrams) || 0) + qtyStep))}
-                    style={[styles.tempButton, { backgroundColor: `${meta.tone}14`, borderColor: `${meta.tone}50` }]}
-                  >
-                    <Text style={[styles.tempButtonText, { color: meta.tone }]}>+</Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              {/* Row 6: Expandable "more" — reactions / allergies */}
-              <Pressable
-                onPress={() => setFoodMoreOpen((v) => !v)}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingVertical: 8 }}
-              >
-                <Ionicons name={foodMoreOpen ? 'chevron-up-outline' : 'chevron-down-outline'} size={13} color={foodAllergies.length > 0 ? '#E74C3C' : colors.muted} />
-                <Text style={{ color: foodAllergies.length > 0 ? '#E74C3C' : colors.muted, fontSize: 12, fontWeight: foodAllergies.length > 0 ? '700' : '400' }}>
-                  {foodMoreOpen ? (lessLabel[lang] ?? lessLabel.en) : (foodAllergies.length > 0 ? `⚠️ ${foodAllergies.length}` : (moreLabel[lang] ?? moreLabel.en))}
-                </Text>
-              </Pressable>
-              {foodMoreOpen && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                  {reactionOptions.map(({ emoji, value, labels }) => {
-                    const active = foodAllergies.includes(value);
-                    return (
-                      <Pressable
-                        key={value}
-                        onPress={() => setFoodAllergies(active ? foodAllergies.filter((a) => a !== value) : [...foodAllergies, value])}
-                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 20, minHeight: 36, borderWidth: active ? 2 : 1, borderColor: active ? '#E74C3C' : colors.border, backgroundColor: active ? 'rgba(231,76,60,0.12)' : 'transparent' }}
-                      >
-                        <Text style={{ fontSize: 13 }}>{emoji}</Text>
-                        <Text style={{ color: active ? '#E74C3C' : colors.muted, fontSize: 12, fontWeight: active ? '700' : '400' }}>
-                          {labels[lang] ?? labels.en}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
-          );
-        })()}
-
-        {type === 'sleep' && !editing && activeSleepDraft && sleepInputMode === null && !sleepTimerRunning && (() => {
-          const elapsedMs = Date.now() - activeSleepDraft.startedAt;
-          const h = Math.floor(elapsedMs / 3600000);
-          const m = Math.floor((elapsedMs % 3600000) / 60000);
-          const elapsedLabel = h > 0 ? `${h}h${m > 0 ? ` ${m}min` : ''}` : `${m}min`;
-          const startTime = new Date(activeSleepDraft.startedAt).toLocaleTimeString(
-            language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : language === 'nl' ? 'nl-NL' : 'en-US',
-            { hour: '2-digit', minute: '2-digit' },
-          );
-          const isStale = elapsedMs > 18 * 3600000; // 18 h cutoff for "looks forgotten"
-          return (
-            <View style={[styles.sectionCard, { borderWidth: 1.5, borderColor: '#58A6FF', backgroundColor: 'rgba(88,166,255,0.07)' }]}>
-              <Text style={{ fontSize: 15, fontWeight: '800', color: '#58A6FF', marginBottom: 4 }}>
-                {t('entry.sleepDraftFound')}
-              </Text>
-              <Text style={{ color: colors.muted, fontSize: 13, marginBottom: isStale ? 8 : 14 }}>
-                {`${startTime} · ${elapsedLabel}`}
-              </Text>
-              {isStale && (
-                <Text style={{ color: theme.yellow, fontSize: 12, fontWeight: '600', marginBottom: 14, lineHeight: 16 }}>
-                  {`⚠ ${t('entry.sleepDraftStale')}`}
-                </Text>
-              )}
-              <Pressable
-                onPress={() => void endSleepDraftNow(activeSleepDraft)}
-                disabled={saving}
-                style={({ pressed }) => ({
-                  paddingVertical: 15, borderRadius: 12, alignItems: 'center',
-                  backgroundColor: pressed ? 'rgba(88,166,255,0.75)' : '#58A6FF',
-                  opacity: saving ? 0.6 : 1,
-                  marginBottom: 10,
-                })}
-              >
-                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>
-                  {saving ? '…' : `${t('entry.sleepDraftEndNow')} (${elapsedLabel})`}
-                </Text>
-              </Pressable>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <Pressable
-                  onPress={() => resumeSleepDraft(activeSleepDraft)}
-                  disabled={saving}
-                  style={({ pressed }) => ({
-                    flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
-                    borderWidth: 1, borderColor: colors.border,
-                    backgroundColor: pressed ? `${colors.border}60` : 'transparent',
-                  })}
-                >
-                  <Text style={{ color: colors.text, fontWeight: '600', fontSize: 13 }}>
-                    {t('entry.sleepDraftResume')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={confirmDiscardSleepDraft}
-                  disabled={saving}
-                  style={({ pressed }) => ({
-                    flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
-                    borderWidth: 1, borderColor: colors.border,
-                    backgroundColor: pressed ? `${colors.border}60` : 'transparent',
-                  })}
-                >
-                  <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 13 }}>
-                    {t('entry.sleepDraftDiscard')}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          );
-        })()}
-
-        {type === 'sleep' && !editing && sleepInputMode === null && (
-          <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>{t('entry.sleep')}</Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Pressable
-                onPress={() => setSleepInputMode('timer')}
-                style={({ pressed }) => ({
-                  flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center', gap: 6,
-                  borderWidth: 1.5, borderColor: meta.tone,
-                  backgroundColor: pressed ? meta.toneSoft : 'transparent',
-                })}
-              >
-                <Text style={{ fontSize: 24 }}>▶️</Text>
-                <Text style={{ color: meta.tone, fontWeight: '700', fontSize: 13 }}>
-                  {language === 'fr' ? 'Démarrer timer' : language === 'es' ? 'Iniciar timer' : language === 'nl' ? 'Timer starten' : 'Start timer'}
-                </Text>
-                <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'center' }}>
-                  {language === 'fr' ? 'Bébé dort maintenant' : language === 'es' ? 'El bebé duerme ahora' : language === 'nl' ? 'Baby slaapt nu' : 'Baby is sleeping now'}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setSleepInputMode('manual')}
-                style={({ pressed }) => ({
-                  flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center', gap: 6,
-                  borderWidth: 1, borderColor: colors.border,
-                  backgroundColor: pressed ? `${colors.card}88` : 'transparent',
-                })}
-              >
-                <Text style={{ fontSize: 24 }}>📝</Text>
-                <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>
-                  {language === 'fr' ? 'Saisir manuellement' : language === 'es' ? 'Registrar pasado' : language === 'nl' ? 'Handmatig invoeren' : 'Log past sleep'}
-                </Text>
-                <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'center' }}>
-                  {language === 'fr' ? 'Déjà terminé' : language === 'es' ? 'Ya terminó' : language === 'nl' ? 'Al afgelopen' : 'Already finished'}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
+        {type === 'food' && (
+          <FoodSection
+            editing={Boolean(editing)}
+            foodName={foodName} setFoodName={setFoodName}
+            quantityGrams={quantityGrams} setQuantityGrams={setQuantityGrams}
+            mealTime={mealTime} setMealTime={setMealTime}
+            foodAllergies={foodAllergies} setFoodAllergies={setFoodAllergies}
+            foodMoreOpen={foodMoreOpen} setFoodMoreOpen={setFoodMoreOpen}
+          />
         )}
 
-        {type === 'sleep' && !editing && sleepInputMode === 'manual' && (
-          <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.duration')}</Text>
-            <TimerWidget
-              label={t('entry.durationMin')}
-              valueMinutes={Number(durationMin) || 0}
-              onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
-              largeTouchMode={largeTouchMode}
-              hideActionButton
-            />
-            {durationMin && Number(durationMin) > 0 && (
-              <View style={[styles.infoStrip, { marginTop: 12 }]}>
-                <Text style={[styles.infoStripText, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}>{Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
-              </View>
-            )}
-          </View>
-        )}
 
-        {type === 'sleep' && editing && (
-          <View style={styles.sectionCard}>
-            <TimerWidget
-              label={t('entry.durationMin')}
-              valueMinutes={Number(durationMin) || 0}
-              onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
-              largeTouchMode={largeTouchMode}
-              autoStart={!editing}
-              hideActionButton
-              stopRequestToken={sleepStopToken}
-              onRunningChange={setSleepTimerRunning}
-            />
-            {durationMin && (
-              <View style={[styles.infoStrip, { marginTop: 12 }]}>
-                <Text style={[styles.infoStripText, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}>{Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m</Text>
-              </View>
-            )}
-          </View>
+        {type === 'sleep' && (
+          <SleepSection
+            editing={Boolean(editing)}
+            activeSleepDraft={activeSleepDraft}
+            sleepInputMode={sleepInputMode}
+            setSleepInputMode={setSleepInputMode}
+            sleepTimerRunning={sleepTimerRunning}
+            setSleepTimerRunning={setSleepTimerRunning}
+            durationMin={durationMin}
+            setDurationMin={setDurationMin}
+            sleepStopToken={sleepStopToken}
+            saving={saving}
+            largeTouchMode={largeTouchMode}
+            onEndDraftNow={(d) => void endSleepDraftNow(d)}
+            onResumeDraft={resumeSleepDraft}
+            onDiscardDraft={confirmDiscardSleepDraft}
+          />
         )}
 
         {type === 'diaper' && (

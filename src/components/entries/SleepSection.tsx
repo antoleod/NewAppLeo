@@ -1,0 +1,229 @@
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useLocale } from '@/context/LocaleContext';
+import { TimerWidget } from '@/components/home';
+import { typeMeta } from '@/lib/entryComposer';
+import type { SleepDraft } from '@/lib/sleepDraft';
+
+type Props = {
+  editing: boolean;
+  activeSleepDraft: SleepDraft | null;
+  sleepInputMode: 'timer' | 'manual' | null;
+  setSleepInputMode: (m: 'timer' | 'manual' | null) => void;
+  sleepTimerRunning: boolean;
+  setSleepTimerRunning: (next: boolean) => void;
+  durationMin: string;
+  setDurationMin: (v: string) => void;
+  sleepStopToken: number;
+  saving: boolean;
+  largeTouchMode?: boolean;
+  onEndDraftNow: (draft: SleepDraft) => void;
+  onResumeDraft: (draft: SleepDraft) => void;
+  onDiscardDraft: () => void;
+};
+
+const LOCALE_MAP: Record<string, string> = {
+  fr: 'fr-FR', es: 'es-ES', nl: 'nl-NL', en: 'en-US',
+};
+
+export const SleepSection = React.memo(function SleepSection({
+  editing, activeSleepDraft,
+  sleepInputMode, setSleepInputMode,
+  sleepTimerRunning, setSleepTimerRunning,
+  durationMin, setDurationMin,
+  sleepStopToken, saving, largeTouchMode,
+  onEndDraftNow, onResumeDraft, onDiscardDraft,
+}: Props) {
+  const { colors, theme } = useTheme();
+  const { t } = useTranslation();
+  const { language } = useLocale();
+  const meta = typeMeta.sleep;
+
+  // ─── Draft banner ────────────────────────────────────────────────
+  const draftBanner = !editing && activeSleepDraft && sleepInputMode === null && !sleepTimerRunning ? (() => {
+    const elapsedMs = Date.now() - activeSleepDraft.startedAt;
+    const h = Math.floor(elapsedMs / 3600000);
+    const m = Math.floor((elapsedMs % 3600000) / 60000);
+    const elapsedLabel = h > 0 ? `${h}h${m > 0 ? ` ${m}min` : ''}` : `${m}min`;
+    const startTime = new Date(activeSleepDraft.startedAt).toLocaleTimeString(
+      LOCALE_MAP[language] ?? 'en-US',
+      { hour: '2-digit', minute: '2-digit' },
+    );
+    const isStale = elapsedMs > 18 * 3600000;
+    return (
+      <View style={[styles.sectionCard, { borderWidth: 1.5, borderColor: '#58A6FF', backgroundColor: 'rgba(88,166,255,0.07)' }]}>
+        <Text style={{ fontSize: 15, fontWeight: '800', color: '#58A6FF', marginBottom: 4 }}>
+          {t('entry.sleepDraftFound')}
+        </Text>
+        <Text style={{ color: colors.muted, fontSize: 13, marginBottom: isStale ? 8 : 14 }}>
+          {`${startTime} · ${elapsedLabel}`}
+        </Text>
+        {isStale ? (
+          <Text style={{ color: theme.yellow, fontSize: 12, fontWeight: '600', marginBottom: 14, lineHeight: 16 }}>
+            {`⚠ ${t('entry.sleepDraftStale')}`}
+          </Text>
+        ) : null}
+        <Pressable
+          onPress={() => onEndDraftNow(activeSleepDraft)}
+          disabled={saving}
+          accessibilityRole="button"
+          accessibilityState={{ busy: saving, disabled: saving }}
+          accessibilityLabel={t('entry.sleepDraftEndNow')}
+          style={({ pressed }) => ({
+            paddingVertical: 15, borderRadius: 12, alignItems: 'center',
+            backgroundColor: pressed ? 'rgba(88,166,255,0.75)' : '#58A6FF',
+            opacity: saving ? 0.6 : 1,
+            marginBottom: 10,
+          })}
+        >
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>
+            {saving ? '…' : `${t('entry.sleepDraftEndNow')} (${elapsedLabel})`}
+          </Text>
+        </Pressable>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Pressable
+            onPress={() => onResumeDraft(activeSleepDraft)}
+            disabled={saving}
+            accessibilityRole="button"
+            accessibilityLabel={t('entry.sleepDraftResume')}
+            style={({ pressed }) => ({
+              flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
+              borderWidth: 1, borderColor: colors.border,
+              backgroundColor: pressed ? `${colors.border}60` : 'transparent',
+            })}
+          >
+            <Text style={{ color: colors.text, fontWeight: '600', fontSize: 13 }}>
+              {t('entry.sleepDraftResume')}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={onDiscardDraft}
+            disabled={saving}
+            accessibilityRole="button"
+            accessibilityLabel={t('entry.sleepDraftDiscard')}
+            style={({ pressed }) => ({
+              flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
+              borderWidth: 1, borderColor: colors.border,
+              backgroundColor: pressed ? `${colors.border}60` : 'transparent',
+            })}
+          >
+            <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 13 }}>
+              {t('entry.sleepDraftDiscard')}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  })() : null;
+
+  // ─── Mode picker (new entry, no input mode set) ─────────────────
+  const startTimerLabel =
+    language === 'fr' ? 'Démarrer timer' : language === 'es' ? 'Iniciar timer' : language === 'nl' ? 'Timer starten' : 'Start timer';
+  const startTimerHint =
+    language === 'fr' ? 'Bébé dort maintenant' : language === 'es' ? 'El bebé duerme ahora' : language === 'nl' ? 'Baby slaapt nu' : 'Baby is sleeping now';
+  const manualLabel =
+    language === 'fr' ? 'Saisir manuellement' : language === 'es' ? 'Registrar pasado' : language === 'nl' ? 'Handmatig invoeren' : 'Log past sleep';
+  const manualHint =
+    language === 'fr' ? 'Déjà terminé' : language === 'es' ? 'Ya terminó' : language === 'nl' ? 'Al afgelopen' : 'Already finished';
+
+  const modePicker = !editing && sleepInputMode === null ? (
+    <View style={styles.sectionCard}>
+      <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>{t('entry.sleep')}</Text>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Pressable
+          onPress={() => setSleepInputMode('timer')}
+          accessibilityRole="button"
+          accessibilityLabel={startTimerLabel}
+          style={({ pressed }) => ({
+            flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center', gap: 6,
+            borderWidth: 1.5, borderColor: meta.tone,
+            backgroundColor: pressed ? meta.toneSoft : 'transparent',
+          })}
+        >
+          <Text style={{ fontSize: 24 }}>▶️</Text>
+          <Text style={{ color: meta.tone, fontWeight: '700', fontSize: 13 }}>{startTimerLabel}</Text>
+          <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'center' }}>{startTimerHint}</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setSleepInputMode('manual')}
+          accessibilityRole="button"
+          accessibilityLabel={manualLabel}
+          style={({ pressed }) => ({
+            flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center', gap: 6,
+            borderWidth: 1, borderColor: colors.border,
+            backgroundColor: pressed ? `${colors.card}88` : 'transparent',
+          })}
+        >
+          <Text style={{ fontSize: 24 }}>📝</Text>
+          <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>{manualLabel}</Text>
+          <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'center' }}>{manualHint}</Text>
+        </Pressable>
+      </View>
+    </View>
+  ) : null;
+
+  // ─── Manual mode body ───────────────────────────────────────────
+  const manualBody = !editing && sleepInputMode === 'manual' ? (
+    <View style={styles.sectionCard}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.duration')}</Text>
+      <TimerWidget
+        label={t('entry.durationMin')}
+        valueMinutes={Number(durationMin) || 0}
+        onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
+        largeTouchMode={largeTouchMode}
+        hideActionButton
+      />
+      {durationMin && Number(durationMin) > 0 ? (
+        <View style={[styles.infoStrip, { marginTop: 12 }]}>
+          <Text style={[styles.infoStripText, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}>
+            {Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  ) : null;
+
+  // ─── Editing body ───────────────────────────────────────────────
+  const editingBody = editing ? (
+    <View style={styles.sectionCard}>
+      <TimerWidget
+        label={t('entry.durationMin')}
+        valueMinutes={Number(durationMin) || 0}
+        onChangeMinutes={(minutes) => setDurationMin(String(minutes))}
+        largeTouchMode={largeTouchMode}
+        autoStart={!editing}
+        hideActionButton
+        stopRequestToken={sleepStopToken}
+        onRunningChange={setSleepTimerRunning}
+      />
+      {durationMin ? (
+        <View style={[styles.infoStrip, { marginTop: 12 }]}>
+          <Text style={[styles.infoStripText, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}>
+            {Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  ) : null;
+
+  return (
+    <>
+      {draftBanner}
+      {modePicker}
+      {manualBody}
+      {editingBody}
+    </>
+  );
+});
+
+const styles = StyleSheet.create({
+  sectionCard: { borderRadius: 14, padding: 14, gap: 6 },
+  sectionTitle: { fontSize: 13, fontWeight: '700' },
+  infoStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  infoStripText: {
+    fontSize: 10, fontWeight: '800', borderRadius: 999, borderWidth: 1,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+});
