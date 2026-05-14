@@ -215,50 +215,147 @@ function getFoodAllergyAlerts(entries: EntryRecord[]) {
   return alerts;
 }
 
-function getFoodHistory(entries: EntryRecord[]) {
-  return entries
-    .filter((e) => e.type === 'food')
-    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
-    .slice(0, 8);
-}
+type FoodSummary = {
+  recent: EntryRecord[];
+  mostCommon: { name: string; count: number } | null;
+  totalUnique: number;
+  totalGramsToday: number;
+  mealsToday: number;
+};
 
-function getFoodStats(entries: EntryRecord[]) {
-  const foodEntries = entries.filter((e) => e.type === 'food');
-  if (foodEntries.length === 0) return { mostCommon: null, totalUnique: 0, totalGramsToday: 0, mealsToday: 0 };
+function getFoodSummary(entries: EntryRecord[]): FoodSummary {
+  const empty: FoodSummary = { recent: [], mostCommon: null, totalUnique: 0, totalGramsToday: 0, mealsToday: 0 };
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const foodEntries: EntryRecord[] = [];
+  const counts = new Map<string, number>();
+  let totalGramsToday = 0;
+  let mealsToday = 0;
 
-  const today = new Date();
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-  const todayEntries = foodEntries.filter((e) => new Date(e.occurredAt).getTime() >= startOfDay);
-  const totalGramsToday = todayEntries.reduce((sum, e) => sum + (e.payload?.quantityGrams ?? 0), 0);
+  for (const entry of entries) {
+    if (entry.type !== 'food') continue;
+    foodEntries.push(entry);
+    const name = entry.payload?.foodName?.toLowerCase();
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+    if (new Date(entry.occurredAt).getTime() >= startOfDay) {
+      mealsToday++;
+      totalGramsToday += entry.payload?.quantityGrams ?? 0;
+    }
+  }
 
-  const foodCounts = new Map<string, number>();
-  foodEntries.forEach((entry) => {
-    const food = entry.payload?.foodName?.toLowerCase() || '';
-    if (food) foodCounts.set(food, (foodCounts.get(food) ?? 0) + 1);
-  });
+  if (foodEntries.length === 0) return empty;
 
-  let mostCommon: string | null = null;
+  foodEntries.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+
+  let mostCommonName: string | null = null;
   let maxCount = 0;
-  foodCounts.forEach((count, food) => {
+  counts.forEach((count, name) => {
     if (count > maxCount) {
       maxCount = count;
-      mostCommon = food;
+      mostCommonName = name;
     }
   });
 
   return {
-    mostCommon: mostCommon ? { name: mostCommon, count: maxCount } : null,
-    totalUnique: foodCounts.size,
+    recent: foodEntries.slice(0, 8),
+    mostCommon: mostCommonName ? { name: mostCommonName, count: maxCount } : null,
+    totalUnique: counts.size,
     totalGramsToday,
-    mealsToday: todayEntries.length,
+    mealsToday,
   };
 }
+
+type MealKind = 'breakfast' | 'lunch' | 'snack' | 'dinner' | 'other';
+
+function getMealKind(value?: string): MealKind {
+  if (value === 'breakfast' || value === 'lunch' || value === 'snack' || value === 'dinner') return value;
+  return 'other';
+}
+
+const MEAL_ICON: Record<MealKind, string> = {
+  breakfast: '🌅',
+  lunch: '🌞',
+  snack: '🍪',
+  dinner: '🌙',
+  other: '🍴',
+};
+
+type FoodHistoryRowProps = {
+  entry: EntryRecord;
+  locale: string;
+  isToday: boolean;
+  mealLabel: string;
+  moreLabel: (n: number) => string;
+  tokens: { text: string; muted: string; soft: string; gold: string; red: string; border: string };
+  onPress: (id: string) => void;
+};
+
+const FoodHistoryRow = React.memo(function FoodHistoryRow({
+  entry, locale, isToday, mealLabel, moreLabel, tokens, onPress,
+}: FoodHistoryRowProps) {
+  const p = entry.payload ?? {};
+  const kind = getMealKind(p.mealTime);
+  const ae = p.amountEaten;
+  const liked = p.foodLiked;
+  const allergies: string[] = Array.isArray(p.foodAllergies) ? p.foodAllergies : [];
+  const hasAllergy = allergies.length > 0;
+  const aeEmoji = ae === 'all' ? '🍽️' : ae === 'half' ? '🥗' : ae === 'little' ? '🥄' : ae === 'none' ? '🚫' : null;
+  const likedEmoji = liked === 'yes' ? '❤️' : liked === 'no' ? '😣' : null;
+  const grams = p.quantityGrams;
+  const name = p.foodName || '—';
+
+  return (
+    <Pressable
+      onPress={() => onPress(entry.id)}
+      accessibilityRole="button"
+      accessibilityLabel={`${mealLabel} · ${name}`}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        borderRadius: 10,
+        marginBottom: 2,
+        backgroundColor: pressed
+          ? (hasAllergy ? 'rgba(231,76,60,0.10)' : tokens.gold + '22')
+          : (isToday ? (hasAllergy ? 'rgba(231,76,60,0.08)' : tokens.gold + '14') : 'transparent'),
+        borderLeftWidth: isToday ? 3 : 0,
+        borderLeftColor: isToday ? (hasAllergy ? tokens.red : tokens.gold) : 'transparent',
+      })}
+    >
+      <Text
+        style={{ fontSize: 18, width: 24, textAlign: 'center' }}
+        accessibilityLabel={mealLabel}
+      >
+        {MEAL_ICON[kind]}
+      </Text>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ color: tokens.text, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{name}</Text>
+        {(grams || hasAllergy) ? (
+          <Text style={{ color: hasAllergy ? tokens.red : tokens.muted, fontSize: 11, marginTop: 2, fontWeight: hasAllergy ? '600' : '500' }} numberOfLines={2}>
+            {grams ? `${grams}g` : ''}
+            {grams && hasAllergy ? ' · ' : ''}
+            {hasAllergy ? `⚠️ ${allergies[0]}${allergies.length > 1 ? ` ${moreLabel(allergies.length - 1)}` : ''}` : ''}
+          </Text>
+        ) : null}
+      </View>
+      <View style={{ width: 88, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+        {aeEmoji ? <Text style={{ fontSize: 13 }} accessibilityElementsHidden>{aeEmoji}</Text> : null}
+        {likedEmoji ? <Text style={{ fontSize: 13 }} accessibilityElementsHidden>{likedEmoji}</Text> : null}
+        <Text style={{ color: tokens.soft, fontSize: 11, fontWeight: '600', minWidth: 38, textAlign: 'right' }}>
+          {formatClock(entry.occurredAt, locale)}
+        </Text>
+      </View>
+    </Pressable>
+  );
+});
 
 
 export default function HomeScreen() {
   const { language } = useLocale();
   const locale = localeTag(language);
-  const { t } = useTranslation();
+  const { t, format } = useTranslation();
   const { profile, user } = useAuth();
   const { entries, summary, addEntry, deleteEntry, loading } = useAppData();
   const { theme, colors } = useTheme();
@@ -530,8 +627,8 @@ export default function HomeScreen() {
   const lastFood = useMemo(() => getLastFood(entries), [entries]);
   const foodTodayCount = useMemo(() => getFoodTodayCount(entries), [entries]);
   const foodAllergyAlerts = useMemo(() => getFoodAllergyAlerts(entries), [entries]);
-  const foodHistory = useMemo(() => getFoodHistory(entries), [entries]);
-  const foodStats = useMemo(() => getFoodStats(entries), [entries]);
+  const foodSummary = useMemo(() => getFoodSummary(entries), [entries]);
+  const { recent: foodHistory, mealsToday, totalGramsToday, mostCommon: foodMostCommon } = foodSummary;
 
   const suggestedBreastSide = useMemo<BreastSide>(() => {
     const lastBreast = feedEntries.find((e) => e.payload?.mode === 'breast');
@@ -1318,80 +1415,128 @@ const settings = await getAppSettings();
           </Animated.View>
         );
 
-      case 'foodHistory':
+      case 'foodHistory': {
         if (dm.foodHistory === false) return null;
         if (foodHistory.length === 0) return null;
+        const rowTokens = { text: TEXT, muted: MUTED, soft: SOFT, gold: GOLD, red: RED, border: BORDER };
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const startOfYesterday = startOfToday - 86400000;
+        const mealLabelFor = (kind: MealKind) => t(`food.meal${kind.charAt(0).toUpperCase() + kind.slice(1)}` as any);
+        const moreLabel = (n: number) => format('food.moreCount', { count: n });
+        const goToEdit = (id: string) => {
+          haptics.selection();
+          router.push({ pathname: '/entry/[type]', params: { type: 'food', id } });
+        };
+        const goToAdd = () => {
+          haptics.selection();
+          router.push('/entry/food');
+        };
+        const goToHistory = () => router.push('/history');
+
+        type Group = { key: string; label: string; items: EntryRecord[] };
+        const groups: Group[] = [];
+        const pushTo = (key: string, label: string, item: EntryRecord) => {
+          let g = groups.find((x) => x.key === key);
+          if (!g) { g = { key, label, items: [] }; groups.push(g); }
+          g.items.push(item);
+        };
+        for (const food of foodHistory) {
+          const ts = new Date(food.occurredAt).getTime();
+          if (ts >= startOfToday) pushTo('today', t('food.dayToday'), food);
+          else if (ts >= startOfYesterday) pushTo('yesterday', t('food.dayYesterday'), food);
+          else {
+            const d = new Date(food.occurredAt);
+            const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+            const label = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
+            pushTo(key, label, food);
+          }
+        }
+
         return (
           <Animated.View entering={FadeInDown.duration(260).delay(420)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-            <Pressable onPress={() => router.push('/entry/food')} style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <View>
-                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '600', letterSpacing: 0.5, marginBottom: 2 }}>{t('food.history')}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ color: TEXT, fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>{foodStats.mealsToday}</Text>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ color: MUTED, fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginBottom: 4 }}>{t('food.history')}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700', letterSpacing: -0.3 }}>{mealsToday}</Text>
                     <Text style={{ color: SOFT, fontSize: 13, fontWeight: '500' }}>{t('food.today')}</Text>
-                    {foodStats.totalGramsToday > 0 && (
-                      <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: GOLD + '22' }}>
-                        <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700' }}>{foodStats.totalGramsToday}g</Text>
+                    {totalGramsToday > 0 ? (
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: GOLD + '22' }}>
+                        <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700' }}>{totalGramsToday}g</Text>
                       </View>
-                    )}
+                    ) : null}
                   </View>
+                  {foodMostCommon ? (
+                    <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginTop: 4 }} numberOfLines={1}>
+                      <Text style={{ color: MUTED, fontWeight: '600' }}>{t('food.favorite')}</Text>
+                      <Text style={{ color: TEXT, fontWeight: '600' }}>{foodMostCommon.name}</Text>
+                      <Text style={{ color: SOFT }}> · {foodMostCommon.count}×</Text>
+                    </Text>
+                  ) : null}
                 </View>
-                {foodStats.mostCommon && (
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ color: MUTED, fontSize: 10 }}>{t('food.favorite')}</Text>
-                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '600' }} numberOfLines={1}>{foodStats.mostCommon.name} · {foodStats.mostCommon.count}×</Text>
-                  </View>
-                )}
+                <Pressable
+                  onPress={goToAdd}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('food.addEntry')}
+                  hitSlop={8}
+                  style={({ pressed }) => ({
+                    width: 36, height: 36, borderRadius: 18,
+                    alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: pressed ? GOLD + '33' : GOLD + '1A',
+                    borderWidth: 1, borderColor: GOLD + '33',
+                  })}
+                >
+                  <Ionicons name="add" size={20} color={GOLD} />
+                </Pressable>
               </View>
+
               <View style={{ gap: 2 }}>
-                {foodHistory.map((food) => {
-                  const hasAllergy = (food.payload?.foodAllergies?.length ?? 0) > 0;
-                  const ml = food.payload?.mealTime;
-                  const ae = food.payload?.amountEaten;
-                  const liked = food.payload?.foodLiked;
-                  const mealIcon = ml === 'breakfast' ? '🌅' : ml === 'lunch' ? '🌞' : ml === 'snack' ? '🍪' : ml === 'dinner' ? '🌙' : '🍴';
-                  const aeEmoji = ae === 'all' ? '🍽️' : ae === 'half' ? '🥗' : ae === 'little' ? '🥄' : ae === 'none' ? '🚫' : null;
-                  const likedEmoji = liked === 'yes' ? '❤️' : liked === 'no' ? '😣' : null;
-                  const isToday = new Date(food.occurredAt).toDateString() === new Date().toDateString();
-                  return (
-                    <Pressable
-                      key={food.id}
-                      onPress={() => router.push({ pathname: '/entry/[type]', params: { type: 'food', id: food.id } })}
-                      style={({ pressed }) => ({
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 10,
-                        paddingVertical: 9,
-                        paddingHorizontal: 10,
-                        borderRadius: 10,
-                        marginBottom: 2,
-                        backgroundColor: isToday ? (hasAllergy ? 'rgba(231,76,60,0.06)' : GOLD + '0A') : 'transparent',
-                        opacity: pressed ? 0.7 : 1,
-                      })}
-                    >
-                      <Text style={{ fontSize: 16, width: 22, textAlign: 'center' }}>{mealIcon}</Text>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{food.payload?.foodName}</Text>
-                        {(food.payload?.quantityGrams || hasAllergy) && (
-                          <Text style={{ color: MUTED, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
-                            {food.payload?.quantityGrams ? `${food.payload.quantityGrams}g` : ''}
-                            {hasAllergy ? ` · ⚠️ ${food.payload?.foodAllergies?.slice(0, 1).join('')}` : ''}
-                          </Text>
-                        )}
-                      </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        {aeEmoji && <Text style={{ fontSize: 13 }}>{aeEmoji}</Text>}
-                        {likedEmoji && <Text style={{ fontSize: 13 }}>{likedEmoji}</Text>}
-                        <Text style={{ color: SOFT, fontSize: 11 }}>{formatClock(food.occurredAt, locale)}</Text>
-                      </View>
-                    </Pressable>
-                  );
-                })}
+                {groups.map((group, gi) => (
+                  <Fragment key={group.key}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: gi === 0 ? 0 : 8, marginBottom: 4 }}>
+                      <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>{group.label}</Text>
+                      <View style={{ flex: 1, height: 1, backgroundColor: BORDER_SOFT }} />
+                    </View>
+                    {group.items.map((food) => (
+                      <FoodHistoryRow
+                        key={food.id}
+                        entry={food}
+                        locale={locale}
+                        isToday={group.key === 'today'}
+                        mealLabel={mealLabelFor(getMealKind(food.payload?.mealTime))}
+                        moreLabel={moreLabel}
+                        tokens={rowTokens}
+                        onPress={goToEdit}
+                      />
+                    ))}
+                  </Fragment>
+                ))}
               </View>
-            </Pressable>
+
+              <Pressable
+                onPress={goToHistory}
+                accessibilityRole="button"
+                accessibilityLabel={t('food.seeAll')}
+                style={({ pressed }) => ({
+                  marginTop: 10,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  gap: 6,
+                  backgroundColor: pressed ? BORDER_SOFT : 'transparent',
+                })}
+              >
+                <Text style={{ color: ACCENT, fontSize: 12, fontWeight: '700', letterSpacing: 0.3 }}>{t('food.seeAll')}</Text>
+                <Ionicons name="chevron-forward" size={14} color={ACCENT} />
+              </Pressable>
+            </View>
           </Animated.View>
         );
+      }
 
       case 'growth':
         if (dm.growth === false) return null;
