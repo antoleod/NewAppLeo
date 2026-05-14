@@ -239,7 +239,10 @@
     "clear": "Effacer"
   },
   "diaper": {
-    "title": "Journal des couches"
+    "title": "Journal des couches",
+    "pee": "Pipi",
+    "poop": "Caca",
+    "vomit": "Vomi"
   },
   "modal": {
     "chooseSide": "Choisir le côté",
@@ -266,6 +269,10 @@
   },
   "home": {
     "addEntry": "Ajouter",
+    "selectLabel": "Sélectionner",
+    "customizeHome": "Personnaliser l'accueil",
+    "undoLast": "Annuler",
+    "minusAmount": "−{amount} ml",
     "defaultFeeding": "Prise par défaut",
     "openProfile": "Ouvrir Profil",
     "switcherSubtitle": "Choisis le profil actif pour ce tableau de bord.",

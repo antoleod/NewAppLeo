@@ -239,7 +239,10 @@
     "clear": "Clear"
   },
   "diaper": {
-    "title": "Diaper log"
+    "title": "Diaper log",
+    "pee": "Pee",
+    "poop": "Poop",
+    "vomit": "Vomit"
   },
   "modal": {
     "chooseSide": "Choose side",
@@ -266,6 +269,10 @@
   },
   "home": {
     "addEntry": "Add",
+    "selectLabel": "Select",
+    "customizeHome": "Customize home",
+    "undoLast": "Undo",
+    "minusAmount": "−{amount} ml",
     "defaultFeeding": "Default feeding",
     "openProfile": "Open Profile",
     "switcherSubtitle": "Choose the active profile for this dashboard.",

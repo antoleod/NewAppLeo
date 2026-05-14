@@ -18,7 +18,7 @@ import { TimerWidget } from '@/components/home';
 import { QuantityPicker } from '@/components/shared';
 import { DateTimeField } from '@/components/shared';
 import { VaccineReminderModal } from '@/components/home';
-import { FullscreenTimerModal } from '@/components/home';
+import { DiaperLevelPicker, FullscreenTimerModal } from '@/components/home';
 import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
 import { clearSleepDraft, getSleepDraft, saveSleepDraft, type SleepDraft } from '@/lib/sleepDraft';
 import commonMedications from '@/data/common-medications.json';
@@ -154,54 +154,6 @@ const typeMeta: Record<
     toneSoft: 'rgba(63,185,80,0.16)',
   },
 };
-
-interface DiaperVolumeSliderProps {
-  emoji: string;
-  value: number;
-  onChange: (value: number) => void;
-  color: string;
-}
-
-function DiaperVolumeSlider({ emoji, value, onChange, color }: DiaperVolumeSliderProps) {
-  const trackRef = useRef<View>(null);
-  const trackLayout = useRef({ pageX: 0, width: 0 });
-
-  function handleTouch(pageX: number) {
-    const { pageX: originX, width } = trackLayout.current;
-    if (!width) return;
-    const pct = Math.max(0, Math.min(1, (pageX - originX) / width));
-    onChange(Math.round(pct * 9));
-  }
-
-  return (
-    <View style={styles.diaperMinimal}>
-      <Text style={styles.diaperMinimalEmoji}>{emoji}</Text>
-      <View
-        ref={trackRef}
-        onLayout={() => {
-          trackRef.current?.measure((_x, _y, w, _h, pageX) => {
-            trackLayout.current = { pageX, width: w };
-          });
-        }}
-        onStartShouldSetResponder={() => true}
-        onMoveShouldSetResponder={() => true}
-        onResponderGrant={(e) => {
-          const touchPageX = e.nativeEvent.pageX;
-          trackRef.current?.measure((_x, _y, w, _h, originPageX) => {
-            trackLayout.current = { pageX: originPageX, width: w };
-            handleTouch(touchPageX);
-          });
-        }}
-        onResponderMove={(e) => handleTouch(e.nativeEvent.pageX)}
-        onResponderRelease={(e) => handleTouch(e.nativeEvent.pageX)}
-        style={[styles.diaperMinimalBar, { backgroundColor: color + '15', borderColor: color }]}
-      >
-        <View style={[styles.diaperMinimalFill, { width: `${(value / 9) * 100}%`, backgroundColor: color }]} />
-      </View>
-      <Text style={[styles.diaperMinimalValue, { color }]}>{value}</Text>
-    </View>
-  );
-}
 
 export default function EntryComposerScreen() {
   const { colors, theme } = useTheme();
@@ -1625,9 +1577,27 @@ export default function EntryComposerScreen() {
         {type === 'diaper' && (
           <View style={styles.sectionCard}>
             <View style={styles.diaperMinimalStack}>
-              <DiaperVolumeSlider emoji="\u{1F4A7}" value={Number(pee)} onChange={(val) => setPee(String(val))} color="#58A6FF" />
-              <DiaperVolumeSlider emoji="\u{1F4A9}" value={Number(poop)} onChange={(val) => setPoop(String(val))} color="#A371F7" />
-              <DiaperVolumeSlider emoji="\u{1F92E}" value={Number(vomit)} onChange={(val) => setVomit(String(val))} color="#F0B85A" />
+              <DiaperLevelPicker
+                emoji={'\u{1F4A7}'}
+                label={t('diaper.pee')}
+                value={Number(pee) || 0}
+                onChange={(val) => setPee(String(val))}
+                color="#58A6FF"
+              />
+              <DiaperLevelPicker
+                emoji={'\u{1F4A9}'}
+                label={t('diaper.poop')}
+                value={Number(poop) || 0}
+                onChange={(val) => setPoop(String(val))}
+                color="#A371F7"
+              />
+              <DiaperLevelPicker
+                emoji={'\u{1F92E}'}
+                label={t('diaper.vomit')}
+                value={Number(vomit) || 0}
+                onChange={(val) => setVomit(String(val))}
+                color="#F0B85A"
+              />
             </View>
           </View>
         )}
@@ -2973,34 +2943,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   diaperMinimalStack: {
-    gap: 16,
-  },
-  diaperMinimal: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  diaperMinimalEmoji: {
-    fontSize: 32,
-    minWidth: 40,
-  },
-  diaperMinimalBar: {
-    flex: 1,
-    height: 44,
-    borderRadius: 10,
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    justifyContent: 'center',
-  },
-  diaperMinimalFill: {
-    height: '100%',
-    borderRadius: 9,
-  },
-  diaperMinimalValue: {
-    fontSize: 22,
-    fontWeight: '900',
-    minWidth: 35,
-    textAlign: 'right',
+    gap: 18,
   },
   savedWrap: {
     gap: 8,

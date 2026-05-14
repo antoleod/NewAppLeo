@@ -239,7 +239,10 @@
     "clear": "Borrar"
   },
   "diaper": {
-    "title": "Registro de pañal"
+    "title": "Registro de pañal",
+    "pee": "Pipí",
+    "poop": "Caca",
+    "vomit": "Vómito"
   },
   "modal": {
     "chooseSide": "Elegir lado",
@@ -266,6 +269,10 @@
   },
   "home": {
     "addEntry": "Añadir",
+    "selectLabel": "Seleccionar",
+    "customizeHome": "Personalizar inicio",
+    "undoLast": "Deshacer",
+    "minusAmount": "−{amount} ml",
     "defaultFeeding": "Alimentación por defecto",
     "openProfile": "Abrir Perfil",
     "switcherSubtitle": "Elige el perfil activo para este panel.",

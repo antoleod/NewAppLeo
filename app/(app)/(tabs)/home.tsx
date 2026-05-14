@@ -1,5 +1,5 @@
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, AppState, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,6 +47,18 @@ const DEFAULT_SECTION_ORDER = [
   'nextFeed','statsStrip','quickAdd','smartSignals',
   'milkProgress','healthFood','recentActivity','foodHistory','growth','hydration',
 ] as const;
+
+const ENTRY_COLORS: Record<string, string> = {
+  feed: '#C9A227',
+  sleep: '#3B82F6',
+  diaper: '#F59E0B',
+  food: '#D97706',
+  temperature: '#EF4444',
+  medication: '#06B6D4',
+  vaccine: '#22C55E',
+  measurement: '#8B5CF6',
+  symptom: '#EC4899',
+};
 
 type QuickTimerMode = 'breast' | 'bottle' | null;
 
@@ -602,7 +614,8 @@ export default function HomeScreen() {
   const [showNextFeedPicker, setShowNextFeedPicker] = useState(false);
   const [quickAmount, setQuickAmount] = useState(150);
   const [quickFeedSide, setQuickFeedSide] = useState<BreastSide>('left');
-  const [now, setNow] = useState(Date.now());
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastHydrationDelta, setLastHydrationDelta] = useState<number | null>(null);
   const [defaultFeedingMode, setDefaultFeedingMode] = useState<'breast' | 'bottle'>('bottle');
   const [deviceDisplayName, setDeviceDisplayName] = useState('');
   const swipeableRefs = useRef<Map<string, React.RefObject<SwipeableMethods | null>>>(new Map());
@@ -693,47 +706,54 @@ export default function HomeScreen() {
     width: `${milkProgress.value}%`,
   }));
 
-  useEffect(() => {
-    const refresh = async () => {
-      setBabies(await getBabies());
-      const activeBaby = await getActiveBaby();
-      if (!activeBaby) return;
-      setBabyId(activeBaby.id);
-      const hydrationDateKey = `appleo.momHydrationDate:${activeBaby.id}`;
-      const storedHydrationDate = await AsyncStorage.getItem(hydrationDateKey);
-      const todayDate = new Date().toISOString().slice(0, 10);
-      let currentHydration: number;
-      if (storedHydrationDate !== todayDate) {
-        currentHydration = 0;
-        await setMomHydration(activeBaby.id, 0);
-        await AsyncStorage.setItem(hydrationDateKey, todayDate);
-      } else {
-        currentHydration = await getMomHydration(activeBaby.id);
-      }
-      setHydration(currentHydration);
-const settings = await getAppSettings();
-      setAppSettingsState(settings);
-      const storedFeedingMode = (settings as any).defaultFeedingMode;
-      if (storedFeedingMode === 'breast' || storedFeedingMode === 'bottle') {
-        setDefaultFeedingMode(storedFeedingMode);
-      }
-      setDeviceDisplayName(await getDeviceDisplayName());
-      setQuickAmount(await getLastBottleAmount());
-    };
+  const refreshDashboard = React.useCallback(async () => {
+    setBabies(await getBabies());
+    const activeBaby = await getActiveBaby();
+    if (!activeBaby) return;
+    setBabyId(activeBaby.id);
+    const hydrationDateKey = `appleo.momHydrationDate:${activeBaby.id}`;
+    const storedHydrationDate = await AsyncStorage.getItem(hydrationDateKey);
+    const todayDate = new Date().toISOString().slice(0, 10);
+    let currentHydration: number;
+    if (storedHydrationDate !== todayDate) {
+      currentHydration = 0;
+      await setMomHydration(activeBaby.id, 0);
+      await AsyncStorage.setItem(hydrationDateKey, todayDate);
+    } else {
+      currentHydration = await getMomHydration(activeBaby.id);
+    }
+    setHydration(currentHydration);
+    const settings = await getAppSettings();
+    setAppSettingsState(settings);
+    const storedFeedingMode = (settings as any).defaultFeedingMode;
+    if (storedFeedingMode === 'breast' || storedFeedingMode === 'bottle') {
+      setDefaultFeedingMode(storedFeedingMode);
+    }
+    setDeviceDisplayName(await getDeviceDisplayName());
+    setQuickAmount(await getLastBottleAmount());
+  }, []);
 
-    void refresh();
+  const onPullToRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    haptics.light();
+    try { await refreshDashboard(); } finally { setRefreshing(false); }
+  }, [refreshDashboard]);
+
+  useEffect(() => {
+    void refreshDashboard();
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void refresh();
+        void refreshDashboard();
       }
     });
     return () => subscription.remove();
-  }, []);
+  }, [refreshDashboard]);
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    const validIds = new Set(entries.map((e) => e.id));
+    const refs = swipeableRefs.current;
+    refs.forEach((_, id) => { if (!validIds.has(id)) refs.delete(id); });
+  }, [entries]);
 
   function startQuickTimer(mode: 'breast' | 'bottle', side: BreastSide = 'left') {
     haptics.medium();
@@ -851,7 +871,7 @@ const settings = await getAppSettings();
   const elapsedHours = hoursSince(lastFeed?.occurredAt);
   const elapsedColor = elapsedHours === null ? MUTED : elapsedHours < 2 ? GREEN : elapsedHours < 3 ? YELLOW : RED;
 
-  const recentEntries = entries.slice(0, 6);
+  const recentEntries = useMemo(() => entries.slice(0, 6), [entries]);
 
   const activeFeedTitle =
     quickTimerMode === 'bottle'
@@ -948,6 +968,9 @@ const settings = await getAppSettings();
               ].map((item, idx, arr) => (
                 <View
                   key={item.label}
+                  accessible
+                  accessibilityRole="text"
+                  accessibilityLabel={`${item.label}: ${item.value}`}
                   style={{
                     flex: 1,
                     alignItems: 'center',
@@ -956,9 +979,9 @@ const settings = await getAppSettings();
                     borderRightColor: BORDER,
                   }}
                 >
-                  <Text style={{ fontSize: 18, marginBottom: 2 }}>{item.emoji}</Text>
-                  <Text style={{ color: TEXT, fontSize: 17, fontWeight: '700', letterSpacing: -0.3 }}>{item.value}</Text>
-                  <Text style={{ color: MUTED, fontSize: 10, fontWeight: '500', marginTop: 1 }}>{item.label}</Text>
+                  <Text accessibilityElementsHidden style={{ fontSize: 18, marginBottom: 2 }}>{item.emoji}</Text>
+                  <Text accessibilityElementsHidden style={{ color: TEXT, fontSize: 17, fontWeight: '700', letterSpacing: -0.3 }}>{item.value}</Text>
+                  <Text accessibilityElementsHidden style={{ color: MUTED, fontSize: 10, fontWeight: '500', marginTop: 1 }}>{item.label}</Text>
                 </View>
               ))}
             </View>
@@ -974,14 +997,14 @@ const settings = await getAppSettings();
             </Text>
             {(() => {
               const actions = [
-                { type: 'diaper', label: t('entry.diaper'), color: '#F59E0B' },
-                { type: 'temperature', label: t('entry.temperature'), color: '#EF4444' },
-                { type: 'vaccine', label: t('entry.vaccine'), color: '#22C55E' },
-                { type: 'symptom', label: t('entry.symptoms'), color: '#EC4899' },
-                { type: 'food', label: t('entry.food'), color: '#D97706' },
-                { type: 'medication', label: t('entry.medicine'), color: '#06B6D4' },
-                { type: 'measurement', label: t('entry.measurement'), color: '#8B5CF6' },
-                { type: 'sleep', label: t('entry.sleep'), color: '#3B82F6' },
+                { type: 'diaper', label: t('entry.diaper'), color: ENTRY_COLORS.diaper },
+                { type: 'temperature', label: t('entry.temperature'), color: ENTRY_COLORS.temperature },
+                { type: 'vaccine', label: t('entry.vaccine'), color: ENTRY_COLORS.vaccine },
+                { type: 'symptom', label: t('entry.symptoms'), color: ENTRY_COLORS.symptom },
+                { type: 'food', label: t('entry.food'), color: ENTRY_COLORS.food },
+                { type: 'medication', label: t('entry.medicine'), color: ENTRY_COLORS.medication },
+                { type: 'measurement', label: t('entry.measurement'), color: ENTRY_COLORS.measurement },
+                { type: 'sleep', label: t('entry.sleep'), color: ENTRY_COLORS.sleep },
               ];
               const timerKindForType: Record<string, 'sleep' | 'pump' | undefined> = {
                 sleep: 'sleep',
@@ -1299,18 +1322,7 @@ const settings = await getAppSettings();
               </View>
               <View>
                 {recentEntries.map((entry, idx) => {
-                  const entryColor: Record<string, string> = {
-                    feed: GOLD,
-                    sleep: BLUE,
-                    diaper: '#F59E0B',
-                    food: '#D97706',
-                    temperature: RED,
-                    medication: '#06B6D4',
-                    vaccine: GREEN,
-                    measurement: '#8B5CF6',
-                    symptom: '#EC4899',
-                  };
-                  const color = entryColor[entry.type] ?? MUTED;
+                  const color = ENTRY_COLORS[entry.type] ?? MUTED;
                   const label = getEntryDisplayLabel(entry, t);
                   const detail = getEntryDetail(entry, t, locale);
 
@@ -1390,6 +1402,8 @@ const settings = await getAppSettings();
                     >
                       <Pressable
                         onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${label}${detail ? ` · ${detail}` : ''} · ${formatClock(entry.occurredAt, locale)} · ${formatRelative(entry.occurredAt, locale)}`}
                         style={({ pressed }) => ({
                           flexDirection: 'row',
                           alignItems: 'center',
@@ -1627,13 +1641,17 @@ const settings = await getAppSettings();
                     key={item.label}
                     onPress={async () => {
                       if (!babyId) return;
+                      haptics.light();
                       const next = hydration + item.amount;
                       setHydration(next);
+                      setLastHydrationDelta(item.amount);
                       await setMomHydration(babyId, next);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.label}
                     style={({ pressed }) => ({
                       flex: 1,
-                      height: 36,
+                      height: 38,
                       borderRadius: 10,
                       backgroundColor: pressed ? `${BLUE}22` : CARD,
                       borderWidth: 1,
@@ -1643,9 +1661,33 @@ const settings = await getAppSettings();
                       opacity: pressed ? 0.88 : 1,
                     })}
                   >
-                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '600' }}>{item.label}</Text>
+                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{item.label}</Text>
                   </Pressable>
                 ))}
+                {lastHydrationDelta !== null && hydration > 0 ? (
+                  <Pressable
+                    onPress={async () => {
+                      if (!babyId) return;
+                      haptics.light();
+                      const next = Math.max(0, hydration - lastHydrationDelta);
+                      setHydration(next);
+                      setLastHydrationDelta(null);
+                      await setMomHydration(babyId, next);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('home.undoLast')}
+                    style={({ pressed }) => ({
+                      width: 38, height: 38,
+                      borderRadius: 10,
+                      backgroundColor: pressed ? `${RED}22` : `${RED}10`,
+                      borderWidth: 1,
+                      borderColor: `${RED}55`,
+                      alignItems: 'center', justifyContent: 'center',
+                    })}
+                  >
+                    <Ionicons name="arrow-undo" size={16} color={RED} />
+                  </Pressable>
+                ) : null}
               </View>
             </View>
           </Animated.View>
@@ -1674,7 +1716,18 @@ const settings = await getAppSettings();
 
   return (
     <Page scroll={false} contentStyle={styles.pageContent}>
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} bounces={false}>
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onPullToRefresh}
+            tintColor={ACCENT}
+            colors={[ACCENT]}
+          />
+        }
+      >
         <View style={{ paddingBottom: Math.max(100, insets.bottom + 80) }}>
           {/* Premium Compact Header */}
           <Animated.View entering={FadeIn.duration(300)} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 }}>
@@ -1723,9 +1776,9 @@ const settings = await getAppSettings();
                   transform: [{ scale: pressed ? 0.92 : 1 }],
                 })}
                 accessibilityRole="button"
-                accessibilityLabel="Settings"
+                accessibilityLabel={t('home.customizeHome')}
               >
-                <Ionicons name="settings-outline" size={18} color={TEXT_SECONDARY} />
+                <Ionicons name="options-outline" size={18} color={TEXT_SECONDARY} />
               </Pressable>
             </View>
 
@@ -2041,7 +2094,7 @@ const settings = await getAppSettings();
                           }}
                         >
                           <Text style={{ color: active ? GOLD : MUTED, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>
-                            {active ? t('home.activeLabel') : t('common.add')}
+                            {active ? t('home.activeLabel') : t('home.selectLabel')}
                           </Text>
                         </View>
                       </View>

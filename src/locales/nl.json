@@ -239,7 +239,10 @@
     "clear": "Wis"
   },
   "diaper": {
-    "title": "Luierlog"
+    "title": "Luierlog",
+    "pee": "Plas",
+    "poop": "Poep",
+    "vomit": "Spuug"
   },
   "modal": {
     "chooseSide": "Kies zijde",
@@ -266,6 +269,10 @@
   },
   "home": {
     "addEntry": "Toevoegen",
+    "selectLabel": "Selecteren",
+    "customizeHome": "Home aanpassen",
+    "undoLast": "Ongedaan maken",
+    "minusAmount": "−{amount} ml",
     "defaultFeeding": "Standaard voeding",
     "openProfile": "Profiel openen",
     "switcherSubtitle": "Kies het actieve profiel voor dit dashboard.",
