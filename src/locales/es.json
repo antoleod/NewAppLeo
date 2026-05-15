@@ -852,6 +852,8 @@
     "cardBody": "Elige la identidad visual de los iconos e ilustraciones en toda la app.",
     "softName": "Suave",
     "softDesc": "Estilo distintivo de BabyFlow — ilustraciones dibujadas a mano con toques de color.",
+    "boldName": "Marcado",
+    "boldDesc": "Iconos SVG con relleno y más contraste para tarjetas compactas y lectura rápida.",
     "outlineName": "Contorno",
     "outlineDesc": "Minimalista, solo líneas sin relleno. Ideal de noche y para ambientes sobrios.",
     "classicName": "Clásico",

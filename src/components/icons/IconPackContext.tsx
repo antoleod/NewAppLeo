@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { IconPack, IconPackId } from './IconPack';
 import { softPack } from './packs/soft';
+import { boldPack } from './packs/bold';
 import { classicPack } from './packs/classic';
 import { outlinePack } from './packs/outline';
 
@@ -9,11 +10,12 @@ const STORAGE_KEY = 'appleo.iconPack';
 
 export const ALL_PACKS: Record<IconPackId, IconPack> = {
   soft: softPack,
+  bold: boldPack,
   classic: classicPack,
   outline: outlinePack,
 };
 
-export const ICON_PACK_LIST: IconPack[] = [softPack, outlinePack, classicPack];
+export const ICON_PACK_LIST: IconPack[] = [softPack, boldPack, outlinePack, classicPack];
 
 interface IconPackContextValue {
   pack: IconPack;
@@ -35,7 +37,7 @@ export function IconPackProvider({ children }: { children: React.ReactNode }) {
     let alive = true;
     void AsyncStorage.getItem(STORAGE_KEY).then((stored) => {
       if (!alive) return;
-      if (stored === 'soft' || stored === 'classic' || stored === 'outline') {
+      if (stored === 'soft' || stored === 'bold' || stored === 'classic' || stored === 'outline') {
         setPackIdState(stored);
       }
     });

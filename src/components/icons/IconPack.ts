@@ -8,7 +8,7 @@ import type { ComponentType } from 'react';
 export type GlyphProps = { size?: number; color?: string };
 export type Glyph = ComponentType<GlyphProps>;
 
-export type IconPackId = 'soft' | 'classic' | 'outline';
+export type IconPackId = 'soft' | 'bold' | 'classic' | 'outline';
 
 export interface IconPack {
   id: IconPackId;

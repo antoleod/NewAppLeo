@@ -852,6 +852,8 @@
     "cardBody": "Choose the visual identity of icons and illustrations across the app.",
     "softName": "Soft",
     "softDesc": "BabyFlow signature — hand-drawn illustrations with subtle colour fills.",
+    "boldName": "Bold",
+    "boldDesc": "Filled SVG icons with stronger contrast for compact cards and quick scanning.",
     "outlineName": "Outline",
     "outlineDesc": "Minimal, line-only with no fills. Perfect for night use and calm vibes.",
     "classicName": "Classic",

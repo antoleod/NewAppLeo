@@ -852,6 +852,8 @@
     "cardBody": "Kies de visuele identiteit van pictogrammen en illustraties in de hele app.",
     "softName": "Zacht",
     "softDesc": "BabyFlow signatuur — handgetekende illustraties met subtiele kleurvullingen.",
+    "boldName": "Duidelijk",
+    "boldDesc": "Gevulde SVG-iconen met meer contrast voor compacte kaarten en snel scannen.",
     "outlineName": "Contour",
     "outlineDesc": "Minimalistisch, alleen lijnen zonder vulling. Perfect voor 's nachts.",
     "classicName": "Klassiek",
