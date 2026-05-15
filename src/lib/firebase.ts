@@ -1,6 +1,13 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
+import {
+  browserLocalPersistence,
+  getAuth,
+  initializeAuth,
+  setPersistence,
+  type Auth,
+} from 'firebase/auth';
 import {
   getFirestore,
   initializeFirestore,
@@ -44,10 +51,6 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
  *  - `experimentalAutoDetectLongPolling`: critical on flaky mobile networks
  *    and corporate proxies that block WebChannel streaming. Without it the
  *    SDK can hang for ~30 s before realising it has to fall back.
- *
- * `initializeFirestore` must run BEFORE any call to `getFirestore`. We guard
- * with try/catch so HMR (which re-evaluates this file) doesn't crash on the
- * "already initialized" error.
  */
 let dbInstance: Firestore;
 try {
@@ -63,15 +66,53 @@ try {
 }
 export const db = dbInstance;
 
-export const auth = getAuth(app);
-
-// browserLocalPersistence works on Web (IndexedDB) and is a no-op on RN.
-// Real RN persistence requires firebase v10's `getReactNativePersistence`
-// or migrating to @react-native-firebase/auth — see audit notes.
+/**
+ * Auth persistence:
+ *  - Web: IndexedDB-backed (`browserLocalPersistence`) → user stays logged in
+ *    across page reloads / browser restarts.
+ *  - Native: AsyncStorage-backed via `getReactNativePersistence`. This export
+ *    only resolves once Metro picks up Firebase's RN-specific build, which
+ *    requires `unstable_enablePackageExports = false` in `metro.config.js`.
+ *    Without that, the import returns `undefined` → in-memory persistence →
+ *    user is logged out at every cold start.
+ *  - `initializeAuth` MUST run before any `getAuth(app)` call. We try/catch
+ *    so HMR re-evaluation doesn't crash on "already initialized".
+ */
+let authInstance: Auth;
 if (Platform.OS === 'web') {
-  setPersistence(auth, browserLocalPersistence).catch((error) => {
+  authInstance = getAuth(app);
+  setPersistence(authInstance, browserLocalPersistence).catch((error) => {
     console.warn('Firebase auth persistence could not be set:', error);
   });
+} else {
+  try {
+    // getReactNativePersistence isn't in the public types of firebase/auth v11
+    // but is exported at runtime once Metro resolves the RN entry. The
+    // dynamic require + cast keeps TypeScript happy without unsafe globals.
+    const { getReactNativePersistence } = require('firebase/auth') as {
+      getReactNativePersistence?: (storage: typeof AsyncStorage) => unknown;
+    };
+    if (typeof getReactNativePersistence === 'function') {
+      authInstance = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage) as any,
+      });
+    } else {
+      console.warn(
+        'getReactNativePersistence not found — auth will use in-memory persistence. ' +
+        'Confirm metro.config.js disables unstable_enablePackageExports.',
+      );
+      authInstance = getAuth(app);
+    }
+  } catch (error) {
+    // initializeAuth throws if called twice (e.g. HMR). Fall back to getAuth.
+    if (/already-initialized/i.test((error as any)?.code ?? '')) {
+      authInstance = getAuth(app);
+    } else {
+      console.warn('initializeAuth failed, falling back to getAuth:', error);
+      authInstance = getAuth(app);
+    }
+  }
 }
+export const auth = authInstance;
 
 export { app };

@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Page, SkeletonCard } from '@/components/shared';
+import { Button, Page, SkeletonCard, SyncStatusBadge } from '@/components/shared';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
@@ -1836,25 +1836,28 @@ export default function HomeScreen() {
                   {resolvedDisplayName}
                 </Text>
               </View>
-              <Pressable
-                onPress={() => setShowHomeCustomizer(true)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={({ pressed }) => ({
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  borderWidth: 1,
-                  borderColor: BORDER,
-                  backgroundColor: pressed ? BORDER_SOFT : CARD,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transform: [{ scale: pressed ? 0.92 : 1 }],
-                })}
-                accessibilityRole="button"
-                accessibilityLabel={t('home.customizeHome')}
-              >
-                <Ionicons name="options-outline" size={18} color={TEXT_SECONDARY} />
-              </Pressable>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <SyncStatusBadge />
+                <Pressable
+                  onPress={() => setShowHomeCustomizer(true)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={({ pressed }) => ({
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    borderWidth: 1,
+                    borderColor: BORDER,
+                    backgroundColor: pressed ? BORDER_SOFT : CARD,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transform: [{ scale: pressed ? 0.92 : 1 }],
+                  })}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('home.customizeHome')}
+                >
+                  <Ionicons name="options-outline" size={18} color={TEXT_SECONDARY} />
+                </Pressable>
+              </View>
             </View>
 
             {/* Baby chip - compact and premium */}

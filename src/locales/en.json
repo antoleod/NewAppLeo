@@ -825,5 +825,12 @@
     "chipUsual": "Usual",
     "chipLonger": "Longer",
     "chipLast": "Last"
+  },
+  "sync": {
+    "synced": "Synced",
+    "syncing": "Syncing…",
+    "offline": "Offline",
+    "queued": "To sync",
+    "queuedCount": "{count} pending"
   }
 }

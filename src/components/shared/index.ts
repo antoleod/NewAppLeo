@@ -6,5 +6,6 @@ export * from './MinimizedSleepTimer';
 export * from './MiniTimerBar';
 export * from './NightOverlay';
 export * from './QuantityPicker';
+export * from './SyncStatusBadge';
 export * from './Toast';
 export * from './ui';

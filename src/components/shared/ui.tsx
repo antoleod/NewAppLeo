@@ -51,10 +51,12 @@ export function Page({
   children,
   scroll = true,
   contentStyle,
+  refreshControl,
 }: {
   children: React.ReactNode;
   scroll?: boolean;
   contentStyle?: any;
+  refreshControl?: React.ComponentProps<typeof ScrollView>['refreshControl'];
 }) {
   const { width } = useWindowDimensions();
   const { colors, gradients, themeStyle, backgroundPhotoUri } = useTheme();
@@ -103,7 +105,11 @@ export function Page({
       )}
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
         {scroll ? (
-          <ScrollView contentContainerStyle={[styles.scroll, isDesktopWeb && styles.scrollDesktop]} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={[styles.scroll, isDesktopWeb && styles.scrollDesktop]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={refreshControl}
+          >
             {content}
           </ScrollView>
         ) : (

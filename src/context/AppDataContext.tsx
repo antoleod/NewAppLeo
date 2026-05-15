@@ -19,7 +19,7 @@ import { EntryPayload, EntryRecord, EntryType } from '@/types';
 import { useAuth } from './AuthContext';
 import { getTodaySummary } from '@/utils/entries';
 import { deleteLocalEntry, getLocalEntries, setLocalEntries, upsertLocalEntry } from '@/services/localStore';
-import { flushQueuedOperations, mergeEntries, pullEntries, queueDeletes, queueUpserts } from '@/lib/sync';
+import { flushQueuedOperations, loadQueuedOperations, mergeEntries, pullEntries, queueDeletes, queueUpserts } from '@/lib/sync';
 import { buildLeoProfilePatch, importLeoEntries } from '@/lib/leoData';
 import { getAppSettings, saveBaby, setAppSettings } from '@/lib/storage';
 import { setGuestProfile } from '@/lib/storage';
@@ -36,10 +36,14 @@ function stripUndefined<T>(obj: T): T {
   return obj;
 }
 
+export type SyncState = 'synced' | 'syncing' | 'offline' | 'queued';
+
 export interface AppDataContextValue {
   entries: EntryRecord[];
   loading: boolean;
   summary: ReturnType<typeof getTodaySummary>;
+  syncState: SyncState;
+  pendingSyncCount: number;
   addEntry: (input: { type: EntryType; title?: string; payload: EntryPayload; occurredAt?: string; notes?: string }) => Promise<string>;
   updateEntry: (id: string, patch: Partial<EntryRecord>) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
@@ -118,6 +122,22 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const { user, profile, guestMode } = useAuth();
   const [entries, setEntries] = useState<EntryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncState, setSyncState] = useState<SyncState>('synced');
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+
+  const refreshPendingCount = React.useCallback(async () => {
+    try {
+      const queue = await loadQueuedOperations();
+      setPendingSyncCount(queue.length);
+      // Auto-update visible state so the indicator self-clears when the
+      // queue drains in the background.
+      setSyncState((current) => {
+        if (queue.length === 0 && current === 'queued') return 'synced';
+        if (queue.length > 0 && current === 'synced') return 'queued';
+        return current;
+      });
+    } catch {}
+  }, []);
 
   // Tracks whether Firestore is reachable. Resets to true on each auth change or
   // foreground transition so we always retry online first.
@@ -244,11 +264,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         if (settled || cancelledRef.current) return;
         settled = true;
         remoteAvailableRef.current = false;
+        setSyncState('offline');
         const localEntries = await getLocalEntries(uid);
         if (!cancelledRef.current) {
           setEntries(localEntries);
           setLoading(false);
         }
+        void refreshPendingCount();
       }, 8000);
 
       unsubscribeRef.current = onSnapshot(
@@ -274,6 +296,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           // foreground reconnect.
           setEntries((current) => (sameEntryList(current, next) ? current : next));
           setLoading(false);
+          void refreshPendingCount();
         },
         async (error) => {
           if (cancelledRef.current) return;
@@ -281,6 +304,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           clearTimeout(fallbackTimer);
 
           remoteAvailableRef.current = false;
+          setSyncState('offline');
 
           if (isPermissionDenied(error)) {
             // Permanent — do not retry until next sign-in
@@ -293,6 +317,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             setEntries(localEntries);
             setLoading(false);
           }
+          void refreshPendingCount();
         },
       );
     };
@@ -316,9 +341,21 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       if (inFlight) return;
       inFlight = true;
       try {
-        await flushQueuedOperations(profile.uid);
+        const queue = await loadQueuedOperations();
+        if (queue.length > 0) setSyncState('syncing');
+        const result = await flushQueuedOperations(profile.uid);
+        await refreshPendingCount();
+        // Only flip back to 'synced' / 'queued' if we're not currently in
+        // an offline state that the snapshot listener detected separately.
+        setSyncState((current) => {
+          if (current === 'offline') return current;
+          if (result.flushed && (result.requeued ?? 0) === 0) return 'synced';
+          if ((result.requeued ?? 0) > 0) return 'queued';
+          return current;
+        });
       } catch (error) {
         console.warn('Background sync flush failed:', error);
+        setSyncState('offline');
       } finally {
         inFlight = false;
       }
@@ -394,7 +431,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           permissionDeniedRef.current = true;
         }
         remoteAvailableRef.current = false;
-        void queueUpserts([nextEntry]);
+        setSyncState('queued');
+        void queueUpserts([nextEntry]).then(refreshPendingCount);
       }
     }
 
@@ -425,7 +463,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           permissionDeniedRef.current = true;
         }
         remoteAvailableRef.current = false;
-        if (next) void queueUpserts([next]);
+        setSyncState('queued');
+        if (next) void queueUpserts([next]).then(refreshPendingCount);
       }
     }
 
@@ -452,11 +491,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           permissionDeniedRef.current = true;
         }
         remoteAvailableRef.current = false;
+        setSyncState('queued');
         void queueDeletes([{
           id,
           occurredAt: current?.occurredAt ?? new Date().toISOString(),
           updatedAt: current?.updatedAt ?? new Date().toISOString(),
-        }]);
+        }]).then(refreshPendingCount);
       }
     }
 
@@ -515,8 +555,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       seedDemoData,
       entryById,
       forceReconnect,
+      syncState,
+      pendingSyncCount,
     }),
-    [entries, loading, summary, forceReconnect],
+    [entries, loading, summary, forceReconnect, syncState, pendingSyncCount],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

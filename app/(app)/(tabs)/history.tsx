@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, RefreshControl, ScrollView, Share, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { router } from 'expo-router';
@@ -238,7 +238,7 @@ export default function HistoryScreen() {
     () => FILTER_DEFS.map((f) => ({ label: t(f.tKey), value: f.value })),
     [t, language],
   );
-  const { entries, deleteEntry, addEntry } = useAppData();
+  const { entries, deleteEntry, addEntry, forceReconnect } = useAppData();
   const { profile } = useAuth();
   const { theme } = useTheme();
   const toast = useToast();
@@ -451,7 +451,16 @@ export default function HistoryScreen() {
   const [showInsights, setShowInsights] = useState(true);
   const [showTimeGroups, setShowTimeGroups] = useState(true);
   const [undoEntry, setUndoEntry] = useState<EntryRecord | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const didAutoSelectLatest = useRef(false);
+
+  const onPullToRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    forceReconnect();
+    // Visual feedback for ~600ms even if reconnect is instant — gives the
+    // native spinner time to play its animation cleanly.
+    setTimeout(() => setRefreshing(false), 600);
+  }, [forceReconnect]);
 
   const dayEntries = useMemo(
     () =>
@@ -1132,7 +1141,20 @@ export default function HistoryScreen() {
     ) : null;
 
   return (
-    <Page scroll={!isWideWeb} contentStyle={[{ width: '100%' }, isWideWeb && { flex: 1 }]}>
+    <Page
+      scroll={!isWideWeb}
+      contentStyle={[{ width: '100%' }, isWideWeb && { flex: 1 }]}
+      refreshControl={
+        !isWideWeb ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onPullToRefresh}
+            tintColor={GOLD}
+            colors={[GOLD]}
+          />
+        ) : undefined
+      }
+    >
       {isWideWeb ? (
         <View style={{ flex: 1, flexDirection: 'row', gap: 16, minHeight: 0, position: 'relative' }}>
           <ScrollView

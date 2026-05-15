@@ -825,5 +825,12 @@
     "chipUsual": "Gebruikelijk",
     "chipLonger": "Langer",
     "chipLast": "Laatste"
+  },
+  "sync": {
+    "synced": "Gesynchroniseerd",
+    "syncing": "Synchroniseren…",
+    "offline": "Offline",
+    "queued": "Te synchroniseren",
+    "queuedCount": "{count} in wachtrij"
   }
 }
