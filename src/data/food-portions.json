@@ -1,5 +1,5 @@
 {
-es muy simple   "description": "Recomendaciones de porciones de alimentos por edad, alineadas con consumo típico real (no solo el mínimo OMS de introducción). Para bebés que ya están establecidos comiendo sólidos.",
+  "description": "Recomendaciones de porciones de alimentos por edad, alineadas con consumo típico real (no solo el mínimo OMS de introducción). Para bebés que ya están establecidos comiendo sólidos.",
   "source": "WHO Child Growth Standards + AAP Pediatric Feeding Guidelines + adjusted upward to reflect typical 50th-percentile intake rather than the introduction-floor values",
   "portions": [
     {
