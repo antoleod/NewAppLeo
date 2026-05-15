@@ -96,8 +96,8 @@ export function Page({
           <LinearGradient colors={gradients.page as [string, string, ...string[]]} style={StyleSheet.absoluteFill} />
           <LinearGradient
             colors={themeStyle === 'photo'
-              ? ['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.28)']
-              : ['rgba(0,0,0,0.04)', 'rgba(0,0,0,0.14)']}
+              ? ['rgba(0,0,0,0.34)', 'rgba(0,0,0,0.48)', 'rgba(0,0,0,0.58)']
+              : ['rgba(0,0,0,0.18)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.38)']}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -180,7 +180,9 @@ export function Heading({
   // dark mode keeps subtler stops because the dark surface naturally grounds the gradient.
   const stops =
     themeStyle === 'photo'
-      ? { strong: 0.26, soft: 0.10, fadeBase: 0.18, fadeEnd: 0 }
+      ? isDark
+        ? { strong: 0.42, soft: 0.22, fadeBase: 0.72, fadeEnd: 0.48 }
+        : { strong: 0.36, soft: 0.20, fadeBase: 0.78, fadeEnd: 0.55 }
       : themeStyle === 'classic'
         ? isDark
           ? { strong: 0.16, soft: 0.06, fadeBase: 0.5, fadeEnd: 0.18 }
@@ -191,7 +193,7 @@ export function Heading({
 
   // Light mode uses bgCardAlt (slightly tinted) instead of bgCard (pure white) so the
   // heading reads a touch darker / more grounded against the page.
-  const fadeSurface = isDark ? theme.bgCard : theme.bgCardAlt;
+  const fadeSurface = isDark ? theme.bgCard : theme.bgCard;
   const cardBase = withColorOpacity(fadeSurface, stops.fadeBase);
   const cardEnd = stops.fadeEnd > 0 ? withColorOpacity(fadeSurface, stops.fadeEnd) : 'transparent';
   const accentStrong = withColorOpacity(theme.accent, stops.strong);
@@ -199,11 +201,15 @@ export function Heading({
 
   const gradientColors = [accentStrong, accentSoft, cardBase, cardEnd] as const;
 
-  const containerBorder = withColorOpacity(theme.accent, isDark ? 0.28 : 0.28);
-  const innerHighlight = withColorOpacity('#ffffff', isDark ? 0.06 : 0.22);
-  const eyebrowBg = withColorOpacity(theme.accent, isDark ? 0.18 : 0.18);
-  const eyebrowBorder = withColorOpacity(theme.accent, isDark ? 0.4 : 0.38);
+  const containerBorder = withColorOpacity(theme.accent, themeStyle === 'photo' ? 0.42 : isDark ? 0.28 : 0.32);
+  const innerHighlight = withColorOpacity('#ffffff', themeStyle === 'photo' ? 0.38 : isDark ? 0.06 : 0.22);
+  const eyebrowBg = withColorOpacity(theme.accent, themeStyle === 'photo' ? 0.28 : isDark ? 0.18 : 0.2);
+  const eyebrowBorder = withColorOpacity(theme.accent, themeStyle === 'photo' ? 0.58 : isDark ? 0.4 : 0.42);
   const accentRibbon = withColorOpacity(theme.accent, isDark ? 0.7 : 0.8);
+  const headingTitleColor = themeStyle === 'photo' && !isDark ? '#111111' : theme.textPrimary;
+  const headingShadow = themeStyle === 'photo'
+    ? { textShadowColor: 'rgba(255,255,255,0.42)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }
+    : null;
 
   return (
     <View
@@ -214,7 +220,8 @@ export function Heading({
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: containerBorder,
-        ...shadow(theme.accent, themeStyle === 'classic' ? 0.06 : 0.04, 12, 0, 6),
+        backgroundColor: withColorOpacity(fadeSurface, themeStyle === 'photo' ? 0.72 : 0.18),
+        ...shadow(theme.accent, themeStyle === 'classic' ? 0.06 : themeStyle === 'photo' ? 0.12 : 0.05, 14, 0, 7),
       }}
     >
       <LinearGradient
@@ -276,7 +283,7 @@ export function Heading({
               style={{
                 color: theme.accent,
                 fontSize: Math.round(10 * scale),
-                fontWeight: '700',
+                fontWeight: '900',
                 letterSpacing: 1.4,
                 textTransform: 'uppercase',
               }}
@@ -297,13 +304,14 @@ export function Heading({
         >
           <Text
             style={{
-              color: theme.textPrimary,
+              color: headingTitleColor,
               fontSize: Math.round(24 * scale),
-              fontWeight: '800',
+              fontWeight: '900',
               letterSpacing: -0.5,
               lineHeight: Math.round(30 * scale),
               textAlign: isCenter ? 'center' : 'left',
               flex: 1,
+              ...(headingShadow as any),
             }}
           >
             {title}
