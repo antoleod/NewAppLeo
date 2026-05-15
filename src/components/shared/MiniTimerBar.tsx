@@ -7,6 +7,8 @@ import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useTimer, TimerKind } from '@/context/TimerContext';
 import { shadow } from '@/lib/shadow';
+import { BottleIcon, BreastfeedingIcon } from '@/components/history/FeedingIcons';
+import { PumpIcon, SleepIcon } from '@/components/history/EntryTypeIcons';
 
 function pad(n: number) {
   return String(Math.max(0, Math.floor(n))).padStart(2, '0');
@@ -50,7 +52,11 @@ export function MiniTimerBar() {
 
   const bottomOffset = 74 + insets.bottom + 10;
   const labelKey = KIND_LABEL[active.kind];
-  const emoji = KIND_EMOJI[active.kind];
+  const timerIcon =
+    active.kind === 'breast' ? <BreastfeedingIcon size={22} color={theme.accent} /> :
+    active.kind === 'bottle' ? <BottleIcon size={22} color={theme.accent} /> :
+    active.kind === 'pump' ? <PumpIcon size={22} color={theme.accent} /> :
+    <SleepIcon size={22} color={theme.accent} />;
 
   const onPress = () => {
     expand();
@@ -107,7 +113,7 @@ export function MiniTimerBar() {
             justifyContent: 'center',
           }}
         >
-          <Text style={{ fontSize: 16 }}>{emoji}</Text>
+          {timerIcon}
         </View>
         <View style={{ flex: 1, gap: 1 }}>
           <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }} numberOfLines={1}>

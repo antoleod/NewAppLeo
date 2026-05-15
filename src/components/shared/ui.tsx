@@ -537,7 +537,7 @@ export function Segment({
   onChange,
 }: {
   value: string;
-  options: Array<{ label: string; value: string }>;
+  options: Array<{ label: string; value: string; icon?: React.ReactNode }>;
   onChange: (value: string) => void;
 }) {
   const { width } = useWindowDimensions();
@@ -557,6 +557,7 @@ export function Segment({
               selected && { backgroundColor: theme.bgCard, borderColor: theme.borderActive },
             ]}
           >
+            {option.icon ? <View style={styles.segmentIcon}>{option.icon}</View> : null}
             <Text style={[styles.segmentLabel, { color: selected ? theme.textPrimary : theme.textMuted }]}>{option.label}</Text>
           </Pressable>
         );
@@ -956,7 +957,9 @@ const styles = StyleSheet.create({
   },
   segmentItem: {
     flex: 1,
+    flexDirection: 'row',
     borderRadius: radii.pill,
+    gap: 7,
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -965,6 +968,12 @@ const styles = StyleSheet.create({
   segmentItemStack: {
     flex: 0,
     width: '100%',
+  },
+  segmentIcon: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   segmentLabel: {
     ...typography.pill,

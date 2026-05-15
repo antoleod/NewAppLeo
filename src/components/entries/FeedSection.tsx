@@ -5,6 +5,7 @@ import { TimerWidget } from '@/components/home';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { typeMeta } from '@/lib/entryComposer';
+import { BottleIcon, BreastfeedingIcon } from '@/components/history/FeedingIcons';
 
 type Props = {
   mode: 'breast' | 'bottle';
@@ -34,8 +35,8 @@ export const FeedSection = React.memo(function FeedSection({
         value={mode}
         onChange={(v) => setMode(v as 'breast' | 'bottle')}
         options={[
-          { label: t('entry.breast'), value: 'breast' },
-          { label: t('entry.bottle'), value: 'bottle' },
+          { label: t('entry.breast'), value: 'breast', icon: <BreastfeedingIcon size={22} color={mode === 'breast' ? meta.tone : colors.muted} /> },
+          { label: t('entry.bottle'), value: 'bottle', icon: <BottleIcon size={22} color={mode === 'bottle' ? meta.tone : colors.muted} /> },
         ]}
       />
       {mode === 'bottle' ? (
