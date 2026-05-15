@@ -1,6 +1,6 @@
 import { useColorScheme } from 'react-native';
 
-export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand';
+export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand' | 'mint' | 'coral' | 'plum';
 export type ThemePaletteMode = 'nuit' | 'jour';
 export type ThemeStyle = 'default' | 'photo' | 'classic';
 
@@ -168,6 +168,78 @@ const variantOverrides: Record<ThemeVariant, Partial<Record<ThemePaletteMode, Pa
       borderActive: '#8C6B3F',
     },
   },
+  mint: {
+    nuit: {
+      bg: '#071210',
+      bgCard: '#0F1D1A',
+      bgCardAlt: '#172C27',
+      border: '#1D3A32',
+      accent: '#5ED6B3',
+      green: '#7BE0B6',
+      blue: '#75B8D8',
+      yellow: '#E3C36C',
+      borderActive: '#5ED6B3',
+    },
+    jour: {
+      bg: '#EEF8F4',
+      bgCard: '#FAFFFD',
+      bgCardAlt: '#E3F2EC',
+      border: '#CDE2D8',
+      accent: '#247C68',
+      green: '#2E8A5B',
+      blue: '#2F82A1',
+      yellow: '#A56A19',
+      borderActive: '#247C68',
+    },
+  },
+  coral: {
+    nuit: {
+      bg: '#160C0B',
+      bgCard: '#211311',
+      bgCardAlt: '#301B18',
+      border: '#3B231F',
+      accent: '#EE8A72',
+      green: '#7BC99A',
+      blue: '#F0B17D',
+      yellow: '#F5C15F',
+      borderActive: '#EE8A72',
+    },
+    jour: {
+      bg: '#FFF3EF',
+      bgCard: '#FFFBF8',
+      bgCardAlt: '#F8E6DF',
+      border: '#E8CFC5',
+      accent: '#C85D45',
+      green: '#3C8659',
+      blue: '#B9774A',
+      yellow: '#A96715',
+      borderActive: '#C85D45',
+    },
+  },
+  plum: {
+    nuit: {
+      bg: '#100D16',
+      bgCard: '#191421',
+      bgCardAlt: '#231C2D',
+      border: '#30273B',
+      accent: '#BFA1F2',
+      green: '#82C99B',
+      blue: '#9CC1F3',
+      yellow: '#DDBB72',
+      borderActive: '#BFA1F2',
+    },
+    jour: {
+      bg: '#F7F3FB',
+      bgCard: '#FEFBFF',
+      bgCardAlt: '#EFE8F6',
+      border: '#DED2EA',
+      accent: '#7652A6',
+      green: '#3E805A',
+      blue: '#5F77B5',
+      yellow: '#946A1C',
+      borderActive: '#7652A6',
+    },
+  },
 };
 
 /**
@@ -207,6 +279,21 @@ export const themeVariantDescriptions: Record<ThemeVariant, { label: string; des
     label: 'Sand',
     emoji: '🏜️',
     description: 'Warm neutrals – cozy and natural, inspired by desert sunsets',
+  },
+  mint: {
+    label: 'Mint',
+    emoji: '🌱',
+    description: 'Fresh mint and aqua tones - clean, bright, and easy to scan',
+  },
+  coral: {
+    label: 'Coral',
+    emoji: '🪸',
+    description: 'Soft coral warmth with grounded contrast for a friendlier feel',
+  },
+  plum: {
+    label: 'Plum',
+    emoji: '🫐',
+    description: 'Deep plum with cool accents - calm, premium, and focused',
   },
 };
 

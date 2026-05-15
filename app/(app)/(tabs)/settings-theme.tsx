@@ -21,6 +21,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button, Card, Page, Segment, useToast } from '@/components/shared';
 import { ICON_PACK_LIST, useIconPackController } from '@/components/icons/IconPackContext';
 import { GLYPH_TONES } from '@/components/icons/IconPack';
+import { HomeTabIcon, HistoryTabIcon, InsightsTabIcon, ProfileTabIcon } from '@/components/navigation';
 import { BackgroundPhotoSelector } from '@/components/profile';
 import { SettingsImporter } from '@/components/profile';
 import { DataExporter } from '@/components/profile';
@@ -29,7 +30,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { confirmAction } from '@/lib/confirm';
 import { haptics } from '@/lib/haptics';
 
-const VARIANT_KEYS: readonly ThemeVariant[] = ['sage', 'rose', 'navy', 'sand'];
+const VARIANT_KEYS: readonly ThemeVariant[] = ['sage', 'mint', 'coral', 'plum', 'rose', 'navy', 'sand'];
 
 const SLIDER_HEIGHT = 44;
 const THUMB_SIZE = 28;
@@ -72,7 +73,7 @@ export default function ThemeSettings() {
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
 
   const carouselScrollRef = useRef<ScrollView>(null);
-  const cardWidth = Math.min(320, Math.max(250, width - 70));
+  const cardWidth = Math.min(300, Math.max(230, width - 78));
   const snapInterval = cardWidth + 12;
 
   // Reads the live theme.ts tokens — no more drift risk from hardcoded duplication.
@@ -291,9 +292,9 @@ export default function ThemeSettings() {
                     { borderColor: active ? item.swatches[2] : theme.border, backgroundColor: theme.bgCardAlt },
                   ]}
                 >
-                  <View style={styles.swatches}>
+                  <View style={[styles.swatchHero, { backgroundColor: item.swatches[0], borderColor: active ? item.swatches[2] : theme.border }]}>
                     {item.swatches.map((color, idx) => (
-                      <View key={`${item.key}-sw-${idx}`} style={[styles.swatch, { backgroundColor: color }]} />
+                      <View key={`${item.key}-sw-${idx}`} style={[styles.swatch, { backgroundColor: color, width: idx === 2 ? 34 : 22 }]} />
                     ))}
                   </View>
                   <Text style={[styles.themeTitle, { color: theme.textPrimary }]}>{item.title}</Text>
@@ -537,9 +538,9 @@ const styles = StyleSheet.create({
   carouselTrack: { gap: 12, paddingRight: 4 },
   carouselDots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 10 },
   carouselDot: { height: 7, borderRadius: 999 },
-  themeCard: { borderWidth: 1, borderRadius: 14, padding: 12 },
-  swatches: { flexDirection: 'row', gap: 6, marginBottom: 8 },
-  swatch: { width: 18, height: 18, borderRadius: 999 },
+  themeCard: { borderWidth: 1, borderRadius: 14, padding: 12, minHeight: 148 },
+  swatchHero: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 10, borderWidth: 1, borderRadius: 12, padding: 8 },
+  swatch: { height: 22, borderRadius: 999 },
   themeTitle: { fontSize: 14, fontWeight: '800' },
   themeBody: { fontSize: 12, marginTop: 4 },
   statusRow: {
@@ -579,6 +580,16 @@ const styles = StyleSheet.create({
   opacityScaleText: { fontSize: 11, fontWeight: '700' },
   controlLabel: { fontSize: 12, fontWeight: '800', marginTop: 16, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
   pwaInstalledBadge: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' },
+  footerPreview: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
 });
 
 /**
@@ -634,6 +645,12 @@ function IconPackPickerCard() {
                 <DropPee size={26} color={GLYPH_TONES.dropPee} />
                 <AmountAll size={26} color={GLYPH_TONES.amountAll} />
                 <SleepCalm size={26} color={GLYPH_TONES.sleepCalm} />
+              </View>
+              <View style={[styles.footerPreview, { borderColor: theme.border, backgroundColor: theme.bgCardAlt }]}>
+                <HomeTabIcon size={20} color={theme.accent} focused iconStyle={pack.id} />
+                <HistoryTabIcon size={20} color={theme.textMuted} iconStyle={pack.id} />
+                <InsightsTabIcon size={20} color={theme.textMuted} iconStyle={pack.id} />
+                <ProfileTabIcon size={20} color={theme.textMuted} iconStyle={pack.id} />
               </View>
             </Pressable>
           );

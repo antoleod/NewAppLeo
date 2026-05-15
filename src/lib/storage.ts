@@ -13,7 +13,7 @@ const DEVICE_DISPLAY_NAME_KEY = 'appleo.deviceDisplayName';
 const SESSION_PREFIX = 'appleo.sessions';
 const CURRENT_SESSION_PREFIX = 'appleo.currentSession';
 
-export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand';
+export type ThemeVariant = 'sage' | 'rose' | 'navy' | 'sand' | 'mint' | 'coral' | 'plum';
 export type ThemeStyle = 'default' | 'photo' | 'classic';
 
 export interface BabyProfile {

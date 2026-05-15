@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Platform, Text, View, useWindowDimensions } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocale } from '@/context/LocaleContext';
+import { useIconPackController } from '@/components/icons/IconPackContext';
 import {
   HomeTabIcon,
   HistoryTabIcon,
@@ -11,7 +12,7 @@ import {
   SettingsThemeTabIcon,
 } from '@/components/navigation';
 
-type TabIconComponent = React.ComponentType<{ color: string; size?: number; focused?: boolean }>;
+type TabIconComponent = React.ComponentType<{ color: string; size?: number; focused?: boolean; iconStyle?: 'soft' | 'bold' | 'outline' | 'classic' }>;
 
 const CUSTOM_ICONS: Record<string, TabIconComponent> = {
   home:             HomeTabIcon,
@@ -24,15 +25,21 @@ const CUSTOM_ICONS: Record<string, TabIconComponent> = {
 export default function TabsLayout() {
   const { width } = useWindowDimensions();
   const { theme, themeStyle } = useTheme();
+  const { packId } = useIconPackController();
   const { t } = useLocale();
   const isPhoto = themeStyle === 'photo';
   const isDesktopWeb = Platform.OS === 'web' && width >= 1280;
   const isMobile = !isDesktopWeb;
 
-  const tabBarBackground = isPhoto ? `${theme.navBg}DD` : theme.navBg;
+  const tabBarBackground = isPhoto ? `${theme.navBg}F2` : theme.navBg;
   const tabBarBorder = isPhoto ? `${theme.navBorder}CC` : theme.navBorder;
   const activeTint = isMobile && isPhoto ? '#FFFFFF' : theme.navActive;
   const inactiveTint = isMobile && isPhoto ? 'rgba(255,255,255,0.82)' : theme.navInactive;
+  const activePillBg =
+    packId === 'bold' ? `${activeTint}30` :
+    packId === 'outline' ? 'transparent' :
+    packId === 'classic' ? `${activeTint}18` :
+    `${activeTint}22`;
 
   return (
     <Tabs
@@ -67,15 +74,17 @@ export default function TabsLayout() {
           tabBarLabelPosition: 'below-icon',
           tabBarIcon: ({ color, focused }) => {
             const icon = CustomIcon ? (
-              <CustomIcon color={color} size={22} focused={focused} />
+              <CustomIcon color={color} size={22} focused={focused} iconStyle={packId} />
             ) : (
               <Ionicons name="ellipse-outline" color={color} size={20} />
             );
             if (!focused) return icon;
             return (
               <View style={{
-                backgroundColor: `${color}22`,
-                borderRadius: 10,
+                backgroundColor: activePillBg,
+                borderRadius: packId === 'outline' ? 999 : 10,
+                borderWidth: packId === 'outline' ? 1 : 0,
+                borderColor: packId === 'outline' ? `${color}66` : 'transparent',
                 paddingHorizontal: isDesktopWeb ? 14 : 16,
                 paddingVertical: 5,
                 alignItems: 'center',
