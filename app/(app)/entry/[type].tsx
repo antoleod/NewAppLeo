@@ -1121,112 +1121,155 @@ export default function EntryComposerScreen() {
         />
       )}
 
-      {/* Food done sheet */}
+      {/* Food done sheet — two focused questions, no redundant info */}
       <Modal visible={showFoodDoneModal} animationType="slide" transparent statusBarTranslucent>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.62)' }}>
-          <View style={{
-            backgroundColor: theme.bgCard,
-            borderTopLeftRadius: 28, borderTopRightRadius: 28,
-            paddingHorizontal: 24,
-            paddingTop: 16,
-            paddingBottom: Math.max(44, insets.bottom + 24),
-            ...shadow(theme.textPrimary, 0.3, 24, 0, -6),
-            elevation: 20,
-          }}>
+        <Pressable
+          onPress={() => { setShowFoodDoneModal(false); router.back(); }}
+          style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.62)' }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: theme.bgCard,
+              borderTopLeftRadius: 28, borderTopRightRadius: 28,
+              paddingHorizontal: 20,
+              paddingTop: 12,
+              paddingBottom: Math.max(28, insets.bottom + 16),
+              ...shadow(theme.textPrimary, 0.3, 24, 0, -6),
+              elevation: 20,
+            }}
+          >
             {/* Drag handle */}
-            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+            <View style={{ alignItems: 'center', marginBottom: 14 }}>
               <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: `${theme.textMuted}40` }} />
             </View>
 
-            {/* Saved header */}
-            <View style={{ marginBottom: 24 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: `${meta.tone}20`, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 18 }}>✅</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: theme.textPrimary, fontSize: 17, fontWeight: '800', letterSpacing: -0.3 }}>
-                    {lastSavedFood.name || t('food.savedTitle')}
-                  </Text>
-                  {(lastSavedFood.grams || lastSavedFood.mealTimeVal) ? (
-                    <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 2 }}>
-                      {[
-                        lastSavedFood.grams ? `${lastSavedFood.grams}g` : '',
-                        lastSavedFood.mealTimeVal ? ({'breakfast':'🌅','lunch':'🌞','snack':'🍪','dinner':'🌙'} as Record<string,string>)[lastSavedFood.mealTimeVal] ?? '' : '',
-                      ].filter(Boolean).join('  ·  ')}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
+            {/* Compact header: just the dish name */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+              <Text style={{ fontSize: 20 }}>✅</Text>
+              <Text
+                style={{ flex: 1, color: theme.textPrimary, fontSize: 16, fontWeight: '800', letterSpacing: -0.2 }}
+                numberOfLines={1}
+              >
+                {lastSavedFood.name || t('food.savedTitle')}
+              </Text>
+              <Pressable
+                onPress={() => { setShowFoodDoneModal(false); router.back(); }}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.skip')}
+              >
+                <Text style={{ color: theme.textMuted, fontSize: 12, fontWeight: '600' }}>{t('common.skip')}</Text>
+              </Pressable>
             </View>
 
-            {/* Emoji feedback */}
-            <Text style={{ color: theme.textMuted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14, textAlign: 'center' }}>
-              {language === 'fr' ? 'Comment c\'était ?' : language === 'es' ? '¿Cómo estuvo?' : language === 'nl' ? 'Hoe was het?' : 'How was it?'}
+            {/* Q1: did he like it? — 3 clear options */}
+            <Text style={{ color: theme.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
+              {t('food.feedbackLiked')}
             </Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8, marginBottom: 28 }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18 }}>
               {([
-                { emoji: '😋', foodLiked: 'yes' as const, amountEaten: 'all' as const },
-                { emoji: '😊', foodLiked: 'yes' as const, amountEaten: 'half' as const },
-                { emoji: '😐', foodLiked: 'neutral' as const, amountEaten: 'half' as const },
-                { emoji: '😕', foodLiked: 'no' as const, amountEaten: 'little' as const },
-                { emoji: '🤢', foodLiked: 'no' as const, amountEaten: 'none' as const },
-              ]).map(({ emoji, foodLiked: fl, amountEaten: ae }) => {
-                const selected = feedbackSelectedEmoji === emoji;
+                { value: 'yes' as const,     emoji: '😊', tKey: 'food.likedYes' },
+                { value: 'neutral' as const, emoji: '😐', tKey: 'food.likedNeutral' },
+                { value: 'no' as const,      emoji: '😕', tKey: 'food.likedNo' },
+              ]).map(({ value, emoji, tKey }) => {
+                const selected = foodLiked === value;
                 return (
                   <Pressable
-                    key={emoji}
+                    key={value}
                     onPress={() => {
-                      setFeedbackSelectedEmoji(emoji);
+                      haptics.selection();
+                      setFoodLiked(value);
                       if (lastSavedFoodEntryId) {
                         const entry = entries.find((e) => e.id === lastSavedFoodEntryId);
                         if (entry) {
-                          void updateEntry(lastSavedFoodEntryId, { payload: { ...entry.payload, foodLiked: fl, amountEaten: ae } });
+                          void updateEntry(lastSavedFoodEntryId, { payload: { ...entry.payload, foodLiked: value } });
                         }
                       }
                     }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={t(tKey)}
                     style={({ pressed }) => ({
-                      width: 54, height: 54, borderRadius: 27,
-                      alignItems: 'center', justifyContent: 'center',
-                      backgroundColor: selected ? `${meta.tone}22` : `${theme.textMuted}0A`,
-                      borderWidth: selected ? 2.5 : 1,
-                      borderColor: selected ? meta.tone : `${theme.textMuted}20`,
-                      transform: [{ scale: pressed ? 0.84 : selected ? 1.1 : 1 }],
+                      flex: 1, minHeight: 56,
+                      borderRadius: 14,
+                      alignItems: 'center', justifyContent: 'center', gap: 2,
+                      borderWidth: selected ? 2 : 1,
+                      borderColor: selected ? meta.tone : `${theme.textMuted}25`,
+                      backgroundColor: selected ? `${meta.tone}1A` : pressed ? `${theme.textMuted}10` : 'transparent',
                     })}
                   >
-                    <Text style={{ fontSize: selected ? 28 : 24 }}>{emoji}</Text>
+                    <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: selected ? '800' : '600', color: selected ? meta.tone : theme.textMuted }}>
+                      {t(tKey)}
+                    </Text>
                   </Pressable>
                 );
               })}
             </View>
 
-            {/* Actions */}
+            {/* Q2: how much did he eat? — 4 portion icons */}
+            <Text style={{ color: theme.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
+              {t('food.feedbackAmount')}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 22 }}>
+              {([
+                { value: 'all' as const,    emoji: '🍽️', tKey: 'food.amountAll' },
+                { value: 'half' as const,   emoji: '🥗', tKey: 'food.amountHalf' },
+                { value: 'little' as const, emoji: '🥄', tKey: 'food.amountLittle' },
+                { value: 'none' as const,   emoji: '🚫', tKey: 'food.amountNone' },
+              ]).map(({ value, emoji, tKey }) => {
+                const selected = amountEaten === value;
+                return (
+                  <Pressable
+                    key={value}
+                    onPress={() => {
+                      haptics.selection();
+                      setAmountEaten(value);
+                      if (lastSavedFoodEntryId) {
+                        const entry = entries.find((e) => e.id === lastSavedFoodEntryId);
+                        if (entry) {
+                          void updateEntry(lastSavedFoodEntryId, { payload: { ...entry.payload, amountEaten: value } });
+                        }
+                      }
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={t(tKey)}
+                    style={({ pressed }) => ({
+                      flex: 1, minHeight: 56,
+                      borderRadius: 14,
+                      alignItems: 'center', justifyContent: 'center', gap: 2,
+                      borderWidth: selected ? 2 : 1,
+                      borderColor: selected ? meta.tone : `${theme.textMuted}25`,
+                      backgroundColor: selected ? `${meta.tone}1A` : pressed ? `${theme.textMuted}10` : 'transparent',
+                    })}
+                  >
+                    <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: selected ? '800' : '600', color: selected ? meta.tone : theme.textMuted }}>
+                      {t(tKey)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Single primary CTA — secondary action is the "Skip" link in the header */}
             <Pressable
               onPress={() => { setShowFoodDoneModal(false); resetFoodForm(); }}
               style={({ pressed }) => ({
-                backgroundColor: meta.tone, borderRadius: 16, height: 54,
-                alignItems: 'center', justifyContent: 'center', marginBottom: 10,
+                backgroundColor: meta.tone, borderRadius: 14, height: 50,
+                alignItems: 'center', justifyContent: 'center',
                 opacity: pressed ? 0.86 : 1,
-                ...shadow(meta.tone, 0.35, 12, 0, 4),
+                ...shadow(meta.tone, 0.3, 10, 0, 3),
               })}
             >
               <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 15, letterSpacing: 0.1 }}>
                 + {t('food.addAnother')}
               </Text>
             </Pressable>
-            <Pressable
-              onPress={() => { setShowFoodDoneModal(false); router.back(); }}
-              style={({ pressed }) => ({
-                borderRadius: 16, height: 50, alignItems: 'center', justifyContent: 'center',
-                borderWidth: 1.5, borderColor: `${theme.textMuted}30`,
-                backgroundColor: `${theme.textMuted}08`,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text style={{ color: theme.textMuted, fontWeight: '600', fontSize: 15 }}>{t('food.goHome')}</Text>
-            </Pressable>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Share preview modal */}
