@@ -846,5 +846,15 @@
     "offline": "Offline",
     "queued": "To sync",
     "queuedCount": "{count} pending"
+  },
+  "iconPack": {
+    "cardTitle": "Icon style",
+    "cardBody": "Choose the visual identity of icons and illustrations across the app.",
+    "softName": "Soft",
+    "softDesc": "BabyFlow signature — hand-drawn illustrations with subtle colour fills.",
+    "outlineName": "Outline",
+    "outlineDesc": "Minimal, line-only with no fills. Perfect for night use and calm vibes.",
+    "classicName": "Classic",
+    "classicDesc": "Native system emojis. Familiar but varies across devices."
   }
 }

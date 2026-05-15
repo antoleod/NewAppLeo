@@ -1,5 +1,7 @@
 export * from './AnimatedNumber';
 export * from './AvatarInitials';
+export * from './Chip';
+export * from './CustomGlyphs';
 export * from './DateTimeField';
 export * from './ExpandableSection';
 export * from './MinimizedSleepTimer';

@@ -5,6 +5,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { DiaperLevelPicker } from '@/components/home';
 import { haptics } from '@/lib/haptics';
+import { useIconPack } from '@/components/icons/IconPackContext';
 
 export type PoopColor = 'yellow' | 'brown' | 'green' | 'dark' | 'red';
 export type PoopConsistency = 'liquid' | 'soft' | 'normal' | 'hard';
@@ -59,6 +60,7 @@ export const DiaperSection = React.memo(function DiaperSection({
   minutesSinceLast,
 }: Props) {
   const { theme, colors } = useTheme();
+  const { DropPee, DropPoop, DropVomit, MealEvening } = useIconPack();
   const { t } = useTranslation();
   const peeN = Number(pee) || 0;
   const poopN = Number(poop) || 0;
@@ -90,11 +92,16 @@ export const DiaperSection = React.memo(function DiaperSection({
     return total === 0;
   };
 
-  const QUICK_PRESETS: Array<{ key: QuickPreset; emoji: string; tKey: string; tint: string }> = [
-    { key: 'pee',   emoji: '💧',  tKey: 'diaper.quickPee',   tint: '#58A6FF' },
-    { key: 'poop',  emoji: '💩',  tKey: 'diaper.quickPoop',  tint: '#A371F7' },
-    { key: 'mixed', emoji: '💧💩', tKey: 'diaper.quickMixed', tint: '#F0B85A' },
-    { key: 'empty', emoji: '🌙',  tKey: 'diaper.quickEmpty', tint: theme.textMuted },
+  const QUICK_PRESETS: Array<{ key: QuickPreset; glyph: React.ReactNode; tKey: string; tint: string }> = [
+    { key: 'pee',   glyph: <DropPee size={22} color="#58A6FF" />,                                              tKey: 'diaper.quickPee',   tint: '#58A6FF' },
+    { key: 'poop',  glyph: <DropPoop size={22} color="#A371F7" />,                                             tKey: 'diaper.quickPoop',  tint: '#A371F7' },
+    { key: 'mixed', glyph: (
+      <View style={{ flexDirection: 'row', gap: -4 }}>
+        <DropPee size={18} color="#58A6FF" />
+        <DropPoop size={18} color="#A371F7" />
+      </View>
+    ), tKey: 'diaper.quickMixed', tint: '#F0B85A' },
+    { key: 'empty', glyph: <MealEvening size={22} color={theme.textMuted} />,                                  tKey: 'diaper.quickEmpty', tint: theme.textMuted },
   ];
 
   return (
@@ -102,16 +109,32 @@ export const DiaperSection = React.memo(function DiaperSection({
       {/* Header: summary + total + since-last */}
       <Animated.View entering={FadeIn.duration(220)} style={styles.summaryRow}>
         <View style={styles.summaryTextWrap}>
-          <Text style={[styles.summaryText, { color: colors.text }]}>
-            {peeN > 0 ? `\u{1F4A7} ${fmt(peeN)}` : ''}
-            {peeN > 0 && (poopN > 0 || vomitN > 0) ? '  ·  ' : ''}
-            {poopN > 0 ? `\u{1F4A9} ${fmt(poopN)}` : ''}
-            {poopN > 0 && vomitN > 0 ? '  ·  ' : ''}
-            {vomitN > 0 ? `\u{1F92E} ${fmt(vomitN)}` : ''}
-            {total === 0 ? (
-              <Text style={{ color: theme.textMuted, fontWeight: '500' }}>{t('diaper.emptyHint')}</Text>
-            ) : null}
-          </Text>
+          {total === 0 ? (
+            <Text style={[styles.summaryText, { color: theme.textMuted, fontWeight: '500' }]}>
+              {t('diaper.emptyHint')}
+            </Text>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {peeN > 0 ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <DropPee size={16} color="#58A6FF" />
+                  <Text style={[styles.summaryText, { color: colors.text }]}>{fmt(peeN)}</Text>
+                </View>
+              ) : null}
+              {poopN > 0 ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <DropPoop size={16} color="#A371F7" />
+                  <Text style={[styles.summaryText, { color: colors.text }]}>{fmt(poopN)}</Text>
+                </View>
+              ) : null}
+              {vomitN > 0 ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <DropVomit size={16} color="#F0B85A" />
+                  <Text style={[styles.summaryText, { color: colors.text }]}>{fmt(vomitN)}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
           {minutesSinceLast != null && minutesSinceLast > 0 ? (
             <Text style={{ color: theme.textMuted, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
               {t('diaper.sinceLast')} {formatSinceLast(minutesSinceLast)}
@@ -148,7 +171,7 @@ export const DiaperSection = React.memo(function DiaperSection({
                   : pressed ? theme.bgCardAlt : theme.bgCard,
               })}
             >
-              <Text style={{ fontSize: 18 }}>{preset.emoji}</Text>
+              {preset.glyph}
               <Text
                 style={{
                   fontSize: 10, fontWeight: active ? '800' : '600',
@@ -170,7 +193,7 @@ export const DiaperSection = React.memo(function DiaperSection({
           entering={FadeInDown.duration(260).delay(60)}
           style={[styles.row, peeN > 0 && { backgroundColor: 'rgba(88,166,255,0.06)', borderColor: 'rgba(88,166,255,0.25)' }]}
         >
-          <DiaperLevelPicker emoji={'\u{1F4A7}'} label={t('diaper.pee')}
+          <DiaperLevelPicker glyph={<DropPee size={24} color="#58A6FF" />} label={t('diaper.pee')}
             value={peeN} onChange={(v) => setPee(String(v))} color="#58A6FF" />
         </Animated.View>
 
@@ -178,7 +201,7 @@ export const DiaperSection = React.memo(function DiaperSection({
           entering={FadeInDown.duration(260).delay(140)}
           style={[styles.row, poopN > 0 && { backgroundColor: 'rgba(163,113,247,0.06)', borderColor: 'rgba(163,113,247,0.25)' }]}
         >
-          <DiaperLevelPicker emoji={'\u{1F4A9}'} label={t('diaper.poop')}
+          <DiaperLevelPicker glyph={<DropPoop size={24} color="#A371F7" />} label={t('diaper.poop')}
             value={poopN} onChange={(v) => setPoop(String(v))} color="#A371F7" />
 
           {poopN > 0 ? (
@@ -282,7 +305,7 @@ export const DiaperSection = React.memo(function DiaperSection({
           entering={FadeInDown.duration(260).delay(220)}
           style={[styles.row, vomitN > 0 && { backgroundColor: 'rgba(240,184,90,0.07)', borderColor: 'rgba(240,184,90,0.30)' }]}
         >
-          <DiaperLevelPicker emoji={'\u{1F92E}'} label={t('diaper.vomit')}
+          <DiaperLevelPicker glyph={<DropVomit size={24} color="#F0B85A" />} label={t('diaper.vomit')}
             value={vomitN} onChange={(v) => setVomit(String(v))} color="#F0B85A" />
         </Animated.View>
       </View>

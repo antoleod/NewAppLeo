@@ -14,6 +14,7 @@ import { AppDataProvider } from '@/context/AppDataContext';
 import { TimerProvider } from '@/context/TimerContext';
 import { MiniTimerBar, NightOverlay } from '@/components/shared';
 import { LocaleProvider } from '@/context/LocaleContext';
+import { IconPackProvider } from '@/components/icons/IconPackContext';
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from '@/components/shared';
@@ -179,6 +180,7 @@ export default function RootLayout() {
               <ToastProvider>
                 <AppDataProvider>
                   <TimerProvider>
+                    <IconPackProvider>
                     <ThemedShell
                       isIncognito={isIncognito}
                       isLocked={isLocked}
@@ -194,6 +196,7 @@ export default function RootLayout() {
                       </Stack>
                       <MiniTimerBar />
                     </ThemedShell>
+                    </IconPackProvider>
                   </TimerProvider>
                 </AppDataProvider>
               </ToastProvider>

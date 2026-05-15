@@ -846,5 +846,15 @@
     "offline": "Hors ligne",
     "queued": "À synchroniser",
     "queuedCount": "{count} en attente"
+  },
+  "iconPack": {
+    "cardTitle": "Style des icônes",
+    "cardBody": "Choisis l'identité visuelle des icônes et illustrations dans toute l'app.",
+    "softName": "Doux",
+    "softDesc": "Style signature BabyFlow — illustrations dessinées à la main avec des touches de couleur.",
+    "outlineName": "Contour",
+    "outlineDesc": "Minimal, traits fins sans remplissage. Idéal pour la nuit et les ambiances sobres.",
+    "classicName": "Classique",
+    "classicDesc": "Emojis natifs du système. Familier mais varie selon l'appareil."
   }
 }

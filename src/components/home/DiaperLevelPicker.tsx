@@ -11,7 +11,9 @@ import { useTheme } from '@/context/ThemeContext';
 import { haptics } from '@/lib/haptics';
 
 type Props = {
-  emoji: string;
+  /** Custom SVG glyph node (preferred). Falls back to `emoji` string if not provided. */
+  glyph?: React.ReactNode;
+  emoji?: string;
   label: string;
   value: number;
   onChange: (next: number) => void;
@@ -92,7 +94,7 @@ const Chip = React.memo(function Chip({
 });
 
 export const DiaperLevelPicker = React.memo(function DiaperLevelPicker({
-  emoji, label, value, onChange, color,
+  glyph, emoji, label, value, onChange, color,
 }: Props) {
   const { theme } = useTheme();
   const selectedOpt = value > 3 ? 3 : OPTIONS.includes(value as any) ? value : 0;
@@ -110,9 +112,9 @@ export const DiaperLevelPicker = React.memo(function DiaperLevelPicker({
   return (
     <View accessibilityLabel={`${label}: ${value}`} style={{ gap: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <Animated.Text accessibilityElementsHidden style={[{ fontSize: 24, minWidth: 28 }, badgeStyle]}>
-          {emoji}
-        </Animated.Text>
+        <Animated.View accessibilityElementsHidden style={[{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }, badgeStyle]}>
+          {glyph ?? (emoji ? <Text style={{ fontSize: 22 }}>{emoji}</Text> : null)}
+        </Animated.View>
         <Text style={{ color: theme.textPrimary, fontSize: 14, fontWeight: '700', flex: 1 }} numberOfLines={1}>
           {label}
         </Text>

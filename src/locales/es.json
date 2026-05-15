@@ -846,5 +846,15 @@
     "offline": "Sin conexión",
     "queued": "Por sincronizar",
     "queuedCount": "{count} pendientes"
+  },
+  "iconPack": {
+    "cardTitle": "Estilo de iconos",
+    "cardBody": "Elige la identidad visual de los iconos e ilustraciones en toda la app.",
+    "softName": "Suave",
+    "softDesc": "Estilo distintivo de BabyFlow — ilustraciones dibujadas a mano con toques de color.",
+    "outlineName": "Contorno",
+    "outlineDesc": "Minimalista, solo líneas sin relleno. Ideal de noche y para ambientes sobrios.",
+    "classicName": "Clásico",
+    "classicDesc": "Emojis nativos del sistema. Familiar pero varía según el dispositivo."
   }
 }

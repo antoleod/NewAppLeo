@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Page, SkeletonCard, SyncStatusBadge } from '@/components/shared';
+import { useIconPack } from '@/components/icons/IconPackContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
@@ -317,12 +318,12 @@ function getMealKind(value?: string): MealKind {
   return 'other';
 }
 
-const MEAL_ICON: Record<MealKind, string> = {
-  breakfast: '🌅',
-  lunch: '🌞',
-  snack: '🍪',
-  dinner: '🌙',
-  other: '🍴',
+const MEAL_TONE: Record<MealKind, string> = {
+  breakfast: '#F0B85A',
+  lunch: '#F0B85A',
+  snack: '#F0B85A',
+  dinner: '#A371F7',
+  other: '#8B6F47',
 };
 
 type FoodHistoryRowProps = {
@@ -344,10 +345,15 @@ const FoodHistoryRow = React.memo(function FoodHistoryRow({
   const liked = p.foodLiked;
   const allergies: string[] = Array.isArray(p.foodAllergies) ? p.foodAllergies : [];
   const hasAllergy = allergies.length > 0;
-  const aeEmoji = ae === 'all' ? '🍽️' : ae === 'half' ? '🥗' : ae === 'little' ? '🥄' : ae === 'none' ? '🚫' : null;
-  const likedEmoji = liked === 'yes' ? '❤️' : liked === 'no' ? '😣' : null;
   const grams = p.quantityGrams;
   const name = p.foodName || '—';
+  const pack = useIconPack();
+  const mealMap = { breakfast: pack.MealMorning, lunch: pack.MealMidday, snack: pack.MealSnack, dinner: pack.MealEvening, other: pack.MealOther } as const;
+  const MealG = mealMap[kind];
+  const mealTone = MEAL_TONE[kind];
+  const AmountG = ae === 'all' ? pack.AmountAll : ae === 'half' ? pack.AmountHalf : ae === 'little' ? pack.AmountLittle : ae === 'none' ? pack.AmountNone : null;
+  const FaceG = liked === 'yes' ? pack.FaceHappy : liked === 'no' ? pack.FaceSad : null;
+  const faceTone = liked === 'yes' ? '#56D364' : '#E07A7A';
 
   return (
     <Pressable
@@ -369,12 +375,9 @@ const FoodHistoryRow = React.memo(function FoodHistoryRow({
         borderLeftColor: isToday ? (hasAllergy ? tokens.red : tokens.gold) : 'transparent',
       })}
     >
-      <Text
-        style={{ fontSize: 18, width: 24, textAlign: 'center' }}
-        accessibilityLabel={mealLabel}
-      >
-        {MEAL_ICON[kind]}
-      </Text>
+      <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={mealLabel}>
+        <MealG size={20} color={mealTone} />
+      </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ color: tokens.text, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{name}</Text>
         {(grams || hasAllergy) ? (
@@ -385,9 +388,9 @@ const FoodHistoryRow = React.memo(function FoodHistoryRow({
           </Text>
         ) : null}
       </View>
-      <View style={{ width: 88, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-        {aeEmoji ? <Text style={{ fontSize: 13 }} accessibilityElementsHidden>{aeEmoji}</Text> : null}
-        {likedEmoji ? <Text style={{ fontSize: 13 }} accessibilityElementsHidden>{likedEmoji}</Text> : null}
+      <View style={{ width: 96, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+        {AmountG ? <AmountG size={14} /> : null}
+        {FaceG ? <FaceG size={14} color={faceTone} /> : null}
         <Text style={{ color: tokens.soft, fontSize: 11, fontWeight: '600', minWidth: 38, textAlign: 'right' }}>
           {formatClock(entry.occurredAt, locale)}
         </Text>
@@ -405,6 +408,7 @@ export default function HomeScreen() {
   const { entries, summary, addEntry, deleteEntry, loading, forceReconnect } = useAppData();
   const { theme, colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const iconPack = useIconPack();
 
   const BG = colors.background;
   const CARD = theme.bgCard;
@@ -1404,15 +1408,19 @@ export default function HomeScreen() {
                   <Text style={{ color: TEXT, fontSize: 18, fontWeight: '700', letterSpacing: -0.3 }}>{foodTodayCount}</Text>
                   <Text style={{ color: SOFT, fontSize: 12 }}>{t('food.today')}</Text>
                 </View>
-                {lastFood.payload?.foodName && (
-                  <Text style={{ color: GOLD, fontSize: 11, fontWeight: '500', marginTop: 3 }} numberOfLines={1}>
-                    {lastFood.payload.mealTime === 'breakfast' ? '🌅 '
-                      : lastFood.payload.mealTime === 'lunch' ? '🌞 '
-                      : lastFood.payload.mealTime === 'snack' ? '🍪 '
-                      : lastFood.payload.mealTime === 'dinner' ? '🌙 ' : '🍴 '}
-                    {lastFood.payload.foodName}
-                  </Text>
-                )}
+                {lastFood.payload?.foodName && (() => {
+                  const k = getMealKind(lastFood.payload.mealTime);
+                  const lastFoodMealMap = { breakfast: iconPack.MealMorning, lunch: iconPack.MealMidday, snack: iconPack.MealSnack, dinner: iconPack.MealEvening, other: iconPack.MealOther } as const;
+                  const LG = lastFoodMealMap[k];
+                  return (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                      <LG size={12} color={MEAL_TONE[k]} />
+                      <Text style={{ color: GOLD, fontSize: 11, fontWeight: '500' }} numberOfLines={1}>
+                        {lastFood.payload.foodName}
+                      </Text>
+                    </View>
+                  );
+                })()}
               </Pressable>
             )}
           </Animated.View>

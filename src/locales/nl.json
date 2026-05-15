@@ -846,5 +846,15 @@
     "offline": "Offline",
     "queued": "Te synchroniseren",
     "queuedCount": "{count} in wachtrij"
+  },
+  "iconPack": {
+    "cardTitle": "Pictogramstijl",
+    "cardBody": "Kies de visuele identiteit van pictogrammen en illustraties in de hele app.",
+    "softName": "Zacht",
+    "softDesc": "BabyFlow signatuur — handgetekende illustraties met subtiele kleurvullingen.",
+    "outlineName": "Contour",
+    "outlineDesc": "Minimalistisch, alleen lijnen zonder vulling. Perfect voor 's nachts.",
+    "classicName": "Klassiek",
+    "classicDesc": "Native systeem-emojis. Vertrouwd maar verschilt per apparaat."
   }
 }

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Input } from '@/components/shared';
+import { useIconPack } from '@/components/icons/IconPackContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
@@ -25,7 +26,12 @@ type Props = {
   setFoodMoreOpen: (next: (prev: boolean) => boolean) => void;
 };
 
-const MEAL_ICONS: Record<string, string> = { breakfast: '🌅', lunch: '🌞', snack: '🍪', dinner: '🌙' };
+const MEAL_GLYPH_TONES: Record<string, string> = {
+  breakfast: '#F0B85A',
+  lunch: '#F0B85A',
+  snack: '#F0B85A',
+  dinner: '#A371F7',
+};
 const MORE_LABEL: Record<string, string> = { fr: 'Réaction, allergie…', en: 'Reaction, allergy…', es: 'Reacción, alergia…', nl: 'Reactie, allergie…' };
 const LESS_LABEL: Record<string, string> = { fr: 'Masquer', en: 'Hide', es: 'Ocultar', nl: 'Verbergen' };
 
@@ -46,6 +52,13 @@ export const FoodSection = React.memo(function FoodSection({
   foodMoreOpen, setFoodMoreOpen,
 }: Props) {
   const { colors } = useTheme();
+  const iconPack = useIconPack();
+  const MEAL_GLYPHS_LOCAL: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
+    breakfast: iconPack.MealMorning,
+    lunch: iconPack.MealMidday,
+    snack: iconPack.MealSnack,
+    dinner: iconPack.MealEvening,
+  };
   const { t } = useTranslation();
   const { language } = useLocale();
   const { entries } = useAppData();
@@ -143,6 +156,8 @@ export const FoodSection = React.memo(function FoodSection({
         {mealTimes.map((meal) => {
           const active = activeMealTime === meal.value;
           const fullLabel = meal.labels[lang] ?? meal.labels.en;
+          const Glyph = MEAL_GLYPHS_LOCAL[meal.value];
+          const tone = MEAL_GLYPH_TONES[meal.value] ?? meta.tone;
           return (
             <Pressable
               key={meal.value}
@@ -152,16 +167,16 @@ export const FoodSection = React.memo(function FoodSection({
               accessibilityLabel={fullLabel}
               style={({ pressed }) => ({
                 flex: 1, paddingHorizontal: 6, paddingVertical: 9,
-                borderRadius: 10, minHeight: 42,
-                alignItems: 'center', justifyContent: 'center', gap: 2,
+                borderRadius: 10, minHeight: 50,
+                alignItems: 'center', justifyContent: 'center', gap: 3,
                 borderWidth: active ? 2 : 1,
-                borderColor: active ? meta.tone : colors.border,
-                backgroundColor: active ? meta.toneSoft : pressed ? `${colors.card}88` : 'transparent',
+                borderColor: active ? tone : colors.border,
+                backgroundColor: active ? `${tone}1A` : pressed ? `${colors.card}88` : 'transparent',
                 transform: [{ scale: pressed ? 0.96 : 1 }],
               })}
             >
-              <Text style={{ fontSize: 14, lineHeight: 18 }}>{MEAL_ICONS[meal.value]}</Text>
-              <Text style={{ fontSize: 10, fontWeight: active ? '800' : '500', color: active ? meta.tone : colors.muted, textAlign: 'center' }}>
+              {Glyph ? <Glyph size={18} color={tone} /> : null}
+              <Text style={{ fontSize: 10, fontWeight: active ? '800' : '500', color: active ? tone : colors.muted, textAlign: 'center' }}>
                 {fullLabel.replace(/^\S+\s*/, '')}
               </Text>
             </Pressable>

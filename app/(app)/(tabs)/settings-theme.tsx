@@ -19,6 +19,8 @@ import {
 } from '@/theme';
 import { useAuth } from '@/context/AuthContext';
 import { Button, Card, Page, Segment, useToast } from '@/components/shared';
+import { ICON_PACK_LIST, useIconPackController } from '@/components/icons/IconPackContext';
+import { GLYPH_TONES } from '@/components/icons/IconPack';
 import { BackgroundPhotoSelector } from '@/components/profile';
 import { SettingsImporter } from '@/components/profile';
 import { DataExporter } from '@/components/profile';
@@ -369,6 +371,9 @@ export default function ThemeSettings() {
           </View>
         </Card>
 
+        {/* Icon pack — visual identity of all glyphs across the app */}
+        <IconPackPickerCard />
+
         {/* Color mode */}
         <Card>
           <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{t('profile.themeModeLabel')}</Text>
@@ -575,3 +580,65 @@ const styles = StyleSheet.create({
   controlLabel: { fontSize: 12, fontWeight: '800', marginTop: 16, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
   pwaInstalledBadge: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' },
 });
+
+/**
+ * Card with one tappable preview per icon pack. Each preview renders 5
+ * representative glyphs from the pack so the user can compare visual styles
+ * at a glance instead of guessing what "Soft" vs "Outline" will look like.
+ */
+function IconPackPickerCard() {
+  const { theme } = useTheme();
+  const { t } = useTranslation();
+  const { packId, setPackId } = useIconPackController();
+
+  return (
+    <Card>
+      <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{t('iconPack.cardTitle')}</Text>
+      <Text style={[styles.sectionBody, { color: theme.textMuted }]}>{t('iconPack.cardBody')}</Text>
+      <View style={{ gap: 10 }}>
+        {ICON_PACK_LIST.map((pack) => {
+          const active = packId === pack.id;
+          const { MealMorning, FaceHappy, DropPee, AmountAll, SleepCalm } = pack;
+          return (
+            <Pressable
+              key={pack.id}
+              onPress={() => { haptics.selection(); setPackId(pack.id); }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={t(pack.nameKey)}
+              style={({ pressed }) => ({
+                borderRadius: 14,
+                borderWidth: active ? 2 : 1,
+                borderColor: active ? theme.accent : theme.border,
+                backgroundColor: active ? `${theme.accent}10` : pressed ? theme.bgCardAlt : theme.bgCard,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                gap: 10,
+              })}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: theme.textPrimary, fontSize: 14, fontWeight: '800' }}>{t(pack.nameKey)}</Text>
+                  <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 2 }}>{t(pack.descKey)}</Text>
+                </View>
+                {active ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
+                    <Text style={{ color: theme.accent, fontSize: 11, fontWeight: '700' }}>{t('settings.applied')}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 4, paddingBottom: 2 }}>
+                <MealMorning size={26} color={GLYPH_TONES.mealMorning} />
+                <FaceHappy size={26} color={GLYPH_TONES.faceHappy} />
+                <DropPee size={26} color={GLYPH_TONES.dropPee} />
+                <AmountAll size={26} color={GLYPH_TONES.amountAll} />
+                <SleepCalm size={26} color={GLYPH_TONES.sleepCalm} />
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </Card>
+  );
+}

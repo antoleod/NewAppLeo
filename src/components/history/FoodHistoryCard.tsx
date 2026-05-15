@@ -8,6 +8,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useLocale } from '@/context/LocaleContext';
 import { haptics } from '@/lib/haptics';
 import { EntryRecord } from '@/types';
+import { useIconPack } from '@/components/icons/IconPackContext';
 
 type MealKind = 'breakfast' | 'lunch' | 'snack' | 'dinner' | 'other';
 
@@ -16,12 +17,12 @@ function getMealKind(value?: string): MealKind {
   return 'other';
 }
 
-const MEAL_ICON: Record<MealKind, string> = {
-  breakfast: '🌅',
-  lunch: '🌞',
-  snack: '🍪',
-  dinner: '🌙',
-  other: '🍴',
+const MEAL_TONE: Record<MealKind, string> = {
+  breakfast: '#F0B85A',
+  lunch: '#F0B85A',
+  snack: '#F0B85A',
+  dinner: '#A371F7',
+  other: '#8B6F47',
 };
 
 function localeTag(language: string) {
@@ -107,10 +108,16 @@ const FoodHistoryRow = React.memo(function FoodHistoryRow({
   const liked = p.foodLiked;
   const allergies: string[] = Array.isArray(p.foodAllergies) ? p.foodAllergies : [];
   const hasAllergy = allergies.length > 0;
-  const aeEmoji = ae === 'all' ? '🍽️' : ae === 'half' ? '🥗' : ae === 'little' ? '🥄' : ae === 'none' ? '🚫' : null;
-  const likedEmoji = liked === 'yes' ? '❤️' : liked === 'no' ? '😣' : null;
   const grams = p.quantityGrams;
   const name = p.foodName || '—';
+
+  const pack = useIconPack();
+  const mealMap = { breakfast: pack.MealMorning, lunch: pack.MealMidday, snack: pack.MealSnack, dinner: pack.MealEvening, other: pack.MealOther } as const;
+  const MealG = mealMap[kind];
+  const mealTone = MEAL_TONE[kind];
+  const AmountG = ae === 'all' ? pack.AmountAll : ae === 'half' ? pack.AmountHalf : ae === 'little' ? pack.AmountLittle : ae === 'none' ? pack.AmountNone : null;
+  const FaceG = liked === 'yes' ? pack.FaceHappy : liked === 'no' ? pack.FaceSad : null;
+  const faceTone = liked === 'yes' ? '#56D364' : '#E07A7A';
 
   return (
     <Pressable
@@ -132,9 +139,9 @@ const FoodHistoryRow = React.memo(function FoodHistoryRow({
         borderLeftColor: isToday ? (hasAllergy ? tokens.red : tokens.gold) : 'transparent',
       })}
     >
-      <Text style={{ fontSize: 18, width: 24, textAlign: 'center' }} accessibilityLabel={mealLabel}>
-        {MEAL_ICON[kind]}
-      </Text>
+      <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={mealLabel}>
+        <MealG size={20} color={mealTone} />
+      </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ color: tokens.text, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{name}</Text>
         {(grams || hasAllergy) ? (
@@ -145,9 +152,9 @@ const FoodHistoryRow = React.memo(function FoodHistoryRow({
           </Text>
         ) : null}
       </View>
-      <View style={{ width: 88, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-        {aeEmoji ? <Text style={{ fontSize: 13 }} accessibilityElementsHidden>{aeEmoji}</Text> : null}
-        {likedEmoji ? <Text style={{ fontSize: 13 }} accessibilityElementsHidden>{likedEmoji}</Text> : null}
+      <View style={{ width: 96, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+        {AmountG ? <AmountG size={14} /> : null}
+        {FaceG ? <FaceG size={14} color={faceTone} /> : null}
         <Text style={{ color: tokens.soft, fontSize: 11, fontWeight: '600', minWidth: 38, textAlign: 'right' }}>
           {formatClock(entry.occurredAt, locale)}
         </Text>

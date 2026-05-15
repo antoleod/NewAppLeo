@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { router } from 'expo-router';
-import { Button, Card, EmptyState, Heading, Page } from '@/components/shared';
+import { Button, Card, Chip, EmptyState, Heading, Page } from '@/components/shared';
 import { GetEntryIcon, FoodHistoryCard } from '@/components/history';
 import { haptics } from '@/lib/haptics';
 import { useAppData } from '@/context/AppDataContext';
@@ -843,26 +843,16 @@ export default function HistoryScreen() {
               const active = filter === item.value;
               const tint = item.value === 'all' ? GOLD : iconColor(item.value as EntryType);
               return (
-                <Pressable
+                <Chip
                   key={item.value}
+                  label={item.label}
+                  tone={tint}
+                  selected={active}
                   onPress={() => setFilter(item.value)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={item.label}
-                  style={({ pressed }) => ({
-                    minHeight: 38, paddingHorizontal: 13,
-                    borderRadius: 20, borderWidth: 1,
-                    borderColor: active ? tint : BORDER,
-                    backgroundColor: active ? tint : (pressed ? BORDER : BG),
-                    alignItems: 'center', justifyContent: 'center',
-                    flexDirection: 'row', gap: 6,
-                  })}
-                >
-                  {item.value !== 'all' ? (
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: active ? BG : tint }} />
-                  ) : null}
-                  <Text style={{ color: active ? BG : TEXT, fontWeight: '700', fontSize: 13 }}>{item.label}</Text>
-                </Pressable>
+                  icon={item.value !== 'all' ? (
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tint }} />
+                  ) : undefined}
+                />
               );
             })}
           </ScrollView>

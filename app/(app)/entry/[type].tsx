@@ -6,6 +6,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import { Button, Card, Input, Page, Segment } from '@/components/shared';
+import { useIconPack } from '@/components/icons/IconPackContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useLocale } from '@/context/LocaleContext';
@@ -68,6 +69,7 @@ export default function EntryComposerScreen() {
   const { entries, addEntry, updateEntry, deleteEntry, entryById } = useAppData();
   const { active: globalTimer, start: startGlobalTimer, stop: stopGlobalTimer, minimize: minimizeGlobalTimer } = useTimer();
   const toast = useToast();
+  const { FaceHappy, FaceNeutral, FaceSad, AmountAll, AmountHalf, AmountLittle, AmountNone } = useIconPack();
   const type = (params.type as EntryType) || 'feed';
   const editing = params.id ? entryById(String(params.id)) : undefined;
   const presetAmount = typeof params.presetAmount === 'string' ? Number(params.presetAmount) : undefined;
@@ -1178,10 +1180,10 @@ export default function EntryComposerScreen() {
             </Text>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18 }}>
               {([
-                { value: 'yes' as const,     emoji: '😊', tKey: 'food.likedYes' },
-                { value: 'neutral' as const, emoji: '😐', tKey: 'food.likedNeutral' },
-                { value: 'no' as const,      emoji: '😕', tKey: 'food.likedNo' },
-              ]).map(({ value, emoji, tKey }) => {
+                { value: 'yes' as const,     Glyph: FaceHappy,   tone: '#56D364', tKey: 'food.likedYes' },
+                { value: 'neutral' as const, Glyph: FaceNeutral, tone: '#8EB5EA', tKey: 'food.likedNeutral' },
+                { value: 'no' as const,      Glyph: FaceSad,     tone: '#E07A7A', tKey: 'food.likedNo' },
+              ]).map(({ value, Glyph, tone, tKey }) => {
                 const selected = foodLiked === value;
                 return (
                   <Pressable
@@ -1200,16 +1202,16 @@ export default function EntryComposerScreen() {
                     accessibilityState={{ selected }}
                     accessibilityLabel={t(tKey)}
                     style={({ pressed }) => ({
-                      flex: 1, minHeight: 56,
+                      flex: 1, minHeight: 60,
                       borderRadius: 14,
-                      alignItems: 'center', justifyContent: 'center', gap: 2,
+                      alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 6,
                       borderWidth: selected ? 2 : 1,
-                      borderColor: selected ? meta.tone : `${theme.textMuted}25`,
-                      backgroundColor: selected ? `${meta.tone}1A` : pressed ? `${theme.textMuted}10` : 'transparent',
+                      borderColor: selected ? tone : `${theme.textMuted}25`,
+                      backgroundColor: selected ? `${tone}1A` : pressed ? `${theme.textMuted}10` : 'transparent',
                     })}
                   >
-                    <Text style={{ fontSize: 22 }}>{emoji}</Text>
-                    <Text style={{ fontSize: 10, fontWeight: selected ? '800' : '600', color: selected ? meta.tone : theme.textMuted }}>
+                    <Glyph size={26} color={tone} />
+                    <Text style={{ fontSize: 10, fontWeight: selected ? '800' : '600', color: selected ? tone : theme.textMuted }}>
                       {t(tKey)}
                     </Text>
                   </Pressable>
@@ -1223,11 +1225,11 @@ export default function EntryComposerScreen() {
             </Text>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 22 }}>
               {([
-                { value: 'all' as const,    emoji: '🍽️', tKey: 'food.amountAll' },
-                { value: 'half' as const,   emoji: '🥗', tKey: 'food.amountHalf' },
-                { value: 'little' as const, emoji: '🥄', tKey: 'food.amountLittle' },
-                { value: 'none' as const,   emoji: '🚫', tKey: 'food.amountNone' },
-              ]).map(({ value, emoji, tKey }) => {
+                { value: 'all' as const,    Glyph: AmountAll,    tone: '#56D364', tKey: 'food.amountAll' },
+                { value: 'half' as const,   Glyph: AmountHalf,   tone: '#F0B85A', tKey: 'food.amountHalf' },
+                { value: 'little' as const, Glyph: AmountLittle, tone: '#F0B85A', tKey: 'food.amountLittle' },
+                { value: 'none' as const,   Glyph: AmountNone,   tone: '#E07A7A', tKey: 'food.amountNone' },
+              ]).map(({ value, Glyph, tone, tKey }) => {
                 const selected = amountEaten === value;
                 return (
                   <Pressable
@@ -1246,16 +1248,16 @@ export default function EntryComposerScreen() {
                     accessibilityState={{ selected }}
                     accessibilityLabel={t(tKey)}
                     style={({ pressed }) => ({
-                      flex: 1, minHeight: 56,
+                      flex: 1, minHeight: 60,
                       borderRadius: 14,
-                      alignItems: 'center', justifyContent: 'center', gap: 2,
+                      alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 6,
                       borderWidth: selected ? 2 : 1,
-                      borderColor: selected ? meta.tone : `${theme.textMuted}25`,
-                      backgroundColor: selected ? `${meta.tone}1A` : pressed ? `${theme.textMuted}10` : 'transparent',
+                      borderColor: selected ? tone : `${theme.textMuted}25`,
+                      backgroundColor: selected ? `${tone}1A` : pressed ? `${theme.textMuted}10` : 'transparent',
                     })}
                   >
-                    <Text style={{ fontSize: 22 }}>{emoji}</Text>
-                    <Text style={{ fontSize: 10, fontWeight: selected ? '800' : '600', color: selected ? meta.tone : theme.textMuted }}>
+                    <Glyph size={26} color={tone} />
+                    <Text style={{ fontSize: 10, fontWeight: selected ? '800' : '600', color: selected ? tone : theme.textMuted }}>
                       {t(tKey)}
                     </Text>
                   </Pressable>

@@ -1,5 +1,6 @@
 import React from 'react';
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
+import { BottleIcon, BreastfeedingIcon } from './FeedingIcons';
 
 interface IconProps {
   size?: number;
@@ -106,7 +107,67 @@ export function SleepIcon({ size = 24, color = '#58A6FF' }: IconProps) {
   );
 }
 
-export function GetEntryIcon(entryType: string, size: number = 24, color?: string) {
+
+/** Generic feed — milk droplet with crown highlight. Used when feeding mode
+ *  is unknown (e.g. history fallback). Specific bottle/breast icons live in
+ *  FeedingIcons.tsx and are picked at the consumer side when mode is known. */
+export function FeedIcon({ size = 24, color = '#C9A227' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3.8C12 3.8 6.6 10.5 6.6 14.6C6.6 17.7 9 20.2 12 20.2C15 20.2 17.4 17.7 17.4 14.6C17.4 10.5 12 3.8 12 3.8Z" stroke={color} strokeWidth={1.8} {...strokeProps} fill={color} fillOpacity={0.14} />
+      <Path d="M9 14.6C9 13.1 9.7 11.2 12 8.4" stroke={color} strokeWidth={1.5} strokeLinecap="round" opacity={0.7} />
+      <Circle cx={10.6} cy={13.3} r={0.9} fill={color} opacity={0.6} />
+    </Svg>
+  );
+}
+
+/** Milestone — five-pointed star with inner sparkle accent. Single signature
+ *  ray slightly longer at top-right gives the star its own personality
+ *  (most milestone icons in libraries are perfectly symmetrical). */
+export function MilestoneIcon({ size = 24, color = '#F0B85A' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 3.4L13.9 8.9L19.7 9.1L15.1 12.6L16.7 18.2L12 14.9L7.3 18.2L8.9 12.6L4.3 9.1L10.1 8.9Z"
+        stroke={color} strokeWidth={1.8} {...strokeProps}
+        fill={color} fillOpacity={0.15}
+      />
+      <Path d="M18.5 4.7L17.2 5.6L17.6 4.1L16.8 3.2L18.1 3.4L18.7 2.1L19.1 3.4L20.4 3.4L19.4 4.3L19.7 5.6Z" fill={color} opacity={0.6} />
+      <Circle cx={12} cy={11.2} r={1.2} fill={color} opacity={0.5} />
+    </Svg>
+  );
+}
+
+/** Breast pump — flange + collection bottle. Signature: small swirl inside the
+ *  funnel suggesting suction motion, distinct from a plain bottle. */
+export function PumpIcon({ size = 24, color = '#F778BA' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Funnel / flange */}
+      <Path d="M5.2 5.5L18.8 5.5L15.3 11.3L8.7 11.3Z" stroke={color} strokeWidth={1.8} strokeLinejoin="round" fill={color} fillOpacity={0.14} />
+      {/* Suction swirl signature */}
+      <Path d="M10.5 7.5C11.4 7 12.6 7 13.5 7.5C14 8 14 8.7 13.4 9" stroke={color} strokeWidth={1.4} strokeLinecap="round" opacity={0.75} />
+      {/* Neck */}
+      <Path d="M10.3 11.3L10.3 13.4L13.7 13.4L13.7 11.3" stroke={color} strokeWidth={1.7} {...strokeProps} />
+      {/* Bottle body */}
+      <Path d="M8.8 13.6L8.8 18.8C8.8 19.9 9.6 20.6 10.7 20.6L13.3 20.6C14.4 20.6 15.2 19.9 15.2 18.8L15.2 13.6Z" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+      {/* Liquid */}
+      <Path d="M8.9 17.2L15.1 17.2L15.1 18.6C15.1 19.7 14.4 20.4 13.4 20.4L10.6 20.4C9.6 20.4 8.9 19.7 8.9 18.6Z" fill={color} fillOpacity={0.3} />
+    </Svg>
+  );
+}
+
+/**
+ * Optional context lets callers refine the icon when they know more:
+ *  - feed:    `mode = 'bottle' | 'breast'` picks the matching feeding icon.
+ *  Without context we render the generic FeedIcon (milk droplet).
+ */
+export function GetEntryIcon(
+  entryType: string,
+  size: number = 24,
+  color?: string,
+  context?: { mode?: 'bottle' | 'breast' },
+) {
   switch (entryType) {
     case 'diaper':
       return <DiaperIcon size={size} color={color} />;
@@ -124,6 +185,14 @@ export function GetEntryIcon(entryType: string, size: number = 24, color?: strin
       return <MeasurementIcon size={size} color={color} />;
     case 'sleep':
       return <SleepIcon size={size} color={color} />;
+    case 'feed':
+      if (context?.mode === 'bottle') return <BottleIcon size={size} color={color ?? '#C9A227'} />;
+      if (context?.mode === 'breast') return <BreastfeedingIcon size={size} color={color ?? '#C9A227'} />;
+      return <FeedIcon size={size} color={color} />;
+    case 'milestone':
+      return <MilestoneIcon size={size} color={color} />;
+    case 'pump':
+      return <PumpIcon size={size} color={color} />;
     default:
       return null;
   }

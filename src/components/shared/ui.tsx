@@ -16,8 +16,11 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname } from 'expo-router';
@@ -326,8 +329,26 @@ export function Heading({
     </View>
   );
 }
+/**
+ * BabyFlow Button — 3-tier hierarchy + semantic danger variant.
+ *
+ *   primary    Filled accent. The single most important action on a screen.
+ *              Tonal shadow, white-on-accent text, signature 14 px radius.
+ *   secondary  Tonal accent — same colour family as primary but at 14% bg
+ *              with the accent itself as text. Reads clearly without
+ *              competing with a sibling primary CTA.
+ *   tertiary   Ghost — transparent bg, thin border, neutral text. For
+ *              dismiss / opt-out / "maybe later".
+ *   danger     Filled red. Kept semantically separate from the 3-tier
+ *              hierarchy so a "Delete" is always recognisable as such.
+ *
+ * Micro-interactions: native Reanimated spring on press (scale + opacity).
+ * Border radius 14 — distinctive between the 12-px corporate norm and the
+ * 999-pill that everyone else uses. This is the signature.
+ */
 export function Button({
   label,
+  icon,
   onPress,
   variant = 'primary',
   size = 'md',
@@ -337,59 +358,120 @@ export function Button({
   style,
 }: {
   label: string;
+  icon?: React.ReactNode;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
-  size?: 'sm' | 'md';
+  /**
+   * `ghost` is an alias for `tertiary` kept for back-compat with existing
+   * call sites; both render the same minimal style.
+   */
+  variant?: 'primary' | 'secondary' | 'tertiary' | 'ghost' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
   style?: any;
 }) {
   const { width } = useWindowDimensions();
-  const { theme, buttonOpacity, buttonTransparency } = useTheme();
+  const { theme } = useTheme();
   const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
-  const solidOpacity = disabled ? 0.45 : buttonOpacity;
-  const backgroundOpacity = disabled ? 0.45 : buttonTransparency;
-  const background =
-    variant === 'primary'
-      ? theme.accent
-      : variant === 'secondary'
-        ? theme.blue
-        : variant === 'danger'
-      ? theme.red
-          : 'transparent';
-  const color = variant === 'ghost' ? theme.textPrimary : variant === 'primary' ? theme.accentText : '#ffffff';
-  const borderColor = variant === 'ghost' ? theme.border : 'transparent';
-  const transparentBackground = withColorOpacity(background, backgroundOpacity);
-  const transparentBorder = variant === 'ghost' ? borderColor : withColorOpacity(background, Math.min(1, backgroundOpacity + 0.18));
-  const isSmall = size === 'sm';
+  const tier = variant === 'ghost' ? 'tertiary' : variant;
+
+  const press = useSharedValue(0);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - press.value * 0.03 }],
+    opacity: disabled ? 0.5 : 1 - press.value * 0.08,
+  }));
+
+  // Tier-specific tokens.
+  let bg: string;
+  let borderColor: string;
+  let textColor: string;
+  let shadowOpacity = 0;
+
+  switch (tier) {
+    case 'primary':
+      bg = theme.accent;
+      borderColor = theme.accent;
+      textColor = theme.accentText;
+      shadowOpacity = 0.18;
+      break;
+    case 'secondary':
+      bg = withColorOpacity(theme.accent, 0.14);
+      borderColor = withColorOpacity(theme.accent, 0.32);
+      textColor = theme.accent;
+      shadowOpacity = 0;
+      break;
+    case 'danger':
+      bg = theme.red;
+      borderColor = theme.red;
+      textColor = '#ffffff';
+      shadowOpacity = 0.16;
+      break;
+    case 'tertiary':
+    default:
+      bg = 'transparent';
+      borderColor = theme.border;
+      textColor = theme.textPrimary;
+      shadowOpacity = 0;
+      break;
+  }
+
+  // Size tokens — height + radius scale together so small buttons feel
+  // proportionally similar to large ones.
+  const sizeTokens = {
+    sm: { h: isDesktopWeb ? 36 : 40, radius: 12, fontSize: 13, padX: 14, gap: 6, iconSize: 14 },
+    md: { h: isDesktopWeb ? 44 : 48, radius: 14, fontSize: 15, padX: 18, gap: 8, iconSize: 16 },
+    lg: { h: isDesktopWeb ? 52 : 56, radius: 16, fontSize: 16, padX: 22, gap: 10, iconSize: 18 },
+  }[size];
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={disabled || loading ? undefined : onPress}
+      onPressIn={() => { press.value = withTiming(1, { duration: 100 }); }}
+      onPressOut={() => { press.value = withSpring(0, { damping: 18, stiffness: 280 }); }}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || loading }}
-      style={({ pressed }) => [
-        styles.button,
+      style={[
         {
-          minHeight: isDesktopWeb ? (isSmall ? 36 : 44) : isSmall ? 40 : 48,
+          minHeight: sizeTokens.h,
           width: fullWidth ? '100%' : undefined,
-          backgroundColor: transparentBackground,
-          borderColor: transparentBorder,
-          opacity: pressed ? Math.min(solidOpacity, 0.85) : solidOpacity,
-          ...shadow(theme.textPrimary, variant === 'ghost' || disabled ? 0 : 0.08 * backgroundOpacity, 14, 0, 8),
-          elevation: variant === 'ghost' ? 0 : 2,
+          paddingHorizontal: sizeTokens.padX,
+          borderRadius: sizeTokens.radius,
+          borderWidth: 1,
+          backgroundColor: bg,
+          borderColor,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: sizeTokens.gap,
+          ...shadow(theme.textPrimary, shadowOpacity, 12, 0, 4),
         },
+        animStyle,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'ghost' ? theme.accent : '#ffffff'} />
+        <ActivityIndicator color={tier === 'primary' || tier === 'danger' ? '#ffffff' : theme.accent} />
       ) : (
-        <Text style={[styles.buttonLabel, { color, fontSize: isDesktopWeb ? (isSmall ? 12 : 14) : isSmall ? 13 : 15 }]}>{label}</Text>
+        <>
+          {icon ? (
+            <View style={{ width: sizeTokens.iconSize, height: sizeTokens.iconSize, alignItems: 'center', justifyContent: 'center' }}>
+              {icon}
+            </View>
+          ) : null}
+          <Text style={{
+            color: textColor,
+            fontSize: sizeTokens.fontSize,
+            fontWeight: '800',
+            letterSpacing: 0.2,
+            includeFontPadding: false,
+          }}>
+            {label}
+          </Text>
+        </>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -483,28 +565,7 @@ export function Segment({
   );
 }
 
-export function Chip({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected?: boolean;
-  onPress: () => void;
-}) {
-  const { theme } = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.chip,
-        { borderColor: selected ? theme.accent : theme.border, backgroundColor: selected ? `${theme.accent}22` : theme.bgCardAlt },
-      ]}
-    >
-      <Text style={[styles.chipLabel, { color: selected ? theme.accent : theme.textMuted }]}>{label}</Text>
-    </Pressable>
-  );
-}
+// Legacy Chip removed — use the canonical one from `@/components/shared/Chip`.
 
 export function StatPill({
   label,
