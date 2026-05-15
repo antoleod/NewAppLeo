@@ -422,7 +422,12 @@
     "pwaInstallNow": "Installer maintenant",
     "pwaInstallSuccess": "App installée",
     "pwaInstallDismissed": "Installation annulée",
-    "pwaManualHelp": "• Chrome/Edge : menu > « Installer l'application »\n• iPhone Safari : Partager > « Ajouter à l'écran d'accueil »"
+    "pwaManualHelp": "• Chrome/Edge : menu > « Installer l'application »\n• iPhone Safari : Partager > « Ajouter à l'écran d'accueil »",
+    "stoolPatternEyebrow": "Selles",
+    "stoolInRange": "sur la période",
+    "stoolColors": "Couleurs",
+    "stoolLastConsistency": "Dernière consistance",
+    "stoolLeaks": "Fuites"
   },
   "tabs": {
     "home": "Accueil",

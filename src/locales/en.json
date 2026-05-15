@@ -422,7 +422,12 @@
     "pwaInstallNow": "Install now",
     "pwaInstallSuccess": "App installed",
     "pwaInstallDismissed": "Install dismissed",
-    "pwaManualHelp": "• Chrome/Edge: menu > \"Install app\"\n• iPhone Safari: Share > \"Add to Home Screen\""
+    "pwaManualHelp": "• Chrome/Edge: menu > \"Install app\"\n• iPhone Safari: Share > \"Add to Home Screen\"",
+    "stoolPatternEyebrow": "Stools",
+    "stoolInRange": "in this range",
+    "stoolColors": "Colors",
+    "stoolLastConsistency": "Last consistency",
+    "stoolLeaks": "Leaks"
   },
   "tabs": {
     "home": "Home",

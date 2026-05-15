@@ -148,6 +148,40 @@ export default function InsightsScreen() {
 
   const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
 
+  // Stool pattern — aggregates only the diaper entries with poop > 0
+  // within the selected range, leveraging the new poopColor / poopConsistency
+  // / diaperLeaked fields. Pure read; no Firestore round-trip.
+  const stoolPattern = useMemo(() => {
+    const cutoff = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
+    const byColor: Record<string, number> = { yellow: 0, brown: 0, green: 0, dark: 0, red: 0 };
+    const byConsistency: Record<string, number> = { liquid: 0, soft: 0, normal: 0, hard: 0 };
+    let total = 0;
+    let leaks = 0;
+    let lastConsistency: string | null = null;
+    let lastConsistencyAt = 0;
+    let alertColor: 'red' | 'dark' | null = null;
+
+    for (const e of entries) {
+      if (e.type !== 'diaper') continue;
+      const ts = new Date(e.occurredAt).getTime();
+      if (!Number.isFinite(ts) || ts < cutoff) continue;
+      const poop = Number(e.payload?.poop) || 0;
+      if (poop === 0) continue;
+      total += poop;
+      const c = e.payload?.poopColor;
+      if (c && c in byColor) byColor[c] += 1;
+      if (!alertColor && (c === 'red' || c === 'dark')) alertColor = c;
+      const k = e.payload?.poopConsistency;
+      if (k && k in byConsistency) {
+        byConsistency[k] += 1;
+        if (ts > lastConsistencyAt) { lastConsistency = k; lastConsistencyAt = ts; }
+      }
+      if (e.payload?.diaperLeaked) leaks += 1;
+    }
+
+    return { total, byColor, byConsistency, leaks, lastConsistency, alertColor };
+  }, [entries, rangeDays]);
+
   // Last entry across all types — drives the "Last activity" pill.
   const lastEntry = useMemo(() => {
     if (!entries.length) return null;
@@ -560,6 +594,78 @@ export default function InsightsScreen() {
             </View>
           </View>
         </Animated.View>
+
+        {stoolPattern.total > 0 ? (
+          <Animated.View entering={FadeIn.duration(280).delay(200)} style={{ marginBottom: 10 }}>
+            <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, gap: 10 }}>
+              <Text style={eyebrowStyle}>{t('insights.stoolPatternEyebrow')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                <Text style={titleStyle}>{stoolPattern.total}</Text>
+                <Text style={{ color: MUTED, fontSize: 12 }}>{t('insights.stoolInRange')}</Text>
+              </View>
+
+              {/* Color distribution bar */}
+              {(() => {
+                const segments: Array<{ color: string; count: number; tint: string }> = [
+                  { color: 'yellow', count: stoolPattern.byColor.yellow, tint: '#F0B85A' },
+                  { color: 'brown',  count: stoolPattern.byColor.brown,  tint: '#8B6F47' },
+                  { color: 'green',  count: stoolPattern.byColor.green,  tint: '#56D364' },
+                  { color: 'dark',   count: stoolPattern.byColor.dark,   tint: '#3A3A3A' },
+                  { color: 'red',    count: stoolPattern.byColor.red,    tint: '#E74C3C' },
+                ].filter((s) => s.count > 0);
+                const colorTotal = segments.reduce((s, x) => s + x.count, 0);
+                if (colorTotal === 0) return null;
+                return (
+                  <View style={{ gap: 6 }}>
+                    <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      {t('insights.stoolColors')}
+                    </Text>
+                    <View style={{ flexDirection: 'row', height: 10, borderRadius: 999, overflow: 'hidden', backgroundColor: BORDER }}>
+                      {segments.map((s) => (
+                        <View key={s.color} style={{ flex: s.count, backgroundColor: s.tint }} />
+                      ))}
+                    </View>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                      {segments.map((s) => (
+                        <View key={`legend-${s.color}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: s.tint }} />
+                          <Text style={{ color: TEXT, fontSize: 11, fontWeight: '600' }}>{t(`diaper.poopColor${s.color.charAt(0).toUpperCase()}${s.color.slice(1)}` as any)}</Text>
+                          <Text style={{ color: MUTED, fontSize: 11 }}>{s.count}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                );
+              })()}
+
+              {/* Last consistency + leaks footer */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {stoolPattern.lastConsistency ? (
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: BORDER, backgroundColor: BG }}>
+                    <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700' }}>{t('insights.stoolLastConsistency')}</Text>
+                    <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700' }}>
+                      {t(`diaper.consistency${stoolPattern.lastConsistency.charAt(0).toUpperCase()}${stoolPattern.lastConsistency.slice(1)}` as any)}
+                    </Text>
+                  </View>
+                ) : null}
+                {stoolPattern.leaks > 0 ? (
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: `${GOLD}55`, backgroundColor: `${GOLD}15` }}>
+                    <Text style={{ color: GOLD, fontSize: 10, fontWeight: '700' }}>{t('insights.stoolLeaks')}</Text>
+                    <Text style={{ color: GOLD, fontSize: 12, fontWeight: '700' }}>{stoolPattern.leaks}</Text>
+                  </View>
+                ) : null}
+              </View>
+
+              {stoolPattern.alertColor ? (
+                <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: `${RED}15`, borderWidth: 1, borderColor: `${RED}40` }}>
+                  <Text style={{ color: RED, fontSize: 11, fontWeight: '700', lineHeight: 16 }}>
+                    {t(stoolPattern.alertColor === 'red' ? 'diaper.alertColorRedBody' : 'diaper.alertColorDarkBody')}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </Animated.View>
+        ) : null}
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           <Animated.View entering={FadeIn.duration(280).delay(240)} style={{ flex: 1, minWidth: 260, marginBottom: 10 }}>

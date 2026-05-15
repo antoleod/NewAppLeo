@@ -422,7 +422,12 @@
     "pwaInstallNow": "Nu installeren",
     "pwaInstallSuccess": "App geïnstalleerd",
     "pwaInstallDismissed": "Installatie geannuleerd",
-    "pwaManualHelp": "• Chrome/Edge: menu > \"App installeren\"\n• iPhone Safari: Deel > \"Zet op beginscherm\""
+    "pwaManualHelp": "• Chrome/Edge: menu > \"App installeren\"\n• iPhone Safari: Deel > \"Zet op beginscherm\"",
+    "stoolPatternEyebrow": "Ontlasting",
+    "stoolInRange": "in deze periode",
+    "stoolColors": "Kleuren",
+    "stoolLastConsistency": "Laatste consistentie",
+    "stoolLeaks": "Lekken"
   },
   "tabs": {
     "home": "Home",
