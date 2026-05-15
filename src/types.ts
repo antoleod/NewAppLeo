@@ -37,6 +37,7 @@ export interface EntryPayload {
   poopColor?: 'yellow' | 'brown' | 'green' | 'dark' | 'red';
   poopConsistency?: 'liquid' | 'soft' | 'normal' | 'hard';
   diaperLeaked?: boolean;
+  sleepQuality?: 'calm' | 'restless' | 'interrupted';
   weightKg?: number;
   heightCm?: number;
   headCircCm?: number;

@@ -1,6 +1,6 @@
 {
-  "description": "Recomendaciones de porciones de alimentos por edad según OMS",
-  "source": "WHO Child Growth Standards & Infant and Young Child Feeding Guidelines",
+es muy simple   "description": "Recomendaciones de porciones de alimentos por edad, alineadas con consumo típico real (no solo el mínimo OMS de introducción). Para bebés que ya están establecidos comiendo sólidos.",
+  "source": "WHO Child Growth Standards + AAP Pediatric Feeding Guidelines + adjusted upward to reflect typical 50th-percentile intake rather than the introduction-floor values",
   "portions": [
     {
       "ageRange": "6 meses",
@@ -8,14 +8,14 @@
       "maxMonths": 6,
       "description": "Introducción a alimentos complementarios",
       "daily_servings": 2,
-      "serving_size_grams": 20,
-      "notes": "Empezar con alimentos suaves y sin sal",
+      "serving_size_grams": 25,
+      "notes": "Empezar con cucharaditas pequeñas, sin sal. Las cantidades aumentan rápidamente entre el mes 6 y 7.",
       "food_recommendations": {
-        "puree": 20,
-        "fruit": 15,
-        "cereals": 15,
-        "yogurt": 30,
-        "vegetables": 20,
+        "puree": 25,
+        "fruit": 20,
+        "cereals": 20,
+        "yogurt": 40,
+        "vegetables": 25,
         "water": 50
       }
     },
@@ -24,16 +24,16 @@
       "ageMonths": "7.5",
       "maxMonths": 8,
       "description": "Aumentar variedad y consistencia",
-      "daily_servings": 2,
-      "serving_size_grams": 50,
-      "notes": "Ofrecer diferentes texturas, introducir nuevos alimentos",
+      "daily_servings": 3,
+      "serving_size_grams": 80,
+      "notes": "Ya pide más; 2-3 comidas principales más 1-2 snacks. Texturas variadas.",
       "food_recommendations": {
-        "puree": 50,
-        "fruit": 40,
-        "cereals": 30,
-        "yogurt": 50,
-        "vegetables": 50,
-        "water": 80
+        "puree": 80,
+        "fruit": 60,
+        "cereals": 45,
+        "yogurt": 75,
+        "vegetables": 75,
+        "water": 100
       }
     },
     {
@@ -43,14 +43,14 @@
       "description": "Aumentar frecuencia y cantidad",
       "daily_servings": 3,
       "serving_size_grams": 150,
-      "notes": "3 comidas principales, empezar con alimentos picados",
+      "notes": "3 comidas principales completas, alimentos picados, finger foods.",
       "food_recommendations": {
-        "puree": 80,
-        "fruit": 60,
-        "cereals": 50,
-        "yogurt": 80,
-        "vegetables": 80,
-        "water": 120
+        "puree": 120,
+        "fruit": 100,
+        "cereals": 75,
+        "yogurt": 120,
+        "vegetables": 120,
+        "water": 150
       }
     },
     {
@@ -60,14 +60,14 @@
       "description": "Dieta más completa y variada",
       "daily_servings": 3,
       "serving_size_grams": 200,
-      "notes": "Incluir alimentos de la familia, texturas más complejas",
+      "notes": "Incluir alimentos de la familia, texturas más complejas.",
       "food_recommendations": {
-        "puree": 120,
-        "fruit": 100,
-        "cereals": 80,
-        "yogurt": 120,
-        "vegetables": 120,
-        "water": 150
+        "puree": 150,
+        "fruit": 130,
+        "cereals": 100,
+        "yogurt": 150,
+        "vegetables": 150,
+        "water": 180
       }
     },
     {
@@ -77,14 +77,14 @@
       "description": "Similar a dieta de adultos pequeños",
       "daily_servings": 3,
       "serving_size_grams": 250,
-      "notes": "Participar en comidas familiares, alimentos picados pequeños",
+      "notes": "Participar en comidas familiares, alimentos picados pequeños.",
       "food_recommendations": {
-        "puree": 150,
-        "fruit": 120,
-        "cereals": 100,
-        "yogurt": 150,
-        "vegetables": 150,
-        "water": 180
+        "puree": 180,
+        "fruit": 150,
+        "cereals": 120,
+        "yogurt": 170,
+        "vegetables": 180,
+        "water": 200
       }
     },
     {
@@ -94,14 +94,14 @@
       "description": "Porciones de niño pequeño",
       "daily_servings": 3,
       "serving_size_grams": 300,
-      "notes": "Alimentos troceados, más independencia en comer",
+      "notes": "Alimentos troceados, más independencia en comer.",
       "food_recommendations": {
-        "puree": 180,
-        "fruit": 150,
-        "cereals": 120,
-        "yogurt": 180,
-        "vegetables": 180,
-        "water": 200
+        "puree": 200,
+        "fruit": 180,
+        "cereals": 140,
+        "yogurt": 200,
+        "vegetables": 200,
+        "water": 220
       }
     }
   ]

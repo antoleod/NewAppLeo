@@ -427,6 +427,29 @@ export function getSmartFoodQuantitySuggestions(input: SuggestionInput): Quantit
       }
     }
 
+    // 3b. Single-sample rescue: only ONE prior entry in this category but
+    // still better than ignoring it. Blend it with the age baseline so a
+    // 100 g log doesn't get drowned by a 40 g WHO bucket suggestion.
+    if (byCategory.length === 1) {
+      const sample = amountOf(byCategory[0], unit);
+      if (sample > 0) {
+        const baseline = getAgeBaseline(ageMonths, input.category);
+        // Weight the actual eaten amount 2× the age baseline — the parent's
+        // real observation is more informative than the generic table.
+        const habitual = (sample * 2 + baseline) / 3;
+        return {
+          chips: buildChipsAroundHabitual(habitual, sample, unit),
+          unit,
+          source: 'category',
+          sampleCount: 1,
+          lastAmount: sample,
+          usualAmount: roundToStep(habitual, chipStep(habitual, unit)),
+          habitualAmount: habitual,
+          trend: 'stable',
+        };
+      }
+    }
+
     // 3. Whole category.
     if (byCategory.length >= 2) {
       const values = byCategory.map((e) => amountOf(e, unit)).filter((v) => v > 0);

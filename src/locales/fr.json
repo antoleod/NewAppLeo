@@ -834,7 +834,11 @@
     "chipShorter": "Plus court",
     "chipUsual": "Habituel",
     "chipLonger": "Plus long",
-    "chipLast": "Dernier"
+    "chipLast": "Dernier",
+    "qualityLabel": "Comment a-t-il dormi ?",
+    "qualityCalm": "Calme",
+    "qualityRestless": "Agité",
+    "qualityInterrupted": "Coupé"
   },
   "sync": {
     "synced": "Synchronisé",

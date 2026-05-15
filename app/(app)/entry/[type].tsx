@@ -86,6 +86,7 @@ export default function EntryComposerScreen() {
   const [poopColor, setPoopColor] = useState<import('@/components/entries/DiaperSection').PoopColor | null>(null);
   const [poopConsistency, setPoopConsistency] = useState<import('@/components/entries/DiaperSection').PoopConsistency | null>(null);
   const [diaperLeaked, setDiaperLeaked] = useState(false);
+  const [sleepQuality, setSleepQuality] = useState<import('@/components/entries/SleepSection').SleepQuality | null>(null);
   const minutesSinceLastDiaper = useMemo(() => {
     const last = entries.find((e) => e.type === 'diaper');
     if (!last) return null;
@@ -229,6 +230,9 @@ export default function EntryComposerScreen() {
       case 'sleep':
       case 'pump':
         setDurationMin(String(editing.payload?.durationMin ?? 30));
+        if (editing.type === 'sleep') {
+          setSleepQuality((editing.payload?.sleepQuality as any) ?? null);
+        }
         if (editing.type === 'pump') {
           setAmountMl(String(editing.payload?.amountMl ?? 120));
         }
@@ -493,13 +497,15 @@ export default function EntryComposerScreen() {
         if (resolvedCategory !== 'other') foodPayload.foodCategory = resolvedCategory;
         return foodPayload as EntryPayload;
       }
-      case 'sleep':
+      case 'sleep': {
         // clientId travels with the saved entry so a subsequent draft-resume
         // can detect that this exact sleep session was already saved and
         // refuse to re-save it (prevents duplicates after a save-then-crash).
-        return sleepDraftClientId
-          ? { durationMin: resolvedDuration, notes, clientId: sleepDraftClientId }
-          : { durationMin: resolvedDuration, notes };
+        const base: any = { durationMin: resolvedDuration, notes };
+        if (sleepDraftClientId) base.clientId = sleepDraftClientId;
+        if (sleepQuality) base.sleepQuality = sleepQuality;
+        return base as EntryPayload;
+      }
       case 'diaper': {
         const poopN = clamp(Number(poop) || 0, 0, 9);
         return {
@@ -987,6 +993,9 @@ export default function EntryComposerScreen() {
             onEndDraftNow={(d) => void endSleepDraftNow(d)}
             onResumeDraft={resumeSleepDraft}
             onDiscardDraft={confirmDiscardSleepDraft}
+            occurredAt={occurredAt}
+            sleepQuality={sleepQuality}
+            setSleepQuality={setSleepQuality}
           />
         )}
 

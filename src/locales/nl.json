@@ -834,7 +834,11 @@
     "chipShorter": "Korter",
     "chipUsual": "Gebruikelijk",
     "chipLonger": "Langer",
-    "chipLast": "Laatste"
+    "chipLast": "Laatste",
+    "qualityLabel": "Hoe heeft hij geslapen?",
+    "qualityCalm": "Rustig",
+    "qualityRestless": "Onrustig",
+    "qualityInterrupted": "Onderbroken"
   },
   "sync": {
     "synced": "Gesynchroniseerd",

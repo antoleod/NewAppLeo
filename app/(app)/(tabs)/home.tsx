@@ -402,7 +402,7 @@ export default function HomeScreen() {
   const locale = localeTag(language);
   const { t, format } = useTranslation();
   const { profile, user } = useAuth();
-  const { entries, summary, addEntry, deleteEntry, loading } = useAppData();
+  const { entries, summary, addEntry, deleteEntry, loading, forceReconnect } = useAppData();
   const { theme, colors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -739,11 +739,31 @@ export default function HomeScreen() {
     width: `${milkProgress.value}%`,
   }));
 
+  // Tracks the last time refreshDashboard fully ran so we can dedupe rapid
+  // AppState toggles (lock-screen peek, app-switcher, etc.) that otherwise
+  // trigger a full cascade of AsyncStorage reads + state setters → blink.
+  const lastRefreshRef = useRef(0);
+
   const refreshDashboard = React.useCallback(async () => {
-    setBabies(await getBabies());
-    const activeBaby = await getActiveBaby();
-    if (!activeBaby) return;
-    setBabyId(activeBaby.id);
+    // Compute everything first, then commit ALL state in one synchronous
+    // burst so React 18 auto-batches them into a single render. Without this
+    // the 7 sequential `setX(await ...)` calls each trigger a re-render,
+    // which is the source of the foreground "blink".
+    const [babiesNext, activeBaby, settings, deviceName, quickAmt] = await Promise.all([
+      getBabies(),
+      getActiveBaby(),
+      getAppSettings(),
+      getDeviceDisplayName(),
+      getLastBottleAmount(),
+    ]);
+    if (!activeBaby) {
+      setBabies(babiesNext);
+      setAppSettingsState(settings);
+      setDeviceDisplayName(deviceName);
+      setQuickAmount(quickAmt);
+      return;
+    }
+
     const hydrationDateKey = `appleo.momHydrationDate:${activeBaby.id}`;
     const storedHydrationDate = await AsyncStorage.getItem(hydrationDateKey);
     const todayDate = new Date().toISOString().slice(0, 10);
@@ -755,29 +775,44 @@ export default function HomeScreen() {
     } else {
       currentHydration = await getMomHydration(activeBaby.id);
     }
-    setHydration(currentHydration);
-    const settings = await getAppSettings();
-    setAppSettingsState(settings);
     const storedFeedingMode = (settings as any).defaultFeedingMode;
+
+    // Single synchronous batch — React 18 collapses these into ONE render.
+    setBabies(babiesNext);
+    setBabyId(activeBaby.id);
+    setHydration(currentHydration);
+    setAppSettingsState(settings);
     if (storedFeedingMode === 'breast' || storedFeedingMode === 'bottle') {
       setDefaultFeedingMode(storedFeedingMode);
     }
-    setDeviceDisplayName(await getDeviceDisplayName());
-    setQuickAmount(await getLastBottleAmount());
+    setDeviceDisplayName(deviceName);
+    setQuickAmount(quickAmt);
+    lastRefreshRef.current = Date.now();
   }, []);
 
   const onPullToRefresh = React.useCallback(async () => {
     setRefreshing(true);
     haptics.light();
-    try { await refreshDashboard(); } finally { setRefreshing(false); }
-  }, [refreshDashboard]);
+    // Pull-to-refresh now forces a real Firestore reattach in addition to
+    // the local dashboard refresh. Previously it only re-read AsyncStorage,
+    // so the user could pull all day without ever fetching new remote data.
+    try {
+      forceReconnect();
+      await refreshDashboard();
+    } finally {
+      // Brief delay so the native spinner finishes its animation cleanly.
+      setTimeout(() => setRefreshing(false), 400);
+    }
+  }, [refreshDashboard, forceReconnect]);
 
   useEffect(() => {
     void refreshDashboard();
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        void refreshDashboard();
-      }
+      if (state !== 'active') return;
+      // Dedupe: skip if we just refreshed within 3 s (lock-screen peek,
+      // notification-overlay dismiss, multi-window switching, etc.).
+      if (Date.now() - lastRefreshRef.current < 3000) return;
+      void refreshDashboard();
     });
     return () => subscription.remove();
   }, [refreshDashboard]);
@@ -1407,27 +1442,12 @@ export default function HomeScreen() {
                     return swipeableRefs.current.get(entry.id)!;
                   })();
 
+                  // Swipe-RIGHT (finger moves right) reveals Delete on the
+                  // left edge — destructive actions are kept further from the
+                  // dominant thumb to avoid accidents. Swipe-LEFT (finger
+                  // moves left) reveals Edit on the right edge — that's what
+                  // the user instinctively reaches for after spotting a typo.
                   const renderLeftAction = () => (
-                    <Pressable
-                      onPress={() => {
-                        haptics.light();
-                        swipeRef.current?.close();
-                        router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } });
-                      }}
-                      style={{
-                        width: 68,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        backgroundColor: BLUE,
-                        marginBottom: 1,
-                        gap: 4,
-                      }}
-                    >
-                      <Ionicons name="pencil-outline" size={20} color="#fff" />
-                    </Pressable>
-                  );
-
-                  const renderRightAction = () => (
                     <Pressable
                       onPress={() => {
                         haptics.medium();
@@ -1435,31 +1455,41 @@ export default function HomeScreen() {
                           t('common.delete'),
                           label,
                           [
-                            {
-                              text: t('common.cancel'),
-                              style: 'cancel',
-                              onPress: () => swipeRef.current?.close(),
-                            },
+                            { text: t('common.cancel'), style: 'cancel', onPress: () => swipeRef.current?.close() },
                             {
                               text: t('common.delete'),
                               style: 'destructive',
-                              onPress: () => {
-                                haptics.success();
-                                void deleteEntry(entry.id);
-                              },
+                              onPress: () => { haptics.success(); void deleteEntry(entry.id); },
                             },
                           ]
                         );
                       }}
                       style={{
-                        width: 68,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        backgroundColor: RED,
-                        marginBottom: 1,
+                        width: 88, flexDirection: 'row',
+                        justifyContent: 'center', alignItems: 'center', gap: 6,
+                        backgroundColor: RED, marginBottom: 1,
                       }}
                     >
-                      <Ionicons name="trash-outline" size={20} color="#fff" />
+                      <Ionicons name="trash-outline" size={18} color="#fff" />
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('common.delete')}</Text>
+                    </Pressable>
+                  );
+
+                  const renderRightAction = () => (
+                    <Pressable
+                      onPress={() => {
+                        haptics.light();
+                        swipeRef.current?.close();
+                        router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } });
+                      }}
+                      style={{
+                        width: 88, flexDirection: 'row',
+                        justifyContent: 'center', alignItems: 'center', gap: 6,
+                        backgroundColor: BLUE, marginBottom: 1,
+                      }}
+                    >
+                      <Ionicons name="pencil-outline" size={18} color="#fff" />
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('common.edit')}</Text>
                     </Pressable>
                   );
 

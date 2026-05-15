@@ -155,8 +155,13 @@ const birthDate = new Date(Date.now() - 7 * 30.4375 * 86400000).toISOString();
   eq('ageFallback · source = age', s.source, 'age');
   const v = s.chips.map((c) => c.value);
   check(
-    'ageFallback · no absurd tiny chip (<25g) for 7mo vegetables',
-    v.every((x) => x >= 25),
+    'ageFallback · usual chip ≥50g for 7mo vegetables (updated baseline)',
+    v.some((x) => x >= 50),
+    `v=${v.join(',')}`,
+  );
+  check(
+    'ageFallback · no absurd tiny chip (<40g) for 7mo vegetables',
+    v.every((x) => x >= 40),
     `v=${v.join(',')}`,
   );
 }
@@ -216,7 +221,9 @@ const birthDate = new Date(Date.now() - 7 * 30.4375 * 86400000).toISOString();
 }
 
 // ---------------------------------------------------------------------------
-// 7. Single sample → falls through to age baseline (not history).
+// 7. Single sample → "rescue mode": blend the one observation with the age
+//    baseline so a 200 g log isn't ignored. Source is still 'category' but
+//    sampleCount=1 to signal it's a thin signal.
 // ---------------------------------------------------------------------------
 {
   const entries: EntryRecord[] = [
@@ -228,10 +235,14 @@ const birthDate = new Date(Date.now() - 7 * 30.4375 * 86400000).toISOString();
     category: 'fruit',
     foodName: 'mango',
   });
+  eq('singleSample · source = category (rescue mode)', s.source, 'category');
+  eq('singleSample · sampleCount = 1', s.sampleCount, 1);
+  // Blended habitual = (200*2 + ageBaseline) / 3 ≈ heavily weighted toward 200,
+  // so the suggestion should be meaningfully above the bare age baseline.
   check(
-    'singleSample · not foodName/category (needs ≥2)',
-    s.source !== 'foodName' && s.source !== 'category',
-    `source=${s.source}`,
+    'singleSample · suggestion influenced by the 200g sample',
+    (s.usualAmount ?? 0) >= 100,
+    `usualAmount=${s.usualAmount}`,
   );
 }
 

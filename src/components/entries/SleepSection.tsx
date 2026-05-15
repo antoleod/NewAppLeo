@@ -16,6 +16,8 @@ import {
 } from '@/lib/sleep-suggestions';
 import { haptics } from '@/lib/haptics';
 
+export type SleepQuality = 'calm' | 'restless' | 'interrupted';
+
 type Props = {
   editing: boolean;
   activeSleepDraft: SleepDraft | null;
@@ -31,6 +33,11 @@ type Props = {
   onEndDraftNow: (draft: SleepDraft) => void;
   onResumeDraft: (draft: SleepDraft) => void;
   onDiscardDraft: () => void;
+  /** Start of the sleep window — used to display "20:45 → 06:30 · 9h45". */
+  occurredAt?: Date;
+  /** Sleep quality, if the parent wants to capture it (edit + manual modes). */
+  sleepQuality?: SleepQuality | null;
+  setSleepQuality?: (q: SleepQuality | null) => void;
 };
 
 const LOCALE_MAP: Record<string, string> = {
@@ -44,6 +51,7 @@ export const SleepSection = React.memo(function SleepSection({
   durationMin, setDurationMin,
   sleepStopToken, saving, largeTouchMode,
   onEndDraftNow, onResumeDraft, onDiscardDraft,
+  occurredAt, sleepQuality, setSleepQuality,
 }: Props) {
   const { colors, theme } = useTheme();
   const { t } = useTranslation();
@@ -71,6 +79,82 @@ export const SleepSection = React.memo(function SleepSection({
     anyHistory:    t('sleep.suggestionGeneral'),
     age:           t('sleep.suggestionAge'),
     fallback:      '',
+  };
+
+  const renderEditExtras = () => {
+    if (!editing) return null;
+    const minutes = Number(durationMin) || 0;
+    const startDate = occurredAt ?? new Date();
+    const endDate = new Date(startDate.getTime() + minutes * 60000);
+    const fmt = (d: Date) => d.toLocaleTimeString(LOCALE_MAP[language] ?? 'en-US', { hour: '2-digit', minute: '2-digit' });
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const durLabel = hours > 0 ? `${hours}h${String(mins).padStart(2, '0')}` : `${mins} min`;
+
+    const qualityOptions: Array<{ value: SleepQuality; emoji: string; tKey: string }> = [
+      { value: 'calm',        emoji: '😴', tKey: 'sleep.qualityCalm' },
+      { value: 'restless',    emoji: '😣', tKey: 'sleep.qualityRestless' },
+      { value: 'interrupted', emoji: '🌙', tKey: 'sleep.qualityInterrupted' },
+    ];
+
+    return (
+      <View style={{ gap: 12, marginTop: 12 }}>
+        {/* Time range + period badge */}
+        {minutes > 0 ? (
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            paddingHorizontal: 12, paddingVertical: 10,
+            borderRadius: 12, borderWidth: 1, borderColor: colors.border,
+            backgroundColor: theme.bgCardAlt,
+          }}>
+            <Text style={{ fontSize: 16 }}>🛏️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>
+                {fmt(startDate)} → {fmt(endDate)}
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 11, marginTop: 1 }}>
+                {durLabel} · {t(`sleep.period${suggestion.period.charAt(0).toUpperCase()}${suggestion.period.slice(1)}` as any)}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Sleep quality (only when caller wires the setter) */}
+        {setSleepQuality ? (
+          <View>
+            <Text style={{ color: colors.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
+              {t('sleep.qualityLabel')}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {qualityOptions.map(({ value, emoji, tKey }) => {
+                const selected = sleepQuality === value;
+                return (
+                  <Pressable
+                    key={value}
+                    onPress={() => { haptics.selection(); setSleepQuality(selected ? null : value); }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={t(tKey)}
+                    style={({ pressed }) => ({
+                      flex: 1, minHeight: 52, paddingVertical: 6,
+                      borderRadius: 12, alignItems: 'center', justifyContent: 'center', gap: 2,
+                      borderWidth: selected ? 2 : 1,
+                      borderColor: selected ? meta.tone : colors.border,
+                      backgroundColor: selected ? meta.toneSoft : pressed ? `${colors.card}88` : 'transparent',
+                    })}
+                  >
+                    <Text style={{ fontSize: 18 }}>{emoji}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: selected ? '800' : '600', color: selected ? meta.tone : colors.muted }}>
+                      {t(tKey)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+      </View>
+    );
   };
 
   const renderSuggestionChips = () => (
@@ -293,13 +377,7 @@ export const SleepSection = React.memo(function SleepSection({
         stopRequestToken={sleepStopToken}
         onRunningChange={setSleepTimerRunning}
       />
-      {durationMin ? (
-        <View style={[styles.infoStrip, { marginTop: 12 }]}>
-          <Text style={[styles.infoStripText, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}>
-            {Math.floor(Number(durationMin) / 60)}h {Number(durationMin) % 60}m
-          </Text>
-        </View>
-      ) : null}
+      {renderEditExtras()}
       {renderSuggestionChips()}
     </View>
   ) : null;
