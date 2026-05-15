@@ -48,8 +48,28 @@ function getDetail(entry: EntryRecord, t: TFn) {
       return [entry.payload.foodName, entry.payload.quantity].filter(Boolean).join(' · ') || t('history.entryFood');
     case 'sleep':
       return `${entry.payload.durationMin ?? 0} min`;
-    case 'diaper':
-      return `P ${entry.payload.pee ?? 0} · C ${entry.payload.poop ?? 0} · V ${entry.payload.vomit ?? 0}`;
+    case 'diaper': {
+      const parts = [
+        `P ${entry.payload.pee ?? 0}`,
+        `C ${entry.payload.poop ?? 0}`,
+        `V ${entry.payload.vomit ?? 0}`,
+      ];
+      const colorEmoji: Record<string, string> = {
+        yellow: '🟡', brown: '🟤', green: '🟢', dark: '⚫', red: '🔴',
+      };
+      const consistencyEmoji: Record<string, string> = {
+        liquid: '🌊', soft: '💧', normal: '🟫', hard: '🥜',
+      };
+      const extras: string[] = [];
+      if (entry.payload.poopColor && colorEmoji[entry.payload.poopColor]) {
+        extras.push(colorEmoji[entry.payload.poopColor]);
+      }
+      if (entry.payload.poopConsistency && consistencyEmoji[entry.payload.poopConsistency]) {
+        extras.push(consistencyEmoji[entry.payload.poopConsistency]);
+      }
+      if (entry.payload.diaperLeaked) extras.push('⚠️');
+      return extras.length ? `${parts.join(' · ')}  ${extras.join(' ')}` : parts.join(' · ');
+    }
     case 'pump':
       return `${entry.payload.amountMl ?? 0} ml · ${entry.payload.durationMin ?? 0} min`;
     case 'measurement':

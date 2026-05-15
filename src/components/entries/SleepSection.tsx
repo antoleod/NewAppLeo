@@ -1,11 +1,20 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useLocale } from '@/context/LocaleContext';
+import { useAppData } from '@/context/AppDataContext';
+import { useAuth } from '@/context/AuthContext';
 import { TimerWidget } from '@/components/home';
 import { typeMeta } from '@/lib/entryComposer';
 import type { SleepDraft } from '@/lib/sleepDraft';
+import {
+  getSmartSleepSuggestions,
+  formatSleepDuration,
+  type SleepPeriod,
+  type SleepSuggestion,
+} from '@/lib/sleep-suggestions';
+import { haptics } from '@/lib/haptics';
 
 type Props = {
   editing: boolean;
@@ -39,7 +48,92 @@ export const SleepSection = React.memo(function SleepSection({
   const { colors, theme } = useTheme();
   const { t } = useTranslation();
   const { language } = useLocale();
+  const { entries } = useAppData();
+  const { profile } = useAuth();
   const meta = typeMeta.sleep;
+
+  const suggestion = useMemo<SleepSuggestion>(
+    () => getSmartSleepSuggestions({
+      entries,
+      babyBirthDate: profile?.babyBirthDate ?? null,
+    }),
+    [entries, profile?.babyBirthDate],
+  );
+
+  const periodLabel: Record<SleepPeriod, string> = {
+    morningNap:   t('sleep.periodMorningNap'),
+    afternoonNap: t('sleep.periodAfternoonNap'),
+    eveningNap:   t('sleep.periodEveningNap'),
+    night:        t('sleep.periodNight'),
+  };
+  const sourceLabel: Record<SleepSuggestion['source'], string> = {
+    periodHistory: t('sleep.suggestionPeriod'),
+    anyHistory:    t('sleep.suggestionGeneral'),
+    age:           t('sleep.suggestionAge'),
+    fallback:      '',
+  };
+
+  const renderSuggestionChips = () => (
+    <View style={{ marginTop: 12, gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <Text style={{ color: colors.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+          {periodLabel[suggestion.period]}
+        </Text>
+        {sourceLabel[suggestion.source] ? (
+          <Text style={{ color: colors.muted, fontSize: 11, fontWeight: '500' }} numberOfLines={1}>
+            · {sourceLabel[suggestion.source]}
+          </Text>
+        ) : null}
+      </View>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        {suggestion.chips.map((chip) => {
+          const active = Number(durationMin) === chip.minutes;
+          const showKind =
+            chip.kind !== 'usual' &&
+            (suggestion.source === 'periodHistory' || suggestion.source === 'anyHistory');
+          const kindText =
+            chip.kind === 'shorter' ? t('sleep.chipShorter')
+            : chip.kind === 'longer' ? t('sleep.chipLonger')
+            : chip.kind === 'last' ? t('sleep.chipLast')
+            : t('sleep.chipUsual');
+          return (
+            <Pressable
+              key={`${chip.kind}-${chip.minutes}`}
+              onPress={() => {
+                haptics.selection();
+                setDurationMin(active ? '' : String(chip.minutes));
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`${kindText} ${formatSleepDuration(chip.minutes)}`}
+              style={({ pressed }) => ({
+                flex: 1, minHeight: 50, paddingVertical: 6,
+                borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+                borderWidth: active ? 2 : 1,
+                borderColor: active ? meta.tone : colors.border,
+                backgroundColor: active ? meta.toneSoft : pressed ? `${colors.card}88` : colors.card,
+              })}
+            >
+              {showKind ? (
+                <Text style={{
+                  fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4,
+                  color: active ? meta.tone : colors.muted, marginBottom: 1,
+                }}>
+                  {kindText}
+                </Text>
+              ) : null}
+              <Text style={{
+                fontSize: 13, fontWeight: '800',
+                color: active ? meta.tone : colors.text,
+              }}>
+                {formatSleepDuration(chip.minutes)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
 
   // ─── Draft banner ────────────────────────────────────────────────
   const draftBanner = !editing && activeSleepDraft && sleepInputMode === null && !sleepTimerRunning ? (() => {
@@ -182,6 +276,7 @@ export const SleepSection = React.memo(function SleepSection({
           </Text>
         </View>
       ) : null}
+      {renderSuggestionChips()}
     </View>
   ) : null;
 
@@ -205,6 +300,7 @@ export const SleepSection = React.memo(function SleepSection({
           </Text>
         </View>
       ) : null}
+      {renderSuggestionChips()}
     </View>
   ) : null;
 

@@ -121,13 +121,22 @@ export function useNextFeeding() {
       setMinutesAgo(Math.floor(diff));
       setLastTime(time);
 
-      // Scale interval by how full the last feed was vs average
-      // e.g. 60ml when avg is 160ml → only wait 37% of normal interval
-      const baseInterval = meanIntervalMin ?? 180;
+      // Scale interval by how full the last feed was vs average:
+      //  • Small feed (60ml when avg is 160ml) → ratio 0.4 → next feed sooner.
+      //  • Large feed (220ml when avg is 160ml) → ratio 1.4 → wait longer.
+      // Allow scaling both ways (cap [0.4, 1.5]) — the previous min(1, ...) cap
+      // meant a baby who had just chugged a huge bottle was still flagged
+      // "feed possible" at the normal interval.
+      //
+      // Base interval prefers learned mean. Falls back to the WHO-derived
+      // cadence (24h / feedsPerDay) when there's no history yet, so a 6-9mo
+      // already-on-solids baby gets ~6h between bottles instead of a flat 3h.
+      const whoIntervalMin = who ? Math.round((24 * 60) / who.feedsPerDay) : 180;
+      const baseInterval = meanIntervalMin ?? whoIntervalMin;
       let interval = baseInterval;
       const lastAmount = lastFeed.payload?.amountMl ?? 0;
       if (lastAmount > 0 && recommendedAmount?.avg) {
-        const ratio = Math.min(1, Math.max(0.3, lastAmount / recommendedAmount.avg));
+        const ratio = Math.min(1.5, Math.max(0.4, lastAmount / recommendedAmount.avg));
         interval = baseInterval * ratio;
       }
 
@@ -143,7 +152,7 @@ export function useNextFeeding() {
     calculate();
     const timer = setInterval(calculate, 30000);
     return () => clearInterval(timer);
-  }, [language, lastFeed?.occurredAt, lastFeed?.payload?.amountMl, locale, meanIntervalMin, recommendedAmount]);
+  }, [language, lastFeed?.occurredAt, lastFeed?.payload?.amountMl, locale, meanIntervalMin, recommendedAmount, who]);
 
   // "1h55" style instead of "1.9 h"
   const hoursAgo = formatDuration(minutesAgo);

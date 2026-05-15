@@ -246,7 +246,31 @@
     "pee": "Pee",
     "poop": "Poop",
     "vomit": "Vomit",
-    "savedToast": "Diaper logged"
+    "savedToast": "Diaper logged",
+    "emptyHint": "Select what you found",
+    "sinceLast": "Since last:",
+    "quickPee": "Pee",
+    "quickPoop": "Poop",
+    "quickMixed": "Pee + Poop",
+    "quickEmpty": "Empty",
+    "poopColor": "Color",
+    "poopColorYellow": "Yellow",
+    "poopColorBrown": "Brown",
+    "poopColorGreen": "Green",
+    "poopColorDark": "Dark",
+    "poopColorRed": "Red",
+    "consistency": "Consistency",
+    "consistencyLiquid": "Liquid",
+    "consistencySoft": "Soft",
+    "consistencyNormal": "Normal",
+    "consistencyHard": "Hard",
+    "leaked": "Diaper leaked",
+    "colorAlert": "⚠️ Unusual color — watch closely",
+    "alertDiarrhea": "Diarrhea risk",
+    "alertDiarrheaBody": "{count} liquid stools in 24h — watch hydration",
+    "alertColor": "Unusual stool color",
+    "alertColorRedBody": "Recent red stool — call the pediatrician",
+    "alertColorDarkBody": "Recent very dark stool — check with the pediatrician"
   },
   "modal": {
     "chooseSide": "Choose side",
@@ -788,5 +812,18 @@
     "minimize": "Minimize",
     "running": "Running",
     "tapToExpand": "Tap to expand"
+  },
+  "sleep": {
+    "periodMorningNap": "Morning nap",
+    "periodAfternoonNap": "Afternoon nap",
+    "periodEveningNap": "Evening nap",
+    "periodNight": "Night",
+    "suggestionPeriod": "Usual at this time",
+    "suggestionGeneral": "Based on his recent naps",
+    "suggestionAge": "Suggested for this age",
+    "chipShorter": "Shorter",
+    "chipUsual": "Usual",
+    "chipLonger": "Longer",
+    "chipLast": "Last"
   }
 }

@@ -83,6 +83,14 @@ export default function EntryComposerScreen() {
   const [pee, setPee] = useState('1');
   const [poop, setPoop] = useState('0');
   const [vomit, setVomit] = useState('0');
+  const [poopColor, setPoopColor] = useState<import('@/components/entries/DiaperSection').PoopColor | null>(null);
+  const [poopConsistency, setPoopConsistency] = useState<import('@/components/entries/DiaperSection').PoopConsistency | null>(null);
+  const [diaperLeaked, setDiaperLeaked] = useState(false);
+  const minutesSinceLastDiaper = useMemo(() => {
+    const last = entries.find((e) => e.type === 'diaper');
+    if (!last) return null;
+    return Math.max(0, (Date.now() - new Date(last.occurredAt).getTime()) / 60000);
+  }, [entries]);
   const [weightKg, setWeightKg] = useState('');
   const [heightCm, setHeightCm] = useState('');
   const [headCircCm, setHeadCircCm] = useState('');
@@ -229,6 +237,9 @@ export default function EntryComposerScreen() {
         setPee(String(editing.payload?.pee ?? 0));
         setPoop(String(editing.payload?.poop ?? 0));
         setVomit(String(editing.payload?.vomit ?? 0));
+        setPoopColor((editing.payload?.poopColor as any) ?? null);
+        setPoopConsistency((editing.payload?.poopConsistency as any) ?? null);
+        setDiaperLeaked(Boolean(editing.payload?.diaperLeaked));
         break;
       case 'measurement':
         setWeightKg(editing.payload?.weightKg ? String(editing.payload.weightKg) : '');
@@ -489,13 +500,18 @@ export default function EntryComposerScreen() {
         return sleepDraftClientId
           ? { durationMin: resolvedDuration, notes, clientId: sleepDraftClientId }
           : { durationMin: resolvedDuration, notes };
-      case 'diaper':
+      case 'diaper': {
+        const poopN = clamp(Number(poop) || 0, 0, 9);
         return {
           pee: clamp(Number(pee) || 0, 0, 9),
-          poop: clamp(Number(poop) || 0, 0, 9),
+          poop: poopN,
           vomit: clamp(Number(vomit) || 0, 0, 9),
+          poopColor: poopN > 0 && poopColor ? poopColor : undefined,
+          poopConsistency: poopN > 0 && poopConsistency ? poopConsistency : undefined,
+          diaperLeaked: diaperLeaked || undefined,
           notes,
         };
+      }
       case 'pump':
         return { durationMin: resolvedDuration, amountMl: Number(amountMl) || 0, notes };
       case 'measurement':
@@ -979,6 +995,10 @@ export default function EntryComposerScreen() {
             pee={pee} setPee={setPee}
             poop={poop} setPoop={setPoop}
             vomit={vomit} setVomit={setVomit}
+            poopColor={poopColor} setPoopColor={setPoopColor}
+            poopConsistency={poopConsistency} setPoopConsistency={setPoopConsistency}
+            diaperLeaked={diaperLeaked} setDiaperLeaked={setDiaperLeaked}
+            minutesSinceLast={minutesSinceLastDiaper}
           />
         )}
 

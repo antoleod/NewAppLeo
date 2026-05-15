@@ -228,6 +228,38 @@ function getFoodAllergyAlerts(entries: EntryRecord[]) {
   return alerts;
 }
 
+type DiaperAlert =
+  | { kind: 'liquidStreak'; count: number }
+  | { kind: 'colorAlert'; color: 'red' | 'dark' };
+
+function getDiaperHealthAlerts(entries: EntryRecord[]): DiaperAlert[] {
+  const now = Date.now();
+  const last24h = now - 24 * 3600000;
+  const last48h = now - 48 * 3600000;
+  const alerts: DiaperAlert[] = [];
+
+  let liquidCount = 0;
+  let colorAlert: 'red' | 'dark' | null = null;
+
+  for (const e of entries) {
+    if (e.type !== 'diaper') continue;
+    const ts = new Date(e.occurredAt).getTime();
+    if (!Number.isFinite(ts)) continue;
+    const poop = Number(e.payload?.poop) || 0;
+    if (poop === 0) continue;
+
+    if (ts >= last24h && e.payload?.poopConsistency === 'liquid') liquidCount++;
+    if (!colorAlert && ts >= last48h) {
+      const c = e.payload?.poopColor;
+      if (c === 'red' || c === 'dark') colorAlert = c;
+    }
+  }
+
+  if (liquidCount >= 2) alerts.push({ kind: 'liquidStreak', count: liquidCount });
+  if (colorAlert) alerts.push({ kind: 'colorAlert', color: colorAlert });
+  return alerts;
+}
+
 type FoodSummary = {
   recent: EntryRecord[];
   mostCommon: { name: string; count: number } | null;
@@ -645,6 +677,7 @@ export default function HomeScreen() {
   const lastFood = useMemo(() => getLastFood(entries), [entries]);
   const foodTodayCount = useMemo(() => getFoodTodayCount(entries), [entries]);
   const foodAllergyAlerts = useMemo(() => getFoodAllergyAlerts(entries), [entries]);
+  const diaperHealthAlerts = useMemo(() => getDiaperHealthAlerts(entries), [entries]);
   const foodSummary = useMemo(() => getFoodSummary(entries), [entries]);
   const { recent: foodHistory, mealsToday, totalGramsToday, mostCommon: foodMostCommon } = foodSummary;
 
@@ -1147,6 +1180,48 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 </View>
+              </Animated.View>
+            )}
+            {diaperHealthAlerts.length > 0 && (
+              <Animated.View entering={FadeInDown.duration(260).delay(165)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+                {diaperHealthAlerts.map((alert, idx) => {
+                  const isUrgent = alert.kind === 'colorAlert';
+                  const tone = isUrgent ? RED : YELLOW;
+                  const title = alert.kind === 'liquidStreak'
+                    ? t('diaper.alertDiarrhea')
+                    : t('diaper.alertColor');
+                  const body = alert.kind === 'liquidStreak'
+                    ? format('diaper.alertDiarrheaBody', { count: alert.count })
+                    : t(alert.color === 'red' ? 'diaper.alertColorRedBody' : 'diaper.alertColorDarkBody');
+                  return (
+                    <Pressable
+                      key={`${alert.kind}-${idx}`}
+                      onPress={() => router.push('/entry/diaper')}
+                      accessibilityRole="button"
+                      accessibilityLabel={title}
+                      style={({ pressed }) => ({
+                        marginTop: idx === 0 ? 0 : 8,
+                        paddingHorizontal: 14, paddingVertical: 12,
+                        flexDirection: 'row', alignItems: 'center', gap: 12,
+                        borderRadius: 12,
+                        backgroundColor: pressed ? `${tone}22` : `${tone}10`,
+                        borderLeftWidth: 3, borderLeftColor: tone,
+                      })}
+                    >
+                      <Ionicons
+                        name={isUrgent ? 'warning-outline' : 'water-outline'}
+                        size={18}
+                        color={tone}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{title}</Text>
+                        <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
+                          {body}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
               </Animated.View>
             )}
             {activeMeds.length > 0 && (

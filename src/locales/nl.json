@@ -246,7 +246,31 @@
     "pee": "Plas",
     "poop": "Poep",
     "vomit": "Spuug",
-    "savedToast": "Luier geregistreerd"
+    "savedToast": "Luier geregistreerd",
+    "emptyHint": "Kies wat je hebt gevonden",
+    "sinceLast": "Sinds de laatste:",
+    "quickPee": "Plas",
+    "quickPoop": "Poep",
+    "quickMixed": "Plas + Poep",
+    "quickEmpty": "Leeg",
+    "poopColor": "Kleur",
+    "poopColorYellow": "Geel",
+    "poopColorBrown": "Bruin",
+    "poopColorGreen": "Groen",
+    "poopColorDark": "Donker",
+    "poopColorRed": "Rood",
+    "consistency": "Consistentie",
+    "consistencyLiquid": "Vloeibaar",
+    "consistencySoft": "Zacht",
+    "consistencyNormal": "Normaal",
+    "consistencyHard": "Hard",
+    "leaked": "Luier gelekt",
+    "colorAlert": "⚠️ Ongewone kleur — let op",
+    "alertDiarrhea": "Risico op diarree",
+    "alertDiarrheaBody": "{count} vloeibare ontlastingen in 24u — let op hydratatie",
+    "alertColor": "Ongewone ontlastingskleur",
+    "alertColorRedBody": "Recente rode ontlasting — bel de kinderarts",
+    "alertColorDarkBody": "Recente zeer donkere ontlasting — overleg met de kinderarts"
   },
   "modal": {
     "chooseSide": "Kies zijde",
@@ -788,5 +812,18 @@
     "minimize": "Minimaliseren",
     "running": "Bezig",
     "tapToExpand": "Tik om uit te klappen"
+  },
+  "sleep": {
+    "periodMorningNap": "Ochtenddutje",
+    "periodAfternoonNap": "Middagdutje",
+    "periodEveningNap": "Avonddutje",
+    "periodNight": "Nacht",
+    "suggestionPeriod": "Gebruikelijk op dit moment",
+    "suggestionGeneral": "Op basis van zijn recente dutjes",
+    "suggestionAge": "Voorgesteld voor deze leeftijd",
+    "chipShorter": "Korter",
+    "chipUsual": "Gebruikelijk",
+    "chipLonger": "Langer",
+    "chipLast": "Laatste"
   }
 }

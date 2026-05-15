@@ -246,7 +246,31 @@
     "pee": "Pipi",
     "poop": "Caca",
     "vomit": "Vomi",
-    "savedToast": "Couche enregistrée"
+    "savedToast": "Couche enregistrée",
+    "emptyHint": "Sélectionne ce que tu as trouvé",
+    "sinceLast": "Depuis la dernière :",
+    "quickPee": "Pipi",
+    "quickPoop": "Caca",
+    "quickMixed": "Pipi + Caca",
+    "quickEmpty": "Vide",
+    "poopColor": "Couleur",
+    "poopColorYellow": "Jaune",
+    "poopColorBrown": "Marron",
+    "poopColorGreen": "Vert",
+    "poopColorDark": "Foncé",
+    "poopColorRed": "Rouge",
+    "consistency": "Consistance",
+    "consistencyLiquid": "Liquide",
+    "consistencySoft": "Molle",
+    "consistencyNormal": "Normale",
+    "consistencyHard": "Dure",
+    "leaked": "Couche débordée",
+    "colorAlert": "⚠️ Couleur inhabituelle — surveille",
+    "alertDiarrhea": "Risque de diarrhée",
+    "alertDiarrheaBody": "{count} selles liquides en 24 h — surveille l'hydratation",
+    "alertColor": "Couleur de selle inhabituelle",
+    "alertColorRedBody": "Selle rouge récente — appelle le pédiatre",
+    "alertColorDarkBody": "Selle très foncée récente — vérifie avec le pédiatre"
   },
   "modal": {
     "chooseSide": "Choisir le côté",
@@ -788,5 +812,18 @@
     "minimize": "Réduire",
     "running": "En cours",
     "tapToExpand": "Toucher pour agrandir"
+  },
+  "sleep": {
+    "periodMorningNap": "Sieste du matin",
+    "periodAfternoonNap": "Sieste de l'après-midi",
+    "periodEveningNap": "Sieste du soir",
+    "periodNight": "Nuit",
+    "suggestionPeriod": "Habituel à ce moment",
+    "suggestionGeneral": "D'après ses dernières siestes",
+    "suggestionAge": "Suggéré pour son âge",
+    "chipShorter": "Plus court",
+    "chipUsual": "Habituel",
+    "chipLonger": "Plus long",
+    "chipLast": "Dernier"
   }
 }

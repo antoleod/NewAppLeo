@@ -34,6 +34,9 @@ export interface EntryPayload {
   pee?: number;
   poop?: number;
   vomit?: number;
+  poopColor?: 'yellow' | 'brown' | 'green' | 'dark' | 'red';
+  poopConsistency?: 'liquid' | 'soft' | 'normal' | 'hard';
+  diaperLeaked?: boolean;
   weightKg?: number;
   heightCm?: number;
   headCircCm?: number;
