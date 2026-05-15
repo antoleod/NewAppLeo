@@ -5,13 +5,23 @@ import { View, ActivityIndicator, Text, Platform, Pressable } from 'react-native
 import { Page } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAppData } from '@/context/AppDataContext';
 
 export default function AppLayout() {
-  const { loading, user, profile, guestMode, profileLoading } = useAuth();
+  const { loading, user, profile, guestMode, profileLoading, retryProfile } = useAuth();
+  const { forceReconnect } = useAppData();
   const { colors } = useTheme();
   const { t } = useTranslation();
   const segments = useSegments();
   const onOnboardingRoute = segments.includes('onboarding');
+
+  const handleRetry = () => {
+    retryProfile();
+    forceReconnect();
+    if (Platform.OS === 'web') {
+      (globalThis as any).location?.reload?.();
+    }
+  };
 
   // After 10 s of unresolved loading, show a recovery screen instead of
   // spinning forever. The 8 s timeouts in AuthContext and AppDataContext mean
@@ -43,23 +53,21 @@ export default function AppLayout() {
             <Text style={{ color: colors.muted ?? colors.text, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
               {t('errors.loadingTimeoutMessage')}
             </Text>
-            {Platform.OS === 'web' && (
-              <Pressable
-                onPress={() => (globalThis as any).location?.reload?.()}
-                style={({ pressed }) => ({
-                  marginTop: 8,
-                  paddingHorizontal: 28,
-                  paddingVertical: 14,
-                  borderRadius: 12,
-                  backgroundColor: colors.primary,
-                  opacity: pressed ? 0.8 : 1,
-                })}
-              >
-                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
-                  {t('errors.retryConnection')}
-                </Text>
-              </Pressable>
-            )}
+            <Pressable
+              onPress={handleRetry}
+              style={({ pressed }) => ({
+                marginTop: 8,
+                paddingHorizontal: 28,
+                paddingVertical: 14,
+                borderRadius: 12,
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
+                {t('errors.retryConnection')}
+              </Text>
+            </Pressable>
           </View>
         </Page>
       );

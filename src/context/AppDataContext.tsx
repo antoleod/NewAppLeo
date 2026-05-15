@@ -19,7 +19,7 @@ import { EntryPayload, EntryRecord, EntryType } from '@/types';
 import { useAuth } from './AuthContext';
 import { getTodaySummary } from '@/utils/entries';
 import { deleteLocalEntry, getLocalEntries, setLocalEntries, upsertLocalEntry } from '@/services/localStore';
-import { flushQueuedOperations, queueDeletes, queueUpserts } from '@/lib/sync';
+import { flushQueuedOperations, mergeEntries, pullEntries, queueDeletes, queueUpserts } from '@/lib/sync';
 import { buildLeoProfilePatch, importLeoEntries } from '@/lib/leoData';
 import { getAppSettings, saveBaby, setAppSettings } from '@/lib/storage';
 import { setGuestProfile } from '@/lib/storage';
@@ -45,6 +45,7 @@ export interface AppDataContextValue {
   deleteEntry: (id: string) => Promise<void>;
   seedDemoData: () => Promise<void>;
   entryById: (id: string) => EntryRecord | undefined;
+  forceReconnect: () => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -59,6 +60,18 @@ function isPermissionDenied(error: unknown) {
 
 function createLocalId() {
   return globalThis.crypto?.randomUUID?.() ?? `local_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function sameEntryList(a: EntryRecord[], b: EntryRecord[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    const y = b[i];
+    if (x.id !== y.id) return false;
+    if ((x.updatedAt ?? x.occurredAt) !== (y.updatedAt ?? y.occurredAt)) return false;
+  }
+  return true;
 }
 
 function normalizeEntry(id: string, data: Record<string, any>): EntryRecord {
@@ -214,7 +227,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       // Tear down dead subscription before re-attaching
       unsubscribeRef.current?.();
 
-      setLoading(true);
+      // Only show the full loading skeleton on the FIRST attach. On
+      // re-attach (foreground reconnect, etc.) keep the cached entries
+      // visible so cards don't flash to a skeleton and back.
+      setEntries((current) => {
+        if (current.length === 0) setLoading(true);
+        return current;
+      });
       const q = query(entriesRef(uid), orderBy('occurredAt', 'desc'), limit(ENTRIES_PAGE_LIMIT));
 
       // If Firestore doesn't respond within 8 seconds (e.g. reconnecting after
@@ -234,12 +253,26 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
       unsubscribeRef.current = onSnapshot(
         q,
-        (snapshot) => {
+        async (snapshot) => {
           if (cancelledRef.current) return;
           settled = true;
           clearTimeout(fallbackTimer);
           remoteAvailableRef.current = true;
-          setEntries(snapshot.docs.map((item) => normalizeEntry(item.id, item.data())));
+          const remote = snapshot.docs.map((item) => normalizeEntry(item.id, item.data()));
+          // Pull any local writes that are still waiting in the sync queue
+          // (offline writes, failed batches) and merge them in by updatedAt.
+          // Without this, an entry the user just added vanishes from the UI
+          // for the moment between optimistic add and successful flush, then
+          // reappears — a textbook blink.
+          let queuedLocals: EntryRecord[] = [];
+          try { queuedLocals = await pullEntries(); } catch {}
+          if (cancelledRef.current) return;
+          const next = queuedLocals.length > 0 ? mergeEntries(queuedLocals, remote) : remote;
+          // Skip the state update when the result is byte-identical to what
+          // we already have. Prevents downstream useMemos / re-renders / and
+          // the FadeInDown re-fires that look like "blinking" after every
+          // foreground reconnect.
+          setEntries((current) => (sameEntryList(current, next) ? current : next));
           setLoading(false);
         },
         async (error) => {
@@ -293,8 +326,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     void flushQueue();
 
+    // Debounce: some platforms fire 'active' multiple times in quick
+    // succession (lock screen, notification overlay, app-switcher peek).
+    // Only honour the first one within a 1.5 s window.
+    let lastActiveAt = 0;
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
+      const now = Date.now();
+      if (now - lastActiveAt < 1500) return;
+      lastActiveAt = now;
 
       void flushQueue();
 
@@ -309,6 +349,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       subscription.remove();
     };
   }, [profile?.uid]);
+
+  const forceReconnect = React.useCallback(() => {
+    const uid = uidRef.current;
+    if (!uid) return;
+    permissionDeniedRef.current = false;
+    remoteAvailableRef.current = true;
+    attachListenerRef.current?.(uid);
+  }, []);
 
   const summary = useMemo(() => getTodaySummary(entries, profile), [entries, profile]);
 
@@ -466,8 +514,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       deleteEntry,
       seedDemoData,
       entryById,
+      forceReconnect,
     }),
-    [entries, loading, summary],
+    [entries, loading, summary, forceReconnect],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

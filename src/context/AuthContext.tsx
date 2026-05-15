@@ -31,6 +31,7 @@ interface AuthContextValue {
   saveProfile: (partial: Partial<UserProfile>) => Promise<void>;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  retryProfile: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -41,6 +42,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [guestMode, setGuestMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  // Bump to force the auth-state effect to tear down + re-attach the
+  // profile listener (used by the recovery screen's "Retry" button).
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | undefined;
@@ -140,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unsubscribeProfile?.();
       unsubscribe();
     };
-  }, []);
+  }, [retryToken]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -259,6 +263,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         setProfile(await loadProfile(user.uid));
+      },
+      retryProfile: () => {
+        setLoading(true);
+        setProfileLoading(true);
+        setRetryToken((n) => n + 1);
       },
     }),
     [guestMode, loading, profile, profileLoading, user],
