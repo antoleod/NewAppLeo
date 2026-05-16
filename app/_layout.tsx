@@ -125,7 +125,9 @@ export default function RootLayout() {
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (nextAppState === 'active') {
         setIsIncognito(false);
-        const wasInBackground = appState.current.match(/inactive|background/);
+        // Only trigger biometric lock when returning from true background,
+        // not from 'inactive' (iOS screen-dim transition) which is momentary.
+        const wasInBackground = appState.current === 'background';
 
         if (wasInBackground && autoLockRef.current) {
           // Cache hardware check — it never changes at runtime
@@ -139,7 +141,9 @@ export default function RootLayout() {
             handleUnlock();
           }
         }
-      } else {
+      } else if (nextAppState === 'background') {
+        // Only hide content when truly backgrounded, not during iOS inactive
+        // transitions (screen dimming, control center, notification pull-down).
         setIsIncognito(true);
       }
       appState.current = nextAppState;
