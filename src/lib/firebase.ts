@@ -16,6 +16,7 @@ import {
   persistentMultipleTabManager,
   type Firestore,
 } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const requiredEnv = (name: string, value: string | undefined) => {
   if (!value) {
@@ -114,5 +115,7 @@ if (Platform.OS === 'web') {
   }
 }
 export const auth = authInstance;
+
+export const storage = getStorage(app);
 
 export { app };

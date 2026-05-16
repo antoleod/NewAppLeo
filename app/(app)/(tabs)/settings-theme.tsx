@@ -26,6 +26,7 @@ import { BackgroundPhotoSelector } from '@/components/profile';
 import { SettingsImporter } from '@/components/profile';
 import { DataExporter } from '@/components/profile';
 import { defaultAppearanceSettings, getAppSettings, setAppSettings } from '@/lib/storage';
+import { uploadBackgroundPhoto, deleteBackgroundPhoto } from '@/lib/photoStorage';
 import { useTranslation } from '@/hooks/useTranslation';
 import { confirmAction } from '@/lib/confirm';
 import { haptics } from '@/lib/haptics';
@@ -61,7 +62,32 @@ export default function ThemeSettings() {
     setButtonTransparency,
     setCustomTheme,
   } = useTheme();
-  const { setThemeMode } = useAuth();
+  const { setThemeMode, user, guestMode } = useAuth();
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoSelected = async (localUri: string) => {
+    if (user && !guestMode) {
+      setUploadingPhoto(true);
+      try {
+        const downloadUrl = await uploadBackgroundPhoto(user.uid, localUri);
+        await setBackgroundPhotoUri(downloadUrl);
+      } catch {
+        // Upload failed — fall back to local URI so the feature still works
+        await setBackgroundPhotoUri(localUri);
+      } finally {
+        setUploadingPhoto(false);
+      }
+    } else {
+      await setBackgroundPhotoUri(localUri);
+    }
+  };
+
+  const handlePhotoRemoved = async () => {
+    if (user && !guestMode && backgroundPhotoUri?.startsWith('https://firebasestorage')) {
+      void deleteBackgroundPhoto(user.uid);
+    }
+    await setBackgroundPhotoUri('');
+  };
 
   const [opacityValue, setOpacityValue] = useState(() => clampOpacity(buttonOpacity));
   const [opacityTrackWidth, setOpacityTrackWidth] = useState(0);
@@ -396,8 +422,9 @@ export default function ThemeSettings() {
           <Text style={[styles.sectionBody, { color: theme.textMuted }]}>{t('settings.backgroundPhotoBody')}</Text>
           <BackgroundPhotoSelector
             currentPhotoUri={backgroundPhotoUri}
-            onPhotoSelected={(uri) => void setBackgroundPhotoUri(uri)}
-            onPhotoRemoved={() => void setBackgroundPhotoUri('')}
+            onPhotoSelected={(uri) => void handlePhotoSelected(uri)}
+            onPhotoRemoved={() => void handlePhotoRemoved()}
+            isLoading={uploadingPhoto}
           />
         </Card>
 
