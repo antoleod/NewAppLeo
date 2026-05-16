@@ -3,6 +3,7 @@ import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
 import { EntryRecord } from '@/types';
+import { useFeedingSettings } from '@/hooks/useFeedingSettings';
 
 export type FeedingStatus = 'possible' | 'soon' | 'waiting';
 
@@ -81,12 +82,23 @@ export function useNextFeeding() {
   const { profile } = useAuth();
   const { language } = useLocale();
   const locale = localeTag(language);
+  const feedingCfg = useFeedingSettings();
 
   const feedEntries = useMemo(
     () => entries.filter((e) => e.type === 'feed').sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
     [entries],
   );
-  const lastFeed = feedEntries[0];
+
+  // Food entries reset the countdown only when the parent has enabled the option
+  const lastConsumed = useMemo(() => {
+    const types = feedingCfg.foodCountsAsFeeding ? ['feed', 'food'] : ['feed'];
+    const candidates = entries
+      .filter((e) => types.includes(e.type))
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+    return candidates[0] ?? null;
+  }, [entries, feedingCfg.foodCountsAsFeeding]);
+
+  const lastFeed = lastConsumed;
 
   const meanIntervalMin = useMemo(() => calcMeanIntervalMin(feedEntries), [feedEntries]);
 
@@ -121,23 +133,48 @@ export function useNextFeeding() {
       setMinutesAgo(Math.floor(diff));
       setLastTime(time);
 
-      // Scale interval by how full the last feed was vs average:
-      //  • Small feed (60ml when avg is 160ml) → ratio 0.4 → next feed sooner.
-      //  • Large feed (220ml when avg is 160ml) → ratio 1.4 → wait longer.
-      // Allow scaling both ways (cap [0.4, 1.5]) — the previous min(1, ...) cap
-      // meant a baby who had just chugged a huge bottle was still flagged
-      // "feed possible" at the normal interval.
-      //
-      // Base interval prefers learned mean. Falls back to the WHO-derived
-      // cadence (24h / feedsPerDay) when there's no history yet, so a 6-9mo
-      // already-on-solids baby gets ~6h between bottles instead of a flat 3h.
+      // Base interval: custom override > learned mean > WHO recommendation.
       const whoIntervalMin = who ? Math.round((24 * 60) / who.feedsPerDay) : 180;
-      const baseInterval = meanIntervalMin ?? whoIntervalMin;
+      const baseInterval = feedingCfg.customIntervalMin ?? meanIntervalMin ?? whoIntervalMin;
       let interval = baseInterval;
-      const lastAmount = lastFeed.payload?.amountMl ?? 0;
-      if (lastAmount > 0 && recommendedAmount?.avg) {
-        const ratio = Math.min(1.5, Math.max(0.4, lastAmount / recommendedAmount.avg));
-        interval = baseInterval * ratio;
+
+      if (lastFeed.type === 'food') {
+        // Compare grams consumed to ml of an average bottle — same scale, same formula.
+        //
+        // actualGrams = grams served × how much was eaten:
+        //   all=1.0, half=0.5, little=0.25, none=0.05
+        //
+        // refMl = running avg bottle (or WHO recommendation if no history).
+        //
+        // ratio = actualGrams / refMl  →  same [0.4, 1.5] clamp as bottles.
+        //   160 g eaten, avg bottle 160 ml → ratio 1.0 → same wait as a full bottle.
+        //    80 g eaten, avg bottle 160 ml → ratio 0.5 → half the wait.
+        //     0 g eaten                   → ratio 0.05 → almost no delay (min 30 min).
+        const eatFractions: Record<string, number> = { all: 1.0, half: 0.5, little: 0.25, none: 0.05 };
+        const amountEaten = lastFeed.payload?.amountEaten as string | undefined;
+        const eatFraction = amountEaten != null ? (eatFractions[amountEaten] ?? 0.6) : 0.6;
+        const grams = (lastFeed.payload?.quantityGrams as number | undefined) ?? 0;
+        const actualGrams = grams > 0 ? grams * eatFraction : 0;
+
+        const refMl = feedingCfg.referenceMealGrams > 0
+          ? feedingCfg.referenceMealGrams
+          : (recommendedAmount?.avg ?? who?.perFeedMl ?? 150);
+        if (actualGrams > 0) {
+          const ratio = Math.min(1.5, Math.max(0.4, actualGrams / refMl));
+          interval = Math.max(30, baseInterval * ratio);
+        } else {
+          // Only amountEaten known, no gram data — use fraction directly
+          interval = Math.max(30, baseInterval * Math.min(1.5, Math.max(0.4, eatFraction)));
+        }
+      } else {
+        // Bottle: scale interval by how full the feed was vs the running average.
+        //  • Small feed (60ml when avg is 160ml) → ratio 0.4 → next feed sooner.
+        //  • Large feed (220ml when avg is 160ml) → ratio 1.4 → wait longer.
+        const lastAmount = lastFeed.payload?.amountMl ?? 0;
+        if (lastAmount > 0 && recommendedAmount?.avg) {
+          const ratio = Math.min(1.5, Math.max(0.4, lastAmount / recommendedAmount.avg));
+          interval = baseInterval * ratio;
+        }
       }
 
       const remaining = interval - diff;
@@ -152,7 +189,7 @@ export function useNextFeeding() {
     calculate();
     const timer = setInterval(calculate, 30000);
     return () => clearInterval(timer);
-  }, [language, lastFeed?.occurredAt, lastFeed?.payload?.amountMl, locale, meanIntervalMin, recommendedAmount, who]);
+  }, [language, lastFeed?.occurredAt, lastFeed?.type, lastFeed?.payload?.amountMl, lastFeed?.payload?.amountEaten, lastFeed?.payload?.quantityGrams, locale, meanIntervalMin, recommendedAmount, who, feedingCfg]);
 
   // "1h55" style instead of "1.9 h"
   const hoursAgo = formatDuration(minutesAgo);
@@ -171,6 +208,7 @@ export function useNextFeeding() {
     hoursAgo,
     lastTime,
     lastFeed,
+    lastConsumedType: lastConsumed?.type ?? null,
     meanIntervalMin,
     nextFeedInMin,
     nextFeedLabel,

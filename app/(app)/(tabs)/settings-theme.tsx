@@ -25,7 +25,8 @@ import { HomeTabIcon, HistoryTabIcon, InsightsTabIcon, ProfileTabIcon } from '@/
 import { BackgroundPhotoSelector } from '@/components/profile';
 import { SettingsImporter } from '@/components/profile';
 import { DataExporter } from '@/components/profile';
-import { defaultAppearanceSettings, getAppSettings, setAppSettings } from '@/lib/storage';
+import { defaultAppearanceSettings, getAppSettings, setAppSettings, type FeedingSettings } from '@/lib/storage';
+import { useFeedingSettings, saveFeedingSettings } from '@/hooks/useFeedingSettings';
 import { uploadBackgroundPhoto, deleteBackgroundPhoto } from '@/lib/photoStorage';
 import { useTranslation } from '@/hooks/useTranslation';
 import { confirmAction } from '@/lib/confirm';
@@ -549,6 +550,7 @@ export default function ThemeSettings() {
           </Card>
         ) : null}
 
+        <FeedingSettingsCard />
         <DataExporter />
         <SettingsImporter />
       </ScrollView>
@@ -679,6 +681,119 @@ function IconPackPickerCard() {
                 <InsightsTabIcon size={20} color={theme.textMuted} iconStyle={pack.id} />
                 <ProfileTabIcon size={20} color={theme.textMuted} iconStyle={pack.id} />
               </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </Card>
+  );
+}
+
+const INTERVAL_OPTIONS: { labelMin: number | null; labelKey: string }[] = [
+  { labelMin: null,  labelKey: 'settings.feedingIntervalAuto' },
+  { labelMin: 120,   labelKey: '2h' },
+  { labelMin: 150,   labelKey: '2h30' },
+  { labelMin: 180,   labelKey: '3h' },
+  { labelMin: 210,   labelKey: '3h30' },
+  { labelMin: 240,   labelKey: '4h' },
+  { labelMin: 300,   labelKey: '5h' },
+];
+
+const REF_MEAL_OPTIONS = [100, 130, 150, 180, 200, 250];
+
+function FeedingSettingsCard() {
+  const { theme } = useTheme();
+  const { t } = useTranslation();
+  const cfg = useFeedingSettings();
+
+  async function toggle(field: keyof FeedingSettings, value: boolean | number | null) {
+    haptics.selection();
+    await saveFeedingSettings({ ...cfg, [field]: value });
+  }
+
+  return (
+    <Card>
+      <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{t('settings.feedingTitle')}</Text>
+      <Text style={[styles.sectionBody, { color: theme.textMuted }]}>{t('settings.feedingBody')}</Text>
+
+      {/* Toggle: food counts as feeding */}
+      <Pressable
+        onPress={() => void toggle('foodCountsAsFeeding', !cfg.foodCountsAsFeeding)}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}
+      >
+        <View
+          style={{
+            width: 44, height: 26, borderRadius: 13,
+            backgroundColor: cfg.foodCountsAsFeeding ? theme.accent : theme.border,
+            justifyContent: 'center', paddingHorizontal: 2,
+          }}
+        >
+          <View
+            style={{
+              width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff',
+              transform: [{ translateX: cfg.foodCountsAsFeeding ? 18 : 0 }],
+            }}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>
+            {t('settings.feedingFoodToggle')}
+          </Text>
+          <Text style={{ color: theme.textMuted, fontSize: 11, marginTop: 2 }}>
+            {t('settings.feedingFoodToggleDesc')}
+          </Text>
+        </View>
+      </Pressable>
+
+      {/* Reference meal size chips */}
+      {cfg.foodCountsAsFeeding ? (
+        <>
+          <Text style={[styles.controlLabel, { color: theme.textPrimary }]}>{t('settings.feedingRefMeal')}</Text>
+          <Text style={[styles.sectionBody, { color: theme.textMuted }]}>{t('settings.feedingRefMealDesc')}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            {REF_MEAL_OPTIONS.map((g) => {
+              const active = cfg.referenceMealGrams === g;
+              return (
+                <Pressable
+                  key={g}
+                  onPress={() => void toggle('referenceMealGrams', g)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+                    borderWidth: active ? 2 : 1,
+                    borderColor: active ? theme.accent : theme.border,
+                    backgroundColor: active ? `${theme.accent}18` : theme.bgCardAlt,
+                  }}
+                >
+                  <Text style={{ color: active ? theme.accent : theme.textPrimary, fontWeight: '700', fontSize: 13 }}>
+                    {g}g
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </>
+      ) : null}
+
+      {/* Custom interval chips */}
+      <Text style={[styles.controlLabel, { color: theme.textPrimary }]}>{t('settings.feedingInterval')}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {INTERVAL_OPTIONS.map(({ labelMin, labelKey }) => {
+          const active = cfg.customIntervalMin === labelMin;
+          const label = labelMin === null ? t(labelKey) : labelKey;
+          return (
+            <Pressable
+              key={String(labelMin)}
+              onPress={() => void toggle('customIntervalMin', labelMin)}
+              style={{
+                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+                borderWidth: active ? 2 : 1,
+                borderColor: active ? theme.accent : theme.border,
+                backgroundColor: active ? `${theme.accent}18` : theme.bgCardAlt,
+              }}
+            >
+              <Text style={{ color: active ? theme.accent : theme.textPrimary, fontWeight: '700', fontSize: 13 }}>
+                {label}
+              </Text>
             </Pressable>
           );
         })}

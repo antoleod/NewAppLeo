@@ -1,4 +1,5 @@
 import { EntryRecord, UserProfile } from '@/types';
+import { type FeedingSettings, defaultAppSettings } from '@/lib/storage';
 
 export function getMeanFeedingInterval(entries: EntryRecord[]) {
   const feeds = entries
@@ -30,7 +31,36 @@ function hoursSince(timestamp?: string) {
   return (Date.now() - new Date(timestamp).getTime()) / 36e5;
 }
 
-export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile | null): SmartAlert[] {
+// WHO reference ml per feed by age, used to compare food grams to bottle ml.
+function whoRefMl(babyBirthDate?: string | null): number {
+  if (!babyBirthDate) return 150;
+  const ageMonths = (Date.now() - new Date(babyBirthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+  if (ageMonths < 1) return 60;
+  if (ageMonths < 2) return 90;
+  if (ageMonths < 4) return 120;
+  if (ageMonths < 6) return 150;
+  if (ageMonths < 9) return 170;
+  if (ageMonths < 12) return 180;
+  return 180;
+}
+
+// Effective delay in hours that a food entry buys before the next bottle.
+// Same logic as useNextFeeding: actualGrams / refMl × baseInterval, clamped [0.4, 1.5].
+function foodEffectiveDelayHours(food: EntryRecord, meanIntervalHours: number, refMl: number): number {
+  const eatFractions: Record<string, number> = { all: 1.0, half: 0.5, little: 0.25, none: 0.05 };
+  const amountEaten = food.payload?.amountEaten as string | undefined;
+  const eatFraction = amountEaten != null ? (eatFractions[amountEaten] ?? 0.6) : 0.6;
+  const grams = (food.payload?.quantityGrams as number | undefined) ?? 0;
+  const actualGrams = grams > 0 ? grams * eatFraction : 0;
+
+  const ratio = actualGrams > 0
+    ? Math.min(1.5, Math.max(0.4, actualGrams / refMl))
+    : Math.min(1.5, Math.max(0.4, eatFraction));
+  return Math.max(0.5, meanIntervalHours * ratio);
+}
+
+export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile | null, feedingCfg?: FeedingSettings): SmartAlert[] {
+  const cfg = feedingCfg ?? defaultAppSettings.feedingSettings;
   const alerts: SmartAlert[] = [];
   // entries arrives pre-sorted descending by occurredAt from AppDataContext
   const sorted = entries;
@@ -41,16 +71,34 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   const lastDiaper = sorted.find((entry) => entry.type === 'diaper');
   const lastMeasurement = sorted.find((entry) => entry.type === 'measurement');
 
-  const feedHours = hoursSince(lastFeed?.occurredAt);
-  if (feedHours !== null && feedHours >= 3) {
+  // Feed-due alert: optionally treat food entries as a valid "last consumed" anchor.
+  const types = cfg.foodCountsAsFeeding ? ['feed', 'food'] : ['feed'];
+  const lastConsumed = sorted.find((e) => types.includes(e.type));
+  const consumedHours = hoursSince(lastConsumed?.occurredAt);
+
+  // Mean bottle interval in hours (from bottle history only); honour custom override.
+  const meanIntervalMs = getMeanFeedingInterval(sorted);
+  const meanIntervalHours = cfg.customIntervalMin != null
+    ? cfg.customIntervalMin / 60
+    : (meanIntervalMs != null ? meanIntervalMs / 36e5 : 3);
+
+  // Effective threshold before alerting: interval for bottles, food-adjusted for solids.
+  let alertThresholdHours = meanIntervalHours;
+  if (lastConsumed?.type === 'food') {
+    const refMl = cfg.referenceMealGrams > 0 ? cfg.referenceMealGrams : whoRefMl(profile?.babyBirthDate);
+    alertThresholdHours = foodEffectiveDelayHours(lastConsumed, meanIntervalHours, refMl);
+  }
+
+  if (consumedHours !== null && consumedHours >= alertThresholdHours) {
+    const hoursOverdue = consumedHours - alertThresholdHours;
     alerts.push({
       id: 'feed-due',
       title: 'Feeding due',
-      body: `Last feed was ${Math.round(feedHours * 10) / 10}h ago.`,
+      body: `Last feed was ${Math.round(consumedHours * 10) / 10}h ago.`,
       icon: '🍼',
-      value: formatCompactHours(feedHours),
+      value: formatCompactHours(consumedHours),
       statusLabel: 'overdue',
-      tone: feedHours >= 4 ? 'danger' : 'warning',
+      tone: hoursOverdue >= 1 ? 'danger' : 'warning',
       actionLabel: 'Log feed',
       targetType: 'feed',
     });

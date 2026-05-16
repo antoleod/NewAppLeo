@@ -10,7 +10,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
   const { theme } = useTheme();
   const { t, format } = useTranslation();
-  const { status, hoursAgo, lastTime, nextFeedLabel, nextFeedInMin, meanIntervalMin, recommendedAmount } = useNextFeeding();
+  const { status, hoursAgo, lastTime, nextFeedLabel, nextFeedInMin, meanIntervalMin, recommendedAmount, lastConsumedType } = useNextFeeding();
   const isPossible = status === 'possible';
   const isSoon = status === 'soon';
   const { pulseStyle, glowStyle } = usePulseAnimation({ active: isPossible, intensity: 'soft' });
@@ -111,7 +111,10 @@ export function NextFeedingCard({ onPress }: { onPress?: () => void }) {
 
         {lastTime ? (
           <Text style={[typography.detail, { color: theme.textMuted }]} numberOfLines={1}>
-            {format('nextFeeding.lastFeedDetail', { time: lastTime, hours: hoursAgo })}
+            {format(
+              lastConsumedType === 'food' ? 'nextFeeding.lastFoodDetail' : 'nextFeeding.lastFeedDetail',
+              { time: lastTime, hours: hoursAgo },
+            )}
           </Text>
         ) : (
           <Text style={[typography.detail, { color: theme.textMuted }]}>{t('nextFeeding.noFeed')}</Text>

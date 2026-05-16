@@ -95,6 +95,12 @@ export const defaultModuleVisibility: ModuleVisibility = {
   symptom: true,
 };
 
+export interface FeedingSettings {
+  foodCountsAsFeeding: boolean;
+  referenceMealGrams: number;
+  customIntervalMin: number | null;
+}
+
 export interface AppSettings {
   dailySummaryTime: string;
   largeTouchMode: boolean;
@@ -112,6 +118,7 @@ export interface AppSettings {
   dashboardMetrics: DashboardMetrics;
   effects: MotionEffects;
   customTheme: CustomThemeSettings;
+  feedingSettings: FeedingSettings;
 }
 
 export const defaultAppSettings: AppSettings = {
@@ -157,6 +164,11 @@ export const defaultAppSettings: AppSettings = {
     primary: '#4d7c6b',
     secondary: '#c18f54',
     backgroundAlt: '#eef4ef',
+  },
+  feedingSettings: {
+    foodCountsAsFeeding: true,
+    referenceMealGrams: 150,
+    customIntervalMin: null,
   },
 };
 
@@ -304,6 +316,7 @@ export async function getAppSettings() {
     dashboardMetrics: { ...defaultAppSettings.dashboardMetrics, ...(parsed.dashboardMetrics ?? {}) },
     effects: { ...defaultAppSettings.effects, ...(parsed.effects ?? {}) },
     customTheme: { ...defaultAppSettings.customTheme, ...(parsed.customTheme ?? {}) },
+    feedingSettings: { ...defaultAppSettings.feedingSettings, ...(parsed.feedingSettings ?? {}) },
   } as AppSettings;
   _settingsCache = result;
   return result;
@@ -365,6 +378,10 @@ export async function updateAppSettings(partial: Partial<AppSettings>) {
     customTheme: {
       ...current.customTheme,
       ...(partial.customTheme ?? {}),
+    },
+    feedingSettings: {
+      ...current.feedingSettings,
+      ...(partial.feedingSettings ?? {}),
     },
   };
   await setAppSettings(next);

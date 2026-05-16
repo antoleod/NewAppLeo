@@ -12,6 +12,7 @@ import { useLocale } from '@/context/LocaleContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { buildSmartAlerts, getMeanFeedingInterval } from '@/lib/patterns';
+import { useFeedingSettings } from '@/hooks/useFeedingSettings';
 import {
   getSuggestedValues,
   getWeightCategory,
@@ -146,7 +147,8 @@ export default function InsightsScreen() {
   const trend = useMemo(() => allTrend.slice(7 - rangeDays), [allTrend, rangeDays]);
   const meanInterval = useMemo(() => getMeanFeedingInterval(entries), [entries]);
 
-  const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
+  const feedingCfg = useFeedingSettings();
+  const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile, feedingCfg), [entries, profile, feedingCfg]);
 
   // Stool pattern — aggregates only the diaper entries with poop > 0
   // within the selected range, leveraging the new poopColor / poopConsistency

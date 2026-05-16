@@ -40,7 +40,8 @@
       "Bash(python3 *)",
       "Bash(git commit -m ' *)",
       "Bash(Select-Object -First 20)",
-      "Bash(Format-Table FullName)"
+      "Bash(Format-Table FullName)",
+      "Bash(git commit -m 'feat: persist background photo in Firebase Storage for authenticated users *)"
     ]
   }
 }

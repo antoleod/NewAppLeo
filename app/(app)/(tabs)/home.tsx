@@ -22,6 +22,7 @@ import { useTimer } from '@/context/TimerContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { BreastSide, EntryRecord } from '@/types';
 import { buildSmartAlerts } from '@/lib/patterns';
+import { useFeedingSettings } from '@/hooks/useFeedingSettings';
 import {
   defaultAppSettings,
   getActiveBaby,
@@ -672,7 +673,8 @@ export default function HomeScreen() {
     return summary.today.bottleMl + breastMl;
   }, [entries, summary.today.bottleMl]);
 
-  const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile), [entries, profile]);
+  const feedingCfg = useFeedingSettings();
+  const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile, feedingCfg), [entries, profile, feedingCfg]);
   const urgentAlerts = smartAlerts.filter((a) => a.tone === 'warning' || a.tone === 'danger');
   const healthStatus = useMemo(() => getHealthStatus(entries), [entries]);
   const hasHealthData = healthStatus.status !== 'unknown';
