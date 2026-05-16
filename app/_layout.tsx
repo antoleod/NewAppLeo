@@ -169,8 +169,6 @@ export default function RootLayout() {
   }, [fontsLoaded]);
 
 
-  if (!fontsLoaded) return null;
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -181,21 +179,23 @@ export default function RootLayout() {
                 <AppDataProvider>
                   <TimerProvider>
                     <IconPackProvider>
-                    <ThemedShell
-                      isIncognito={isIncognito}
-                      isLocked={isLocked}
-                      uiScale={uiScale}
-                      onUnlock={handleUnlock}
-                    >
-                      <AuthGuard />
-                      <StatusBar style={statusBarStyle} />
-                      <NightOverlay />
-                      <Stack screenOptions={{ headerShown: false }}>
-                        <Stack.Screen name="(auth)" />
-                        <Stack.Screen name="(app)" />
-                      </Stack>
-                      <MiniTimerBar />
-                    </ThemedShell>
+                      {fontsLoaded ? (
+                        <ThemedShell
+                          isIncognito={isIncognito}
+                          isLocked={isLocked}
+                          uiScale={uiScale}
+                          onUnlock={handleUnlock}
+                        >
+                          <AuthGuard />
+                          <StatusBar style={statusBarStyle} />
+                          <NightOverlay />
+                          <Stack screenOptions={{ headerShown: false }}>
+                            <Stack.Screen name="(auth)" />
+                            <Stack.Screen name="(app)" />
+                          </Stack>
+                          <MiniTimerBar />
+                        </ThemedShell>
+                      ) : null}
                     </IconPackProvider>
                   </TimerProvider>
                 </AppDataProvider>

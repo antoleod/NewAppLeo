@@ -32,7 +32,8 @@ function hoursSince(timestamp?: string) {
 
 export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile | null): SmartAlert[] {
   const alerts: SmartAlert[] = [];
-  const sorted = [...entries].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+  // entries arrives pre-sorted descending by occurredAt from AppDataContext
+  const sorted = entries;
   const lastFeed = sorted.find((entry) => entry.type === 'feed');
   const lastSleep = sorted.find((entry) => entry.type === 'sleep');
   const lastMedication = sorted.find((entry) => entry.type === 'medication');

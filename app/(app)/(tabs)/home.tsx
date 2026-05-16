@@ -769,15 +769,18 @@ export default function HomeScreen() {
     }
 
     const hydrationDateKey = `appleo.momHydrationDate:${activeBaby.id}`;
-    const storedHydrationDate = await AsyncStorage.getItem(hydrationDateKey);
     const todayDate = new Date().toISOString().slice(0, 10);
+    const [storedHydrationDate, hydratedValue] = await Promise.all([
+      AsyncStorage.getItem(hydrationDateKey),
+      getMomHydration(activeBaby.id),
+    ]);
     let currentHydration: number;
     if (storedHydrationDate !== todayDate) {
       currentHydration = 0;
       await setMomHydration(activeBaby.id, 0);
       await AsyncStorage.setItem(hydrationDateKey, todayDate);
     } else {
-      currentHydration = await getMomHydration(activeBaby.id);
+      currentHydration = hydratedValue;
     }
     const storedFeedingMode = (settings as any).defaultFeedingMode;
 

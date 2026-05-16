@@ -26,6 +26,10 @@ type ProfileMap = Record<string, UserProfile>;
 type UsernameMap = Record<string, string>;
 type EntryMap = Record<string, EntryRecord[]>;
 
+function entriesKey(uid: string) {
+  return `${ENTRIES_KEY}:${uid}`;
+}
+
 export async function getLocalProfile(uid: string): Promise<UserProfile | null> {
   const profiles = await readJson<ProfileMap>(PROFILE_KEY, {});
   return profiles[uid] ?? null;
@@ -50,14 +54,19 @@ export async function putLocalUsername(usernameLower: string, uid: string): Prom
 }
 
 export async function getLocalEntries(uid: string): Promise<EntryRecord[]> {
-  const entries = await readJson<EntryMap>(ENTRIES_KEY, {});
-  return entries[uid] ?? [];
+  const perUser = await readJson<EntryRecord[]>(entriesKey(uid), []);
+  if (perUser.length > 0) return perUser;
+  // Migration: check old shared-map key and migrate on first read
+  const legacyMap = await readJson<EntryMap>(ENTRIES_KEY, {});
+  if (legacyMap[uid]?.length) {
+    await writeJson(entriesKey(uid), legacyMap[uid]);
+    return legacyMap[uid];
+  }
+  return [];
 }
 
 export async function setLocalEntries(uid: string, items: EntryRecord[]): Promise<void> {
-  const entries = await readJson<EntryMap>(ENTRIES_KEY, {});
-  entries[uid] = items;
-  await writeJson(ENTRIES_KEY, entries);
+  await writeJson(entriesKey(uid), items);
 }
 
 export async function upsertLocalEntry(uid: string, item: EntryRecord): Promise<void> {

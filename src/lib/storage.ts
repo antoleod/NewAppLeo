@@ -281,11 +281,18 @@ export async function setModuleVisibility(next: ModuleVisibility) {
   await AsyncStorage.setItem(MODULE_VISIBILITY_KEY, JSON.stringify(next));
 }
 
+let _settingsCache: AppSettings | null = null;
+
+export function invalidateSettingsCache() {
+  _settingsCache = null;
+}
+
 export async function getAppSettings() {
+  if (_settingsCache) return _settingsCache;
   const parsed = safeParse<Partial<AppSettings>>(await AsyncStorage.getItem(APP_SETTINGS_KEY), defaultAppSettings);
   const parsedButtonOpacity = Number(parsed.buttonOpacity);
   const parsedButtonTransparency = Number(parsed.buttonTransparency);
-  return {
+  const result: AppSettings = {
     ...defaultAppSettings,
     ...parsed,
     buttonOpacity: Number.isFinite(parsedButtonOpacity)
@@ -294,19 +301,12 @@ export async function getAppSettings() {
     buttonTransparency: Number.isFinite(parsedButtonTransparency)
       ? Math.max(0.2, Math.min(1, parsedButtonTransparency))
       : defaultAppSettings.buttonTransparency,
-    dashboardMetrics: {
-      ...defaultAppSettings.dashboardMetrics,
-      ...(parsed.dashboardMetrics ?? {}),
-    },
-    effects: {
-      ...defaultAppSettings.effects,
-      ...(parsed.effects ?? {}),
-    },
-    customTheme: {
-      ...defaultAppSettings.customTheme,
-      ...(parsed.customTheme ?? {}),
-    },
+    dashboardMetrics: { ...defaultAppSettings.dashboardMetrics, ...(parsed.dashboardMetrics ?? {}) },
+    effects: { ...defaultAppSettings.effects, ...(parsed.effects ?? {}) },
+    customTheme: { ...defaultAppSettings.customTheme, ...(parsed.customTheme ?? {}) },
   } as AppSettings;
+  _settingsCache = result;
+  return result;
 }
 
 export async function getSavedMedicines() {
@@ -345,6 +345,7 @@ export async function deleteSavedMedicine(name: string) {
 }
 
 export async function setAppSettings(next: AppSettings) {
+  _settingsCache = next;
   await AsyncStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(next));
 }
 

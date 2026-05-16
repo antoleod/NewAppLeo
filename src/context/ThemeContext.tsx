@@ -29,48 +29,63 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+interface LocalThemeSettings {
+  themeVariant: ThemeVariant;
+  themeStyle: ThemeStyle;
+  backgroundPhotoUri: string;
+  buttonOpacity: number;
+  buttonTransparency: number;
+  customTheme: { enabled: boolean; primary: string; secondary: string; backgroundAlt: string };
+}
+
+function normalizeButtonOpacity(opacity: unknown) {
+  const n = Number(opacity);
+  return Number.isFinite(n) ? Math.max(0.2, Math.min(1, n)) : defaultAppSettings.buttonOpacity;
+}
+
+function normalizeButtonTransparency(opacity: unknown) {
+  const n = Number(opacity);
+  return Number.isFinite(n) ? Math.max(0.2, Math.min(1, n)) : defaultAppSettings.buttonTransparency;
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { profile, setThemeMode } = useAuth();
   const systemScheme = useColorScheme();
-  const [themeVariant, setThemeVariantState] = useState<ThemeVariant>(defaultAppSettings.themeVariant);
-  const [themeStyle, setThemeStyleState] = useState<ThemeStyle>(defaultAppSettings.themeStyle);
-  const [backgroundPhotoUri, setBackgroundPhotoUriState] = useState(defaultAppSettings.backgroundPhotoUri);
-  const [buttonOpacity, setButtonOpacityState] = useState(defaultAppSettings.buttonOpacity);
-  const [buttonTransparency, setButtonTransparencyState] = useState(defaultAppSettings.buttonTransparency);
-  const [customTheme, setCustomThemeState] = useState(defaultAppSettings.customTheme);
+  const [localSettings, setLocalSettings] = useState<LocalThemeSettings>({
+    themeVariant: defaultAppSettings.themeVariant,
+    themeStyle: defaultAppSettings.themeStyle,
+    backgroundPhotoUri: defaultAppSettings.backgroundPhotoUri,
+    buttonOpacity: defaultAppSettings.buttonOpacity,
+    buttonTransparency: defaultAppSettings.buttonTransparency,
+    customTheme: defaultAppSettings.customTheme,
+  });
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const hydratedRef = useRef(false);
   const themeMode = profile?.themeMode ?? 'system';
   const resolvedMode = themeMode === 'system' ? systemScheme ?? 'light' : themeMode;
 
-  const normalizeButtonOpacity = (opacity: unknown) => {
-    const numericOpacity = Number(opacity);
-    return Number.isFinite(numericOpacity) ? Math.max(0.2, Math.min(1, numericOpacity)) : defaultAppSettings.buttonOpacity;
-  };
-
-  const normalizeButtonTransparency = (opacity: unknown) => {
-    const numericOpacity = Number(opacity);
-    return Number.isFinite(numericOpacity) ? Math.max(0.2, Math.min(1, numericOpacity)) : defaultAppSettings.buttonTransparency;
-  };
+  const { themeVariant, themeStyle, backgroundPhotoUri, buttonOpacity, buttonTransparency, customTheme } = localSettings;
 
   useEffect(() => {
     let active = true;
     (async () => {
       const settings = await getAppSettings();
-      if (active) {
-        setThemeVariantState(settings.themeVariant);
-        setThemeStyleState(settings.themeStyle);
-        setBackgroundPhotoUriState(settings.backgroundPhotoUri ?? '');
-        setButtonOpacityState(normalizeButtonOpacity(settings.buttonOpacity));
-        setButtonTransparencyState(normalizeButtonTransparency(settings.buttonTransparency));
-        setCustomThemeState(settings.customTheme);
-      }
+      if (!active) return;
+      setLocalSettings({
+        themeVariant: settings.themeVariant,
+        themeStyle: settings.themeStyle,
+        backgroundPhotoUri: settings.backgroundPhotoUri ?? '',
+        buttonOpacity: normalizeButtonOpacity(settings.buttonOpacity),
+        buttonTransparency: normalizeButtonTransparency(settings.buttonTransparency),
+        customTheme: settings.customTheme,
+      });
+      hydratedRef.current = true;
     })();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
+    if (!hydratedRef.current) return;
     Animated.sequence([
       Animated.timing(fadeAnim, { toValue: 0.3, duration: 120, useNativeDriver: true }),
       Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
@@ -94,30 +109,30 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       buttonTransparency,
       customTheme,
       setThemeVariant: async (variant) => {
-        setThemeVariantState(variant);
+        setLocalSettings((prev) => ({ ...prev, themeVariant: variant }));
         await updateAppSettings({ themeVariant: variant });
       },
       setThemeStyle: async (style) => {
-        setThemeStyleState(style);
+        setLocalSettings((prev) => ({ ...prev, themeStyle: style }));
         await updateAppSettings({ themeStyle: style });
       },
       setBackgroundPhotoUri: async (uri) => {
-        setBackgroundPhotoUriState(uri);
+        setLocalSettings((prev) => ({ ...prev, backgroundPhotoUri: uri }));
         await updateAppSettings({ backgroundPhotoUri: uri });
       },
       setButtonOpacity: async (opacity) => {
         const nextOpacity = normalizeButtonOpacity(opacity);
-        setButtonOpacityState(nextOpacity);
+        setLocalSettings((prev) => ({ ...prev, buttonOpacity: nextOpacity }));
         await updateAppSettings({ buttonOpacity: nextOpacity });
       },
       setButtonTransparency: async (opacity) => {
         const nextOpacity = normalizeButtonTransparency(opacity);
-        setButtonTransparencyState(nextOpacity);
+        setLocalSettings((prev) => ({ ...prev, buttonTransparency: nextOpacity }));
         await updateAppSettings({ buttonTransparency: nextOpacity });
       },
       setCustomTheme: async (nextCustomTheme) => {
         const next = { ...customTheme, ...nextCustomTheme };
-        setCustomThemeState(next);
+        setLocalSettings((prev) => ({ ...prev, customTheme: next }));
         await updateAppSettings({ customTheme: next });
       },
       toggleTheme: async () => {

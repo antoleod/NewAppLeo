@@ -29,8 +29,12 @@ export default function AppLayout() {
   const [loadingTooLong, setLoadingTooLong] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Block only on auth resolution. Profile loading blocks only when we have
+  // no cached profile at all (rare on returning sessions).
+  const isBlocking = loading || (profileLoading && !profile && !guestMode);
+
   useEffect(() => {
-    if (!loading && !profileLoading) {
+    if (!isBlocking) {
       setLoadingTooLong(false);
       if (loadingTimerRef.current) { clearTimeout(loadingTimerRef.current); loadingTimerRef.current = null; }
       return;
@@ -39,9 +43,9 @@ export default function AppLayout() {
     return () => {
       if (loadingTimerRef.current) { clearTimeout(loadingTimerRef.current); loadingTimerRef.current = null; }
     };
-  }, [loading, profileLoading]);
+  }, [isBlocking]);
 
-  if (loading || profileLoading) {
+  if (isBlocking) {
     if (loadingTooLong) {
       return (
         <Page scroll={false}>

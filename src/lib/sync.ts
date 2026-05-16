@@ -34,11 +34,16 @@ function entriesCollection(uid: string) {
   return collection(db, 'users', uid, 'entries');
 }
 
+let _queueCache: SyncOperation[] | null = null;
+
 export async function loadQueuedOperations() {
-  return safeParse<SyncOperation[]>(await AsyncStorage.getItem(SYNC_QUEUE_KEY), []);
+  if (_queueCache !== null) return _queueCache;
+  _queueCache = safeParse<SyncOperation[]>(await AsyncStorage.getItem(SYNC_QUEUE_KEY), []);
+  return _queueCache;
 }
 
 async function saveQueuedOperations(operations: SyncOperation[]) {
+  _queueCache = operations;
   await AsyncStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(operations));
 }
 
@@ -169,5 +174,6 @@ export async function pullEntries() {
 }
 
 export async function clearSyncQueue() {
+  _queueCache = [];
   await AsyncStorage.removeItem(SYNC_QUEUE_KEY);
 }
