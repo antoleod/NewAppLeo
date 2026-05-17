@@ -24,7 +24,7 @@ export function DiaperIcon({ size = 24, color = '#E74C3C' }: IconProps) {
   );
 }
 
-export function TemperatureIcon({ size = 24, color = '#E74C3C' }: IconProps) {
+export function TemperatureIcon({ size = 24, color = '#FF8A4C' }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path d="M10 13.3V5.8C10 4.3 10.9 3.4 12 3.4C13.1 3.4 14 4.3 14 5.8V13.3C15.2 14 16 15.2 16 16.6C16 18.8 14.2 20.5 12 20.5C9.8 20.5 8 18.8 8 16.6C8 15.2 8.8 14 10 13.3Z" stroke={color} strokeWidth={1.8} {...strokeProps} />

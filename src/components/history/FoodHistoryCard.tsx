@@ -7,10 +7,23 @@ import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useLocale } from '@/context/LocaleContext';
 import { haptics } from '@/lib/haptics';
-import { EntryRecord } from '@/types';
+import { EntryRecord, FoodCategory } from '@/types';
 import { useIconPack } from '@/components/icons/IconPackContext';
+import { inferCategoryFromName } from '@/lib/food-suggestions';
 
 type MealKind = 'breakfast' | 'lunch' | 'snack' | 'dinner' | 'other';
+
+// Per-food emoji so each row reads at a glance — without this every food at
+// the same meal time would share one identical meal-time icon.
+const CATEGORY_EMOJI: Record<FoodCategory, string> = {
+  puree: '🥣',
+  fruit: '🍎',
+  cereals: '🌾',
+  yogurt: '🥛',
+  vegetables: '🥕',
+  water: '💧',
+  other: '🍽️',
+};
 
 function getMealKind(value?: string): MealKind {
   if (value === 'breakfast' || value === 'lunch' || value === 'snack' || value === 'dinner') return value;
@@ -87,7 +100,7 @@ function getFoodSummary(entries: EntryRecord[]): FoodSummary {
   };
 }
 
-type RowTokens = { text: string; muted: string; soft: string; gold: string; red: string; border: string };
+type RowTokens = { text: string; muted: string; soft: string; gold: string; red: string; border: string; card: string };
 
 type FoodHistoryRowProps = {
   entry: EntryRecord;
@@ -115,6 +128,9 @@ const FoodHistoryRow = React.memo(function FoodHistoryRow({
   const mealMap = { breakfast: pack.MealMorning, lunch: pack.MealMidday, snack: pack.MealSnack, dinner: pack.MealEvening, other: pack.MealOther } as const;
   const MealG = mealMap[kind];
   const mealTone = MEAL_TONE[kind];
+  // Icon = the food itself (distinct per row); meal time = the tint behind it.
+  const category: FoodCategory = (p.foodCategory as FoodCategory | undefined) ?? inferCategoryFromName(p.foodName ?? '');
+  const foodEmoji = CATEGORY_EMOJI[category] ?? CATEGORY_EMOJI.other;
   const AmountG = ae === 'all' ? pack.AmountAll : ae === 'half' ? pack.AmountHalf : ae === 'little' ? pack.AmountLittle : ae === 'none' ? pack.AmountNone : null;
   const FaceG = liked === 'yes' ? pack.FaceHappy : liked === 'no' ? pack.FaceSad : null;
   const faceTone = liked === 'yes' ? '#56D364' : '#E07A7A';
@@ -139,8 +155,27 @@ const FoodHistoryRow = React.memo(function FoodHistoryRow({
         borderLeftColor: isToday ? (hasAllergy ? tokens.red : tokens.gold) : 'transparent',
       })}
     >
-      <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={mealLabel}>
-        <MealG size={20} color={mealTone} />
+      <View
+        style={{
+          width: 34, height: 34, borderRadius: 17,
+          alignItems: 'center', justifyContent: 'center',
+          backgroundColor: mealTone + '22',
+          borderWidth: 1, borderColor: mealTone + '40',
+        }}
+        accessibilityLabel={mealLabel}
+      >
+        <Text style={{ fontSize: 17 }}>{foodEmoji}</Text>
+        <View
+          style={{
+            position: 'absolute', right: -3, bottom: -3,
+            width: 17, height: 17, borderRadius: 9,
+            alignItems: 'center', justifyContent: 'center',
+            backgroundColor: tokens.card,
+            borderWidth: 1, borderColor: tokens.border,
+          }}
+        >
+          <MealG size={11} color={mealTone} />
+        </View>
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ color: tokens.text, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{name}</Text>
@@ -190,7 +225,7 @@ export function FoodHistoryCard({ entries, showSeeAll = true, onSeeAll }: FoodHi
 
   if (foodHistory.length === 0) return null;
 
-  const rowTokens: RowTokens = { text: TEXT, muted: MUTED, soft: SOFT, gold: GOLD, red: RED, border: BORDER };
+  const rowTokens: RowTokens = { text: TEXT, muted: MUTED, soft: SOFT, gold: GOLD, red: RED, border: BORDER, card: CARD };
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startOfYesterday = startOfToday - 86400000;

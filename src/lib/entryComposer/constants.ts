@@ -67,11 +67,11 @@ export const typeMeta: Record<EntryType, TypeMeta> = {
   food:        { icon: 'restaurant-outline',   tone: '#F0B85A', toneSoft: 'rgba(240,184,90,0.16)' },
   sleep:       { icon: 'moon-outline',         tone: '#58A6FF', toneSoft: 'rgba(88,166,255,0.16)' },
   diaper:      { icon: 'happy-outline',        tone: '#E74C3C', toneSoft: 'rgba(231,76,60,0.16)'  },
-  pump:        { icon: 'water',                tone: '#3FB950', toneSoft: 'rgba(63,185,80,0.16)'  },
+  pump:        { icon: 'water',                tone: '#F778BA', toneSoft: 'rgba(247,120,186,0.16)'},
   measurement: { icon: 'resize-outline',       tone: '#A371F7', toneSoft: 'rgba(163,113,247,0.16)'},
   medication:  { icon: 'medkit-outline',       tone: '#7CC2FF', toneSoft: 'rgba(124,194,255,0.16)'},
   milestone:   { icon: 'sparkles-outline',     tone: '#D9B97D', toneSoft: 'rgba(217,185,125,0.16)'},
   symptom:     { icon: 'pulse-outline',        tone: '#8EB5EA', toneSoft: 'rgba(142,181,234,0.16)'},
-  temperature: { icon: 'thermometer-outline',  tone: '#E74C3C', toneSoft: 'rgba(231,76,60,0.16)'  },
+  temperature: { icon: 'thermometer-outline',  tone: '#FF8A4C', toneSoft: 'rgba(255,138,76,0.16)' },
   vaccine:     { icon: 'medical-outline',      tone: '#3FB950', toneSoft: 'rgba(63,185,80,0.16)'  },
 };
