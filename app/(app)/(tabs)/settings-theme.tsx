@@ -22,9 +22,9 @@ import { Button, Card, Page, Segment, useToast } from '@/components/shared';
 import { ICON_PACK_LIST, useIconPackController } from '@/components/icons/IconPackContext';
 import { GLYPH_TONES } from '@/components/icons/IconPack';
 import { HomeTabIcon, HistoryTabIcon, InsightsTabIcon, ProfileTabIcon } from '@/components/navigation';
-import { BackgroundPhotoSelector } from '@/components/profile';
-import { SettingsImporter } from '@/components/profile';
-import { DataExporter } from '@/components/profile';
+import { BackgroundPhotoSelector , SettingsImporter , DataExporter } from '@/components/profile';
+
+
 import { defaultAppearanceSettings, getAppSettings, setAppSettings, type FeedingSettings } from '@/lib/storage';
 import { useFeedingSettings, saveFeedingSettings } from '@/hooks/useFeedingSettings';
 import { uploadBackgroundPhoto, deleteBackgroundPhoto } from '@/lib/photoStorage';

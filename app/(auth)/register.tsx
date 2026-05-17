@@ -9,7 +9,7 @@ import { AppLanguage } from '@/types';
 import { normalizeUsername } from '@/utils/crypto';
 import { BabyFlowIcon } from '@/components/system';
 
-const LANGS: Array<{ code: AppLanguage; label: string }> = [
+const LANGS: { code: AppLanguage; label: string }[] = [
   { code: 'en', label: 'English' },
   { code: 'fr', label: 'Francais' },
   { code: 'es', label: 'Espanol' },

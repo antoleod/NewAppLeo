@@ -18,15 +18,6 @@ export function buildAdaptiveReminder(entries: EntryRecord[]) {
   return `Next feed in about ${Math.max(1, Math.round(interval / 36e5))}h.`;
 }
 
-function parseTime(value: string) {
-  const [hourRaw, minuteRaw] = value.split(':');
-  const hour = Number(hourRaw);
-  const minute = Number(minuteRaw);
-  return {
-    hour: Number.isFinite(hour) ? Math.min(23, Math.max(0, hour)) : 22,
-    minute: Number.isFinite(minute) ? Math.min(59, Math.max(0, minute)) : 0,
-  };
-}
 
 export async function requestNotificationPermissions() {
   if (Platform.OS === 'web') {

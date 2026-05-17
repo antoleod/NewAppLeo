@@ -28,13 +28,6 @@ function getCurrentSeason(): Season {
   return 'winter';
 }
 
-function getSeasonByMonth(month: number): Season {
-  if (month >= 3 && month <= 5) return 'spring';
-  if (month >= 6 && month <= 8) return 'summer';
-  if (month >= 9 && month <= 11) return 'autumn';
-  return 'winter';
-}
-
 export function getSeasonalRecommendations(season?: Season): SeasonData | null {
   const targetSeason = season || getCurrentSeason();
   const seasons = seasonalFoodsData.seasons as Record<Season, SeasonData>;

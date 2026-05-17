@@ -4,8 +4,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  interpolate,
-  Extrapolate,
   Easing,
 } from 'react-native-reanimated';
 
@@ -27,13 +25,6 @@ export function AnimatedNumber({ value, suffix = '', decimals = 1, style }: Anim
   }, [value, animatedValue]);
 
   const animatedStyle = useAnimatedStyle(() => {
-    const roundedValue = interpolate(
-      animatedValue.value,
-      [animatedValue.value - 1, animatedValue.value],
-      [value - 1, value],
-      Extrapolate.CLAMP
-    );
-
     return {
       opacity: 1,
     };

@@ -5,9 +5,6 @@ import { formatDuration } from '@/utils/date';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 
-function pad(value: number) {
-  return String(Math.max(0, Math.floor(value))).padStart(2, '0');
-}
 
 export function TimerWidget({
   label = 'Timer',

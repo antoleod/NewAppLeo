@@ -46,7 +46,7 @@ const server = createServer(async (req, res) => {
     res.statusCode = 200;
     res.setHeader('Content-Type', mimeType(filePath));
     res.end(data);
-  } catch (error) {
+  } catch {
     res.statusCode = 404;
     res.end('Not found');
   }

@@ -37,7 +37,7 @@ type ChipProps = {
 };
 
 const Chip = React.memo(function Chip({
-  selected, color, borderColor, bgIdle, bgPressed, textIdle, optLabel, ariaLabel, onPress,
+  selected, color, borderColor, bgIdle, textIdle, optLabel, ariaLabel, onPress,
 }: ChipProps) {
   const progress = useSharedValue(selected ? 1 : 0);
   const press = useSharedValue(0);

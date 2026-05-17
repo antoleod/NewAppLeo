@@ -11,8 +11,14 @@ npm run web            # web only
 npm run android        # Android
 npm run ios            # iOS
 
-# Type checking (no test suite exists)
+# Type checking
 npm run typecheck
+
+# Lint (ESLint 9 flat config, eslint-config-expo)
+npm run lint
+
+# Unit tests (custom runner — discovers tests/*.test.ts, runs each with tsx)
+npm test
 
 # Web production build (export + PWA manifest injection)
 npm run build:web
@@ -25,7 +31,7 @@ npm run firebase:deploy:rules
 npm run firebase:deploy:indexes
 ```
 
-There is no lint script and no automated unit test suite. Type checking (`npm run typecheck`) is the primary code validation step. CI workflows in `.github/workflows/` (`lint.yml`, `test.yml`) only run `typecheck` plus a web build verification — there are no real unit tests despite the workflow names.
+`npm test` runs the pure-logic tests in `tests/` (sync-queue merge logic, food suggestions) via `scripts/run-tests.mjs` — there is no Jest/Vitest. CI (`.github/workflows/test.yml`, the `CI` workflow) runs typecheck + lint + test + web build on every push/PR.
 
 ## Architecture Overview
 

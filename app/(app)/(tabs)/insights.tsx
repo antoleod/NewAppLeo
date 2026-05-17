@@ -341,7 +341,7 @@ export default function InsightsScreen() {
     [t, summary.today, GOLD, BLUE, GREEN, todayTrend, yestTrend, dayCounts],
   );
 
-  const rangeButtons: Array<{ labelKey: string; value: RangeKey }> = [
+  const rangeButtons: { labelKey: string; value: RangeKey }[] = [
     { labelKey: 'insights.range7d', value: '7d' },
     { labelKey: 'insights.range3d', value: '3d' },
     { labelKey: 'insights.range1d', value: 'today' },
@@ -608,7 +608,7 @@ export default function InsightsScreen() {
 
               {/* Color distribution bar */}
               {(() => {
-                const segments: Array<{ color: string; count: number; tint: string }> = [
+                const segments: { color: string; count: number; tint: string }[] = [
                   { color: 'yellow', count: stoolPattern.byColor.yellow, tint: '#F0B85A' },
                   { color: 'brown',  count: stoolPattern.byColor.brown,  tint: '#8B6F47' },
                   { color: 'green',  count: stoolPattern.byColor.green,  tint: '#56D364' },

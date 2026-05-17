@@ -35,12 +35,12 @@ export const foodPresets = [
   { icon: '💧', value: 'water', labels: { fr: 'Eau', en: 'Water', es: 'Agua', nl: 'Water' } },
 ];
 
-export const mealTimes: Array<{
+export const mealTimes: {
   value: MealTimeValue;
   labels: Record<string, string>;
   startHour: number;
   endHour: number;
-}> = [
+}[] = [
   { value: 'breakfast', labels: { fr: '🌅 Petit-déj', en: '🌅 Breakfast', es: '🌅 Desayuno', nl: '🌅 Ontbijt' }, startHour: 6, endHour: 10 },
   { value: 'lunch',     labels: { fr: '🌞 Déjeuner',  en: '🌞 Lunch',     es: '🌞 Almuerzo', nl: '🌞 Lunch' },  startHour: 11, endHour: 14 },
   { value: 'snack',     labels: { fr: '🍪 Goûter',    en: '🍪 Snack',     es: '🍪 Merienda', nl: '🍪 Snack' },  startHour: 15, endHour: 17 },

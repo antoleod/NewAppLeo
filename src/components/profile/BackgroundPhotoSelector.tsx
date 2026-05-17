@@ -11,7 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
-import { Button, Card, SectionHeader, ButtonGroup } from '@/components/shared';
+import { Card, SectionHeader, ButtonGroup } from '@/components/shared';
 
 export interface BackgroundPhotoSelectorProps {
   currentPhotoUri?: string;
@@ -211,7 +211,7 @@ export function QuickBackgroundToggle({
   hasCustomBackground: boolean;
   onToggleDefault: () => void;
 }) {
-  const { theme, colors } = useTheme();
+  const { theme } = useTheme();
 
   return (
     <Pressable

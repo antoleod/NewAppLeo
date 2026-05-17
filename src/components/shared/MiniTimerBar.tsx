@@ -29,13 +29,6 @@ const KIND_LABEL: Record<TimerKind, string> = {
   pump: 'timer.pumping',
 };
 
-const KIND_EMOJI: Record<TimerKind, string> = {
-  breast: '🤱',
-  bottle: '🍼',
-  sleep: '💤',
-  pump: '🩺',
-};
-
 export function MiniTimerBar() {
   const { theme } = useTheme();
   const { t } = useTranslation();

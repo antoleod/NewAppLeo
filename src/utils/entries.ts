@@ -16,9 +16,9 @@ export interface DashboardSummary {
     diaperCount: number;
     pumpMinutes: number;
   };
-  cards: Array<{ label: string; value: string; detail: string; tone: 'primary' | 'secondary' | 'success' | 'warning' }>;
+  cards: { label: string; value: string; detail: string; tone: 'primary' | 'secondary' | 'success' | 'warning' }[];
   recent: EntryRecord[];
-  trend: Array<{ label: string; feedCount: number; bottleMl: number; sleepMinutes: number }>;
+  trend: { label: string; feedCount: number; bottleMl: number; sleepMinutes: number }[];
 }
 
 function payloadOf(entry: EntryRecord) {

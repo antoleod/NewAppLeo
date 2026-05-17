@@ -3,7 +3,7 @@ import { Animated, useColorScheme } from 'react-native';
 import { useAuth } from './AuthContext';
 import { getThemeTokens, type Theme, type ThemePaletteMode, type ThemeStyle, type ThemeVariant } from '@/theme';
 import { ThemeMode } from '@/types';
-import { defaultAppSettings, getAppSettings, setAppSettings, updateAppSettings } from '@/lib/storage';
+import { defaultAppSettings, getAppSettings, updateAppSettings } from '@/lib/storage';
 
 interface ThemeContextValue {
   mode: 'light' | 'dark';

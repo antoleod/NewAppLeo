@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown, FadeIn, useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
-import { Button, Card, Input, Page, Segment } from '@/components/shared';
+import { Card, Input, Page, Segment , DateTimeField , useToast } from '@/components/shared';
 import { useIconPack } from '@/components/icons/IconPackContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useAppData } from '@/context/AppDataContext';
@@ -15,11 +15,11 @@ import { useTimer } from '@/context/TimerContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { clamp } from '@/utils/date';
 import { BreastSide, EntryPayload, EntryRecord, EntryType } from '@/types';
-import { TimerWidget } from '@/components/home';
-import { QuantityPicker } from '@/components/shared';
-import { DateTimeField } from '@/components/shared';
-import { VaccineReminderModal } from '@/components/home';
-import { DiaperLevelPicker, FullscreenTimerModal } from '@/components/home';
+import { VaccineReminderModal , FullscreenTimerModal } from '@/components/home';
+
+
+
+
 import {
   DiaperSection,
   FeedSection,
@@ -35,27 +35,20 @@ import {
 } from '@/components/entries';
 import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
 import { clearSleepDraft, getSleepDraft, saveSleepDraft, type SleepDraft } from '@/lib/sleepDraft';
-import * as ImagePicker from 'expo-image-picker';
-import { scheduleVaccineReminder } from '@/lib/notifications';
-import { scheduleMedicationReminder } from '@/lib/notifications';
-import { getSuggestedValues, getWeightCategory, getHeightCategory } from '@/lib/who-recommendations';
-import { getRecommendedQuantity, getFoodRecommendationMessage } from '@/lib/food-recommendations';
-import { suggestFoodQuantities, inferCategoryFromName, type QuantityChip } from '@/lib/food-suggestions';
+import { scheduleVaccineReminder , scheduleMedicationReminder } from '@/lib/notifications';
+
+import { suggestFoodQuantities, inferCategoryFromName } from '@/lib/food-suggestions';
 import type { FoodCategory } from '@/types';
-import { getSeasonalRecommendations } from '@/lib/seasonal-recommendations';
 import { haptics } from '@/lib/haptics';
-import { useToast } from '@/components/shared';
-import { shareEntry, shareEntryAsImage, buildShareMessage } from '@/lib/shareEntry';
+
+import { shareEntryAsImage } from '@/lib/shareEntry';
 import { ShareCard } from '@/components/history';
 import { shadow } from '@/lib/shadow';
 import {
   typeLabelsI18n,
   typeMeta,
-  symptomOptions,
   vaccinePresets,
   foodPresets,
-  mealTimes,
-  foodDefaultQuantities,
   getRecommendedMealTime,
   buildEntryTitle,
 } from '@/lib/entryComposer';
@@ -160,52 +153,17 @@ export default function EntryComposerScreen() {
   const [showFoodDoneModal, setShowFoodDoneModal] = useState(false);
   const [lastSavedFood, setLastSavedFood] = useState<{ name: string; grams: string; mealTimeVal: string }>({ name: '', grams: '', mealTimeVal: '' });
   const [lastSavedFoodEntryId, setLastSavedFoodEntryId] = useState<string | null>(null);
-  const [feedbackSelectedEmoji, setFeedbackSelectedEmoji] = useState<string | null>(null);
+  const [, setFeedbackSelectedEmoji] = useState<string | null>(null);
   const [foodMoreOpen, setFoodMoreOpen] = useState(false);
   const [quantityGrams, setQuantityGrams] = useState('');
   const meta = typeMeta[type];
   const typeLabel = typeLabelsI18n[type]?.[language] ?? typeLabelsI18n[type]?.en ?? type;
   const { profile } = useAuth();
-  const recentFoodEntries = useMemo(
-    () =>
-      entries
-        .filter((entry) => entry.type === 'food' && typeof entry.payload?.foodName === 'string')
-        .slice(0, 4),
-    [entries],
-  );
-  const todayFoodEntries = useMemo(() => {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    return entries
-      .filter((e) => e.type === 'food' && new Date(e.occurredAt) >= startOfDay)
-      .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
-  }, [entries]);
-
-  const foodPreferencesMap = useMemo(() => {
-    const map: Record<string, { liked: number; neutral: number; disliked: number }> = {};
-    entries
-      .filter((entry) => entry.type === 'food' && entry.payload?.foodName)
-      .forEach((entry) => {
-        const foodName = entry.payload?.foodName;
-        if (!foodName) return;
-        const liked = entry.payload?.foodLiked;
-        if (!map[foodName]) {
-          map[foodName] = { liked: 0, neutral: 0, disliked: 0 };
-        }
-        if (liked === 'yes') map[foodName].liked++;
-        else if (liked === 'neutral') map[foodName].neutral++;
-        else if (liked === 'no') map[foodName].disliked++;
-      });
-    return map;
-  }, [entries]);
   const lastMeasurementEntry = useMemo(
     () => entries.find((entry) => entry.type === 'measurement'),
     [entries],
   );
 
-  const seasonalRecommendations = useMemo(() => {
-    return getSeasonalRecommendations();
-  }, []);
   useEffect(() => {
     if (!editing) return;
     setOccurredAt(new Date(editing.occurredAt));

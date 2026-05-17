@@ -39,7 +39,7 @@ export const MedicationSection = React.memo(function MedicationSection({
   const meta = typeMeta.medication;
 
   const getRecommendedDose = (medName: string): string => {
-    const med = (commonMedications as Array<any>).find(
+    const med = (commonMedications as any[]).find(
       (item) => item.name.toLowerCase() === medName.trim().toLowerCase(),
     );
     if (!med) return '';
@@ -103,9 +103,9 @@ export const MedicationSection = React.memo(function MedicationSection({
 
   const medicationSuggestions = useMemo(() => {
     const query = name.trim().toLowerCase();
-    if (!query) return [] as Array<{ name: string; dosage?: string }>;
+    if (!query) return [] as { name: string; dosage?: string }[];
     const fromSaved = savedMedicines.map((m) => ({ name: m.name, dosage: m.dosage }));
-    const fromCommon = (commonMedications as Array<any>).map((m) => ({
+    const fromCommon = (commonMedications as any[]).map((m) => ({
       name: String(m.name),
       dosage: (getRecommendedDose(String(m.name)) || m.defaultDosage || '') as string,
     }));
@@ -146,7 +146,7 @@ export const MedicationSection = React.memo(function MedicationSection({
     <View style={styles.sectionCard}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>{typeLabel}</Text>
       <View style={styles.medQuickRow}>
-        {(commonMedications as Array<any>).map((med) => (
+        {(commonMedications as any[]).map((med) => (
           <Pressable
             key={med.name}
             onPress={() => {

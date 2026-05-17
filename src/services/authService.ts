@@ -17,10 +17,8 @@ import {
   defaultProfile,
   loadProfile,
   userProfileRef,
-  resolveUsernameToProfile,
-  verifyPinAgainstProfile,
 } from './userProfileService';
-import { decryptWithPin, encryptWithPin, generateSalt, hashPin, normalizeEmail, normalizeUsername } from '@/utils/crypto';
+import { encryptWithPin, generateSalt, hashPin, normalizeEmail, normalizeUsername } from '@/utils/crypto';
 import { putLocalProfile, putLocalUsername } from './localStore';
 import { Platform } from 'react-native';
 

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { router } from 'expo-router';
-import { Button, Card, Chip, EmptyState, Heading, Page } from '@/components/shared';
+import { Button, Card, Chip, EmptyState, Heading, Page , useToast } from '@/components/shared';
 import { GetEntryIcon, FoodHistoryCard } from '@/components/history';
 import { haptics } from '@/lib/haptics';
 import { useAppData } from '@/context/AppDataContext';
@@ -15,12 +15,12 @@ import { generateWeeklyPdf } from '@/lib/pdf';
 import { dateKey, formatLongDate, formatTime, isSameDay, startOfDay, subtractDays, toDate } from '@/utils/date';
 import { getOmsRow, interpolatePercentileBand, omsBySex, type OmsSex } from '@/lib/omsData';
 import { useWideWeb } from '@/hooks/useWideWeb';
-import { useToast } from '@/components/shared';
+
 import { useTranslation } from '@/hooks/useTranslation';
 
 type TFn = (key: string, defaultValue?: string) => string;
 
-const FILTER_DEFS: Array<{ tKey: string; value: EntryType | 'all' }> = [
+const FILTER_DEFS: { tKey: string; value: EntryType | 'all' }[] = [
   { tKey: 'history.filterAll', value: 'all' },
   { tKey: 'history.filterFeed', value: 'feed' },
   { tKey: 'history.filterFood', value: 'food' },
@@ -368,8 +368,8 @@ export default function HistoryScreen() {
     points,
     bandRows,
   }: {
-    points: Array<{ label: string; value: number }>;
-    bandRows: Array<{ label: string; p25: number; p75: number }>;
+    points: { label: string; value: number }[];
+    bandRows: { label: string; p25: number; p75: number }[];
   }) => {
     const width = 320;
     const height = 190;

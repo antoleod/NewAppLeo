@@ -109,7 +109,7 @@ export interface UserProfile {
   goalFeedingsPerDay: number;
   goalSleepHoursPerDay: number;
   goalDiapersPerDay: number;
-  customMedicines?: Array<{ name: string; dosage?: string; updatedAt?: string }>;
+  customMedicines?: { name: string; dosage?: string; updatedAt?: string }[];
   themeMode: ThemeMode;
   hasCompletedOnboarding: boolean;
   createdAt?: string;

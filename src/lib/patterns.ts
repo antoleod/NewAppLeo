@@ -64,9 +64,7 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   const alerts: SmartAlert[] = [];
   // entries arrives pre-sorted descending by occurredAt from AppDataContext
   const sorted = entries;
-  const lastFeed = sorted.find((entry) => entry.type === 'feed');
   const lastSleep = sorted.find((entry) => entry.type === 'sleep');
-  const lastMedication = sorted.find((entry) => entry.type === 'medication');
   const lastTemp = sorted.find((entry) => entry.type === 'temperature' || (entry.type === 'measurement' && entry.payload.tempC));
   const lastDiaper = sorted.find((entry) => entry.type === 'diaper');
   const lastMeasurement = sorted.find((entry) => entry.type === 'measurement');

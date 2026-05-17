@@ -35,7 +35,7 @@ const MEAL_GLYPH_TONES: Record<string, string> = {
 const MORE_LABEL: Record<string, string> = { fr: 'Réaction, allergie…', en: 'Reaction, allergy…', es: 'Reacción, alergia…', nl: 'Reactie, allergie…' };
 const LESS_LABEL: Record<string, string> = { fr: 'Masquer', en: 'Hide', es: 'Ocultar', nl: 'Verbergen' };
 
-const REACTION_OPTIONS: Array<{ emoji: string; value: string; labels: Record<string, string> }> = [
+const REACTION_OPTIONS: { emoji: string; value: string; labels: Record<string, string> }[] = [
   { emoji: '🤧', value: 'allergy',     labels: { fr: 'Allergie',     en: 'Allergy',     es: 'Alergia',     nl: 'Allergie'     } },
   { emoji: '😬', value: 'intolerance', labels: { fr: 'Intolérance',  en: 'Intolerance', es: 'Intolerancia',nl: 'Intolerantie' } },
   { emoji: '🔴', value: 'rash',        labels: { fr: 'Éruption',     en: 'Rash',        es: 'Erupción',    nl: 'Uitslag'      } },

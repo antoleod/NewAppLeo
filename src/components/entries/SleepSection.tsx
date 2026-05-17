@@ -91,7 +91,7 @@ export const SleepSection = React.memo(function SleepSection({
     const mins = minutes % 60;
     const durLabel = hours > 0 ? `${hours}h${String(mins).padStart(2, '0')}` : `${mins} min`;
 
-    const qualityOptions: Array<{ value: SleepQuality; emoji: string; tKey: string }> = [
+    const qualityOptions: { value: SleepQuality; emoji: string; tKey: string }[] = [
       { value: 'calm',        emoji: '😴', tKey: 'sleep.qualityCalm' },
       { value: 'restless',    emoji: '😣', tKey: 'sleep.qualityRestless' },
       { value: 'interrupted', emoji: '🌙', tKey: 'sleep.qualityInterrupted' },

@@ -18,10 +18,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
-import { Page } from '@/components/shared';
+import { Page , useToast } from '@/components/shared';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
-import { useToast } from '@/components/shared';
 import { AppLanguage } from '@/types';
 import { shadow } from '@/lib/shadow';
 
@@ -29,7 +28,7 @@ import { shadow } from '@/lib/shadow';
 
 const APP_ICON = require('../../assets/branding/app-icon/babyflow-app-icon-512.png');
 
-const LANGS: Array<{ code: AppLanguage; label: string }> = [
+const LANGS: { code: AppLanguage; label: string }[] = [
   { code: 'en', label: 'EN' },
   { code: 'fr', label: 'FR' },
   { code: 'es', label: 'ES' },
@@ -45,7 +44,6 @@ const TEXT_SECONDARY = 'rgba(235,235,245,0.60)';
 const TEXT_TERTIARY = 'rgba(235,235,245,0.30)';
 const HAIRLINE = 'rgba(255,255,255,0.08)';
 const FIELD_BG = 'rgba(118,118,128,0.18)'; // iOS material fill
-const FIELD_BG_FOCUS = 'rgba(118,118,128,0.28)';
 const DESTRUCTIVE = '#FF453A';
 
 // ─── AppleField (single row) ──────────────────────────────────────────────────

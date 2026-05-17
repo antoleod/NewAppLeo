@@ -19,8 +19,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname } from 'expo-router';
@@ -29,6 +27,8 @@ import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
 import { shadow } from '@/lib/shadow';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function withColorOpacity(color: string, opacity: number) {
   const alpha = Math.max(0, Math.min(1, opacity));
@@ -545,7 +545,7 @@ export function Segment({
   onChange,
 }: {
   value: string;
-  options: Array<{ label: string; value: string; icon?: React.ReactNode }>;
+  options: { label: string; value: string; icon?: React.ReactNode }[];
   onChange: (value: string) => void;
 }) {
   const { width } = useWindowDimensions();
@@ -819,7 +819,7 @@ export function ButtonGroup({
   buttons,
   direction = 'row',
 }: {
-  buttons: Array<{ label: string; onPress: () => void; variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; size?: 'sm' | 'md' }>;
+  buttons: { label: string; onPress: () => void; variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; size?: 'sm' | 'md' }[];
   direction?: 'row' | 'column';
 }) {
   return (

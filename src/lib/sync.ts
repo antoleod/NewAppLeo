@@ -53,7 +53,7 @@ export async function queueUpserts(entries: EntryRecord[]) {
   return { queued: queue.length };
 }
 
-export async function queueDeletes(ids: Array<{ id: string; occurredAt: string; updatedAt: string }>) {
+export async function queueDeletes(ids: { id: string; occurredAt: string; updatedAt: string }[]) {
   const queue = mergeQueue(await loadQueuedOperations(), ids.map((item) => ({ kind: 'delete' as const, ...item })));
   await saveQueuedOperations(queue);
   return { queued: queue.length };

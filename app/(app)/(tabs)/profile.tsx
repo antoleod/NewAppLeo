@@ -6,12 +6,12 @@ import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeIn, useSharedValue, withSpring } from 'react-native-reanimated';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { Button, Card, Heading, Input, Page, Segment } from '@/components/shared';
-import { DateTimeField } from '@/components/shared';
-import { ExpandableSection } from '@/components/shared';
-import { ProfileSkeleton } from '@/components/profile';
-import { AvatarInitials } from '@/components/shared';
-import { BabyEditSheet } from '@/components/profile';
+import { Button, Card, Heading, Input, Page, Segment , DateTimeField , ExpandableSection , AvatarInitials , useToast } from '@/components/shared';
+
+
+import { ProfileSkeleton , BabyEditSheet , DataImporter } from '@/components/profile';
+
+
 import { EntryEditSheet } from '@/components/history';
 import { WeightHistoryChart } from '@/components/insights';
 import { useAuth } from '@/context/AuthContext';
@@ -21,10 +21,10 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useLocale } from '@/context/LocaleContext';
 import { getActiveBaby, getBabies, saveBaby, setActiveBabyId, removeBaby, clearLocalSession, type BabyProfile } from '@/lib/storage';
 import { getAgeInMonths, getWHORecommendation } from '@/lib/who-recommendations';
-import { DataImporter } from '@/components/profile';
+
 import { getLocalPairingSession } from '@/services/pairingService';
 import { loadQueuedOperations } from '@/lib/sync';
-import { useToast } from '@/components/shared';
+
 import { haptics } from '@/lib/haptics';
 import type { UnitSystem } from '@/types';
 import { clearCurrentSession } from '@/services/sessionService';
@@ -319,7 +319,7 @@ export default function ProfileScreen() {
 
   const handleSave = useCallback(async () => {
     const errors: typeof fieldErrors = {};
-    const numericFields: Array<keyof typeof fieldErrors> = [
+    const numericFields: (keyof typeof fieldErrors)[] = [
       'birthWeightKg', 'birthHeightCm', 'birthHeadCircCm',
       'currentWeightKg', 'heightCm', 'headCircCm',
     ];

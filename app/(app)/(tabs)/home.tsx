@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Page, SkeletonCard, SyncStatusBadge } from '@/components/shared';
+import { Button, Page, SkeletonCard, SyncStatusBadge , QuantityPicker } from '@/components/shared';
 import { useIconPack } from '@/components/icons/IconPackContext';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
@@ -36,11 +36,11 @@ import {
   getDeviceDisplayName,
   updateAppSettings,
 } from '@/lib/storage';
-import { QuantityPicker } from '@/components/shared';
-import { FullscreenTimerModal } from '@/components/home';
-import { NextFeedingCard } from '@/components/home';
-import { GetEntryIcon } from '@/components/history';
-import { BottleIcon, BreastfeedingIcon } from '@/components/history';
+
+import { FullscreenTimerModal , NextFeedingCard } from '@/components/home';
+
+import { GetEntryIcon , BottleIcon, BreastfeedingIcon } from '@/components/history';
+
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { haptics } from '@/lib/haptics';
 import { shadow, textShadow } from '@/lib/shadow';
@@ -139,7 +139,7 @@ function getEntryDisplayLabel(entry: EntryRecord, t: (key: string) => string): s
   }
 }
 
-function getEntryDetail(entry: EntryRecord, t: (key: string) => string, locale: string): string {
+function getEntryDetail(entry: EntryRecord, t: (key: string) => string, _locale: string): string {
   switch (entry.type) {
     case 'feed':
       if (entry.payload?.mode === 'bottle' && entry.payload?.amountMl) return `${entry.payload.amountMl} ml`;
@@ -208,7 +208,7 @@ function getFoodAllergyAlerts(entries: EntryRecord[]) {
   const foodEntries = entries.filter((e) => e.type === 'food');
   if (foodEntries.length === 0) return [];
 
-  const alerts: Array<{ food: string; count: number }> = [];
+  const alerts: { food: string; count: number }[] = [];
   const allergyFoods = new Map<string, number>();
 
   foodEntries.slice(0, 20).forEach((entry) => {
@@ -636,7 +636,7 @@ export default function HomeScreen() {
 
   const [hydration, setHydration] = useState(0);
   const [babyId, setBabyId] = useState<string | null>(null);
-  const [babies, setBabies] = useState<Array<{ id: string; name: string; birthDate: string }>>([]);
+  const [babies, setBabies] = useState<{ id: string; name: string; birthDate: string }[]>([]);
   const [appSettings, setAppSettingsState] = useState(defaultAppSettings);
   const { active: activeTimer, elapsedSeconds: globalElapsed, start: startTimer, stop: stopTimer, minimize: minimizeTimer } = useTimer();
   const quickTimerMode: QuickTimerMode = activeTimer && (activeTimer.kind === 'breast' || activeTimer.kind === 'bottle')
@@ -658,7 +658,6 @@ export default function HomeScreen() {
   const swipeableRefs = useRef<Map<string, React.RefObject<SwipeableMethods | null>>>(new Map());
 
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
-  const lastFeed = useMemo(() => feedEntries[0], [feedEntries]);
   const lastMeasurement = useMemo(() => entries.find((entry) => entry.type === 'measurement'), [entries]);
 
   const totalMilkToday = useMemo(() => {
@@ -686,25 +685,6 @@ export default function HomeScreen() {
   const diaperHealthAlerts = useMemo(() => getDiaperHealthAlerts(entries), [entries]);
   const foodSummary = useMemo(() => getFoodSummary(entries), [entries]);
   const { recent: foodHistory, mealsToday, totalGramsToday, mostCommon: foodMostCommon } = foodSummary;
-
-  const suggestedBreastSide = useMemo<BreastSide>(() => {
-    const lastBreast = feedEntries.find((e) => e.payload?.mode === 'breast');
-    if (lastBreast?.payload?.side === 'left') return 'right';
-    if (lastBreast?.payload?.side === 'right') return 'left';
-    return 'left';
-  }, [feedEntries]);
-
-  // Night feeds: 22:00 previous day → 06:00 today
-  const nightFeeds = useMemo(() => {
-    const today = new Date();
-    const nightStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 22, 0, 0).getTime();
-    const nightEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 6, 0, 0).getTime();
-    const window = Math.max(nightEnd, Date.now());
-    return feedEntries.filter((e) => {
-      const ts = new Date(e.occurredAt).getTime();
-      return ts >= nightStart && ts <= window;
-    });
-  }, [feedEntries]);
 
   // Weekly bottle trend: this week avg ml vs last week avg ml
   const weeklyBottleTrend = useMemo(() => {
@@ -941,12 +921,6 @@ export default function HomeScreen() {
         ? t('milk.aboveTarget')
         : t('milk.inTarget');
 
-  const lastFeedTime = lastFeed ? formatClock(lastFeed.occurredAt, locale) : '--:--';
-  const lastFeedAmount = lastFeed?.payload?.amountMl ?? lastFeed?.payload?.durationMin ?? 0;
-  const lastFeedType = lastFeed?.payload?.mode === 'bottle' ? t('feeding.bottle') : t('feeding.breast');
-  const timeSinceLastFeed = formatRelative(lastFeed?.occurredAt, locale);
-  const elapsedHours = hoursSince(lastFeed?.occurredAt);
-  const elapsedColor = elapsedHours === null ? MUTED : elapsedHours < 2 ? GREEN : elapsedHours < 3 ? YELLOW : RED;
 
   const recentEntries = useMemo(() => entries.slice(0, 6), [entries]);
 

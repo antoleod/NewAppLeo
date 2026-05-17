@@ -21,10 +21,6 @@ function eq<T>(name: string, actual: T, expected: T) {
   check(name, ok, ok ? '' : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
 }
 
-function approx(name: string, actual: number, expected: number, tolerance = 0) {
-  const ok = Math.abs(actual - expected) <= tolerance;
-  check(name, ok, ok ? '' : `expected ~${expected} (±${tolerance}), got ${actual}`);
-}
 
 function entry(opts: {
   id: string;

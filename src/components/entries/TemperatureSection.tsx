@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Input } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
-import { useTranslation } from '@/hooks/useTranslation';
 import { useLocale } from '@/context/LocaleContext';
 import { typeMeta } from '@/lib/entryComposer';
 
@@ -15,7 +14,6 @@ const PRESETS = ['36.5', '37.5', '38.5'] as const;
 
 export const TemperatureSection = React.memo(function TemperatureSection({ value, onChange }: Props) {
   const { colors, theme } = useTheme();
-  const { t } = useTranslation();
   const { language } = useLocale();
   const meta = typeMeta.temperature;
   const numeric = Number(value);

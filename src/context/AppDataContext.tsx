@@ -12,8 +12,6 @@ import {
   serverTimestamp,
   updateDoc,
 } from 'firebase/firestore';
-
-const ENTRIES_PAGE_LIMIT = 500;
 import { db } from '@/lib/firebase';
 import { EntryPayload, EntryRecord, EntryType } from '@/types';
 import { useAuth } from './AuthContext';
@@ -21,8 +19,9 @@ import { getTodaySummary } from '@/utils/entries';
 import { deleteLocalEntry, getLocalEntries, setLocalEntries, upsertLocalEntry } from '@/services/localStore';
 import { flushQueuedOperations, loadQueuedOperations, mergeEntries, pullEntries, queueDeletes, queueUpserts } from '@/lib/sync';
 import { buildLeoProfilePatch, importLeoEntries } from '@/lib/leoData';
-import { getAppSettings, saveBaby, setAppSettings } from '@/lib/storage';
-import { setGuestProfile } from '@/lib/storage';
+import { getAppSettings, saveBaby, setAppSettings , setGuestProfile } from '@/lib/storage';
+
+const ENTRIES_PAGE_LIMIT = 500;
 
 function stripUndefined<T>(obj: T): T {
   if (Array.isArray(obj)) return obj.map(stripUndefined) as unknown as T;
@@ -91,7 +90,7 @@ function normalizeEntry(id: string, data: Record<string, any>): EntryRecord {
   } as EntryRecord;
 }
 
-const DEMO_ENTRIES: Array<Omit<EntryRecord, 'id'>> = [
+const DEMO_ENTRIES: Omit<EntryRecord, 'id'>[] = [
   {
     type: 'feed',
     title: 'Bottle feed',

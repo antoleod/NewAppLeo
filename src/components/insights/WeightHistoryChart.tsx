@@ -13,7 +13,7 @@ interface WeightHistoryChartProps {
 }
 
 export function WeightHistoryChart({ limit = 10, onEditEntry }: WeightHistoryChartProps) {
-  const { colors, gradients } = useTheme();
+  const { colors } = useTheme();
   const { entries } = useAppData();
 
   const weightEntries = useMemo(() => {

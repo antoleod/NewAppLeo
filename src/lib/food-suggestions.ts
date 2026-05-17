@@ -73,7 +73,7 @@ export function inferCategoryFromName(rawName: string): FoodCategory {
   const name = normalizeFoodName(rawName);
   if (!name) return 'other';
   if (PRESET_VALUES.has(name)) return name as FoodCategory;
-  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS) as Array<[FoodCategory, string[]]>) {
+  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS) as [FoodCategory, string[]][]) {
     if (keywords.some((kw) => name.includes(kw))) return cat;
   }
   return 'other';

@@ -28,7 +28,7 @@ type Props = {
 
 const fmt = (n: number) => (n > 3 ? String(n) : n === 3 ? '3+' : String(n));
 
-const POOP_COLORS: Array<{ value: PoopColor; emoji: string; tint: string; tKey: string }> = [
+const POOP_COLORS: { value: PoopColor; emoji: string; tint: string; tKey: string }[] = [
   { value: 'yellow', emoji: '🟡', tint: '#F0B85A', tKey: 'diaper.poopColorYellow' },
   { value: 'brown',  emoji: '🟤', tint: '#8B6F47', tKey: 'diaper.poopColorBrown' },
   { value: 'green',  emoji: '🟢', tint: '#56D364', tKey: 'diaper.poopColorGreen' },
@@ -36,7 +36,7 @@ const POOP_COLORS: Array<{ value: PoopColor; emoji: string; tint: string; tKey: 
   { value: 'red',    emoji: '🔴', tint: '#E74C3C', tKey: 'diaper.poopColorRed' },
 ];
 
-const POOP_CONSISTENCIES: Array<{ value: PoopConsistency; emoji: string; tKey: string }> = [
+const POOP_CONSISTENCIES: { value: PoopConsistency; emoji: string; tKey: string }[] = [
   { value: 'liquid', emoji: '🌊', tKey: 'diaper.consistencyLiquid' },
   { value: 'soft',   emoji: '💧', tKey: 'diaper.consistencySoft' },
   { value: 'normal', emoji: '🟫', tKey: 'diaper.consistencyNormal' },
@@ -92,7 +92,7 @@ export const DiaperSection = React.memo(function DiaperSection({
     return total === 0;
   };
 
-  const QUICK_PRESETS: Array<{ key: QuickPreset; glyph: React.ReactNode; tKey: string; tint: string }> = [
+  const QUICK_PRESETS: { key: QuickPreset; glyph: React.ReactNode; tKey: string; tint: string }[] = [
     { key: 'pee',   glyph: <DropPee size={22} color="#58A6FF" />,                                              tKey: 'diaper.quickPee',   tint: '#58A6FF' },
     { key: 'poop',  glyph: <DropPoop size={22} color="#A371F7" />,                                             tKey: 'diaper.quickPoop',  tint: '#A371F7' },
     { key: 'mixed', glyph: (
@@ -212,7 +212,6 @@ export const DiaperSection = React.memo(function DiaperSection({
                 <View style={styles.optionRow}>
                   {POOP_COLORS.map((opt) => {
                     const active = poopColor === opt.value;
-                    const isAlert = opt.value === 'red' || opt.value === 'dark';
                     return (
                       <Pressable
                         key={opt.value}

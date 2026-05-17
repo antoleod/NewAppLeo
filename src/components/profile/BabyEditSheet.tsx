@@ -1,8 +1,7 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import { Button, Input } from '@/components/shared';
-import { DateTimeField } from '@/components/shared';
+import { Button, Input , DateTimeField } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
 import { haptics } from '@/lib/haptics';
 import { spacing } from '@/theme';

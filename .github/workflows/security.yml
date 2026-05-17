@@ -50,7 +50,7 @@ jobs:
           fetch-depth: 0
 
       - name: TruffleHog scan
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3.95.3
         with:
           extra_args: --results=verified,unknown
 
@@ -85,10 +85,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: TypeScript security check
-        run: |
-          npx tsc --noEmit --strict || true
 
       - name: Vulnerable patterns check
         run: |

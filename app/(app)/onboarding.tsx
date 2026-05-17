@@ -7,10 +7,10 @@ import Reanimated, { FadeIn, FadeInRight, useAnimatedStyle, useSharedValue, with
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
-import { Button, Card, Input, Page, Heading } from '@/components/shared';
+import { Button, Card, Input, Page, Heading , DateTimeField } from '@/components/shared';
 import { useAuth } from '@/context/AuthContext';
 import { buildBabyFromProfile } from '@/lib/storage';
-import { DateTimeField } from '@/components/shared';
+
 import { useOnboarding, type OnboardingPath } from '@/hooks/useOnboarding';
 import { useTheme } from '@/context/ThemeContext';
 import { getTranslation } from '@/lib/i18n';
@@ -36,7 +36,7 @@ const languageOptions = [
 ];
 
 const getZodiacSign = (date: Date, lang: string) => {
-  const isNL = lang === 'nl'; const isES = lang === 'es'; const isFR = lang === 'fr';
+  const isNL = lang === 'nl'; const isFR = lang === 'fr';
   const d = date.getDate();
   const m = date.getMonth() + 1;
   if ((m === 1 && d >= 20) || (m === 2 && d <= 18)) return { name: isNL ? 'Waterman' : 'Aquarius', symbol: '♒', color: '#4D96FF', trait: isNL ? 'Vernieuwend en origineel.' : isFR ? 'Innovateur et original.' : 'Innovative and original.' };
@@ -107,10 +107,10 @@ export default function OnboardingScreen() {
   const [babyBirthDate, setBabyBirthDate] = useState(new Date(profile?.babyBirthDate ?? '2025-10-21T08:00:00.000Z'));
   const [babySex, setBabySex] = useState<BabySex>(profile?.babySex ?? 'unspecified');
   const [birthWeightKg, setBirthWeightKg] = useState(profile?.birthWeightKg ? String(profile.birthWeightKg) : '');
-  const [currentWeightKg, setCurrentWeightKg] = useState(profile?.currentWeightKg ? String(profile.currentWeightKg) : '');
+  const [currentWeightKg] = useState(profile?.currentWeightKg ? String(profile.currentWeightKg) : '');
   const [heightCm, setHeightCm] = useState(profile?.heightCm ? String(profile.heightCm) : '');
-  const [headCircCm, setHeadCircCm] = useState(profile?.headCircCm ? String(profile.headCircCm) : '');
-  const [babyNotes, setBabyNotes] = useState(profile?.babyNotes ?? '');
+  const [headCircCm] = useState(profile?.headCircCm ? String(profile.headCircCm) : '');
+  const [babyNotes] = useState(profile?.babyNotes ?? '');
   const [goalFeedingsPerDay, setGoalFeedingsPerDay] = useState(profile?.goalFeedingsPerDay ? String(profile.goalFeedingsPerDay) : '');
   const [goalSleepHoursPerDay, setGoalSleepHoursPerDay] = useState(profile?.goalSleepHoursPerDay ? String(profile.goalSleepHoursPerDay) : '');
   const [goalDiapersPerDay, setGoalDiapersPerDay] = useState(profile?.goalDiapersPerDay ? String(profile.goalDiapersPerDay) : '');
@@ -264,7 +264,7 @@ export default function OnboardingScreen() {
   // Initial path selection — runs only on mount. We deliberately don't depend on
   // guestMode because doing so would clobber a user-selected 'pin' path the moment
   // anything toggles guest mode elsewhere (e.g. a sign-out side-effect).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   useEffect(() => {
     setPath(guestMode ? 'guest' : 'account');
     setStep((current) => (current < 1 ? 1 : current));
