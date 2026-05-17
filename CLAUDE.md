@@ -14,12 +14,18 @@ npm run ios            # iOS
 # Type checking (no test suite exists)
 npm run typecheck
 
+# Web production build (export + PWA manifest injection)
+npm run build:web
+
+# Playwright live smoke test against a running site
+npm run smoke
+
 # Firebase rules/indexes deployment
 npm run firebase:deploy:rules
 npm run firebase:deploy:indexes
 ```
 
-There is no lint script and no automated test suite. Type checking (`npm run typecheck`) is the primary code validation step.
+There is no lint script and no automated unit test suite. Type checking (`npm run typecheck`) is the primary code validation step. CI workflows in `.github/workflows/` (`lint.yml`, `test.yml`) only run `typecheck` plus a web build verification — there are no real unit tests despite the workflow names.
 
 ## Architecture Overview
 
@@ -47,8 +53,11 @@ app/
 ### Provider hierarchy (root `_layout.tsx`)
 
 ```
-AuthProvider → LocaleProvider → ThemeProvider → ToastProvider → AppDataProvider
+AuthProvider → LocaleProvider → ThemeProvider → ToastProvider
+  → AppDataProvider → TimerProvider → IconPackProvider
 ```
+
+The root layout also handles biometric auto-lock (re-locks on return from background via `expo-local-authentication`) and an incognito overlay (hides content when backgrounded).
 
 ### Data flow
 
@@ -64,6 +73,8 @@ Three independent axes:
 - **SurfaceStyle** (`default | photo | classic`) — `default` = frosted glass, `photo` = more transparent (vivid background), `classic` = solid opaque
 
 `getThemeTokens(resolvedMode, variant, customOverride, surfaceMode)` returns `{ theme, colors, gradients }`. Components consume via `useTheme()` from `src/context/ThemeContext.tsx`.
+
+A separate **icon pack** axis (`soft | classic | outline | bold`) lives in `src/components/icons/` — packs are swapped via `IconPackContext`, independent of the theme variant.
 
 ### i18n
 
@@ -96,7 +107,8 @@ Firebase Auth + Firestore profile at `users/{uid}`. Three modes:
 | `src/lib/sync.ts` | Offline queue for guest/offline writes |
 | `src/services/localStore.ts` | CRUD for entries in AsyncStorage |
 | `src/lib/patterns.ts` | Smart alerts and feeding interval analysis |
-| `app/(app)/entry/[type].tsx` | Monolithic entry form — handles all 11 entry types via `type` route param |
+| `src/lib/entryComposer/` | Builds entry titles/payloads shared by the entry form and history |
+| `app/(app)/entry/[type].tsx` | Monolithic entry form — handles all 11 entry types via `type` route param; per-type UI lives in `src/components/entries/*Section.tsx` |
 
 ### Environment variables
 
