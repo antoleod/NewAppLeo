@@ -59,7 +59,19 @@ function foodEffectiveDelayHours(food: EntryRecord, meanIntervalHours: number, r
   return Math.max(0.5, meanIntervalHours * ratio);
 }
 
-export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile | null, feedingCfg?: FeedingSettings): SmartAlert[] {
+/** Translator passed in by the (React) caller so alert copy is localized. */
+export type AlertI18n = {
+  t: (key: string) => string;
+  format: (key: string, vars: Record<string, string | number>) => string;
+};
+
+export function buildSmartAlerts(
+  entries: EntryRecord[],
+  profile: UserProfile | null | undefined,
+  feedingCfg: FeedingSettings | undefined,
+  i18n: AlertI18n,
+): SmartAlert[] {
+  const { t, format } = i18n;
   const cfg = feedingCfg ?? defaultAppSettings.feedingSettings;
   const alerts: SmartAlert[] = [];
   // entries arrives pre-sorted descending by occurredAt from AppDataContext
@@ -91,13 +103,13 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
     const hoursOverdue = consumedHours - alertThresholdHours;
     alerts.push({
       id: 'feed-due',
-      title: 'Feeding due',
-      body: `Last feed was ${Math.round(consumedHours * 10) / 10}h ago.`,
+      title: t('alerts.feedDueTitle'),
+      body: format('alerts.feedDueBody', { hours: Math.round(consumedHours * 10) / 10 }),
       icon: '🍼',
       value: formatCompactHours(consumedHours),
-      statusLabel: 'overdue',
+      statusLabel: t('alerts.statusOverdue'),
       tone: hoursOverdue >= 1 ? 'danger' : 'warning',
-      actionLabel: 'Log feed',
+      actionLabel: t('alerts.actionLogFeed'),
       targetType: 'feed',
     });
   }
@@ -106,13 +118,15 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   if (sleepHours !== null && sleepHours >= 6) {
     alerts.push({
       id: 'sleep-due',
-      title: 'Nap check',
-      body: profile?.babyName ? `${profile.babyName} has been awake for a while.` : 'Baby may be ready for a nap.',
+      title: t('alerts.napTitle'),
+      body: profile?.babyName
+        ? format('alerts.napBodyNamed', { name: profile.babyName })
+        : t('alerts.napBody'),
       icon: '😴',
-      value: 'Awake',
-      statusLabel: 'active',
+      value: t('alerts.napValue'),
+      statusLabel: t('alerts.statusActive'),
       tone: 'secondary',
-      actionLabel: 'Log sleep',
+      actionLabel: t('alerts.actionLogSleep'),
       targetType: 'sleep',
     });
   }
@@ -132,15 +146,15 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
       const isOverdue = sinceHours >= interval;
       alerts.push({
         id: 'med-due',
-        title: medName || 'Medication',
+        title: medName || t('alerts.medTitle'),
         body: isOverdue
-          ? `Dose overdue by ${Math.round(sinceHours - interval)}h.`
-          : `Next dose in ${remainMin} min.`,
+          ? format('alerts.medOverdueBody', { hours: Math.round(sinceHours - interval) })
+          : format('alerts.medNextBody', { min: remainMin }),
         icon: '💊',
-        value: isOverdue ? 'Overdue' : `${remainMin}m`,
-        statusLabel: isOverdue ? 'overdue' : 'soon',
+        value: isOverdue ? t('alerts.medOverdueValue') : `${remainMin}m`,
+        statusLabel: isOverdue ? t('alerts.statusOverdue') : t('alerts.statusSoon'),
         tone: isOverdue ? 'danger' : 'warning',
-        actionLabel: 'Log medication',
+        actionLabel: t('alerts.actionLogMed'),
         targetType: 'medication',
       });
     }
@@ -151,13 +165,13 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   if (tempC !== undefined && tempC >= 38.0) {
     alerts.push({
       id: 'fever-alert',
-      title: 'Fever detected',
-      body: `Temperature is ${tempC.toFixed(1)}°C. Monitor closely and consult doctor if persists.`,
+      title: t('alerts.feverTitle'),
+      body: format('alerts.feverBody', { temp: tempC.toFixed(1) }),
       icon: '🌡️',
       value: `${tempC.toFixed(1)}°C`,
-      statusLabel: 'urgent',
+      statusLabel: t('alerts.statusUrgent'),
       tone: 'danger',
-      actionLabel: 'Log temperature',
+      actionLabel: t('alerts.actionLogTemp'),
       targetType: 'temperature',
     });
   }
@@ -165,29 +179,32 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   // Vaccine due alert
   const nextVaccine = sorted.find((entry) => entry.type === 'vaccine' && entry.payload.vaccineNextDueDate);
   if (nextVaccine?.payload?.vaccineNextDueDate) {
+    const vaccineName = nextVaccine.payload.vaccineName ?? '';
     const daysUntilDue = Math.ceil((new Date(nextVaccine.payload.vaccineNextDueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     if (daysUntilDue <= 7 && daysUntilDue > 0) {
       alerts.push({
         id: 'vaccine-due',
-        title: 'Vaccine due soon',
-        body: `${nextVaccine.payload.vaccineName} is due in ${daysUntilDue} day${daysUntilDue > 1 ? 's' : ''}.`,
+        title: t('alerts.vaccineSoonTitle'),
+        body: daysUntilDue > 1
+          ? format('alerts.vaccineSoonBody', { name: vaccineName, days: daysUntilDue })
+          : format('alerts.vaccineSoonBodyOne', { name: vaccineName }),
         icon: '💉',
-        value: `In ${daysUntilDue}d`,
-        statusLabel: 'upcoming',
+        value: format('alerts.vaccineSoonValue', { days: daysUntilDue }),
+        statusLabel: t('alerts.statusUpcoming'),
         tone: 'warning',
-        actionLabel: 'Schedule',
+        actionLabel: t('alerts.actionSchedule'),
         targetType: 'vaccine',
       });
     } else if (daysUntilDue <= 0) {
       alerts.push({
         id: 'vaccine-overdue',
-        title: 'Vaccine overdue',
-        body: `${nextVaccine.payload.vaccineName} is overdue. Contact clinic to schedule.`,
+        title: t('alerts.vaccineOverdueTitle'),
+        body: format('alerts.vaccineOverdueBody', { name: vaccineName }),
         icon: '💉',
-        value: 'Overdue',
-        statusLabel: 'critical',
+        value: t('alerts.vaccineOverdueValue'),
+        statusLabel: t('alerts.statusCritical'),
         tone: 'danger',
-        actionLabel: 'Update',
+        actionLabel: t('alerts.actionUpdate'),
         targetType: 'vaccine',
       });
     }
@@ -200,13 +217,13 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
     if (poopHours !== null && poopHours >= 24) {
       alerts.push({
         id: 'constipation-alert',
-        title: 'No bowel movement',
-        body: `No poop recorded in ${Math.floor(poopHours)}h. Monitor and ensure hydration.`,
+        title: t('alerts.noBowelTitle'),
+        body: format('alerts.noBowelBody', { hours: Math.floor(poopHours) }),
         icon: '💚',
         value: `${Math.floor(poopHours)}h`,
-        statusLabel: 'pending',
+        statusLabel: t('alerts.statusPending'),
         tone: 'warning',
-        actionLabel: 'Log diaper',
+        actionLabel: t('alerts.actionLogDiaper'),
         targetType: 'diaper',
       });
     }
@@ -220,13 +237,13 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
   if (diaperEntries24h.length >= 4) {
     alerts.push({
       id: 'diarrhea-alert',
-      title: 'Frequent bowel movements',
-      body: `${diaperEntries24h.length} bowel movements in last 24h. Monitor for dehydration.`,
+      title: t('alerts.frequentBowelTitle'),
+      body: format('alerts.frequentBowelBody', { count: diaperEntries24h.length }),
       icon: '⚠️',
       value: `${diaperEntries24h.length}x`,
-      statusLabel: 'pending',
+      statusLabel: t('alerts.statusPending'),
       tone: 'warning',
-      actionLabel: 'Log diaper',
+      actionLabel: t('alerts.actionLogDiaper'),
       targetType: 'diaper',
     });
   }
@@ -248,13 +265,13 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
     if (persistentSymptom) {
       alerts.push({
         id: 'persistent-symptom',
-        title: 'Recurring symptom',
-        body: `"${persistentSymptom[0]}" recorded ${persistentSymptom[1]} times in 7 days.`,
+        title: t('alerts.symptomTitle'),
+        body: format('alerts.symptomBody', { symptom: persistentSymptom[0], count: persistentSymptom[1] }),
         icon: '🩺',
         value: `${persistentSymptom[1]}x`,
-        statusLabel: 'pending',
+        statusLabel: t('alerts.statusPending'),
         tone: 'secondary',
-        actionLabel: 'View',
+        actionLabel: t('alerts.actionView'),
         targetType: 'symptom',
       });
     }
@@ -272,25 +289,25 @@ export function buildSmartAlerts(entries: EntryRecord[], profile?: UserProfile |
       if (weightKg < expectedMin) {
         alerts.push({
           id: 'weight-low',
-          title: 'Low weight',
-          body: `Weight is ${weightKg}kg, which is below expected range for age.`,
+          title: t('alerts.lowWeightTitle'),
+          body: format('alerts.lowWeightBody', { weight: weightKg }),
           icon: '📏',
           value: `${weightKg}kg`,
-          statusLabel: 'attention',
+          statusLabel: t('alerts.statusAttention'),
           tone: 'warning',
-          actionLabel: 'Log measurement',
+          actionLabel: t('alerts.actionLogMeasurement'),
           targetType: 'measurement',
         });
       } else if (weightKg > expectedMax) {
         alerts.push({
           id: 'weight-high',
-          title: 'High weight',
-          body: `Weight is ${weightKg}kg, which is above expected range for age.`,
+          title: t('alerts.highWeightTitle'),
+          body: format('alerts.highWeightBody', { weight: weightKg }),
           icon: '📏',
           value: `${weightKg}kg`,
-          statusLabel: 'attention',
+          statusLabel: t('alerts.statusAttention'),
           tone: 'secondary',
-          actionLabel: 'Log measurement',
+          actionLabel: t('alerts.actionLogMeasurement'),
           targetType: 'measurement',
         });
       }

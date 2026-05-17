@@ -43,6 +43,7 @@ import { GetEntryIcon , BottleIcon, BreastfeedingIcon } from '@/components/histo
 
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { haptics } from '@/lib/haptics';
+import { mealTones } from '@/lib/entryComposer';
 import { shadow, textShadow } from '@/lib/shadow';
 
 const DEFAULT_SECTION_ORDER = [
@@ -319,13 +320,7 @@ function getMealKind(value?: string): MealKind {
   return 'other';
 }
 
-const MEAL_TONE: Record<MealKind, string> = {
-  breakfast: '#F0B85A',
-  lunch: '#F0B85A',
-  snack: '#F0B85A',
-  dinner: '#A371F7',
-  other: '#8B6F47',
-};
+const MEAL_TONE: Record<MealKind, string> = mealTones;
 
 type FoodHistoryRowProps = {
   entry: EntryRecord;
@@ -673,7 +668,7 @@ export default function HomeScreen() {
   }, [entries, summary.today.bottleMl]);
 
   const feedingCfg = useFeedingSettings();
-  const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile, feedingCfg), [entries, profile, feedingCfg]);
+  const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile, feedingCfg, { t, format }), [entries, profile, feedingCfg, t, format]);
   const urgentAlerts = smartAlerts.filter((a) => a.tone === 'warning' || a.tone === 'danger');
   const healthStatus = useMemo(() => getHealthStatus(entries), [entries]);
   const hasHealthData = healthStatus.status !== 'unknown';
@@ -829,10 +824,10 @@ export default function HomeScreen() {
       payload:
         mode === 'breast'
           ? {
+              // Breast feeds have no real ml — tracked by duration + side only.
               mode: 'breast',
               side: quickFeedSide,
               durationMin: Math.max(1, Math.round(elapsed / 60)),
-              amountMl: quickAmount,
             }
           : {
               mode: 'bottle',
@@ -2246,7 +2241,9 @@ export default function HomeScreen() {
               <Text style={styles.sheetSubtitle}>
                 {t('entry.duration')} {Math.max(1, Math.round(timerElapsedSeconds / 60))} min · {t('home.feedStartedAt')} {formatClock(timerStartedAt ? new Date(timerStartedAt).toISOString() : undefined, locale)}
               </Text>
-              <QuantityPicker value={quickAmount} onChange={setQuickAmount} largeTouchMode={appSettings.largeTouchMode} />
+              {quickTimerMode === 'bottle' ? (
+                <QuantityPicker value={quickAmount} onChange={setQuickAmount} largeTouchMode={appSettings.largeTouchMode} />
+              ) : null}
               <View style={styles.sheetActions}>
                 <Button label={t('common.save')} onPress={saveQuickTimerEntry} />
                 <Button

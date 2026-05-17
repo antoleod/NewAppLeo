@@ -57,7 +57,7 @@ export default function EntryComposerScreen() {
   const { colors, theme } = useTheme();
   const { language } = useLocale();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, format } = useTranslation();
   const params = useLocalSearchParams<{ type?: string; id?: string; presetAmount?: string; presetMode?: string; presetSide?: string }>();
   const { entries, addEntry, updateEntry, deleteEntry, entryById } = useAppData();
   const { active: globalTimer, start: startGlobalTimer, stop: stopGlobalTimer, minimize: minimizeGlobalTimer } = useTimer();
@@ -290,12 +290,7 @@ export default function EntryComposerScreen() {
         // down gracefully so the user doesn't sit in front of a phantom
         // timer that no longer corresponds to any persisted state.
         if (sleepTimerRunning && sleepDraftClientId && !draft) {
-          toast.info(
-            language === 'fr' ? 'Sommeil enregistré depuis un autre onglet.'
-            : language === 'es' ? 'Sueño guardado desde otra pestaña.'
-            : language === 'nl' ? 'Slaap opgeslagen vanuit een ander tabblad.'
-            : 'Sleep saved from another tab.',
-          );
+          toast.info(t('entry.sleepSavedOtherTab'));
           setSleepTimerRunning(false);
           setSleepFullscreenVisible(false);
           setSleepStartedAt(null);
@@ -559,18 +554,9 @@ export default function EntryComposerScreen() {
   // Discarding a draft at 3 AM by accident would lose hours of tracking, so
   // require an explicit confirmation before clearing it.
   function confirmDiscardSleepDraft() {
-    const title =
-      language === 'fr' ? 'Abandonner la session ?'
-      : language === 'es' ? '¿Descartar sesión?'
-      : language === 'nl' ? 'Sessie verwijderen?'
-      : 'Discard this session?';
-    const message =
-      language === 'fr' ? 'Le temps de sommeil enregistré sera définitivement perdu.'
-      : language === 'es' ? 'El tiempo de sueño registrado se perderá definitivamente.'
-      : language === 'nl' ? 'De geregistreerde slaaptijd gaat definitief verloren.'
-      : 'The recorded sleep time will be permanently lost.';
-    const cancelLabel =
-      language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'nl' ? 'Annuleren' : 'Cancel';
+    const title = t('entry.discardSession');
+    const message = t('entry.discardSessionMsg');
+    const cancelLabel = t('common.cancel');
     const discardLabel = t('entry.sleepDraftDiscard');
     const doDiscard = async () => {
       await clearSleepDraft();
@@ -729,20 +715,10 @@ export default function EntryComposerScreen() {
       await doCancel();
       return;
     }
-    const title =
-      language === 'fr' ? 'Annuler le minuteur ?'
-      : language === 'es' ? '¿Cancelar el temporizador?'
-      : language === 'nl' ? 'Timer annuleren?'
-      : 'Cancel timer?';
-    const message =
-      language === 'fr' ? "Le temps de sommeil en cours ne sera pas enregistré."
-      : language === 'es' ? 'El tiempo de sueño en curso no se guardará.'
-      : language === 'nl' ? 'De lopende slaaptijd wordt niet opgeslagen.'
-      : 'The current sleep time will not be saved.';
-    const keepLabel =
-      language === 'fr' ? 'Garder' : language === 'es' ? 'Mantener' : language === 'nl' ? 'Behouden' : 'Keep';
-    const cancelLabel =
-      language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'nl' ? 'Annuleren' : 'Cancel';
+    const title = t('entry.timerCancelTitle');
+    const message = t('entry.timerCancelSleepMsg');
+    const keepLabel = t('entry.keepTimer');
+    const cancelLabel = t('common.cancel');
     if (Platform.OS === 'web') {
       if (globalThis.confirm?.(message)) void doCancel();
       return;
@@ -781,11 +757,56 @@ export default function EntryComposerScreen() {
     await handleSave(elapsedMinutes);
   }
 
+  async function handlePumpTimerCancel() {
+    const elapsedMs = pumpStartedAt ? Date.now() - pumpStartedAt : 0;
+    const doCancel = () => {
+      setPumpTimerRunning(false);
+      setPumpFullscreenVisible(false);
+      setPumpStartedAt(null);
+    };
+    if (elapsedMs < 2 * 60 * 1000) {
+      doCancel();
+      router.back();
+      return;
+    }
+    const title = t('entry.timerCancelTitle');
+    const message = t('entry.timerCancelPumpMsg');
+    const keepLabel = t('entry.keepTimer');
+    const cancelLabel = t('common.cancel');
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm?.(message)) { doCancel(); router.back(); }
+      return;
+    }
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: keepLabel, style: 'cancel' },
+        { text: cancelLabel, style: 'destructive', onPress: () => { doCancel(); router.back(); } },
+      ],
+      { cancelable: true },
+    );
+  }
+
+  // Patch the just-saved food entry with post-save feedback (liked / amount).
+  // The write can fail offline — surface it instead of silently losing the tap.
+  async function patchSavedFoodEntry(patch: Record<string, unknown>) {
+    if (!lastSavedFoodEntryId) return;
+    const entry = entries.find((e) => e.id === lastSavedFoodEntryId);
+    if (!entry) return;
+    try {
+      await updateEntry(lastSavedFoodEntryId, { payload: { ...entry.payload, ...patch } });
+    } catch {
+      haptics.warning();
+      toast.error(t('entry.errorSaveFailed'));
+    }
+  }
+
   async function handleSaveReminder() {
     if (!reminderVaccineName.trim()) {
       haptics.warning();
       toast.warning(
-        language === 'fr' ? 'Sélectionnez ou entrez un nom de vaccin.' : 'Please select or enter a vaccine name.'
+        t('entry.vaccineNameRequired')
       );
       return;
     }
@@ -815,11 +836,7 @@ export default function EntryComposerScreen() {
       }
 
       haptics.success();
-      toast.success(
-        language === 'fr'
-          ? `Rappel créé : ${reminderVaccineName} (7 jours avant).`
-          : `Reminder created: ${reminderVaccineName} (7 days before).`
-      );
+      toast.success(format('entry.reminderCreated', { name: reminderVaccineName }));
 
       setShowReminderFlow(false);
       setReminderStep('vaccine');
@@ -836,10 +853,10 @@ export default function EntryComposerScreen() {
 
   function handleDelete() {
     if (!editing) return;
-    const confirmTitle = language === 'fr' ? 'Supprimer ?' : language === 'es' ? '¿Eliminar?' : language === 'nl' ? 'Verwijderen?' : 'Delete?';
-    const confirmMsg = language === 'fr' ? 'Cette action est irréversible.' : language === 'es' ? 'Esta acción no se puede deshacer.' : language === 'nl' ? 'Deze actie is onomkeerbaar.' : 'This cannot be undone.';
-    const cancelLabel = language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'nl' ? 'Annuleren' : 'Cancel';
-    const deleteLabel = language === 'fr' ? 'Supprimer' : language === 'es' ? 'Eliminar' : language === 'nl' ? 'Verwijderen' : 'Delete';
+    const confirmTitle = t('entry.deleteTitle');
+    const confirmMsg = t('entry.deleteConfirmMsg');
+    const cancelLabel = t('common.cancel');
+    const deleteLabel = t('common.delete');
     const runDelete = async () => {
       await deleteEntry(editing.id);
       router.back();
@@ -1036,10 +1053,10 @@ export default function EntryComposerScreen() {
 
         <View style={styles.notesToggleWrap}>
           <Pressable onPress={() => setNotesOpen((current) => !current)} style={styles.notesToggle}>
-            <Text style={{ color: colors.primary, fontWeight: '800', textAlign: 'center' }}>{notesOpen ? '- ' : '+ '}{language === 'fr' ? 'Notes' : 'Notes'}</Text>
+            <Text style={{ color: colors.primary, fontWeight: '800', textAlign: 'center' }}>{notesOpen ? '- ' : '+ '}{t('entry.notes')}</Text>
           </Pressable>
         </View>
-        {notesOpen && <Input label={language === 'fr' ? 'Notes' : 'Notes'} value={notes} onChangeText={setNotes} multiline placeholder={language === 'fr' ? 'Optionnel...' : 'Optional...'} />}
+        {notesOpen && <Input label={t('entry.notes')} value={notes} onChangeText={setNotes} multiline placeholder={t('entry.notesPlaceholder')} />}
       </Card>
 
 
@@ -1047,8 +1064,8 @@ export default function EntryComposerScreen() {
         <FullscreenTimerModal
           visible={sleepFullscreenVisible}
           emoji={'\u{1F634}'}
-          title={language === 'fr' ? 'Sommeil' : language === 'es' ? 'Sueño' : language === 'nl' ? 'Slaap' : 'Sleep'}
-          subtitlePrefix={language === 'fr' ? 'Sommeil' : language === 'es' ? 'Sueño' : language === 'nl' ? 'Slaap' : 'Sleep'}
+          title={t('entry.sleep')}
+          subtitlePrefix={t('entry.sleep')}
           startedAt={sleepStartedAt}
           elapsedSeconds={sleepElapsedSeconds}
           onStop={() => void handleSleepStop()}
@@ -1061,11 +1078,13 @@ export default function EntryComposerScreen() {
         <FullscreenTimerModal
           visible={pumpFullscreenVisible}
           emoji={'\u{1F37C}'}
-          title={language === 'fr' ? 'Tirage' : language === 'es' ? 'Extracción' : language === 'nl' ? 'Kolven' : 'Pump'}
-          subtitlePrefix={language === 'fr' ? 'Tirage' : language === 'es' ? 'Extracción' : language === 'nl' ? 'Kolven' : 'Pump'}
+          title={t('entry.pump')}
+          subtitlePrefix={t('entry.pump')}
           startedAt={pumpStartedAt}
           elapsedSeconds={pumpElapsedSeconds}
           onStop={() => void handlePumpStop()}
+          onCancel={() => void handlePumpTimerCancel()}
+          cancelLabel={t('entry.sleepTimerCancel')}
           onMinimize={() => { minimizeGlobalTimer(); setPumpFullscreenVisible(false); }}
         />
       ) : null}
@@ -1149,12 +1168,7 @@ export default function EntryComposerScreen() {
                     onPress={() => {
                       haptics.selection();
                       setFoodLiked(value);
-                      if (lastSavedFoodEntryId) {
-                        const entry = entries.find((e) => e.id === lastSavedFoodEntryId);
-                        if (entry) {
-                          void updateEntry(lastSavedFoodEntryId, { payload: { ...entry.payload, foodLiked: value } });
-                        }
-                      }
+                      void patchSavedFoodEntry({ foodLiked: value });
                     }}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
@@ -1195,12 +1209,7 @@ export default function EntryComposerScreen() {
                     onPress={() => {
                       haptics.selection();
                       setAmountEaten(value);
-                      if (lastSavedFoodEntryId) {
-                        const entry = entries.find((e) => e.id === lastSavedFoodEntryId);
-                        if (entry) {
-                          void updateEntry(lastSavedFoodEntryId, { payload: { ...entry.payload, amountEaten: value } });
-                        }
-                      }
+                      void patchSavedFoodEntry({ amountEaten: value });
                     }}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
@@ -1284,7 +1293,7 @@ export default function EntryComposerScreen() {
                   <>
                     <Ionicons name="share-social-outline" size={20} color="#fff" />
                     <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
-                      {language === 'fr' ? 'Partager cette image' : language === 'es' ? 'Compartir imagen' : language === 'nl' ? 'Afbeelding delen' : 'Share this image'}
+                      {t('entry.shareImage')}
                     </Text>
                   </>
                 )}
@@ -1295,7 +1304,7 @@ export default function EntryComposerScreen() {
                 style={({ pressed }) => ({ alignItems: 'center' as const, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
               >
                 <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600', fontSize: 15 }}>
-                  {language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'nl' ? 'Annuleren' : 'Cancel'}
+                  {t('common.cancel')}
                 </Text>
               </Pressable>
             </View>
@@ -1335,8 +1344,8 @@ export default function EntryComposerScreen() {
               <Ionicons name="checkmark-circle" size={22} color={theme.accentText} />
               <Text style={[styles.primaryActionLabel, { color: theme.accentText }]}>
                 {editing
-                  ? (language === 'fr' ? 'Mettre à jour' : language === 'es' ? 'Actualizar' : language === 'nl' ? 'Bijwerken' : 'Update')
-                  : (language === 'fr' ? 'Enregistrer' : language === 'es' ? 'Guardar' : language === 'nl' ? 'Opslaan' : 'Save')}
+                  ? t('common.update')
+                  : t('common.save')}
               </Text>
             </>
           )}
@@ -1358,7 +1367,7 @@ export default function EntryComposerScreen() {
             >
               <Ionicons name="arrow-back-outline" size={18} color={colors.muted} />
               <Text style={[styles.secondaryActionLabel, { color: colors.muted }]}>
-                {language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'nl' ? 'Annuleren' : 'Cancel'}
+                {t('common.cancel')}
               </Text>
             </Pressable>
 
@@ -1371,7 +1380,7 @@ export default function EntryComposerScreen() {
             >
               <Ionicons name="share-social-outline" size={18} color={theme.accent} />
               <Text style={[styles.secondaryActionLabel, { color: theme.accent }]}>
-                {language === 'fr' ? 'Partager' : language === 'es' ? 'Compartir' : language === 'nl' ? 'Delen' : 'Share'}
+                {t('common.share')}
               </Text>
             </Pressable>
 
@@ -1384,7 +1393,7 @@ export default function EntryComposerScreen() {
             >
               <Ionicons name="trash-outline" size={18} color={theme.red} />
               <Text style={[styles.secondaryActionLabel, { color: theme.red }]}>
-                {language === 'fr' ? 'Supprimer' : language === 'es' ? 'Eliminar' : language === 'nl' ? 'Verwijderen' : 'Delete'}
+                {t('common.delete')}
               </Text>
             </Pressable>
           </View>

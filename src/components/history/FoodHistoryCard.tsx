@@ -10,6 +10,7 @@ import { haptics } from '@/lib/haptics';
 import { EntryRecord, FoodCategory } from '@/types';
 import { useIconPack } from '@/components/icons/IconPackContext';
 import { inferCategoryFromName } from '@/lib/food-suggestions';
+import { mealTones } from '@/lib/entryComposer';
 
 type MealKind = 'breakfast' | 'lunch' | 'snack' | 'dinner' | 'other';
 
@@ -30,15 +31,7 @@ function getMealKind(value?: string): MealKind {
   return 'other';
 }
 
-// Distinct tone per meal (warm-to-cool across the day) — kept in sync with
-// MEAL_GLYPH_TONES in FoodSection so the composer and history agree.
-const MEAL_TONE: Record<MealKind, string> = {
-  breakfast: '#F5C26B',
-  lunch: '#F0A030',
-  snack: '#C98A5E',
-  dinner: '#A371F7',
-  other: '#8B6F47',
-};
+const MEAL_TONE: Record<MealKind, string> = mealTones;
 
 function localeTag(language: string) {
   if (language === 'es') return 'es-ES';

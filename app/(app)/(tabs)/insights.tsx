@@ -148,7 +148,7 @@ export default function InsightsScreen() {
   const meanInterval = useMemo(() => getMeanFeedingInterval(entries), [entries]);
 
   const feedingCfg = useFeedingSettings();
-  const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile, feedingCfg), [entries, profile, feedingCfg]);
+  const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile, feedingCfg, { t, format }), [entries, profile, feedingCfg, t, format]);
 
   // Stool pattern — aggregates only the diaper entries with poop > 0
   // within the selected range, leveraging the new poopColor / poopConsistency

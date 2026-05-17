@@ -14,7 +14,9 @@
     "loading": "Cargando BabyFlow",
     "skip": "Omitir",
     "continue": "Continuar",
-    "copy": "Copiar"
+    "copy": "Copiar",
+    "update": "Actualizar",
+    "share": "Compartir"
   },
   "greeting": {
     "morning": "Buenos días",
@@ -124,11 +126,16 @@
     "suggested": "Sugerido:"
   },
   "vaccine": {
-    "scheduled": "VACUNAS PROGRAMADAS",
-    "history": "HISTORIAL DE VACUNAS",
-    "dose": "Dosis ",
-    "reminder": "Recordatorio",
-    "overdue": "Vencida"
+    "reminderTitle": "Recordatorio de vacuna",
+    "step1": "1/2 - Elegir la vacuna",
+    "step2": "2/2 - Elegir la fecha",
+    "orEnterName": "O ingresa otro nombre:",
+    "namePlaceholder": "Nombre de la vacuna...",
+    "nextDoseQuestion": "¿Cuándo será la próxima dosis?",
+    "dateTimeLabel": "Fecha y hora",
+    "summary": "Resumen",
+    "vaccineLabel": "Vacuna:",
+    "createReminder": "Crear recordatorio"
   },
   "growth": {
     "growth": "CRECIMIENTO",
@@ -203,7 +210,20 @@
     "sleepDraftDiscard": "Descartar",
     "sleepDraftEndNow": "Terminar ahora",
     "sleepDraftStale": "Es inusualmente largo. ¿Olvidaste detener el temporizador?",
-    "sleepTimerCancel": "Cancelar temporizador"
+    "sleepTimerCancel": "Cancelar temporizador",
+    "sleepSavedOtherTab": "Sueño guardado desde otra pestaña.",
+    "discardSessionMsg": "El tiempo de sueño registrado se perderá definitivamente.",
+    "timerCancelTitle": "¿Cancelar el temporizador?",
+    "timerCancelSleepMsg": "El tiempo de sueño en curso no se guardará.",
+    "timerCancelPumpMsg": "La extracción en curso no se guardará.",
+    "keepTimer": "Mantener",
+    "vaccineNameRequired": "Selecciona o introduce un nombre de vacuna.",
+    "reminderCreated": "Recordatorio creado: {name} (7 días antes).",
+    "deleteTitle": "¿Eliminar?",
+    "deleteConfirmMsg": "Esta acción no se puede deshacer.",
+    "notesPlaceholder": "Opcional...",
+    "pump": "Extracción",
+    "shareImage": "Compartir imagen"
   },
   "onboarding": {
     "caregiver_name": "Tu nombre",
@@ -695,18 +715,6 @@
     "joinError": "No se pudo unir a la sesión.",
     "backToApp": "Volver a la app"
   },
-  "vaccine": {
-    "reminderTitle": "Recordatorio de vacuna",
-    "step1": "1/2 - Elegir la vacuna",
-    "step2": "2/2 - Elegir la fecha",
-    "orEnterName": "O ingresa otro nombre:",
-    "namePlaceholder": "Nombre de la vacuna...",
-    "nextDoseQuestion": "¿Cuándo será la próxima dosis?",
-    "dateTimeLabel": "Fecha y hora",
-    "summary": "Resumen",
-    "vaccineLabel": "Vacuna:",
-    "createReminder": "Crear recordatorio"
-  },
   "lock": {
     "title": "App Bloqueada",
     "unlock": "Desbloquear",
@@ -867,5 +875,53 @@
     "outlineDesc": "Minimalista, solo líneas sin relleno. Ideal de noche y para ambientes sobrios.",
     "classicName": "Clásico",
     "classicDesc": "Emojis nativos del sistema. Familiar pero varía según el dispositivo."
+  },
+  "alerts": {
+    "feedDueTitle": "Toma pendiente",
+    "feedDueBody": "Última toma hace {hours} h.",
+    "napTitle": "Revisar la siesta",
+    "napBody": "El bebé puede estar listo para una siesta.",
+    "napBodyNamed": "{name} lleva un rato despierto.",
+    "napValue": "Despierto",
+    "medTitle": "Medicamento",
+    "medOverdueBody": "Dosis atrasada {hours} h.",
+    "medNextBody": "Próxima dosis en {min} min.",
+    "medOverdueValue": "Atrasada",
+    "feverTitle": "Fiebre detectada",
+    "feverBody": "Temperatura de {temp} °C. Vigila y consulta al médico si persiste.",
+    "vaccineSoonTitle": "Vacuna próxima",
+    "vaccineSoonBody": "{name} es en {days} días.",
+    "vaccineSoonBodyOne": "{name} es en 1 día.",
+    "vaccineSoonValue": "En {days} d",
+    "vaccineOverdueTitle": "Vacuna atrasada",
+    "vaccineOverdueBody": "{name} está atrasada. Contacta con la clínica para programarla.",
+    "vaccineOverdueValue": "Atrasada",
+    "noBowelTitle": "Sin deposiciones",
+    "noBowelBody": "No se registran heces desde hace {hours} h. Vigila e hidrata bien.",
+    "frequentBowelTitle": "Deposiciones frecuentes",
+    "frequentBowelBody": "{count} deposiciones en las últimas 24 h. Vigila la deshidratación.",
+    "symptomTitle": "Síntoma recurrente",
+    "symptomBody": "«{symptom}» registrado {count} veces en 7 días.",
+    "lowWeightTitle": "Peso bajo",
+    "lowWeightBody": "Peso de {weight} kg, por debajo del rango esperado para la edad.",
+    "highWeightTitle": "Peso alto",
+    "highWeightBody": "Peso de {weight} kg, por encima del rango esperado para la edad.",
+    "statusOverdue": "atrasado",
+    "statusActive": "activo",
+    "statusSoon": "pronto",
+    "statusUrgent": "urgente",
+    "statusUpcoming": "próximo",
+    "statusCritical": "crítico",
+    "statusPending": "pendiente",
+    "statusAttention": "atención",
+    "actionLogFeed": "Registrar toma",
+    "actionLogSleep": "Registrar sueño",
+    "actionLogMed": "Registrar medicamento",
+    "actionLogTemp": "Registrar temperatura",
+    "actionSchedule": "Programar",
+    "actionUpdate": "Actualizar",
+    "actionView": "Ver",
+    "actionLogDiaper": "Registrar pañal",
+    "actionLogMeasurement": "Registrar medición"
   }
 }

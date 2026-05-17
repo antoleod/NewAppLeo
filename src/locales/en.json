@@ -14,7 +14,9 @@
     "loading": "Loading BabyFlow",
     "skip": "Skip",
     "continue": "Continue",
-    "copy": "Copy"
+    "copy": "Copy",
+    "update": "Update",
+    "share": "Share"
   },
   "greeting": {
     "morning": "Good morning",
@@ -124,11 +126,16 @@
     "suggested": "Suggested:"
   },
   "vaccine": {
-    "scheduled": "SCHEDULED VACCINES",
-    "history": "VACCINE HISTORY",
-    "dose": "Dose ",
-    "reminder": "Reminder",
-    "overdue": "Overdue"
+    "reminderTitle": "Vaccine Reminder",
+    "step1": "1/2 - Choose vaccine",
+    "step2": "2/2 - Choose date",
+    "orEnterName": "Or enter another name:",
+    "namePlaceholder": "Vaccine name...",
+    "nextDoseQuestion": "When will the next dose be?",
+    "dateTimeLabel": "Date and time",
+    "summary": "Summary",
+    "vaccineLabel": "Vaccine:",
+    "createReminder": "Create reminder"
   },
   "growth": {
     "growth": "GROWTH",
@@ -203,7 +210,20 @@
     "sleepDraftDiscard": "Discard",
     "sleepDraftEndNow": "End now",
     "sleepDraftStale": "This is unusually long. Did you forget to stop the timer?",
-    "sleepTimerCancel": "Cancel timer"
+    "sleepTimerCancel": "Cancel timer",
+    "sleepSavedOtherTab": "Sleep saved from another tab.",
+    "discardSessionMsg": "The recorded sleep time will be permanently lost.",
+    "timerCancelTitle": "Cancel timer?",
+    "timerCancelSleepMsg": "The current sleep time will not be saved.",
+    "timerCancelPumpMsg": "The current pump session will not be saved.",
+    "keepTimer": "Keep",
+    "vaccineNameRequired": "Please select or enter a vaccine name.",
+    "reminderCreated": "Reminder created: {name} (7 days before).",
+    "deleteTitle": "Delete?",
+    "deleteConfirmMsg": "This cannot be undone.",
+    "notesPlaceholder": "Optional...",
+    "pump": "Pump",
+    "shareImage": "Share this image"
   },
   "onboarding": {
     "caregiver_name": "Your name",
@@ -695,18 +715,6 @@
     "joinError": "Could not join the session.",
     "backToApp": "Back to app"
   },
-  "vaccine": {
-    "reminderTitle": "Vaccine Reminder",
-    "step1": "1/2 - Choose vaccine",
-    "step2": "2/2 - Choose date",
-    "orEnterName": "Or enter another name:",
-    "namePlaceholder": "Vaccine name...",
-    "nextDoseQuestion": "When will the next dose be?",
-    "dateTimeLabel": "Date and time",
-    "summary": "Summary",
-    "vaccineLabel": "Vaccine:",
-    "createReminder": "Create reminder"
-  },
   "lock": {
     "title": "App Locked",
     "unlock": "Unlock",
@@ -867,5 +875,53 @@
     "outlineDesc": "Minimal, line-only with no fills. Perfect for night use and calm vibes.",
     "classicName": "Classic",
     "classicDesc": "Native system emojis. Familiar but varies across devices."
+  },
+  "alerts": {
+    "feedDueTitle": "Feeding due",
+    "feedDueBody": "Last feed was {hours}h ago.",
+    "napTitle": "Nap check",
+    "napBody": "Baby may be ready for a nap.",
+    "napBodyNamed": "{name} has been awake for a while.",
+    "napValue": "Awake",
+    "medTitle": "Medication",
+    "medOverdueBody": "Dose overdue by {hours}h.",
+    "medNextBody": "Next dose in {min} min.",
+    "medOverdueValue": "Overdue",
+    "feverTitle": "Fever detected",
+    "feverBody": "Temperature is {temp}°C. Monitor closely and consult a doctor if it persists.",
+    "vaccineSoonTitle": "Vaccine due soon",
+    "vaccineSoonBody": "{name} is due in {days} days.",
+    "vaccineSoonBodyOne": "{name} is due in 1 day.",
+    "vaccineSoonValue": "In {days}d",
+    "vaccineOverdueTitle": "Vaccine overdue",
+    "vaccineOverdueBody": "{name} is overdue. Contact the clinic to schedule.",
+    "vaccineOverdueValue": "Overdue",
+    "noBowelTitle": "No bowel movement",
+    "noBowelBody": "No poop recorded in {hours}h. Monitor and ensure hydration.",
+    "frequentBowelTitle": "Frequent bowel movements",
+    "frequentBowelBody": "{count} bowel movements in the last 24h. Monitor for dehydration.",
+    "symptomTitle": "Recurring symptom",
+    "symptomBody": "\"{symptom}\" recorded {count} times in 7 days.",
+    "lowWeightTitle": "Low weight",
+    "lowWeightBody": "Weight is {weight}kg, below the expected range for age.",
+    "highWeightTitle": "High weight",
+    "highWeightBody": "Weight is {weight}kg, above the expected range for age.",
+    "statusOverdue": "overdue",
+    "statusActive": "active",
+    "statusSoon": "soon",
+    "statusUrgent": "urgent",
+    "statusUpcoming": "upcoming",
+    "statusCritical": "critical",
+    "statusPending": "pending",
+    "statusAttention": "attention",
+    "actionLogFeed": "Log feed",
+    "actionLogSleep": "Log sleep",
+    "actionLogMed": "Log medication",
+    "actionLogTemp": "Log temperature",
+    "actionSchedule": "Schedule",
+    "actionUpdate": "Update",
+    "actionView": "View",
+    "actionLogDiaper": "Log diaper",
+    "actionLogMeasurement": "Log measurement"
   }
 }

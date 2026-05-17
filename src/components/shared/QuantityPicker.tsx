@@ -21,7 +21,7 @@ export function QuantityPicker({
       <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
       <View style={styles.amountRow}>
         <Pressable
-          onPress={() => onChange(Math.max(0, value - 10))}
+          onPress={() => onChange(Math.max(10, value - 10))}
           style={[
             styles.stepperButton,
             {

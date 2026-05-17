@@ -47,6 +47,16 @@ export const mealTimes: {
   { value: 'dinner',    labels: { fr: '🌙 Dîner',     en: '🌙 Dinner',    es: '🌙 Cena',      nl: '🌙 Diner' },  startHour: 18, endHour: 21 },
 ];
 
+// Per-meal tone (warm-to-cool across the day). Single source of truth —
+// consumed by the food composer, the home dashboard and the history card.
+export const mealTones: Record<'breakfast' | 'lunch' | 'snack' | 'dinner' | 'other', string> = {
+  breakfast: '#F5C26B',
+  lunch: '#F0A030',
+  snack: '#C98A5E',
+  dinner: '#A371F7',
+  other: '#8B6F47',
+};
+
 export const foodDefaultQuantities: Record<string, number> = {
   puree: 50,
   fruit: 40,

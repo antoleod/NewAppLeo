@@ -14,7 +14,9 @@
     "loading": "BabyFlow laden",
     "skip": "Overslaan",
     "continue": "Doorgaan",
-    "copy": "Kopiëren"
+    "copy": "Kopiëren",
+    "update": "Bijwerken",
+    "share": "Delen"
   },
   "greeting": {
     "morning": "Goedemorgen",
@@ -124,11 +126,16 @@
     "suggested": "Aanbevolen:"
   },
   "vaccine": {
-    "scheduled": "GEPLANDE VACCINS",
-    "history": "VACCINATIEGESCHIEDENIS",
-    "dose": "Dosis ",
-    "reminder": "Herinnering",
-    "overdue": "Vervallen"
+    "reminderTitle": "Vaccin herinnering",
+    "step1": "1/2 - Vaccin kiezen",
+    "step2": "2/2 - Datum kiezen",
+    "orEnterName": "Of voer een andere naam in:",
+    "namePlaceholder": "Vaccinnaam...",
+    "nextDoseQuestion": "Wanneer is de volgende dosis?",
+    "dateTimeLabel": "Datum en tijd",
+    "summary": "Samenvatting",
+    "vaccineLabel": "Vaccin:",
+    "createReminder": "Herinnering maken"
   },
   "growth": {
     "growth": "GROEI",
@@ -203,7 +210,20 @@
     "sleepDraftDiscard": "Verwijderen",
     "sleepDraftEndNow": "Nu beëindigen",
     "sleepDraftStale": "Dit is ongewoon lang. Bent u vergeten de timer te stoppen?",
-    "sleepTimerCancel": "Timer annuleren"
+    "sleepTimerCancel": "Timer annuleren",
+    "sleepSavedOtherTab": "Slaap opgeslagen vanuit een ander tabblad.",
+    "discardSessionMsg": "De geregistreerde slaaptijd gaat definitief verloren.",
+    "timerCancelTitle": "Timer annuleren?",
+    "timerCancelSleepMsg": "De lopende slaaptijd wordt niet opgeslagen.",
+    "timerCancelPumpMsg": "De lopende kolfsessie wordt niet opgeslagen.",
+    "keepTimer": "Behouden",
+    "vaccineNameRequired": "Selecteer of voer een vaccinnaam in.",
+    "reminderCreated": "Herinnering aangemaakt: {name} (7 dagen ervoor).",
+    "deleteTitle": "Verwijderen?",
+    "deleteConfirmMsg": "Deze actie is onomkeerbaar.",
+    "notesPlaceholder": "Optioneel...",
+    "pump": "Kolven",
+    "shareImage": "Afbeelding delen"
   },
   "onboarding": {
     "caregiver_name": "Jouw naam",
@@ -695,18 +715,6 @@
     "joinError": "Kon de sessie niet toetreden.",
     "backToApp": "Terug naar app"
   },
-  "vaccine": {
-    "reminderTitle": "Vaccin herinnering",
-    "step1": "1/2 - Vaccin kiezen",
-    "step2": "2/2 - Datum kiezen",
-    "orEnterName": "Of voer een andere naam in:",
-    "namePlaceholder": "Vaccinnaam...",
-    "nextDoseQuestion": "Wanneer is de volgende dosis?",
-    "dateTimeLabel": "Datum en tijd",
-    "summary": "Samenvatting",
-    "vaccineLabel": "Vaccin:",
-    "createReminder": "Herinnering maken"
-  },
   "lock": {
     "title": "App Vergrendeld",
     "unlock": "Ontgrendelen",
@@ -867,5 +875,53 @@
     "outlineDesc": "Minimalistisch, alleen lijnen zonder vulling. Perfect voor 's nachts.",
     "classicName": "Klassiek",
     "classicDesc": "Native systeem-emojis. Vertrouwd maar verschilt per apparaat."
+  },
+  "alerts": {
+    "feedDueTitle": "Voeding nodig",
+    "feedDueBody": "Laatste voeding {hours} u geleden.",
+    "napTitle": "Dutje controleren",
+    "napBody": "Baby is misschien klaar voor een dutje.",
+    "napBodyNamed": "{name} is al een tijdje wakker.",
+    "napValue": "Wakker",
+    "medTitle": "Medicijn",
+    "medOverdueBody": "Dosis {hours} u te laat.",
+    "medNextBody": "Volgende dosis over {min} min.",
+    "medOverdueValue": "Te laat",
+    "feverTitle": "Koorts gedetecteerd",
+    "feverBody": "Temperatuur is {temp} °C. Houd goed in de gaten en raadpleeg een arts als het aanhoudt.",
+    "vaccineSoonTitle": "Vaccinatie binnenkort",
+    "vaccineSoonBody": "{name} is over {days} dagen.",
+    "vaccineSoonBodyOne": "{name} is over 1 dag.",
+    "vaccineSoonValue": "Over {days} d",
+    "vaccineOverdueTitle": "Vaccinatie te laat",
+    "vaccineOverdueBody": "{name} is te laat. Neem contact op met de kliniek om te plannen.",
+    "vaccineOverdueValue": "Te laat",
+    "noBowelTitle": "Geen ontlasting",
+    "noBowelBody": "Geen poep geregistreerd in {hours} u. Houd in de gaten en zorg voor hydratatie.",
+    "frequentBowelTitle": "Frequente ontlasting",
+    "frequentBowelBody": "{count} keer ontlasting in de laatste 24 u. Let op uitdroging.",
+    "symptomTitle": "Terugkerend symptoom",
+    "symptomBody": "\"{symptom}\" {count} keer geregistreerd in 7 dagen.",
+    "lowWeightTitle": "Laag gewicht",
+    "lowWeightBody": "Gewicht is {weight} kg, onder het verwachte bereik voor de leeftijd.",
+    "highWeightTitle": "Hoog gewicht",
+    "highWeightBody": "Gewicht is {weight} kg, boven het verwachte bereik voor de leeftijd.",
+    "statusOverdue": "te laat",
+    "statusActive": "actief",
+    "statusSoon": "binnenkort",
+    "statusUrgent": "urgent",
+    "statusUpcoming": "aankomend",
+    "statusCritical": "kritiek",
+    "statusPending": "in afwachting",
+    "statusAttention": "aandacht",
+    "actionLogFeed": "Voeding noteren",
+    "actionLogSleep": "Slaap noteren",
+    "actionLogMed": "Medicijn noteren",
+    "actionLogTemp": "Temperatuur noteren",
+    "actionSchedule": "Plannen",
+    "actionUpdate": "Bijwerken",
+    "actionView": "Bekijken",
+    "actionLogDiaper": "Luier noteren",
+    "actionLogMeasurement": "Meting noteren"
   }
 }

@@ -8,7 +8,7 @@ import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
 import { useTranslation } from '@/hooks/useTranslation';
-import { typeMeta, foodPresets, mealTimes, getRecommendedMealTime } from '@/lib/entryComposer';
+import { typeMeta, foodPresets, mealTimes, getRecommendedMealTime, mealTones } from '@/lib/entryComposer';
 import { suggestFoodQuantities, inferCategoryFromName, type QuantityChip } from '@/lib/food-suggestions';
 import type { FoodCategory } from '@/types';
 
@@ -26,14 +26,7 @@ type Props = {
   setFoodMoreOpen: (next: (prev: boolean) => boolean) => void;
 };
 
-// Distinct tone per meal so the four times read apart at a glance —
-// a warm-to-cool progression across the day.
-const MEAL_GLYPH_TONES: Record<string, string> = {
-  breakfast: '#F5C26B',
-  lunch: '#F0A030',
-  snack: '#C98A5E',
-  dinner: '#A371F7',
-};
+const MEAL_GLYPH_TONES = mealTones;
 const MORE_LABEL: Record<string, string> = { fr: 'Réaction, allergie…', en: 'Reaction, allergy…', es: 'Reacción, alergia…', nl: 'Reactie, allergie…' };
 const LESS_LABEL: Record<string, string> = { fr: 'Masquer', en: 'Hide', es: 'Ocultar', nl: 'Verbergen' };
 
@@ -292,7 +285,7 @@ export const FoodSection = React.memo(function FoodSection({
         </View>
         <View style={styles.stepRow}>
           <Pressable
-            onPress={() => setQuantityGrams(String(Math.max(0, (Number(quantityGrams) || 0) - qtyStep)))}
+            onPress={() => setQuantityGrams(String(Math.max(qtyStep, (Number(quantityGrams) || 0) - qtyStep)))}
             accessibilityRole="button"
             accessibilityLabel={`−${qtyStep} ${suggestion.unit}`}
             style={[styles.stepBtn, { backgroundColor: `${meta.tone}14`, borderColor: `${meta.tone}50` }]}
@@ -350,7 +343,7 @@ export const FoodSection = React.memo(function FoodSection({
                 style={{
                   flexDirection: 'row', alignItems: 'center', gap: 4,
                   paddingHorizontal: 10, paddingVertical: 8,
-                  borderRadius: 20, minHeight: 36,
+                  borderRadius: 20, minHeight: 44,
                   borderWidth: active ? 2 : 1,
                   borderColor: active ? '#E74C3C' : colors.border,
                   backgroundColor: active ? 'rgba(231,76,60,0.12)' : 'transparent',
