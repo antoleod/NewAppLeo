@@ -26,10 +26,12 @@ type Props = {
   setFoodMoreOpen: (next: (prev: boolean) => boolean) => void;
 };
 
+// Distinct tone per meal so the four times read apart at a glance —
+// a warm-to-cool progression across the day.
 const MEAL_GLYPH_TONES: Record<string, string> = {
-  breakfast: '#F0B85A',
-  lunch: '#F0B85A',
-  snack: '#F0B85A',
+  breakfast: '#F5C26B',
+  lunch: '#F0A030',
+  snack: '#C98A5E',
   dinner: '#A371F7',
 };
 const MORE_LABEL: Record<string, string> = { fr: 'Réaction, allergie…', en: 'Reaction, allergy…', es: 'Reacción, alergia…', nl: 'Reactie, allergie…' };

@@ -30,10 +30,12 @@ function getMealKind(value?: string): MealKind {
   return 'other';
 }
 
+// Distinct tone per meal (warm-to-cool across the day) — kept in sync with
+// MEAL_GLYPH_TONES in FoodSection so the composer and history agree.
 const MEAL_TONE: Record<MealKind, string> = {
-  breakfast: '#F0B85A',
-  lunch: '#F0B85A',
-  snack: '#F0B85A',
+  breakfast: '#F5C26B',
+  lunch: '#F0A030',
+  snack: '#C98A5E',
   dinner: '#A371F7',
   other: '#8B6F47',
 };
