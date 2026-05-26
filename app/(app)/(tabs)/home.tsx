@@ -1,5 +1,5 @@
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +43,7 @@ import { GetEntryIcon , BottleIcon, BreastfeedingIcon } from '@/components/histo
 
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
+import { confirmAction } from '@/lib/confirm';
 import { haptics } from '@/lib/haptics';
 import { mealTones } from '@/lib/entryComposer';
 import { shadow, textShadow } from '@/lib/shadow';
@@ -1432,20 +1433,17 @@ export default function HomeScreen() {
                   // the user instinctively reaches for after spotting a typo.
                   const renderLeftAction = () => (
                     <Pressable
-                      onPress={() => {
+                      onPress={async () => {
                         haptics.medium();
-                        Alert.alert(
-                          t('common.delete'),
-                          label,
-                          [
-                            { text: t('common.cancel'), style: 'cancel', onPress: () => swipeRef.current?.close() },
-                            {
-                              text: t('common.delete'),
-                              style: 'destructive',
-                              onPress: () => { haptics.success(); void deleteEntry(entry.id); },
-                            },
-                          ]
-                        );
+                        const ok = await confirmAction({
+                          title: t('common.delete'),
+                          message: label,
+                          confirmLabel: t('common.delete'),
+                          cancelLabel: t('common.cancel'),
+                          destructive: true,
+                        });
+                        if (ok) { haptics.success(); void deleteEntry(entry.id); }
+                        else swipeRef.current?.close();
                       }}
                       style={{
                         width: 88, flexDirection: 'row',
@@ -2250,23 +2248,19 @@ export default function HomeScreen() {
                 <Button
                   label={t('common.cancel')}
                   variant="ghost"
-                  onPress={() => {
-                    Alert.alert(
-                      t('common.cancel'),
-                      t('entry.discardSession'),
-                      [
-                        { text: t('entry.keepSession'), style: 'cancel' },
-                        {
-                          text: t('entry.discardConfirm'),
-                          style: 'destructive',
-                          onPress: () => {
-                            stopTimer();
-                            setShowSaveSheet(false);
-                            void getLastBottleAmount().then(setQuickAmount);
-                          },
-                        },
-                      ]
-                    );
+                  onPress={async () => {
+                    const ok = await confirmAction({
+                      title: t('common.cancel'),
+                      message: t('entry.discardSession'),
+                      confirmLabel: t('entry.discardConfirm'),
+                      cancelLabel: t('entry.keepSession'),
+                      destructive: true,
+                    });
+                    if (ok) {
+                      stopTimer();
+                      setShowSaveSheet(false);
+                      void getLastBottleAmount().then(setQuickAmount);
+                    }
                   }}
                 />
               </View>

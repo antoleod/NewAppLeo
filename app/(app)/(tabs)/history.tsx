@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, RefreshControl, ScrollView, Share, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, RefreshControl, ScrollView, Share, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
+import { confirmAction } from '@/lib/confirm';
 import { router } from 'expo-router';
 import { Button, Card, Chip, EmptyState, Heading, Page , useToast } from '@/components/shared';
 import { GetEntryIcon, FoodHistoryCard } from '@/components/history';
@@ -179,12 +180,17 @@ const HistoryEntryRow = React.memo(function HistoryEntryRow({
   // Swipe-RIGHT (finger right) → Delete on the left edge.
   const renderLeftAction = () => (
     <Pressable
-      onPress={() => {
+      onPress={async () => {
         haptics.medium();
-        Alert.alert(deleteLabel, `${typeLabel} · ${timeLabel}`, [
-          { text: cancelLabel, style: 'cancel', onPress: () => swipeRef.current?.close() },
-          { text: deleteLabel, style: 'destructive', onPress: () => { haptics.success(); onDelete(entry); } },
-        ]);
+        const ok = await confirmAction({
+          title: deleteLabel,
+          message: `${typeLabel} · ${timeLabel}`,
+          confirmLabel: deleteLabel,
+          cancelLabel,
+          destructive: true,
+        });
+        if (ok) { haptics.success(); onDelete(entry); }
+        else swipeRef.current?.close();
       }}
       style={{
         width: 88, flexDirection: 'row',
