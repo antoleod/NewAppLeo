@@ -42,6 +42,7 @@ import { FullscreenTimerModal , NextFeedingCard } from '@/components/home';
 import { GetEntryIcon , BottleIcon, BreastfeedingIcon } from '@/components/history';
 
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import { haptics } from '@/lib/haptics';
 import { mealTones } from '@/lib/entryComposer';
 import { shadow, textShadow } from '@/lib/shadow';
@@ -1803,7 +1804,7 @@ export default function HomeScreen() {
 
   return (
     <Page scroll={false} contentStyle={styles.pageContent}>
-      <ScrollView
+      <GestureScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -1996,7 +1997,7 @@ export default function HomeScreen() {
             </Animated.View>
           )}
         </View>
-      </ScrollView>
+      </GestureScrollView>
 
       {/* ========== MODALS ========== */}
 

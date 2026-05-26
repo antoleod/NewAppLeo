@@ -3,6 +3,7 @@ import { Alert, Platform, Pressable, RefreshControl, ScrollView, Share, Text, Te
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import { router } from 'expo-router';
 import { Button, Card, Chip, EmptyState, Heading, Page , useToast } from '@/components/shared';
 import { GetEntryIcon, FoodHistoryCard } from '@/components/history';
@@ -1205,9 +1206,9 @@ export default function HistoryScreen() {
           >
             {historySidebar}
           </ScrollView>
-          <ScrollView style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ gap: 18, paddingBottom: 24 }} showsVerticalScrollIndicator>
+          <GestureScrollView style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ gap: 18, paddingBottom: 24 }} showsVerticalScrollIndicator>
             {historyMain}
-          </ScrollView>
+          </GestureScrollView>
           {undoBar}
         </View>
       ) : (

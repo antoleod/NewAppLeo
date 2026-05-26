@@ -11,6 +11,10 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+// Gesture-handler's ScrollView so nested Swipeable rows compose correctly with
+// scrolling (required for the swipe gestures to fire — notably on web, where a
+// core RN ScrollView swallows the pan before Swipeable sees it).
+import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -108,13 +112,13 @@ export function Page({
       )}
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
         {scroll ? (
-          <ScrollView
+          <GestureScrollView
             contentContainerStyle={[styles.scroll, isDesktopWeb && styles.scrollDesktop]}
             showsVerticalScrollIndicator={false}
             refreshControl={refreshControl}
           >
             {content}
-          </ScrollView>
+          </GestureScrollView>
         ) : (
           <View style={[styles.scrollStatic, isDesktopWeb && styles.scrollDesktop]}>{content}</View>
         )}
