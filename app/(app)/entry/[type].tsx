@@ -33,6 +33,7 @@ import {
   TemperatureSection,
   VaccineSection,
 } from '@/components/entries';
+import { useTemperatureEntry } from '@/components/entries/useTemperatureEntry';
 import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
 import { clearSleepDraft, getSleepDraft, saveSleepDraft, type SleepDraft } from '@/lib/sleepDraft';
 import { scheduleVaccineReminder , scheduleMedicationReminder } from '@/lib/notifications';
@@ -135,7 +136,12 @@ export default function EntryComposerScreen() {
     transform: [{ translateY: actionsSlideY.value }],
     opacity: actionsOpacity.value,
   }));
-  const [temperatureValue, setTemperatureValue] = useState('');
+  const {
+    temperatureValue,
+    setTemperatureValue,
+    hydrate: hydrateTemperature,
+    buildPayload: buildTemperaturePayload,
+  } = useTemperatureEntry();
   const [vaccineName, setVaccineName] = useState('');
   const [vaccineDose, setVaccineDose] = useState('1');
   const [vaccineNextDueDate, setVaccineNextDueDate] = useState(new Date());
@@ -227,7 +233,7 @@ export default function EntryComposerScreen() {
         setSymptoms(editing.payload?.tags ?? (editing.payload?.notes ?? '').split(',').map((value) => value.trim()).filter(Boolean));
         break;
       case 'temperature':
-        setTemperatureValue(editing.payload?.tempC ? String(editing.payload.tempC) : '');
+        hydrateTemperature(editing);
         break;
       case 'vaccine':
         setVaccineName(editing.payload?.vaccineName ?? '');
@@ -237,7 +243,7 @@ export default function EntryComposerScreen() {
         }
         break;
     }
-  }, [editing]);
+  }, [editing, hydrateTemperature]);
 
   // On mount for a new sleep entry: check if a previous session was left open
   // (e.g. after a browser-tab kill or page reload). The draft is preserved in
@@ -490,7 +496,7 @@ export default function EntryComposerScreen() {
       case 'symptom':
         return { notes, tags: symptoms };
       case 'temperature':
-        return { tempC: temperatureValue ? Number(temperatureValue) : undefined, notes };
+        return buildTemperaturePayload(notes);
       case 'vaccine':
         return {
           vaccineName,
