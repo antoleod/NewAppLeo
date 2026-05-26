@@ -12,6 +12,7 @@ project-tree.txt
 .DS_Store
 Thumbs.db
 .idea/
+.claude/settings.local.json
 /.vscode/settings.json
 .env
 .env.*
