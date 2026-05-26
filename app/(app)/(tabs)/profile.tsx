@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Alert, AppState, Platform, Pressable, Share, Text, View } from 'react-native';
+import { AppState, Platform, Pressable, Share, Text, View } from 'react-native';
+import { confirmAction, alertInfo } from '@/lib/confirm';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -517,14 +518,14 @@ export default function ProfileScreen() {
       };
 
       if (isDirty && currentEditingName) {
-        Alert.alert(
-          t('profile.discardChangesTitle'),
-          format('profile.discardChangesBody', { name: currentEditingName }),
-          [
-            { text: t('common.cancel'), style: 'cancel' },
-            { text: t('profile.switchAnyway'), style: 'destructive', onPress: () => { void performSwitch(); } },
-          ],
-        );
+        const ok = await confirmAction({
+          title: t('profile.discardChangesTitle'),
+          message: format('profile.discardChangesBody', { name: currentEditingName }),
+          confirmLabel: t('profile.switchAnyway'),
+          cancelLabel: t('common.cancel'),
+          destructive: true,
+        });
+        if (ok) await performSwitch();
         return;
       }
       await performSwitch();
@@ -533,40 +534,35 @@ export default function ProfileScreen() {
   );
 
   const handleRemoveBaby = useCallback(
-    (babyId: string) => {
+    async (babyId: string) => {
       const babyName = babies.find((b) => b.id === babyId)?.name ?? 'Baby';
       const linkedCount = activeBabyId === babyId ? entries.length : 0;
       const body =
         linkedCount > 0
           ? format('profile.removeChildConfirmRich', { babyName, count: linkedCount })
           : format('profile.removeChildConfirmEmpty', { babyName });
-      Alert.alert(
-        t('profile.removeChild'),
-        body,
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          {
-            text: t('profile.removeBaby'),
-            style: 'destructive',
-            onPress: async () => {
-              haptics.warning();
-              setDeletingBabyId(babyId);
-              try {
-                await removeBaby(babyId);
-                if (activeBabyId === babyId) {
-                  const remaining = babies.filter((b) => b.id !== babyId);
-                  if (remaining.length > 0) await setActiveBabyId(remaining[0].id);
-                }
-                await refreshProfileData();
-                haptics.success();
-                toast.success(t('profile.childRemoved'));
-              } finally {
-                setDeletingBabyId(null);
-              }
-            },
-          },
-        ]
-      );
+      const ok = await confirmAction({
+        title: t('profile.removeChild'),
+        message: body,
+        confirmLabel: t('profile.removeBaby'),
+        cancelLabel: t('common.cancel'),
+        destructive: true,
+      });
+      if (!ok) return;
+      haptics.warning();
+      setDeletingBabyId(babyId);
+      try {
+        await removeBaby(babyId);
+        if (activeBabyId === babyId) {
+          const remaining = babies.filter((b) => b.id !== babyId);
+          if (remaining.length > 0) await setActiveBabyId(remaining[0].id);
+        }
+        await refreshProfileData();
+        haptics.success();
+        toast.success(t('profile.childRemoved'));
+      } finally {
+        setDeletingBabyId(null);
+      }
     },
     [activeBabyId, babies, entries.length, format, refreshProfileData, t, toast],
   );
@@ -619,32 +615,24 @@ export default function ProfileScreen() {
     }
   }, [signOut, user]);
 
-  const handleSignOut = useCallback(() => {
+  const handleSignOut = useCallback(async () => {
     const body = guestMode ? t('profile.logoutConfirmGuestBody') : t('profile.logoutConfirmBody');
-    Alert.alert(
-      t('profile.logoutConfirmTitle'),
-      body,
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('profile.logoutConfirmAction'),
-          style: 'destructive',
-          onPress: () => { void performSignOut(); },
-        },
-      ],
-    );
+    const ok = await confirmAction({
+      title: t('profile.logoutConfirmTitle'),
+      message: body,
+      confirmLabel: t('profile.logoutConfirmAction'),
+      cancelLabel: t('common.cancel'),
+      destructive: true,
+    });
+    if (ok) void performSignOut();
   }, [guestMode, performSignOut, t]);
 
   const handleExportData = useCallback(async () => {
-    const proceed = await new Promise<boolean>((resolve) => {
-      Alert.alert(
-        t('profile.exportData'),
-        t('profile.exportPrivacyNote'),
-        [
-          { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
-          { text: t('common.continue'), onPress: () => resolve(true) },
-        ],
-      );
+    const proceed = await confirmAction({
+      title: t('profile.exportData'),
+      message: t('profile.exportPrivacyNote'),
+      confirmLabel: t('common.continue'),
+      cancelLabel: t('common.cancel'),
     });
     if (!proceed) return;
     try {
@@ -674,30 +662,25 @@ export default function ProfileScreen() {
     }
   }, [babies, entries, profile, t, toast]);
 
-  const handleDeleteAllData = useCallback(() => {
+  const handleDeleteAllData = useCallback(async () => {
     const body = guestMode
       ? t('profile.deleteAccountConfirmBodyGuest')
       : t('profile.deleteAccountConfirmBodyCloud');
-    Alert.alert(
-      t('profile.deleteAccountConfirmTitle'),
-      body,
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('profile.deleteAccountAction'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await clearLocalSession(user?.uid);
-              await performSignOut();
-            } catch (error: any) {
-              haptics.error();
-              toast.error(error?.message ?? t('errors.saveFailed'));
-            }
-          },
-        },
-      ],
-    );
+    const ok = await confirmAction({
+      title: t('profile.deleteAccountConfirmTitle'),
+      message: body,
+      confirmLabel: t('profile.deleteAccountAction'),
+      cancelLabel: t('common.cancel'),
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await clearLocalSession(user?.uid);
+      await performSignOut();
+    } catch (error: any) {
+      haptics.error();
+      toast.error(error?.message ?? t('errors.saveFailed'));
+    }
   }, [guestMode, performSignOut, t, toast, user?.uid]);
 
   const handleSharePairingCode = useCallback(async () => {
@@ -753,10 +736,9 @@ export default function ProfileScreen() {
         {/* Sync-mode pill — parent-friendly wording, tappable for an explanation */}
         <Pressable
           onPress={() => {
-            Alert.alert(
+            alertInfo(
               guestMode ? t('profile.modeGuest') : t('profile.modeCloud'),
               guestMode ? t('profile.modeTooltipGuest') : t('profile.modeTooltipCloud'),
-              [{ text: t('common.ok') }],
             );
           }}
           accessibilityRole="button"

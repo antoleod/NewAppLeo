@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { alertInfo } from '@/lib/confirm';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
@@ -106,7 +107,7 @@ export function DataExporter() {
 
   const handleExport = async () => {
     if (filtered.length === 0) {
-      Alert.alert('Sin datos', 'No hay registros para el período y tipo seleccionado.');
+      alertInfo('Sin datos', 'No hay registros para el período y tipo seleccionado.');
       return;
     }
 
@@ -122,21 +123,21 @@ export function DataExporter() {
         );
         if (Platform.OS === 'web') {
           downloadOnWeb(content, filename, 'application/json');
-          Alert.alert('Listo', `${filtered.length} registros exportados.`);
+          alertInfo('Listo', `${filtered.length} registros exportados.`);
         } else {
-          Alert.alert('Exportar datos', `${filtered.length} registros\n\nCopia el JSON:\n\n${content.slice(0, 400)}...`);
+          alertInfo('Exportar datos', `${filtered.length} registros\n\nCopia el JSON:\n\n${content.slice(0, 400)}...`);
         }
       } else {
         const content = toCSV(filtered);
         if (Platform.OS === 'web') {
           downloadOnWeb(content, filename, 'text/csv');
-          Alert.alert('Listo', `${filtered.length} registros exportados.`);
+          alertInfo('Listo', `${filtered.length} registros exportados.`);
         } else {
-          Alert.alert('Exportar datos', `${filtered.length} registros\n\nCSV:\n\n${content.slice(0, 400)}...`);
+          alertInfo('Exportar datos', `${filtered.length} registros\n\nCSV:\n\n${content.slice(0, 400)}...`);
         }
       }
     } catch (error: any) {
-      Alert.alert('Error', error?.message ?? 'No se pudo exportar.');
+      alertInfo('Error', error?.message ?? 'No se pudo exportar.');
     } finally {
       setExporting(false);
     }

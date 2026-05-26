@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Alert, TextInput, Platform } from 'react-native';
+import { View, Text, TextInput, Platform } from 'react-native';
+import { alertInfo } from '@/lib/confirm';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -111,17 +112,17 @@ export function SettingsImporter({ onImportStart, onImportComplete, onError }: S
 
   const handleParseInput = async () => {
     try {
-      if (!rawInput.trim()) return Alert.alert('Error', 'Please paste JSON data');
+      if (!rawInput.trim()) return alertInfo('Error', 'Please paste JSON data');
       parseRawDataToPreview(rawInput);
     } catch (error: any) {
-      Alert.alert('Parse error', error.message || 'Invalid data format');
+      alertInfo('Parse error', error.message || 'Invalid data format');
       onError?.(error);
     }
   };
 
   const handleImportFromFile = async () => {
     if (Platform.OS !== 'web') {
-      Alert.alert('Not available on this platform', 'Use "Paste JSON" on mobile for now.');
+      alertInfo('Not available on this platform', 'Use "Paste JSON" on mobile for now.');
       return;
     }
     try {
@@ -137,7 +138,7 @@ export function SettingsImporter({ onImportStart, onImportComplete, onError }: S
       };
       input.click();
     } catch (error: any) {
-      Alert.alert('File import error', error?.message ?? 'Could not read selected file');
+      alertInfo('File import error', error?.message ?? 'Could not read selected file');
       onError?.(error);
     }
   };
@@ -178,9 +179,9 @@ export function SettingsImporter({ onImportStart, onImportComplete, onError }: S
       setRawInput('');
       setShowInput(false);
       onImportComplete?.();
-      Alert.alert('Success', 'Settings imported successfully');
+      alertInfo('Success', 'Settings imported successfully');
     } catch (error: any) {
-      Alert.alert('Import error', error.message || 'Could not apply settings');
+      alertInfo('Import error', error.message || 'Could not apply settings');
       onError?.(error);
     } finally {
       setImporting(false);
@@ -221,12 +222,12 @@ export function SettingsImporter({ onImportStart, onImportComplete, onError }: S
         link.download = `app-leo-settings-${new Date().toISOString().split('T')[0]}.json`;
         link.click();
         window.URL.revokeObjectURL(url);
-        Alert.alert('Success', 'Settings exported to JSON');
+        alertInfo('Success', 'Settings exported to JSON');
       } else {
-        Alert.alert('Export', 'Copy this JSON:\n\n' + json);
+        alertInfo('Export', 'Copy this JSON:\n\n' + json);
       }
     } catch (error: any) {
-      Alert.alert('Export error', error?.message ?? 'Could not export settings');
+      alertInfo('Export error', error?.message ?? 'Could not export settings');
       onError?.(error);
     }
   };

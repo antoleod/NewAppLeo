@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"import { Alert\\\\|Alert,\" \"app/\\(app\\)/\\(tabs\\)/home.tsx\")",
+      "Bash(npx tsc *)",
+      "Bash(git pull *)",
+      "Bash(grep -n \"import { Alert\\\\|Alert,\" src/components/profile/BackgroundPhotoSelector.tsx src/components/profile/DataImporter.tsx src/components/profile/DataExporter.tsx src/components/profile/SettingsImporter.tsx \"app/\\(auth\\)/register.tsx\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);const by={};for\\(const f of r\\)for\\(const m of f.messages\\)by[m.ruleId]=\\(by[m.ruleId]||0\\)+1;console.log\\(by\\)}\\)\")"
+    ]
+  }
+}

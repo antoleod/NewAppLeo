@@ -34,3 +34,17 @@ export function confirmAction(options: ConfirmActionOptions): Promise<boolean> {
     );
   });
 }
+
+/**
+ * Show a one-button informational message cross-platform. `Alert.alert` does
+ * not render on react-native-web, so on web we fall back to `window.alert`.
+ */
+export function alertInfo(title: string, message?: string): void {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+      window.alert(message ? `${title}\n\n${message}` : title);
+    }
+    return;
+  }
+  Alert.alert(title, message);
+}

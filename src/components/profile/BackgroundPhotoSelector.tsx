@@ -4,10 +4,10 @@ import {
   Text,
   Image,
   Pressable,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { confirmAction, alertInfo } from '@/lib/confirm';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
@@ -33,7 +33,7 @@ export function BackgroundPhotoSelector({
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
+        alertInfo(
           'Permission required',
           'Allow photo access to set a custom app background.'
         );
@@ -51,31 +51,26 @@ export function BackgroundPhotoSelector({
       if (!result.canceled && result.assets[0]?.uri) {
         const uri = result.assets[0].uri;
         onPhotoSelected(uri);
-        Alert.alert('Success', 'Background photo updated!');
+        alertInfo('Success', 'Background photo updated!');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to pick image');
+      alertInfo('Error', error.message || 'Failed to pick image');
     } finally {
       setSelecting(false);
     }
   };
 
-  const handleRemovePhoto = () => {
-    Alert.alert(
-      'Remove Background',
-      'Remove custom background photo?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => {
-            onPhotoRemoved?.();
-            Alert.alert('Success', 'Background photo removed');
-          },
-        },
-      ]
-    );
+  const handleRemovePhoto = async () => {
+    const ok = await confirmAction({
+      title: 'Remove Background',
+      message: 'Remove custom background photo?',
+      confirmLabel: 'Remove',
+      cancelLabel: 'Cancel',
+      destructive: true,
+    });
+    if (!ok) return;
+    onPhotoRemoved?.();
+    alertInfo('Success', 'Background photo removed');
   };
 
   return (

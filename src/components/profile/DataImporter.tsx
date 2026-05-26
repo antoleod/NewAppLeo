@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Alert, TextInput, Platform } from 'react-native';
+import { View, Text, TextInput, Platform } from 'react-native';
+import { alertInfo } from '@/lib/confirm';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
@@ -367,14 +368,14 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
       setPreview(buildPreview(raw));
       setImportResult(null);
     } catch (err: any) {
-      Alert.alert('Parse error', err?.message ?? 'Invalid data format');
+      alertInfo('Parse error', err?.message ?? 'Invalid data format');
       onError?.(err);
     }
   };
 
   const handleImportFromFile = () => {
     if (Platform.OS !== 'web') {
-      Alert.alert('Import from file', 'File picker is available on web only. On mobile, use "Paste JSON/CSV".');
+      alertInfo('Import from file', 'File picker is available on web only. On mobile, use "Paste JSON/CSV".');
       return;
     }
     const input = document.createElement('input');
@@ -388,7 +389,7 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
         setRawInput(content);
         handleParse(content);
       } catch (err: any) {
-        Alert.alert('File read error', err?.message ?? 'Could not read selected file');
+        alertInfo('File read error', err?.message ?? 'Could not read selected file');
         onError?.(err);
       }
     };
@@ -397,7 +398,7 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
 
   const handleConfirmImport = async () => {
     if (!preview?.newEntries.length) {
-      Alert.alert('Nothing to import', 'All entries are already in the database, or no valid entries were found.');
+      alertInfo('Nothing to import', 'All entries are already in the database, or no valid entries were found.');
       return;
     }
 

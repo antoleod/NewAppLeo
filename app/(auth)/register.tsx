@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { alertInfo } from '@/lib/confirm';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Input, Page } from '@/components/shared';
@@ -52,7 +53,7 @@ export default function RegisterScreen() {
     } catch (err: any) {
       const message = err?.message ?? 'Unable to register.';
       setError(message);
-      Alert.alert(t('auth.register_failed', 'Registration failed'), message);
+      alertInfo(t('auth.register_failed', 'Registration failed'), message);
     } finally {
       setLoading(false);
     }
