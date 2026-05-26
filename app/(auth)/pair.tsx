@@ -48,7 +48,7 @@ export default function PairScreen() {
     } catch {
       // Keep code prefilled even if join requires manual retry.
     }
-  }, [user?.uid, toast, t]);
+  }, [user?.uid, toast, format]);
 
   useEffect(() => {
     (async () => {

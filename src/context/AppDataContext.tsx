@@ -329,7 +329,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       unsubscribeRef.current?.();
       unsubscribeRef.current = null;
     };
-  }, [guestMode, user]);
+  }, [guestMode, user, refreshPendingCount]);
 
   // ── Foreground sync: flush queue + reconnect Firestore if it went down ────
   useEffect(() => {
@@ -384,7 +384,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.remove();
     };
-  }, [profile?.uid]);
+  }, [profile?.uid, refreshPendingCount]);
 
   const forceReconnect = React.useCallback(() => {
     const uid = uidRef.current;
@@ -557,6 +557,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       syncState,
       pendingSyncCount,
     }),
+    // addEntry/updateEntry/deleteEntry/seedDemoData/entryById are plain
+    // function declarations (new identity each render). The value re-publishes
+    // on data change (entries/loading/summary/syncState/pendingSyncCount),
+    // which is when consumers actually need to react; listing the functions
+    // would recreate the value every render and re-render every consumer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [entries, loading, summary, forceReconnect, syncState, pendingSyncCount],
   );
 

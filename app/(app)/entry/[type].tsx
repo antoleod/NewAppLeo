@@ -301,12 +301,12 @@ export default function EntryComposerScreen() {
     };
     win.addEventListener('storage', handler);
     return () => win.removeEventListener?.('storage', handler);
-  }, [type, sleepTimerRunning, sleepDraftClientId, toast, language]);
+  }, [type, sleepTimerRunning, sleepDraftClientId, toast, language, t]);
 
   useEffect(() => {
     actionsSlideY.value = withTiming(0, { duration: 220 });
     actionsOpacity.value = withTiming(1, { duration: 220 });
-  }, []);
+  }, [actionsOpacity, actionsSlideY]);
 
   useEffect(() => {
     (async () => {

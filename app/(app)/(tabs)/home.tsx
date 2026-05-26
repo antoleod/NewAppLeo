@@ -423,15 +423,6 @@ export default function HomeScreen() {
   const RED = theme.red;
   const YELLOW = theme.yellow;
 
-  const getHealthStatus = (entries: EntryRecord[]) => {
-    const lastTemp = entries.find((e) => e.type === 'temperature' || (e.type === 'measurement' && e.payload?.tempC));
-    const tempC = lastTemp?.payload?.tempC;
-    if (!tempC) return { status: 'unknown', color: MUTED, label: t('health.noData') };
-    if (tempC < 37.5) return { status: 'normal', color: GREEN, label: t('health.normal') };
-    if (tempC < 38) return { status: 'fever_low', color: YELLOW, label: t('health.feverLow') };
-    return { status: 'fever', color: RED, label: t('health.fever') };
-  };
-
   const alertToneColor = (tone: 'primary' | 'secondary' | 'success' | 'warning' | 'danger') => {
     if (tone === 'danger') return RED;
     if (tone === 'warning') return YELLOW;
@@ -672,7 +663,14 @@ export default function HomeScreen() {
   const feedingCfg = useFeedingSettings();
   const smartAlerts = useMemo(() => buildSmartAlerts(entries, profile, feedingCfg, { t, format }), [entries, profile, feedingCfg, t, format]);
   const urgentAlerts = smartAlerts.filter((a) => a.tone === 'warning' || a.tone === 'danger');
-  const healthStatus = useMemo(() => getHealthStatus(entries), [entries]);
+  const healthStatus = useMemo(() => {
+    const lastTemp = entries.find((e) => e.type === 'temperature' || (e.type === 'measurement' && e.payload?.tempC));
+    const tempC = lastTemp?.payload?.tempC;
+    if (!tempC) return { status: 'unknown', color: MUTED, label: t('health.noData') };
+    if (tempC < 37.5) return { status: 'normal', color: GREEN, label: t('health.normal') };
+    if (tempC < 38) return { status: 'fever_low', color: YELLOW, label: t('health.feverLow') };
+    return { status: 'fever', color: RED, label: t('health.fever') };
+  }, [entries, t, GREEN, MUTED, RED, YELLOW]);
   const hasHealthData = healthStatus.status !== 'unknown';
   const weightMeasurements = useMemo(() => getWeightMeasurements(entries), [entries]);
   const pinnedVaccines = useMemo(() => getPinnedVaccines(entries), [entries]);

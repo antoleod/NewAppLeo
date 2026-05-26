@@ -284,7 +284,7 @@ export default function HistoryScreen() {
   const intlLocale = LOCALE_MAP[language] ?? 'fr-FR';
   const FILTERS = useMemo(
     () => FILTER_DEFS.map((f) => ({ label: t(f.tKey), value: f.value })),
-    [t, language],
+    [t],
   );
   const { entries, deleteEntry, addEntry, forceReconnect } = useAppData();
   const { profile } = useAuth();

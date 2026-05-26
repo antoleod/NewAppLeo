@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Input } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
@@ -38,7 +38,7 @@ export const MedicationSection = React.memo(function MedicationSection({
   const { profile, saveProfile } = useAuth();
   const meta = typeMeta.medication;
 
-  const getRecommendedDose = (medName: string): string => {
+  const getRecommendedDose = useCallback((medName: string): string => {
     const med = (commonMedications as any[]).find(
       (item) => item.name.toLowerCase() === medName.trim().toLowerCase(),
     );
@@ -49,7 +49,7 @@ export const MedicationSection = React.memo(function MedicationSection({
       if (byKg?.dosage) return byKg.dosage as string;
     }
     return med.defaultDosage ?? '';
-  };
+  }, [profile?.currentWeightKg]);
 
   const recentMedicationEntries = useMemo(
     () => entries.filter((e) => e.type === 'medication' && typeof e.payload?.name === 'string').slice(0, 5),
@@ -116,7 +116,7 @@ export const MedicationSection = React.memo(function MedicationSection({
       .filter((item) => item.name.toLowerCase().includes(query))
       .filter((item) => item.name.toLowerCase() !== query)
       .slice(0, 6);
-  }, [name, savedMedicines, profile?.currentWeightKg]);
+  }, [name, savedMedicines, getRecommendedDose]);
 
   const manualLabel =
     language === 'fr' ? 'Ajouter manuellement'

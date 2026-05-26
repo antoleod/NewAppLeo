@@ -140,7 +140,7 @@ export default function OnboardingScreen() {
       );
     }
     prevPhotoRef.current = babyPhotoUri;
-  }, [babyPhotoUri]);
+  }, [babyPhotoUri, avatarScale]);
 
   // Sistema de tinte por género
   const genderValue = useSharedValue(0); // 0: neutral, 1: female, 2: male
@@ -149,7 +149,7 @@ export default function OnboardingScreen() {
       babySex === 'female' ? 1 : babySex === 'male' ? 2 : 0,
       { duration: 800 }
     );
-  }, [babySex]);
+  }, [babySex, genderValue]);
 
   // Sistema de tinte dorado para objetivos completados
   const isObjectivesStep = ((step === 3 && path !== 'pin') || (step === 4 && path === 'pin'));
@@ -162,7 +162,7 @@ export default function OnboardingScreen() {
 
   useEffect(() => {
     goldValue.value = withTiming(isObjectivesStep && goalsFilled ? 1 : 0, { duration: 1000 });
-  }, [isObjectivesStep, goalsFilled]);
+  }, [isObjectivesStep, goalsFilled, goldValue]);
 
   useEffect(() => {
     // Animar rotación del símbolo cuando cambia el zodiaco
@@ -171,7 +171,7 @@ export default function OnboardingScreen() {
     
     // Actualizar color de fondo según zodiaco
     zodiacTint.value = withTiming(`${zodiac.color}15`, { duration: 800 });
-  }, [zodiac.symbol, zodiac.color]);
+  }, [zodiac.symbol, zodiac.color, zodiacRotation, zodiacTint]);
 
   // Sistema de transición de fondo
   const bgOpacity = useRef(new Animated.Value(1)).current;
@@ -185,7 +185,7 @@ export default function OnboardingScreen() {
         Animated.timing(bgOpacity, { toValue: 1, duration: 600, useNativeDriver: true }).start();
       });
     }
-  }, [language]);
+  }, [language, bgOpacity, bgSource]);
 
   const animatedTintStyle = useAnimatedStyle(() => {
     const genderColor = interpolateColor(
@@ -268,6 +268,9 @@ export default function OnboardingScreen() {
   useEffect(() => {
     setPath(guestMode ? 'guest' : 'account');
     setStep((current) => (current < 1 ? 1 : current));
+    // Mount-only by design (see comment above): depending on guestMode would
+    // clobber a user-selected 'pin' path when guest mode toggles elsewhere.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const canContinueProfile = useMemo(() => {
