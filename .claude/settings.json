@@ -5,7 +5,18 @@
       "Bash(npx tsc *)",
       "Bash(git pull *)",
       "Bash(grep -n \"import { Alert\\\\|Alert,\" src/components/profile/BackgroundPhotoSelector.tsx src/components/profile/DataImporter.tsx src/components/profile/DataExporter.tsx src/components/profile/SettingsImporter.tsx \"app/\\(auth\\)/register.tsx\")",
-      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);const by={};for\\(const f of r\\)for\\(const m of f.messages\\)by[m.ruleId]=\\(by[m.ruleId]||0\\)+1;console.log\\(by\\)}\\)\")"
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);const by={};for\\(const f of r\\)for\\(const m of f.messages\\)by[m.ruleId]=\\(by[m.ruleId]||0\\)+1;console.log\\(by\\)}\\)\")",
+      "Bash(node -e \"const e=require\\('./src/locales/en.json'\\);console.log\\(Object.keys\\(e\\).join\\(', '\\)\\)\")",
+      "Bash(node -e \"const e=require\\('./src/locales/en.json'\\);console.log\\('dataIO:',!!e.dataIO,'| io:',!!e.io,'| import:',!!e.import,'| export:',!!e.export\\)\")",
+      "Bash(node -e \"const e=require\\('./src/locales/en.json'\\);console.log\\('common keys:', Object.keys\\(e.common\\).join\\(', '\\)\\)\")",
+      "Bash(node scripts/tmp-add-dataio.mjs)",
+      "Bash(node -e \"const langs=['en','fr','es','nl'];const sets=langs.map\\(l=>Object.keys\\(require\\('./src/locales/'+l+'.json'\\).dataIO\\).sort\\(\\)\\);const base=sets[0].join\\(','\\);langs.forEach\\(\\(l,i\\)=>console.log\\(l, sets[i].length, sets[i].join\\(','\\)===base?'OK':'MISMATCH'\\)\\)\")",
+      "Bash(cd \"c:\\\\Users\\\\X1\\\\Documents\\\\NewAppLeo\" && rm -f scripts/tmp-add-dataio.mjs && echo \"temp script deleted\")",
+      "Bash(node -e \"const L=['en','fr','es','nl'];const k=L.map\\(l=>Object.keys\\(require\\('./src/locales/'+l+'.json'\\).dataIO\\).sort\\(\\).join\\(','\\)\\);console.log\\(k.every\\(x=>x===k[0]\\)?'OK all 4 match \\('+Object.keys\\(require\\('./src/locales/en.json'\\).dataIO\\).length+' keys\\)':'MISMATCH'\\)\")",
+      "Bash(git stash *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\X1\\Documents\\NewAppLeo\\scripts"
     ]
   }
 }
