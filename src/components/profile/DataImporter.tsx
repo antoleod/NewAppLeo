@@ -3,6 +3,7 @@ import { View, Text, TextInput, Platform } from 'react-native';
 import { alertInfo } from '@/lib/confirm';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { typography } from '@/typography';
 import { Button, Card, SectionHeader } from '@/components/shared';
 import { parseImportData } from '@/lib/importExport';
@@ -316,6 +317,7 @@ export interface DataImporterProps {
 
 export function DataImporter({ onImportStart, onImportComplete, onError }: DataImporterProps) {
   const { theme, colors } = useTheme();
+  const { t } = useTranslation();
   const { addEntry, entries: existingEntries } = useAppData();
 
   const [importing, setImporting] = useState(false);
@@ -368,14 +370,14 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
       setPreview(buildPreview(raw));
       setImportResult(null);
     } catch (err: any) {
-      alertInfo('Parse error', err?.message ?? 'Invalid data format');
+      alertInfo(t('dataIO.parseErrorTitle'), err?.message ?? t('dataIO.invalidFormat'));
       onError?.(err);
     }
   };
 
   const handleImportFromFile = () => {
     if (Platform.OS !== 'web') {
-      alertInfo('Import from file', 'File picker is available on web only. On mobile, use "Paste JSON/CSV".');
+      alertInfo(t('dataIO.importFromFileTitle'), t('dataIO.importWebOnly'));
       return;
     }
     const input = document.createElement('input');
@@ -389,7 +391,7 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
         setRawInput(content);
         handleParse(content);
       } catch (err: any) {
-        alertInfo('File read error', err?.message ?? 'Could not read selected file');
+        alertInfo(t('dataIO.fileReadErrorTitle'), err?.message ?? t('dataIO.fileReadError'));
         onError?.(err);
       }
     };
@@ -398,7 +400,7 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
 
   const handleConfirmImport = async () => {
     if (!preview?.newEntries.length) {
-      alertInfo('Nothing to import', 'All entries are already in the database, or no valid entries were found.');
+      alertInfo(t('dataIO.nothingToImportTitle'), t('dataIO.nothingToImportMsg'));
       return;
     }
 

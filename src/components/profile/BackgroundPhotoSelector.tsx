@@ -10,6 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { confirmAction, alertInfo } from '@/lib/confirm';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { typography } from '@/typography';
 import { Card, SectionHeader, ButtonGroup } from '@/components/shared';
 
@@ -27,16 +28,14 @@ export function BackgroundPhotoSelector({
   isLoading = false,
 }: BackgroundPhotoSelectorProps) {
   const { theme, colors } = useTheme();
+  const { t } = useTranslation();
   const [selecting, setSelecting] = useState(false);
 
   const handlePickPhoto = async () => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        alertInfo(
-          'Permission required',
-          'Allow photo access to set a custom app background.'
-        );
+        alertInfo(t('dataIO.bgPermissionTitle'), t('dataIO.bgPermissionMsg'));
         return;
       }
 
@@ -51,10 +50,10 @@ export function BackgroundPhotoSelector({
       if (!result.canceled && result.assets[0]?.uri) {
         const uri = result.assets[0].uri;
         onPhotoSelected(uri);
-        alertInfo('Success', 'Background photo updated!');
+        alertInfo(t('dataIO.successTitle'), t('dataIO.bgUpdated'));
       }
     } catch (error: any) {
-      alertInfo('Error', error.message || 'Failed to pick image');
+      alertInfo(t('dataIO.errorTitle'), error.message || t('dataIO.bgPickFailed'));
     } finally {
       setSelecting(false);
     }
@@ -62,15 +61,15 @@ export function BackgroundPhotoSelector({
 
   const handleRemovePhoto = async () => {
     const ok = await confirmAction({
-      title: 'Remove Background',
-      message: 'Remove custom background photo?',
-      confirmLabel: 'Remove',
-      cancelLabel: 'Cancel',
+      title: t('dataIO.bgRemoveTitle'),
+      message: t('dataIO.bgRemoveMsg'),
+      confirmLabel: t('dataIO.bgRemoveConfirm'),
+      cancelLabel: t('common.cancel'),
       destructive: true,
     });
     if (!ok) return;
     onPhotoRemoved?.();
-    alertInfo('Success', 'Background photo removed');
+    alertInfo(t('dataIO.successTitle'), t('dataIO.bgRemoved'));
   };
 
   return (

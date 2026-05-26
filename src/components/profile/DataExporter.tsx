@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { alertInfo } from '@/lib/confirm';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { typography } from '@/typography';
 import { Button, Card, SectionHeader } from '@/components/shared';
 import { useAppData } from '@/context/AppDataContext';
@@ -97,6 +98,8 @@ function buildFilename(period: Period, type: EntryType | 'all', ext: string): st
 
 export function DataExporter() {
   const { theme, colors } = useTheme();
+  // `format` (export format state) already exists below, so alias the i18n one.
+  const { t, format: tFormat } = useTranslation();
   const { entries } = useAppData();
   const [period, setPeriod] = useState<Period>('month');
   const [entryType, setEntryType] = useState<EntryType | 'all'>('all');
@@ -107,7 +110,7 @@ export function DataExporter() {
 
   const handleExport = async () => {
     if (filtered.length === 0) {
-      alertInfo('Sin datos', 'No hay registros para el período y tipo seleccionado.');
+      alertInfo(t('dataIO.exportNoDataTitle'), t('dataIO.exportNoDataMsg'));
       return;
     }
 
@@ -123,21 +126,21 @@ export function DataExporter() {
         );
         if (Platform.OS === 'web') {
           downloadOnWeb(content, filename, 'application/json');
-          alertInfo('Listo', `${filtered.length} registros exportados.`);
+          alertInfo(t('dataIO.exportDoneTitle'), tFormat('dataIO.exportDoneMsg', { count: filtered.length }));
         } else {
-          alertInfo('Exportar datos', `${filtered.length} registros\n\nCopia el JSON:\n\n${content.slice(0, 400)}...`);
+          alertInfo(t('dataIO.exportDataTitle'), `${tFormat('dataIO.exportClipboardJson', { count: filtered.length })}\n\n${content.slice(0, 400)}...`);
         }
       } else {
         const content = toCSV(filtered);
         if (Platform.OS === 'web') {
           downloadOnWeb(content, filename, 'text/csv');
-          alertInfo('Listo', `${filtered.length} registros exportados.`);
+          alertInfo(t('dataIO.exportDoneTitle'), tFormat('dataIO.exportDoneMsg', { count: filtered.length }));
         } else {
-          alertInfo('Exportar datos', `${filtered.length} registros\n\nCSV:\n\n${content.slice(0, 400)}...`);
+          alertInfo(t('dataIO.exportDataTitle'), `${tFormat('dataIO.exportClipboardCsv', { count: filtered.length })}\n\n${content.slice(0, 400)}...`);
         }
       }
     } catch (error: any) {
-      alertInfo('Error', error?.message ?? 'No se pudo exportar.');
+      alertInfo(t('dataIO.errorTitle'), error?.message ?? t('dataIO.exportFailed'));
     } finally {
       setExporting(false);
     }

@@ -3,6 +3,7 @@ import { View, Text, TextInput, Platform } from 'react-native';
 import { alertInfo } from '@/lib/confirm';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/context/AuthContext';
 import { typography } from '@/typography';
 import { Button, Card, SectionHeader } from '@/components/shared';
@@ -77,6 +78,7 @@ function validateSettingsData(data: any): SettingsExportData | null {
 
 export function SettingsImporter({ onImportStart, onImportComplete, onError }: SettingsImporterProps) {
   const { theme, colors } = useTheme();
+  const { t } = useTranslation();
   const { profile, saveProfile, setThemeMode } = useAuth();
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -112,17 +114,17 @@ export function SettingsImporter({ onImportStart, onImportComplete, onError }: S
 
   const handleParseInput = async () => {
     try {
-      if (!rawInput.trim()) return alertInfo('Error', 'Please paste JSON data');
+      if (!rawInput.trim()) return alertInfo(t('dataIO.errorTitle'), t('dataIO.settingsPasteRequired'));
       parseRawDataToPreview(rawInput);
     } catch (error: any) {
-      alertInfo('Parse error', error.message || 'Invalid data format');
+      alertInfo(t('dataIO.parseErrorTitle'), error.message || t('dataIO.invalidFormat'));
       onError?.(error);
     }
   };
 
   const handleImportFromFile = async () => {
     if (Platform.OS !== 'web') {
-      alertInfo('Not available on this platform', 'Use "Paste JSON" on mobile for now.');
+      alertInfo(t('dataIO.settingsNotAvailableTitle'), t('dataIO.settingsWebOnly'));
       return;
     }
     try {
@@ -138,7 +140,7 @@ export function SettingsImporter({ onImportStart, onImportComplete, onError }: S
       };
       input.click();
     } catch (error: any) {
-      alertInfo('File import error', error?.message ?? 'Could not read selected file');
+      alertInfo(t('dataIO.fileImportErrorTitle'), error?.message ?? t('dataIO.fileReadError'));
       onError?.(error);
     }
   };
@@ -179,9 +181,9 @@ export function SettingsImporter({ onImportStart, onImportComplete, onError }: S
       setRawInput('');
       setShowInput(false);
       onImportComplete?.();
-      alertInfo('Success', 'Settings imported successfully');
+      alertInfo(t('dataIO.successTitle'), t('dataIO.settingsImported'));
     } catch (error: any) {
-      alertInfo('Import error', error.message || 'Could not apply settings');
+      alertInfo(t('dataIO.settingsImportErrorTitle'), error.message || t('dataIO.settingsApplyFailed'));
       onError?.(error);
     } finally {
       setImporting(false);
@@ -222,12 +224,12 @@ export function SettingsImporter({ onImportStart, onImportComplete, onError }: S
         link.download = `app-leo-settings-${new Date().toISOString().split('T')[0]}.json`;
         link.click();
         window.URL.revokeObjectURL(url);
-        alertInfo('Success', 'Settings exported to JSON');
+        alertInfo(t('dataIO.successTitle'), t('dataIO.settingsExported'));
       } else {
-        alertInfo('Export', 'Copy this JSON:\n\n' + json);
+        alertInfo(t('dataIO.settingsExportTitle'), t('dataIO.settingsCopyJson') + '\n\n' + json);
       }
     } catch (error: any) {
-      alertInfo('Export error', error?.message ?? 'Could not export settings');
+      alertInfo(t('dataIO.settingsExportErrorTitle'), error?.message ?? t('dataIO.settingsExportFailed'));
       onError?.(error);
     }
   };
