@@ -33,7 +33,16 @@ export const FeedSection = React.memo(function FeedSection({
       <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('entry.type')}</Text>
       <Segment
         value={mode}
-        onChange={(v) => setMode(v as 'breast' | 'bottle')}
+        onChange={(v) => {
+          const next = v as 'breast' | 'bottle';
+          // Reset the amount on an actual mode switch so a bottle volume never
+          // bleeds into a breast "estimated amount" (which would inflate the
+          // daily milk total) and vice-versa. Bottle gets a sane default;
+          // breast starts empty (estimate is optional). This only fires on a
+          // user tap, not when loading an existing entry for editing.
+          if (next !== mode) setAmountMl(next === 'bottle' ? '150' : '');
+          setMode(next);
+        }}
         options={[
           { label: t('entry.breast'), value: 'breast', icon: <BreastfeedingIcon size={22} color={mode === 'breast' ? meta.tone : colors.muted} /> },
           { label: t('entry.bottle'), value: 'bottle', icon: <BottleIcon size={22} color={mode === 'bottle' ? meta.tone : colors.muted} /> },
