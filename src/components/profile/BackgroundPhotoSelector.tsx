@@ -81,9 +81,9 @@ export function BackgroundPhotoSelector({
 
   return (
     <Card>
-      <SectionHeader title="📸 Background Photo" />
+      <SectionHeader title={t('dataIO.bgTitle')} />
       <Text style={[typography.body, { color: colors.muted, marginBottom: spacing.md }]}>
-        Customize your app background with a personal photo
+        {t('dataIO.bgSubtitle')}
       </Text>
 
       {/* Preview Section */}
@@ -115,10 +115,10 @@ export function BackgroundPhotoSelector({
             }}
           >
             <Text style={[typography.sectionLabel, { color: theme.accent }]}>
-              📷 NO CUSTOM BACKGROUND
+              {t('dataIO.bgNoCustom')}
             </Text>
             <Text style={[typography.detail, { color: colors.muted }]}>
-              Default background will be used
+              {t('dataIO.bgDefaultUsed')}
             </Text>
           </View>
         )}
@@ -137,7 +137,7 @@ export function BackgroundPhotoSelector({
           }}
         >
           <Text style={[typography.detail, { color: theme.green, fontWeight: '600' }]}>
-            ✓ Custom background active
+            {t('dataIO.bgActive')}
           </Text>
         </View>
       )}
@@ -146,14 +146,14 @@ export function BackgroundPhotoSelector({
       <ButtonGroup
         buttons={[
           {
-            label: selecting ? 'Selecting...' : '📁 Choose Photo',
+            label: selecting ? t('dataIO.bgSelecting') : t('dataIO.bgChoose'),
             onPress: handlePickPhoto,
             variant: 'primary',
           },
           ...(currentPhotoUri
             ? [
                 {
-                  label: 'Remove',
+                  label: t('dataIO.bgRemoveConfirm'),
                   onPress: handleRemovePhoto,
                   variant: 'ghost' as const,
                 },
@@ -174,13 +174,10 @@ export function BackgroundPhotoSelector({
         }}
       >
         <Text style={[typography.sectionLabel, { color: theme.accent }]}>
-          💡 TIPS
+          {t('dataIO.bgTips')}
         </Text>
         <Text style={[typography.detail, { color: theme.textMuted, lineHeight: 18 }]}>
-          • Use high contrast images for better readability{'\n'}
-          • Recommended: 16:9 aspect ratio{'\n'}
-          • Works with all theme modes and styles{'\n'}
-          • Photo will be automatically blurred when needed
+          {t('dataIO.bgTipsBody')}
         </Text>
       </View>
 
@@ -213,6 +210,7 @@ export function QuickBackgroundToggle({
   onToggleDefault: () => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <Pressable
@@ -230,10 +228,10 @@ export function QuickBackgroundToggle({
     >
       <View>
         <Text style={[typography.pill, { color: theme.textPrimary, fontWeight: '700' }]}>
-          {hasCustomBackground ? '📸 Custom Background' : '🎨 Default Background'}
+          {hasCustomBackground ? t('dataIO.bgCustomLabel') : t('dataIO.bgDefaultLabel')}
         </Text>
         <Text style={[typography.detail, { color: theme.textMuted, marginTop: 2 }]}>
-          Tap to toggle
+          {t('dataIO.bgTapToggle')}
         </Text>
       </View>
       <View

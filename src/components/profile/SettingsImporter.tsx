@@ -236,13 +236,13 @@ export function SettingsImporter({ onImportStart, onImportComplete, onError }: S
 
   return (
     <Card>
-      <SectionHeader title="Import/Export Settings" />
+      <SectionHeader title={t('dataIO.settingsTitle')} />
       <Text style={[typography.body, { color: colors.muted, marginBottom: spacing.md }]}>
-        Backup or restore app settings including theme preferences and baby goals.
+        {t('dataIO.settingsSubtitle')}
       </Text>
       <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
-        <Button label="Import from file (.json)" onPress={handleImportFromFile} variant="secondary" disabled={importing} />
-        <Button label="Export as JSON" onPress={handleExportJson} variant="secondary" disabled={importing} />
+        <Button label={t('dataIO.settingsImportFromFileBtn')} onPress={handleImportFromFile} variant="secondary" disabled={importing} />
+        <Button label={t('dataIO.settingsExportBtn')} onPress={handleExportJson} variant="secondary" disabled={importing} />
       </View>
 
       {preview ? (
@@ -250,26 +250,26 @@ export function SettingsImporter({ onImportStart, onImportComplete, onError }: S
           <View style={{ backgroundColor: `${theme.accent}11`, borderColor: theme.accent, borderWidth: 1, borderRadius: radii.lg, padding: spacing.md }}>
             <Text style={[typography.body, { color: theme.textPrimary, fontFamily: 'Courier New', fontSize: 12 }]}>{preview}</Text>
           </View>
-          <Button label={importing ? 'Applying...' : 'Apply Settings'} onPress={handleApplySettings} loading={importing} disabled={importing} />
-          <Button label="Cancel" onPress={() => { setPreview(null); setStagingData(null); }} variant="ghost" disabled={importing} />
+          <Button label={importing ? t('dataIO.applyingBtn') : t('dataIO.applySettingsBtn')} onPress={handleApplySettings} loading={importing} disabled={importing} />
+          <Button label={t('common.cancel')} onPress={() => { setPreview(null); setStagingData(null); }} variant="ghost" disabled={importing} />
         </View>
       ) : showInput ? (
         <View style={{ gap: spacing.md }}>
-          <Text style={[typography.detail, { color: colors.muted }]}>Paste JSON export:</Text>
+          <Text style={[typography.detail, { color: colors.muted }]}>{t('dataIO.pasteJsonExportLabel')}</Text>
           <TextInput
             style={{ borderWidth: 1, borderColor: theme.border, borderRadius: radii.md, padding: spacing.md, minHeight: 140, color: theme.textPrimary, backgroundColor: theme.bgCardAlt, fontFamily: 'Courier New', fontSize: 12 }}
-            placeholder="Paste exported JSON here..."
+            placeholder={t('dataIO.pasteExportedPlaceholder')}
             placeholderTextColor={theme.textMuted}
             value={rawInput}
             onChangeText={setRawInput}
             multiline
             editable={!importing}
           />
-          <Button label="Preview" onPress={handleParseInput} disabled={importing || !rawInput.trim()} />
-          <Button label="Cancel" onPress={() => { setRawInput(''); setShowInput(false); }} variant="ghost" disabled={importing} />
+          <Button label={t('dataIO.previewBtn')} onPress={handleParseInput} disabled={importing || !rawInput.trim()} />
+          <Button label={t('common.cancel')} onPress={() => { setRawInput(''); setShowInput(false); }} variant="ghost" disabled={importing} />
         </View>
       ) : (
-        <Button label="Paste JSON" onPress={() => setShowInput(true)} variant="secondary" disabled={importing} />
+        <Button label={t('dataIO.pasteJsonBtn')} onPress={() => setShowInput(true)} variant="secondary" disabled={importing} />
       )}
     </Card>
   );

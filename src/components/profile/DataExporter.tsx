@@ -4,6 +4,7 @@ import { alertInfo } from '@/lib/confirm';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
+import { typeLabelsI18n } from '@/lib/entryComposer';
 import { typography } from '@/typography';
 import { Button, Card, SectionHeader } from '@/components/shared';
 import { useAppData } from '@/context/AppDataContext';
@@ -12,27 +13,12 @@ import { EntryRecord, EntryType } from '@/types';
 type Period = 'all' | 'year' | 'month' | 'week' | 'day';
 type ExportFormat = 'json' | 'csv';
 
-const ENTRY_TYPE_LABELS: Record<EntryType, string> = {
-  feed: 'Lactancia',
-  food: 'Comida',
-  sleep: 'Sueño',
-  diaper: 'Pañal',
-  pump: 'Extracción',
-  measurement: 'Medidas',
-  medication: 'Medicación',
-  milestone: 'Hito',
-  symptom: 'Síntoma',
-  temperature: 'Temperatura',
-  vaccine: 'Vacuna',
-};
+const ENTRY_TYPES: EntryType[] = [
+  'feed', 'food', 'sleep', 'diaper', 'pump', 'measurement',
+  'medication', 'milestone', 'symptom', 'temperature', 'vaccine',
+];
 
-const PERIOD_LABELS: Record<Period, string> = {
-  all: 'Todo',
-  year: 'Este año',
-  month: 'Este mes',
-  week: 'Esta semana',
-  day: 'Hoy',
-};
+const PERIODS: Period[] = ['all', 'year', 'month', 'week', 'day'];
 
 function getPeriodStart(period: Period): Date | null {
   const now = new Date();
@@ -99,7 +85,10 @@ function buildFilename(period: Period, type: EntryType | 'all', ext: string): st
 export function DataExporter() {
   const { theme, colors } = useTheme();
   // `format` (export format state) already exists below, so alias the i18n one.
-  const { t, format: tFormat } = useTranslation();
+  const { t, format: tFormat, language } = useTranslation();
+  const periodLabel = (p: Period) =>
+    t(('dataIO.period' + p.charAt(0).toUpperCase() + p.slice(1)) as string);
+  const entryTypeLabel = (ty: EntryType) => typeLabelsI18n[ty][language] ?? typeLabelsI18n[ty].en;
   const { entries } = useAppData();
   const [period, setPeriod] = useState<Period>('month');
   const [entryType, setEntryType] = useState<EntryType | 'all'>('all');
@@ -148,45 +137,45 @@ export function DataExporter() {
 
   return (
     <Card>
-      <SectionHeader title="Exportar datos" />
+      <SectionHeader title={t('dataIO.exportDataTitle')} />
       <Text style={[typography.body, { color: colors.muted, marginBottom: spacing.md }]}>
-        Descarga todos tus registros — lactancia, comida, sueño y más — filtrados por período.
+        {t('dataIO.exportSubtitle')}
       </Text>
 
-      <Text style={[styles.label, { color: theme.textPrimary }]}>Período</Text>
+      <Text style={[styles.label, { color: theme.textPrimary }]}>{t('dataIO.periodLabel')}</Text>
       <View style={styles.chipRow}>
-        {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+        {PERIODS.map((p) => (
           <Pressable
             key={p}
             onPress={() => setPeriod(p)}
             style={[styles.chip, { borderColor: period === p ? theme.accent : theme.border, backgroundColor: period === p ? `${theme.accent}22` : theme.bgCardAlt }]}
           >
-            <Text style={[styles.chipText, { color: period === p ? theme.accent : theme.textMuted }]}>{PERIOD_LABELS[p]}</Text>
+            <Text style={[styles.chipText, { color: period === p ? theme.accent : theme.textMuted }]}>{periodLabel(p)}</Text>
           </Pressable>
         ))}
       </View>
 
-      <Text style={[styles.label, { color: theme.textPrimary }]}>Tipo de registro</Text>
+      <Text style={[styles.label, { color: theme.textPrimary }]}>{t('dataIO.entryTypeLabel')}</Text>
       <View style={styles.chipRow}>
         <Pressable
           key="all"
           onPress={() => setEntryType('all')}
           style={[styles.chip, { borderColor: entryType === 'all' ? theme.accent : theme.border, backgroundColor: entryType === 'all' ? `${theme.accent}22` : theme.bgCardAlt }]}
         >
-          <Text style={[styles.chipText, { color: entryType === 'all' ? theme.accent : theme.textMuted }]}>Todos</Text>
+          <Text style={[styles.chipText, { color: entryType === 'all' ? theme.accent : theme.textMuted }]}>{t('dataIO.allTypes')}</Text>
         </Pressable>
-        {(Object.keys(ENTRY_TYPE_LABELS) as EntryType[]).map((t) => (
+        {ENTRY_TYPES.map((ty) => (
           <Pressable
-            key={t}
-            onPress={() => setEntryType(t)}
-            style={[styles.chip, { borderColor: entryType === t ? theme.accent : theme.border, backgroundColor: entryType === t ? `${theme.accent}22` : theme.bgCardAlt }]}
+            key={ty}
+            onPress={() => setEntryType(ty)}
+            style={[styles.chip, { borderColor: entryType === ty ? theme.accent : theme.border, backgroundColor: entryType === ty ? `${theme.accent}22` : theme.bgCardAlt }]}
           >
-            <Text style={[styles.chipText, { color: entryType === t ? theme.accent : theme.textMuted }]}>{ENTRY_TYPE_LABELS[t]}</Text>
+            <Text style={[styles.chipText, { color: entryType === ty ? theme.accent : theme.textMuted }]}>{entryTypeLabel(ty)}</Text>
           </Pressable>
         ))}
       </View>
 
-      <Text style={[styles.label, { color: theme.textPrimary }]}>Formato</Text>
+      <Text style={[styles.label, { color: theme.textPrimary }]}>{t('dataIO.formatLabel')}</Text>
       <View style={[styles.chipRow, { marginBottom: spacing.md }]}>
         {(['json', 'csv'] as ExportFormat[]).map((f) => (
           <Pressable
@@ -201,14 +190,20 @@ export function DataExporter() {
 
       <View style={[styles.summary, { backgroundColor: theme.bgCardAlt, borderColor: theme.border }]}>
         <Text style={[typography.detail, { color: theme.textMuted }]}>
-          {filtered.length} registro{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
-          {period !== 'all' ? ` · ${PERIOD_LABELS[period].toLowerCase()}` : ''}
-          {entryType !== 'all' ? ` · ${ENTRY_TYPE_LABELS[entryType as EntryType]}` : ''}
+          {filtered.length === 1
+            ? tFormat('dataIO.recordsFoundOne', { count: filtered.length })
+            : tFormat('dataIO.recordsFound', { count: filtered.length })}
+          {period !== 'all' ? ` · ${periodLabel(period).toLowerCase()}` : ''}
+          {entryType !== 'all' ? ` · ${entryTypeLabel(entryType as EntryType)}` : ''}
         </Text>
       </View>
 
       <Button
-        label={exporting ? 'Exportando...' : `Exportar ${filtered.length > 0 ? `(${filtered.length})` : ''}`}
+        label={exporting
+          ? t('dataIO.exportingBtn')
+          : filtered.length > 0
+            ? tFormat('dataIO.exportBtnCount', { count: filtered.length })
+            : t('dataIO.exportBtn')}
         onPress={handleExport}
         loading={exporting}
         disabled={exporting || filtered.length === 0}

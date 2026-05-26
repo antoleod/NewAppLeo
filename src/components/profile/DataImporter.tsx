@@ -317,7 +317,7 @@ export interface DataImporterProps {
 
 export function DataImporter({ onImportStart, onImportComplete, onError }: DataImporterProps) {
   const { theme, colors } = useTheme();
-  const { t } = useTranslation();
+  const { t, format } = useTranslation();
   const { addEntry, entries: existingEntries } = useAppData();
 
   const [importing, setImporting] = useState(false);
@@ -438,9 +438,9 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
 
   return (
     <Card>
-      <SectionHeader title="Import Data" />
+      <SectionHeader title={t('dataIO.importTitle')} />
       <Text style={[typography.body, { color: colors.muted, marginBottom: spacing.md }]}>
-        Import JSON reports or CSV. Supports feeds, sleep, diapers, pump, medications and measurements.
+        {t('dataIO.importSubtitle')}
       </Text>
 
       {/* Estado final: resumen de lo que se importó */}
@@ -457,21 +457,21 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
             }}
           >
             <Text style={[typography.body, { color: theme.textPrimary, fontWeight: '700', marginBottom: 4 }]}>
-              Import complete
+              {t('dataIO.importComplete')}
             </Text>
-            <Text style={[typography.body, { color: theme.textPrimary }]}>✅ {importResult.success} entries imported</Text>
+            <Text style={[typography.body, { color: theme.textPrimary }]}>{format('dataIO.importedCount', { count: importResult.success })}</Text>
             {importResult.dupes > 0 && (
               <Text style={[typography.body, { color: colors.muted }]}>
-                ⏭ {importResult.dupes} skipped (already in database)
+                {format('dataIO.importSkippedCount', { count: importResult.dupes })}
               </Text>
             )}
             {importResult.errors > 0 && (
               <Text style={[typography.body, { color: colors.danger }]}>
-                ❌ {importResult.errors} errors
+                {format('dataIO.importErrorsCount', { count: importResult.errors })}
               </Text>
             )}
           </View>
-          <Button label="Import another file" onPress={() => setImportResult(null)} variant="secondary" />
+          <Button label={t('dataIO.importAnother')} onPress={() => setImportResult(null)} variant="secondary" />
         </View>
       ) : preview ? (
         // Estado intermedio: preview con breakdown por tipo
@@ -487,7 +487,7 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
             }}
           >
             <Text style={[typography.body, { color: theme.textPrimary, fontWeight: '700', marginBottom: 2 }]}>
-              Preview — {preview.newEntries.length} new entries
+              {format('dataIO.importPreviewCount', { count: preview.newEntries.length })}
             </Text>
             {Object.entries(preview.byType).map(([type, count]) => (
               <Text key={type} style={[typography.body, { color: theme.textPrimary }]}>
@@ -496,7 +496,7 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
             ))}
             {preview.duplicates.length > 0 && (
               <Text style={[typography.detail, { color: colors.muted, marginTop: 4 }]}>
-                ⏭ {preview.duplicates.length} already exist and will be skipped
+                {format('dataIO.importDupesSkipped', { count: preview.duplicates.length })}
               </Text>
             )}
           </View>
@@ -514,7 +514,7 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
               }}
             >
               <Text style={[typography.detail, { color: colors.danger, fontWeight: '700', marginBottom: 2 }]}>
-                ⚠️ {preview.issues.length} entries skipped due to validation errors:
+                {format('dataIO.importValidationErrors', { count: preview.issues.length })}
               </Text>
               {preview.issues.slice(0, 5).map((issue, idx) => (
                 <Text key={idx} style={[typography.detail, { color: colors.danger }]}>
@@ -523,20 +523,20 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
               ))}
               {preview.issues.length > 5 && (
                 <Text style={[typography.detail, { color: colors.muted }]}>
-                  …and {preview.issues.length - 5} more
+                  {format('dataIO.importAndMore', { count: preview.issues.length - 5 })}
                 </Text>
               )}
             </View>
           )}
 
           <Button
-            label={importing ? 'Importing…' : `Import ${preview.newEntries.length} entries`}
+            label={importing ? t('dataIO.importingBtn') : format('dataIO.importConfirmBtn', { count: preview.newEntries.length })}
             onPress={handleConfirmImport}
             loading={importing}
             disabled={importing || preview.newEntries.length === 0}
           />
           <Button
-            label="Cancel"
+            label={t('common.cancel')}
             onPress={() => { setPreview(null); setRawInput(''); }}
             variant="ghost"
             disabled={importing}
@@ -545,7 +545,7 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
       ) : showInput ? (
         // Estado: campo de texto para pegar datos
         <View style={{ gap: spacing.md }}>
-          <Text style={[typography.detail, { color: colors.muted }]}>Paste JSON or CSV data:</Text>
+          <Text style={[typography.detail, { color: colors.muted }]}>{t('dataIO.pasteDataLabel')}</Text>
           <TextInput
             style={{
               borderWidth: 1,
@@ -558,15 +558,15 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
               fontFamily: 'Courier New',
               fontSize: 12,
             }}
-            placeholder="Paste here…"
+            placeholder={t('dataIO.pastePlaceholder')}
             placeholderTextColor={theme.textMuted}
             value={rawInput}
             onChangeText={setRawInput}
             multiline
           />
-          <Button label="Preview Import" onPress={() => handleParse(rawInput)} disabled={!rawInput.trim()} />
+          <Button label={t('dataIO.previewImportBtn')} onPress={() => handleParse(rawInput)} disabled={!rawInput.trim()} />
           <Button
-            label="Cancel"
+            label={t('common.cancel')}
             onPress={() => { setRawInput(''); setShowInput(false); }}
             variant="ghost"
           />
@@ -574,8 +574,8 @@ export function DataImporter({ onImportStart, onImportComplete, onError }: DataI
       ) : (
         // Estado inicial: botones de entrada
         <View style={{ gap: spacing.sm }}>
-          <Button label="Import from file (.json / .csv)" onPress={handleImportFromFile} variant="secondary" />
-          <Button label="Paste JSON / CSV" onPress={() => setShowInput(true)} variant="secondary" />
+          <Button label={t('dataIO.importFromFileBtn')} onPress={handleImportFromFile} variant="secondary" />
+          <Button label={t('dataIO.pasteJsonCsvBtn')} onPress={() => setShowInput(true)} variant="secondary" />
         </View>
       )}
     </Card>
