@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
-import { confirmAction } from '@/lib/confirm';
 import { router } from 'expo-router';
 import { Button, Card, Chip, EmptyState, Heading, Page , useToast } from '@/components/shared';
 import { GetEntryIcon, FoodHistoryCard } from '@/components/history';
@@ -164,7 +163,6 @@ type HistoryEntryRowProps = {
   noNoteLabel: string;
   editLabel: string;
   deleteLabel: string;
-  cancelLabel: string;
   onToggle: (id: string) => void;
   onEdit: (entry: EntryRecord) => void;
   onDelete: (entry: EntryRecord) => void;
@@ -172,25 +170,20 @@ type HistoryEntryRowProps = {
 
 const HistoryEntryRow = React.memo(function HistoryEntryRow({
   entry, expanded, detail, typeLabel, timeLabel, tint, tokens,
-  hasNotes, noNoteLabel, editLabel, deleteLabel, cancelLabel,
+  hasNotes, noNoteLabel, editLabel, deleteLabel,
   onToggle, onEdit, onDelete,
 }: HistoryEntryRowProps) {
   const swipeRef = useRef<SwipeableMethods | null>(null);
 
-  // Swipe-RIGHT (finger right) → Delete on the left edge.
+  // Swipe-RIGHT (finger right) → Delete on the left edge. Deletes immediately
+  // and surfaces the undo bar (6s) instead of a confirm dialog — reliable on
+  // web where window.confirm/Alert inside the swipe action is flaky.
   const renderLeftAction = () => (
     <Pressable
-      onPress={async () => {
+      onPress={() => {
         haptics.medium();
-        const ok = await confirmAction({
-          title: deleteLabel,
-          message: `${typeLabel} · ${timeLabel}`,
-          confirmLabel: deleteLabel,
-          cancelLabel,
-          destructive: true,
-        });
-        if (ok) { haptics.success(); onDelete(entry); }
-        else swipeRef.current?.close();
+        swipeRef.current?.close();
+        onDelete(entry);
       }}
       style={{
         width: 88, flexDirection: 'row',
@@ -1135,7 +1128,6 @@ export default function HistoryScreen() {
                           hasNotes={Boolean(entry.notes)}
                           editLabel={t('common.edit')}
                           deleteLabel={t('common.delete')}
-                          cancelLabel={t('common.cancel')}
                           noNoteLabel={t('history.noNote')}
                           onToggle={(id) => setExpandedId((current) => (current === id ? null : id))}
                           onEdit={(e) => router.push({ pathname: '/entry/[type]', params: { type: e.type, id: e.id } })}

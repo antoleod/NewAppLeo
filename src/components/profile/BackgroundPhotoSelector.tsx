@@ -5,6 +5,7 @@ import {
   Image,
   Pressable,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { confirmAction, alertInfo } from '@/lib/confirm';
@@ -33,10 +34,16 @@ export function BackgroundPhotoSelector({
 
   const handlePickPhoto = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        alertInfo(t('dataIO.bgPermissionTitle'), t('dataIO.bgPermissionMsg'));
-        return;
+      // On web the picker is an <input type=file> that must be opened within
+      // the click's user-gesture. Awaiting a permission request first breaks
+      // that gesture chain (browser blocks the file dialog) — and web needs no
+      // media-library permission anyway. So only request it on native.
+      if (Platform.OS !== 'web') {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          alertInfo(t('dataIO.bgPermissionTitle'), t('dataIO.bgPermissionMsg'));
+          return;
+        }
       }
 
       setSelecting(true);
