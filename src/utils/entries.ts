@@ -115,9 +115,23 @@ export function getTimelineItems(entries: EntryRecord[], filter: EntryType | 'al
 }
 
 export function getWeeklyTrend(entries: EntryRecord[], locale?: string) {
-  return Array.from({ length: 7 }, (_, index) => {
-    const day = subtractDays(startOfDay(new Date()), 6 - index);
-    const items = entries.filter((entry) => isSameDay(entry.occurredAt, day));
+  const today = startOfDay(new Date());
+  const days = Array.from({ length: 7 }, (_, index) => subtractDays(today, 6 - index));
+
+  // Single O(n) pass: bucket each entry into its start-of-day timestamp.
+  // (Previously this scanned the full entries array 7 times — once per day.)
+  const dayTimes = new Set(days.map((day) => day.getTime()));
+  const buckets = new Map<number, EntryRecord[]>();
+  for (const entry of entries) {
+    const time = startOfDay(new Date(entry.occurredAt)).getTime();
+    if (!dayTimes.has(time)) continue;
+    const list = buckets.get(time);
+    if (list) list.push(entry);
+    else buckets.set(time, [entry]);
+  }
+
+  return days.map((day) => {
+    const items = buckets.get(day.getTime()) ?? [];
     const feedCount = items.filter((entry) => entry.type === 'feed').length;
     const bottleMl = items
       .filter((entry) => entry.type === 'feed' && payloadOf(entry).mode === 'bottle')

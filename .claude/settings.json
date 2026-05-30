@@ -13,7 +13,16 @@
       "Bash(node -e \"const langs=['en','fr','es','nl'];const sets=langs.map\\(l=>Object.keys\\(require\\('./src/locales/'+l+'.json'\\).dataIO\\).sort\\(\\)\\);const base=sets[0].join\\(','\\);langs.forEach\\(\\(l,i\\)=>console.log\\(l, sets[i].length, sets[i].join\\(','\\)===base?'OK':'MISMATCH'\\)\\)\")",
       "Bash(cd \"c:\\\\Users\\\\X1\\\\Documents\\\\NewAppLeo\" && rm -f scripts/tmp-add-dataio.mjs && echo \"temp script deleted\")",
       "Bash(node -e \"const L=['en','fr','es','nl'];const k=L.map\\(l=>Object.keys\\(require\\('./src/locales/'+l+'.json'\\).dataIO\\).sort\\(\\).join\\(','\\)\\);console.log\\(k.every\\(x=>x===k[0]\\)?'OK all 4 match \\('+Object.keys\\(require\\('./src/locales/en.json'\\).dataIO\\).length+' keys\\)':'MISMATCH'\\)\")",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(node -e \"for\\(const l of ['en','fr','es','nl']\\){const j=require\\('./src/locales/'+l+'.json'\\);console.log\\(l, j.alerts?Object.keys\\(j.alerts\\).length+' keys':'NO alerts namespace'\\)}\")",
+      "Bash(sed -n '/const PERIOD_LABELS/,/};/p' src/components/profile/DataExporter.tsx)",
+      "Bash(sed -n '/const ENTRY_TYPE_LABELS/,/};/p' src/components/profile/DataExporter.tsx)",
+      "Bash(node scripts/tmp-add-dataio-ui.mjs)",
+      "Bash(rm -f scripts/tmp-add-dataio-ui.mjs)",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);for\\(const f of r\\){const ms=f.messages.filter\\(m=>m.ruleId==='react-hooks/exhaustive-deps'\\);if\\(ms.length\\){console.log\\('### '+f.filePath.replace\\(/.*NewAppLeo./,''\\)\\);for\\(const m of ms\\)console.log\\('  '+m.line+': '+m.message.replace\\(/\\\\. Either.*/,''\\)\\);}}}\\)\")",
+      "Bash(grep -nE 'const __TRACKED_VAR__ ?= ?\\(React\\\\.\\)?useCallback|const __TRACKED_VAR__ ?= ?\\(async \\)?\\\\\\(' src/context/AppDataContext.tsx)",
+      "Bash(sed -n '195,210p' \"app/\\(app\\)/entry/[type].tsx\")",
+      "Bash(sed -n '231,245p' \"app/\\(app\\)/entry/[type].tsx\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\X1\\Documents\\NewAppLeo\\scripts"

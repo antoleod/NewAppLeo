@@ -545,13 +545,16 @@ export default function HistoryScreen() {
     return () => clearTimeout(handle);
   }, [undoEntry]);
 
-  const timelineEntries = useMemo(() => {
+  // Build each entry's searchable haystack once per entries/filter/translation
+  // change. Typing only re-runs the cheap .includes() filter below — previously
+  // getDetail() + the haystack join ran for every entry on every keystroke.
+  const searchableTimeline = useMemo(() => {
     const filtered = entries
       .filter((entry) => filter === 'all' || entry.type === filter)
       .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
-    if (!searchQuery) return filtered;
-    return filtered.filter((entry) => {
-      const haystack = [
+    return filtered.map((entry) => ({
+      entry,
+      haystack: [
         entry.title,
         entry.notes,
         entry.type,
@@ -562,10 +565,16 @@ export default function HistoryScreen() {
       ]
         .filter(Boolean)
         .join(' ')
-        .toLowerCase();
-      return haystack.includes(searchQuery);
-    });
-  }, [entries, filter, searchQuery, t]);
+        .toLowerCase(),
+    }));
+  }, [entries, filter, t]);
+
+  const timelineEntries = useMemo(() => {
+    if (!searchQuery) return searchableTimeline.map((row) => row.entry);
+    return searchableTimeline
+      .filter((row) => row.haystack.includes(searchQuery))
+      .map((row) => row.entry);
+  }, [searchableTimeline, searchQuery]);
   const unifiedTimeline = useMemo(() => groupByDay(timelineEntries), [timelineEntries]);
   const yesterdayEntries = useMemo(
     () => entries.filter((entry) => isSameDay(entry.occurredAt, subtractDays(selectedDate, 1))),
