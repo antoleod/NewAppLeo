@@ -206,8 +206,23 @@ function babyEntryKey(babyId: string) {
   return `${ENTRY_PREFIX}:${babyId}`;
 }
 
+// In-memory write-through caches mirroring the (global, non-per-uid) babies
+// keys. Avoids re-reading AsyncStorage on every foreground event — the
+// dashboard reads babies + active baby on each AppState `active`. Every writer
+// below updates these, and clearLocalSession() invalidates them on logout.
+// `_activeBabyIdCache === undefined` means "not yet loaded".
+let _babiesCache: BabyProfile[] | null = null;
+let _activeBabyIdCache: string | null | undefined;
+
+export function invalidateBabiesCache() {
+  _babiesCache = null;
+  _activeBabyIdCache = undefined;
+}
+
 export async function getBabies() {
-  return safeParse<BabyProfile[]>(await AsyncStorage.getItem(BABIES_KEY), []);
+  if (_babiesCache) return _babiesCache;
+  _babiesCache = safeParse<BabyProfile[]>(await AsyncStorage.getItem(BABIES_KEY), []);
+  return _babiesCache;
 }
 
 export async function saveBaby(profile: BabyProfile) {
@@ -215,6 +230,8 @@ export async function saveBaby(profile: BabyProfile) {
   const next = [...babies.filter((baby) => baby.id !== profile.id), profile];
   await AsyncStorage.setItem(BABIES_KEY, JSON.stringify(next));
   await AsyncStorage.setItem(ACTIVE_BABY_KEY, profile.id);
+  _babiesCache = next;
+  _activeBabyIdCache = profile.id;
   return profile;
 }
 
@@ -222,23 +239,29 @@ export async function removeBaby(babyId: string) {
   const babies = await getBabies();
   const next = babies.filter((baby) => baby.id !== babyId);
   await AsyncStorage.setItem(BABIES_KEY, JSON.stringify(next));
+  _babiesCache = next;
   const activeBabyId = await getActiveBabyId();
   if (activeBabyId === babyId) {
     if (next[0]) {
       await AsyncStorage.setItem(ACTIVE_BABY_KEY, next[0].id);
+      _activeBabyIdCache = next[0].id;
     } else {
       await AsyncStorage.removeItem(ACTIVE_BABY_KEY);
+      _activeBabyIdCache = null;
     }
   }
   return next;
 }
 
 export async function getActiveBabyId() {
-  return (await AsyncStorage.getItem(ACTIVE_BABY_KEY)) ?? null;
+  if (_activeBabyIdCache !== undefined) return _activeBabyIdCache;
+  _activeBabyIdCache = (await AsyncStorage.getItem(ACTIVE_BABY_KEY)) ?? null;
+  return _activeBabyIdCache;
 }
 
 export async function setActiveBabyId(babyId: string) {
   await AsyncStorage.setItem(ACTIVE_BABY_KEY, babyId);
+  _activeBabyIdCache = babyId;
 }
 
 export async function getActiveBaby() {
@@ -442,6 +465,7 @@ export async function clearLocalSession(uid?: string) {
     ...babies.map((b) => `${MOM_HYDRATION_PREFIX}:${b.id}`),
   ];
   await AsyncStorage.multiRemove(keysToRemove);
+  invalidateBabiesCache();
 
   // Clean up per-uid localStore entries stored in AsyncStorage
   try {

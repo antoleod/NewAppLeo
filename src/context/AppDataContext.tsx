@@ -121,7 +121,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const { user, profile, guestMode } = useAuth();
   const [entries, setEntries] = useState<EntryRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncState, setSyncState] = useState<SyncState>('synced');
+  const [syncState, setSyncState] = useState<SyncState>('syncing');
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
 
   const refreshPendingCount = React.useCallback(async () => {
