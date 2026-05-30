@@ -17,8 +17,15 @@ service cloud.firestore {
         && isSixDigitCode(code)
         && !request.resource.data.get('isOwner', false)
         && exists(/databases/$(database)/documents/pairingSessions/$(code))
-        && get(/databases/$(database)/documents/pairingSessions/$(code)).data.hostUid == hostUid
-        && request.auth.uid in get(/databases/$(database)/documents/pairingSessions/$(code)).data.memberUids;
+        && pairedSessionMatches(code, hostUid);
+    }
+
+    // Reads the pairing session once and checks both conditions against the
+    // single result (previously the host + member checks issued two get()s).
+    function pairedSessionMatches(code, hostUid) {
+      let session = get(/databases/$(database)/documents/pairingSessions/$(code)).data;
+      return session.hostUid == hostUid
+        && request.auth.uid in session.memberUids;
     }
 
     match /usernames/{username} {
