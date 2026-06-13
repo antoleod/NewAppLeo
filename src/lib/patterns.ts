@@ -131,7 +131,7 @@ export function buildSmartAlerts(
     });
   }
 
-  // Medication next-dose alert — works even without dosage field
+  // Medication next-dose alert — supports single-drug and alternating pairs
   const recentMeds = sorted.filter((e) => {
     const h = hoursSince(e.occurredAt);
     return e.type === 'medication' && h !== null && h <= 36;
@@ -139,24 +139,63 @@ export function buildSmartAlerts(
   if (recentMeds.length > 0) {
     const latestMed = recentMeds[0];
     const medName = (latestMed.payload?.name ?? '').trim();
-    const interval = getMedInterval(medName);
-    const sinceHours = hoursSince(latestMed.occurredAt);
-    if (sinceHours !== null && sinceHours >= interval * 0.85) {
-      const remainMin = Math.max(0, Math.round((interval - sinceHours) * 60));
-      const isOverdue = sinceHours >= interval;
-      alerts.push({
-        id: 'med-due',
-        title: medName || t('alerts.medTitle'),
-        body: isOverdue
-          ? format('alerts.medOverdueBody', { hours: Math.round(sinceHours - interval) })
-          : format('alerts.medNextBody', { min: remainMin }),
-        icon: '💊',
-        value: isOverdue ? t('alerts.medOverdueValue') : `${remainMin}m`,
-        statusLabel: isOverdue ? t('alerts.statusOverdue') : t('alerts.statusSoon'),
-        tone: isOverdue ? 'danger' : 'warning',
-        actionLabel: t('alerts.actionLogMed'),
-        targetType: 'medication',
-      });
+    const partnerName = (latestMed.payload?.alternatingWith ?? '').trim();
+
+    if (partnerName) {
+      // Alternating pair: find the next drug to give across the combined timeline.
+      // Each drug respects its own last-dose time + full interval.
+      const interval = latestMed.payload?.intervalHours ?? getMedInterval(medName);
+      const lastThis = recentMeds.find((e) => (e.payload?.name ?? '').trim().toLowerCase() === medName.toLowerCase());
+      const lastPartner = sorted.find(
+        (e) => e.type === 'medication' && (e.payload?.name ?? '').trim().toLowerCase() === partnerName.toLowerCase(),
+      );
+
+      const nextThisMs = lastThis ? new Date(lastThis.occurredAt).getTime() + interval * 36e5 : Date.now();
+      const nextPartnerMs = lastPartner
+        ? new Date(lastPartner.occurredAt).getTime() + interval * 36e5
+        : (lastThis ? new Date(lastThis.occurredAt).getTime() + (interval / 2) * 36e5 : Date.now());
+
+      const nowMs = Date.now();
+      const nextName = nextThisMs <= nextPartnerMs ? medName : partnerName;
+      const nextDueMs = Math.min(nextThisMs, nextPartnerMs);
+      const remainMin = Math.max(0, Math.round((nextDueMs - nowMs) / 60000));
+      const isOverdue = nextDueMs <= nowMs;
+
+      if (isOverdue || remainMin <= Math.round(interval * 0.15 * 60)) {
+        alerts.push({
+          id: 'med-due',
+          title: nextName || t('alerts.medTitle'),
+          body: isOverdue
+            ? format('alerts.medOverdueBody', { hours: Math.round((nowMs - nextDueMs) / 36e5) })
+            : format('alerts.medNextBody', { min: remainMin }),
+          icon: '💊',
+          value: isOverdue ? t('alerts.medOverdueValue') : `${remainMin}m`,
+          statusLabel: isOverdue ? t('alerts.statusOverdue') : t('alerts.statusSoon'),
+          tone: isOverdue ? 'danger' : 'warning',
+          actionLabel: t('alerts.actionLogMed'),
+          targetType: 'medication',
+        });
+      }
+    } else {
+      const interval = getMedInterval(medName);
+      const sinceHours = hoursSince(latestMed.occurredAt);
+      if (sinceHours !== null && sinceHours >= interval * 0.85) {
+        const remainMin = Math.max(0, Math.round((interval - sinceHours) * 60));
+        const isOverdue = sinceHours >= interval;
+        alerts.push({
+          id: 'med-due',
+          title: medName || t('alerts.medTitle'),
+          body: isOverdue
+            ? format('alerts.medOverdueBody', { hours: Math.round(sinceHours - interval) })
+            : format('alerts.medNextBody', { min: remainMin }),
+          icon: '💊',
+          value: isOverdue ? t('alerts.medOverdueValue') : `${remainMin}m`,
+          statusLabel: isOverdue ? t('alerts.statusOverdue') : t('alerts.statusSoon'),
+          tone: isOverdue ? 'danger' : 'warning',
+          actionLabel: t('alerts.actionLogMed'),
+          targetType: 'medication',
+        });
+      }
     }
   }
 

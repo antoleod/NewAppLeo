@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Input } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
@@ -18,6 +18,8 @@ type Props = {
   setDosage: (v: string) => void;
   medIntervalHours: string;
   setMedIntervalHours: (v: string) => void;
+  alternatingWith: string;
+  setAlternatingWith: (v: string) => void;
   savedMedicines: SavedMedicine[];
   setSavedMedicines: (next: SavedMedicine[]) => void;
   occurredAt: Date;
@@ -28,15 +30,18 @@ export const MedicationSection = React.memo(function MedicationSection({
   name, setName,
   dosage, setDosage,
   medIntervalHours, setMedIntervalHours,
+  alternatingWith, setAlternatingWith,
   savedMedicines, setSavedMedicines,
   occurredAt,
 }: Props) {
   const { colors, theme } = useTheme();
-  const { t } = useTranslation();
+  const { t, format } = useTranslation();
   const { language } = useLocale();
   const { entries } = useAppData();
   const { profile, saveProfile } = useAuth();
   const meta = typeMeta.medication;
+
+  const [showAlternatingInput, setShowAlternatingInput] = useState(Boolean(alternatingWith));
 
   const getRecommendedDose = useCallback((medName: string): string => {
     const med = (commonMedications as any[]).find(
@@ -56,39 +61,110 @@ export const MedicationSection = React.memo(function MedicationSection({
     [entries],
   );
 
+  // Alternating schedule: compute the full next-dose timeline for both drugs.
+  // Each drug must respect its own interval. The "combined" cadence is half the
+  // individual interval when two drugs alternate (e.g. each at 8h → every 4h).
+  const alternatingSchedule = useMemo(() => {
+    const partnerName = alternatingWith.trim();
+    if (!name.trim() || !partnerName) return null;
+
+    const interval = Number(medIntervalHours) || 8;
+    const halfInterval = interval / 2;
+
+    const lastThis = entries.find(
+      (e) => e.type === 'medication' && (e.payload?.name ?? '').trim().toLowerCase() === name.trim().toLowerCase(),
+    );
+    const lastPartner = entries.find(
+      (e) => e.type === 'medication' && (e.payload?.name ?? '').trim().toLowerCase() === partnerName.toLowerCase(),
+    );
+
+    const baseThis = lastThis ? new Date(lastThis.occurredAt).getTime() : occurredAt.getTime();
+    const basePartner = lastPartner ? new Date(lastPartner.occurredAt).getTime() : null;
+
+    // Next dose for this drug: baseThis + fullInterval
+    const nextThisAt = baseThis + interval * 36e5;
+    // Next dose for partner: if never given, start halfInterval after this drug's last dose
+    const nextPartnerAt = basePartner
+      ? basePartner + interval * 36e5
+      : baseThis + halfInterval * 36e5;
+
+    const slots: { name: string; time: Date }[] = [];
+    // Build 4 future slots alternating correctly
+    let tThis = nextThisAt;
+    let tPartner = nextPartnerAt;
+    for (let i = 0; i < 4; i++) {
+      if (tThis <= tPartner) {
+        slots.push({ name: name.trim(), time: new Date(tThis) });
+        tThis += interval * 36e5;
+      } else {
+        slots.push({ name: partnerName, time: new Date(tPartner) });
+        tPartner += interval * 36e5;
+      }
+    }
+
+    return slots;
+  }, [alternatingWith, entries, medIntervalHours, name, occurredAt]);
+
   const medStatus = useMemo(() => {
     const currentName = name.trim().toLowerCase();
     if (!currentName) {
       return {
         label: 'OK',
-        text: language === 'fr' ? 'Choisissez un médicament pour voir le statut.' : 'Select a medicine to see status.',
+        text: t('entry.medicine'),
         color: theme.green,
       };
     }
+
+    // When alternating: check if it's too early for THIS drug
+    if (alternatingWith.trim()) {
+      const interval = Number(medIntervalHours) || 8;
+      const lastSame = entries.find(
+        (e) => e.type === 'medication' && (e.payload?.name ?? '').trim().toLowerCase() === currentName,
+      );
+      if (!lastSame) {
+        return { label: 'DUE', text: t('entry.medicine'), color: theme.red };
+      }
+      const hoursSince = (Date.now() - new Date(lastSame.occurredAt).getTime()) / 36e5;
+      if (hoursSince >= interval) {
+        return { label: 'DUE', text: t('entry.medicine'), color: theme.red };
+      }
+      if (hoursSince >= Math.max(1, interval - 2)) {
+        return { label: 'SOON', text: t('entry.medicine'), color: theme.yellow };
+      }
+      return { label: 'OK', text: t('entry.medicine'), color: theme.green };
+    }
+
     const lastSame = entries.find((e) => e.type === 'medication' && (e.payload?.name ?? '').trim().toLowerCase() === currentName);
     if (!lastSame) {
-      return { label: 'DUE', text: language === 'fr' ? 'Aucune dose récente trouvée.' : 'No recent dose found.', color: theme.red };
+      return { label: 'DUE', text: t('entry.medicine'), color: theme.red };
     }
     const intervalHours = Number(medIntervalHours) || 6;
     const hoursSince = (Date.now() - new Date(lastSame.occurredAt).getTime()) / 36e5;
     if (hoursSince >= intervalHours) {
-      return { label: 'DUE', text: language === 'fr' ? 'Prochaine dose recommandée maintenant.' : 'Next dose recommended now.', color: theme.red };
+      return { label: 'DUE', text: t('entry.medicine'), color: theme.red };
     }
     if (hoursSince >= Math.max(1, intervalHours - 2)) {
-      return { label: 'SOON', text: language === 'fr' ? 'Dose bientôt possible.' : 'Dose will be due soon.', color: theme.yellow };
+      return { label: 'SOON', text: t('entry.medicine'), color: theme.yellow };
     }
-    return { label: 'OK', text: language === 'fr' ? 'Fenêtre de sécurité active.' : 'Safe interval active.', color: theme.green };
-  }, [entries, language, medIntervalHours, name, theme]);
+    return { label: 'OK', text: t('entry.medicine'), color: theme.green };
+  }, [alternatingWith, entries, medIntervalHours, name, t, theme]);
 
   const nextDosePreview = useMemo(() => {
     if (!name.trim()) return '';
+    if (alternatingSchedule) {
+      // Show next slot for THIS drug
+      const nextSlot = alternatingSchedule.find((s) => s.name.toLowerCase() === name.trim().toLowerCase());
+      if (!nextSlot) return '';
+      const locale = language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : language === 'nl' ? 'nl-NL' : 'en-US';
+      return nextSlot.time.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+    }
     const interval = Number(medIntervalHours) || 6;
     const lastSame = entries.find((e) => e.type === 'medication' && (e.payload?.name ?? '').trim().toLowerCase() === name.trim().toLowerCase());
     const baseTime = lastSame ? new Date(lastSame.occurredAt).getTime() : occurredAt.getTime();
-    const nextAt = new Date(baseTime + interval * 60 * 60 * 1000);
-    const locale = language === 'fr' ? 'fr-FR' : 'en-US';
+    const nextAt = new Date(baseTime + interval * 36e5);
+    const locale = language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : language === 'nl' ? 'nl-NL' : 'en-US';
     return `${nextAt.toLocaleDateString(locale)} ${nextAt.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
-  }, [entries, language, medIntervalHours, name, occurredAt]);
+  }, [alternatingSchedule, entries, language, medIntervalHours, name, occurredAt]);
 
   const normalized = name.trim().toLowerCase();
   const existingSavedMedicine = useMemo(
@@ -118,17 +194,24 @@ export const MedicationSection = React.memo(function MedicationSection({
       .slice(0, 6);
   }, [name, savedMedicines, getRecommendedDose]);
 
-  const manualLabel =
-    language === 'fr' ? 'Ajouter manuellement'
-      : language === 'es' ? 'Agregar manualmente'
-      : language === 'nl' ? 'Handmatig toevoegen'
-      : 'Add manually';
+  // Suggestions for the alternating partner field (exclude the current drug)
+  const alternatingPartnerSuggestions = useMemo(() => {
+    if (!showAlternatingInput) return [];
+    const query = alternatingWith.trim().toLowerCase();
+    const fromSaved = savedMedicines.map((m) => m.name);
+    const fromCommon = (commonMedications as any[]).map((m) => String(m.name));
+    const all = [...new Set([...fromSaved, ...fromCommon])].filter(
+      (n) => n.trim().toLowerCase() !== name.trim().toLowerCase(),
+    );
+    if (!query) return all.slice(0, 4);
+    return all.filter((n) => n.toLowerCase().includes(query) && n.toLowerCase() !== query).slice(0, 4);
+  }, [alternatingWith, name, savedMedicines, showAlternatingInput]);
 
   const savePresetLabel = !existingSavedMedicine
-    ? (language === 'fr' ? 'Ajouter ce médicament' : language === 'es' ? 'Añadir este medicamento' : language === 'nl' ? 'Dit medicijn toevoegen' : 'Add this medicine')
+    ? t('entry.saveMedicine')
     : isMedicationDirty
-      ? (language === 'fr' ? 'Mettre à jour la dose' : language === 'es' ? 'Actualizar dosis' : language === 'nl' ? 'Dosering bijwerken' : 'Update dosage')
-      : (language === 'fr' ? 'Déjà enregistré' : language === 'es' ? 'Ya guardado' : language === 'nl' ? 'Reeds opgeslagen' : 'Already saved');
+      ? t('entry.saveMedicine')
+      : t('entry.saveMedicine');
 
   const handleSavePreset = async () => {
     const next = await upsertSavedMedicine({ name, dosage });
@@ -141,6 +224,9 @@ export const MedicationSection = React.memo(function MedicationSection({
     ].slice(0, 24);
     await saveProfile({ customMedicines: merged });
   };
+
+  const timeLocale = language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : language === 'nl' ? 'nl-NL' : 'en-US';
+  const formatTime = (d: Date) => d.toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit' });
 
   return (
     <View style={styles.sectionCard}>
@@ -167,10 +253,11 @@ export const MedicationSection = React.memo(function MedicationSection({
       <Pressable
         onPress={() => { setName(''); setDosage(''); }}
         accessibilityRole="button"
-        accessibilityLabel={manualLabel}
         style={[styles.medManualBtn, { borderColor: meta.tone, backgroundColor: colors.background }]}
       >
-        <Text style={[styles.medManualText, { color: meta.tone }]}>{manualLabel}</Text>
+        <Text style={[styles.medManualText, { color: meta.tone }]}>
+          {t('entry.medicationName')}
+        </Text>
       </Pressable>
 
       {savedMedicines.length > 0 ? (
@@ -234,9 +321,67 @@ export const MedicationSection = React.memo(function MedicationSection({
 
       <Input label={t('entry.dosage')} value={dosage} onChangeText={setDosage} />
 
+      {/* Alternating drug section */}
+      <Pressable
+        onPress={() => {
+          if (showAlternatingInput) {
+            setAlternatingWith('');
+          }
+          setShowAlternatingInput((v) => !v);
+        }}
+        accessibilityRole="button"
+        style={[
+          styles.alternatingToggleBtn,
+          { borderColor: alternatingWith.trim() ? meta.tone : colors.border, backgroundColor: colors.card },
+        ]}
+      >
+        <Text style={[styles.alternatingToggleText, { color: alternatingWith.trim() ? meta.tone : colors.muted }]}>
+          {alternatingWith.trim()
+            ? `⇄ ${alternatingWith.trim()}`
+            : `+ ${t('entry.alternatingWith')}`}
+        </Text>
+      </Pressable>
+
+      {showAlternatingInput ? (
+        <View style={{ gap: 6 }}>
+          <Input
+            label={t('entry.alternatingWith')}
+            value={alternatingWith}
+            onChangeText={setAlternatingWith}
+            placeholder={t('entry.alternatingWithPlaceholder')}
+          />
+          {alternatingPartnerSuggestions.length > 0 ? (
+            <View style={styles.savedRow}>
+              {alternatingPartnerSuggestions.map((n) => (
+                <Pressable
+                  key={`alt-${n}`}
+                  onPress={() => setAlternatingWith(n)}
+                  style={[
+                    styles.savedChip,
+                    { borderColor: colors.border, backgroundColor: colors.card },
+                    alternatingWith === n && { borderColor: meta.tone },
+                  ]}
+                >
+                  <Text style={[styles.savedChipTitle, { color: colors.text }]}>{n}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          {alternatingWith.trim() ? (
+            <Pressable
+              onPress={() => { setAlternatingWith(''); setShowAlternatingInput(false); }}
+              accessibilityRole="button"
+              style={styles.alternatingRemoveBtn}
+            >
+              <Text style={styles.alternatingRemoveText}>{t('entry.alternatingRemove')}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
       <View style={styles.medIntervalHeader}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {language === 'fr' ? 'Intervalle recommandé' : language === 'es' ? 'Intervalo recomendado' : language === 'nl' ? 'Aanbevolen interval' : 'Recommended interval'}
+          {t('entry.recommendedInterval')}
         </Text>
         {name.trim() ? <Text style={[styles.medStatusLabel, { color: medStatus.color }]}>{medStatus.label}</Text> : null}
       </View>
@@ -264,18 +409,36 @@ export const MedicationSection = React.memo(function MedicationSection({
 
       {name.trim() ? (
         <Text style={[styles.medNextDoseText, { color: colors.muted }]}>
-          {language === 'fr' ? 'Prochaine dose:' : language === 'es' ? 'Próxima dosis:' : language === 'nl' ? 'Volgende dosis:' : 'Next dose:'} {nextDosePreview}
+          {t('entry.nextDose')}: {nextDosePreview}
         </Text>
       ) : null}
 
       <Text style={[styles.medStatusText, { color: colors.text }]}>
-        {name.trim()
-          ? medStatus.text
-          : language === 'fr' ? 'Choisissez ou ajoutez un médicament pour voir le statut.'
-            : language === 'es' ? 'Elige o añade un medicamento para ver el estado.'
-            : language === 'nl' ? 'Kies of voeg een medicijn toe.'
-            : 'Choose or add a medicine to see status.'}
+        {medStatus.text}
       </Text>
+
+      {/* Alternating schedule timeline */}
+      {alternatingSchedule ? (
+        <View style={[styles.medTimelineWrap, { marginTop: 8 }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {t('entry.alternatingSchedule')}
+          </Text>
+          {alternatingSchedule.map((slot, idx) => {
+            const isThis = slot.name.toLowerCase() === name.trim().toLowerCase();
+            return (
+              <View key={idx} style={styles.medTimelineItem}>
+                <View style={[styles.medTimelineDot, { backgroundColor: isThis ? meta.tone : colors.muted }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.medTimelineName, { color: colors.text }]}>{slot.name}</Text>
+                  <Text style={[styles.medTimelineMeta, { color: colors.muted }]}>
+                    {formatTime(slot.time)}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
 
       <View style={styles.medTimelineWrap}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -293,7 +456,7 @@ export const MedicationSection = React.memo(function MedicationSection({
                 <Text style={[styles.medTimelineName, { color: colors.text }]}>{entry.payload?.name}</Text>
                 <Text style={[styles.medTimelineMeta, { color: colors.muted }]}>
                   {(entry.payload?.dosage || '').trim() || '—'} ·{' '}
-                  {new Date(entry.occurredAt).toLocaleTimeString(language === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(entry.occurredAt).toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </View>
             </View>
@@ -324,6 +487,17 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   savePresetText: { color: '#22C55E', fontWeight: '800', fontSize: 12 },
+  alternatingToggleBtn: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
+    borderWidth: 1, alignItems: 'center', justifyContent: 'center',
+  },
+  alternatingToggleText: { fontSize: 12, fontWeight: '700' },
+  alternatingRemoveBtn: {
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 10,
+    backgroundColor: '#EF444422', borderWidth: 1, borderColor: '#EF444455',
+    alignItems: 'center',
+  },
+  alternatingRemoveText: { color: '#EF4444', fontWeight: '700', fontSize: 12 },
   medIntervalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   medIntervalRow: { flexDirection: 'row', gap: 8 },
   medIntervalBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, minHeight: 36, alignItems: 'center', justifyContent: 'center' },

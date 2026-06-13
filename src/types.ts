@@ -62,6 +62,9 @@ export interface EntryPayload {
    *  (caregiverName or partnerName). Free-form so guest mode and pair-mode
    *  scenarios both work without referencing a user id. */
   caregiver?: string;
+  /** Name of the partner drug that alternates with this medication (e.g. "Dafalgan"
+   *  when this entry is "Nurofen"). Used to compute the combined alternating schedule. */
+  alternatingWith?: string;
   // Stable client-generated ID used by sleep entries to deduplicate after a
   // save-then-crash cycle where the local sleep draft might otherwise be
   // resumed and saved twice.

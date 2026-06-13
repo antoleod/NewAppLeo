@@ -94,7 +94,8 @@ export default function EntryComposerScreen() {
   const [tempC, setTempC] = useState('');
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
-  const [medIntervalHours, setMedIntervalHours] = useState('6');
+  const [medIntervalHours, setMedIntervalHours] = useState('8');
+  const [alternatingWith, setAlternatingWith] = useState('');
   const [title, setTitle] = useState('');
   const [icon, setIcon] = useState('sparkles');
   const [photoUri, setPhotoUri] = useState('');
@@ -223,6 +224,7 @@ export default function EntryComposerScreen() {
         if (editing.payload?.intervalHours) {
           setMedIntervalHours(String(editing.payload.intervalHours));
         }
+        setAlternatingWith(editing.payload?.alternatingWith ?? '');
         break;
       case 'milestone':
         setTitle(editing.payload?.title ?? '');
@@ -490,7 +492,11 @@ export default function EntryComposerScreen() {
           notes,
         };
       case 'medication':
-        return { name, dosage, notes, intervalHours: Number(medIntervalHours) || 6 };
+        return {
+          name, dosage, notes,
+          intervalHours: Number(medIntervalHours) || 8,
+          ...(alternatingWith.trim() ? { alternatingWith: alternatingWith.trim() } : {}),
+        };
       case 'milestone':
         return { title: title || 'Milestone', icon, photoUri: photoUri || undefined, notes };
       case 'symptom':
@@ -1021,6 +1027,7 @@ export default function EntryComposerScreen() {
             name={name} setName={setName}
             dosage={dosage} setDosage={setDosage}
             medIntervalHours={medIntervalHours} setMedIntervalHours={setMedIntervalHours}
+            alternatingWith={alternatingWith} setAlternatingWith={setAlternatingWith}
             savedMedicines={savedMedicines} setSavedMedicines={setSavedMedicines}
             occurredAt={occurredAt}
           />
