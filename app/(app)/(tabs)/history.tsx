@@ -166,12 +166,13 @@ type HistoryEntryRowProps = {
   onToggle: (id: string) => void;
   onEdit: (entry: EntryRecord) => void;
   onDelete: (entry: EntryRecord) => void;
+  scrollViewRef?: React.RefObject<any>;
 };
 
 const HistoryEntryRow = React.memo(function HistoryEntryRow({
   entry, expanded, detail, typeLabel, timeLabel, tint, tokens,
   hasNotes, noNoteLabel, editLabel, deleteLabel,
-  onToggle, onEdit, onDelete,
+  onToggle, onEdit, onDelete, scrollViewRef,
 }: HistoryEntryRowProps) {
   const swipeRef = useRef<SwipeableMethods | null>(null);
 
@@ -221,6 +222,7 @@ const HistoryEntryRow = React.memo(function HistoryEntryRow({
       overshootLeft={false}
       overshootRight={false}
       friction={2}
+      simultaneousHandlers={scrollViewRef}
     >
       <Pressable
         onPress={() => onToggle(entry.id)}
@@ -290,6 +292,7 @@ export default function HistoryScreen() {
   const { profile } = useAuth();
   const { theme } = useTheme();
   const toast = useToast();
+  const historyScrollRef = useRef<any>(null);
 
   const BG = theme.bg;
   const CARD = theme.bgCard;
@@ -1141,6 +1144,7 @@ export default function HistoryScreen() {
                           onToggle={(id) => setExpandedId((current) => (current === id ? null : id))}
                           onEdit={(e) => router.push({ pathname: '/entry/[type]', params: { type: e.type, id: e.id } })}
                           onDelete={handleDeleteEntry}
+                          scrollViewRef={historyScrollRef}
                         />
                       </Animated.View>
                     );
@@ -1213,7 +1217,7 @@ export default function HistoryScreen() {
           >
             {historySidebar}
           </ScrollView>
-          <GestureScrollView style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ gap: 18, paddingBottom: 24 }} showsVerticalScrollIndicator>
+          <GestureScrollView ref={historyScrollRef} style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ gap: 18, paddingBottom: 24 }} showsVerticalScrollIndicator>
             {historyMain}
           </GestureScrollView>
           {undoBar}

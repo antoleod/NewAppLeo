@@ -644,6 +644,7 @@ export default function HomeScreen() {
   const [defaultFeedingMode, setDefaultFeedingMode] = useState<'breast' | 'bottle'>('bottle');
   const [deviceDisplayName, setDeviceDisplayName] = useState('');
   const swipeableRefs = useRef<Map<string, React.RefObject<SwipeableMethods | null>>>(new Map());
+  const scrollViewRef = useRef<any>(null);
 
   const feedEntries = useMemo(() => entries.filter((entry) => entry.type === 'feed'), [entries]);
   const lastMeasurement = useMemo(() => entries.find((entry) => entry.type === 'measurement'), [entries]);
@@ -1483,6 +1484,7 @@ export default function HomeScreen() {
                       overshootLeft={false}
                       overshootRight={false}
                       friction={2}
+                      simultaneousHandlers={scrollViewRef}
                     >
                       <Pressable
                         onPress={() => router.push({ pathname: '/entry/[type]', params: { type: entry.type, id: entry.id } })}
@@ -1801,6 +1803,7 @@ export default function HomeScreen() {
   return (
     <Page scroll={false} contentStyle={styles.pageContent}>
       <GestureScrollView
+        ref={scrollViewRef}
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
