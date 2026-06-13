@@ -138,7 +138,7 @@ export const MedicationSection = React.memo(function MedicationSection({
     if (!lastSame) {
       return { label: 'DUE', text: t('entry.medicine'), color: theme.red };
     }
-    const intervalHours = Number(medIntervalHours) || 6;
+    const intervalHours = Number(medIntervalHours) || 8;
     const hoursSince = (Date.now() - new Date(lastSame.occurredAt).getTime()) / 36e5;
     if (hoursSince >= intervalHours) {
       return { label: 'DUE', text: t('entry.medicine'), color: theme.red };
@@ -208,10 +208,10 @@ export const MedicationSection = React.memo(function MedicationSection({
   }, [alternatingWith, name, savedMedicines, showAlternatingInput]);
 
   const savePresetLabel = !existingSavedMedicine
-    ? t('entry.saveMedicine')
+    ? (language === 'fr' ? 'Ajouter ce médicament' : language === 'es' ? 'Añadir este medicamento' : language === 'nl' ? 'Dit medicijn toevoegen' : 'Add this medicine')
     : isMedicationDirty
-      ? t('entry.saveMedicine')
-      : t('entry.saveMedicine');
+      ? (language === 'fr' ? 'Mettre à jour la dose' : language === 'es' ? 'Actualizar dosis' : language === 'nl' ? 'Dosering bijwerken' : 'Update dosage')
+      : (language === 'fr' ? 'Déjà enregistré' : language === 'es' ? 'Ya guardado' : language === 'nl' ? 'Reeds opgeslagen' : 'Already saved');
 
   const handleSavePreset = async () => {
     const next = await upsertSavedMedicine({ name, dosage });
@@ -253,10 +253,11 @@ export const MedicationSection = React.memo(function MedicationSection({
       <Pressable
         onPress={() => { setName(''); setDosage(''); }}
         accessibilityRole="button"
+        accessibilityLabel={language === 'fr' ? 'Ajouter manuellement' : language === 'es' ? 'Agregar manualmente' : language === 'nl' ? 'Handmatig toevoegen' : 'Add manually'}
         style={[styles.medManualBtn, { borderColor: meta.tone, backgroundColor: colors.background }]}
       >
         <Text style={[styles.medManualText, { color: meta.tone }]}>
-          {t('entry.medicationName')}
+          {language === 'fr' ? 'Ajouter manuellement' : language === 'es' ? 'Agregar manualmente' : language === 'nl' ? 'Handmatig toevoegen' : 'Add manually'}
         </Text>
       </Pressable>
 

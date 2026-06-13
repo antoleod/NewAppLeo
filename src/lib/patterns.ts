@@ -145,7 +145,11 @@ export function buildSmartAlerts(
       // Alternating pair: find the next drug to give across the combined timeline.
       // Each drug respects its own last-dose time + full interval.
       const interval = latestMed.payload?.intervalHours ?? getMedInterval(medName);
-      const lastThis = recentMeds.find((e) => (e.payload?.name ?? '').trim().toLowerCase() === medName.toLowerCase());
+      // Search full sorted history (not just recentMeds) so a dose given >36h ago
+      // still anchors the timeline correctly rather than falling back to Date.now().
+      const lastThis = sorted.find(
+        (e) => e.type === 'medication' && (e.payload?.name ?? '').trim().toLowerCase() === medName.toLowerCase(),
+      );
       const lastPartner = sorted.find(
         (e) => e.type === 'medication' && (e.payload?.name ?? '').trim().toLowerCase() === partnerName.toLowerCase(),
       );
