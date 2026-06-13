@@ -191,6 +191,10 @@
     "recommendedInterval": "Aanbevolen interval",
     "nextDose": "Volgende dosis",
     "saveMedicine": "💾 Opslaan",
+    "updateMedicine": "💾 Bijwerken",
+    "addMedManually": "Handmatig toevoegen",
+    "recentDoses": "Recente doses",
+    "noDosesYet": "Nog geen doses vandaag.",
     "reminderNextDose": "Herinnering voor volgende dosis",
     "sessionMin": "Sessie (min)",
     "loggedBy": "Geregistreerd door",
@@ -862,7 +866,11 @@
     "qualityLabel": "Hoe heeft hij geslapen?",
     "qualityCalm": "Rustig",
     "qualityRestless": "Onrustig",
-    "qualityInterrupted": "Onderbroken"
+    "qualityInterrupted": "Onderbroken",
+    "startTimer": "Timer starten",
+    "startTimerHint": "Baby slaapt nu",
+    "logPast": "Handmatig invoeren",
+    "logPastHint": "Al afgelopen"
   },
   "sync": {
     "synced": "Gesynchroniseerd",

@@ -253,11 +253,11 @@ export const MedicationSection = React.memo(function MedicationSection({
       <Pressable
         onPress={() => { setName(''); setDosage(''); }}
         accessibilityRole="button"
-        accessibilityLabel={language === 'fr' ? 'Ajouter manuellement' : language === 'es' ? 'Agregar manualmente' : language === 'nl' ? 'Handmatig toevoegen' : 'Add manually'}
+        accessibilityLabel={t('entry.addMedManually')}
         style={[styles.medManualBtn, { borderColor: meta.tone, backgroundColor: colors.background }]}
       >
         <Text style={[styles.medManualText, { color: meta.tone }]}>
-          {language === 'fr' ? 'Ajouter manuellement' : language === 'es' ? 'Agregar manualmente' : language === 'nl' ? 'Handmatig toevoegen' : 'Add manually'}
+          {t('entry.addMedManually')}
         </Text>
       </Pressable>
 
@@ -310,6 +310,8 @@ export const MedicationSection = React.memo(function MedicationSection({
                   setName(med.name);
                   if (med.dosage) setDosage(med.dosage);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={`${med.name}${med.dosage ? `, ${med.dosage}` : ''}`}
                 style={[styles.savedChip, { borderColor: colors.border, backgroundColor: colors.card }]}
               >
                 <Text style={[styles.savedChipTitle, { color: colors.text }]}>{med.name}</Text>
@@ -357,6 +359,8 @@ export const MedicationSection = React.memo(function MedicationSection({
                 <Pressable
                   key={`alt-${n}`}
                   onPress={() => setAlternatingWith(n)}
+                  accessibilityRole="button"
+                  accessibilityLabel={n}
                   style={[
                     styles.savedChip,
                     { borderColor: colors.border, backgroundColor: colors.card },
@@ -443,11 +447,11 @@ export const MedicationSection = React.memo(function MedicationSection({
 
       <View style={styles.medTimelineWrap}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {language === 'fr' ? 'Doses récentes' : language === 'es' ? 'Dosis recientes' : language === 'nl' ? 'Recente doses' : 'Recent doses'}
+          {t('entry.recentDoses')}
         </Text>
         {recentMedicationEntries.length === 0 ? (
           <Text style={[styles.medTimelineEmpty, { color: colors.muted }]}>
-            {language === 'fr' ? "Aucune dose enregistrée aujourd'hui." : language === 'es' ? 'Sin dosis hoy.' : language === 'nl' ? 'Nog geen doses vandaag.' : 'No medication logged yet.'}
+            {t('entry.noDosesYet')}
           </Text>
         ) : (
           recentMedicationEntries.map((entry) => (
@@ -501,7 +505,7 @@ const styles = StyleSheet.create({
   alternatingRemoveText: { color: '#EF4444', fontWeight: '700', fontSize: 12 },
   medIntervalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   medIntervalRow: { flexDirection: 'row', gap: 8 },
-  medIntervalBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
+  medIntervalBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   medIntervalText: { fontSize: 12, fontWeight: '700' },
   medStatusLabel: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
   medStatusText: { fontSize: 12 },

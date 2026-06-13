@@ -191,6 +191,10 @@
     "recommendedInterval": "Intervalo recomendado",
     "nextDose": "Próxima dosis",
     "saveMedicine": "💾 Guardar",
+    "updateMedicine": "💾 Actualizar",
+    "addMedManually": "Agregar manualmente",
+    "recentDoses": "Dosis recientes",
+    "noDosesYet": "Sin dosis hoy.",
     "reminderNextDose": "Recordatorio para próxima dosis",
     "sessionMin": "Sesión (min)",
     "loggedBy": "Registrado por",
@@ -862,7 +866,11 @@
     "qualityLabel": "¿Cómo durmió?",
     "qualityCalm": "Tranquilo",
     "qualityRestless": "Inquieto",
-    "qualityInterrupted": "Cortado"
+    "qualityInterrupted": "Cortado",
+    "startTimer": "Iniciar timer",
+    "startTimerHint": "El bebé duerme ahora",
+    "logPast": "Registrar pasado",
+    "logPastHint": "Ya terminó"
   },
   "sync": {
     "synced": "Sincronizado",

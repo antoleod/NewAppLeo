@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   whoTitle: { fontSize: 13, fontWeight: '700', marginBottom: 6 },
   whoMessage: { fontSize: 12, lineHeight: 18, marginBottom: 10, fontWeight: '500' },
   actions: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  quickBtn: { flex: 1, minHeight: 38, borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  quickBtn: { flex: 1, minHeight: 44, borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   quickBtnText: { fontSize: 12, fontWeight: '800' },
   whoRow: { flexDirection: 'row', gap: 12 },
   whoLabel: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },

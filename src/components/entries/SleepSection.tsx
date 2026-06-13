@@ -297,14 +297,10 @@ export const SleepSection = React.memo(function SleepSection({
   })() : null;
 
   // ─── Mode picker (new entry, no input mode set) ─────────────────
-  const startTimerLabel =
-    language === 'fr' ? 'Démarrer timer' : language === 'es' ? 'Iniciar timer' : language === 'nl' ? 'Timer starten' : 'Start timer';
-  const startTimerHint =
-    language === 'fr' ? 'Bébé dort maintenant' : language === 'es' ? 'El bebé duerme ahora' : language === 'nl' ? 'Baby slaapt nu' : 'Baby is sleeping now';
-  const manualLabel =
-    language === 'fr' ? 'Saisir manuellement' : language === 'es' ? 'Registrar pasado' : language === 'nl' ? 'Handmatig invoeren' : 'Log past sleep';
-  const manualHint =
-    language === 'fr' ? 'Déjà terminé' : language === 'es' ? 'Ya terminó' : language === 'nl' ? 'Al afgelopen' : 'Already finished';
+  const startTimerLabel = t('sleep.startTimer');
+  const startTimerHint = t('sleep.startTimerHint');
+  const manualLabel = t('sleep.logPast');
+  const manualHint = t('sleep.logPastHint');
 
   const modePicker = !editing && sleepInputMode === null ? (
     <View style={styles.sectionCard}>
