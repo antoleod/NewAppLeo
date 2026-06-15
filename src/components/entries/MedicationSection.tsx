@@ -35,7 +35,7 @@ export const MedicationSection = React.memo(function MedicationSection({
   occurredAt,
 }: Props) {
   const { colors, theme } = useTheme();
-  const { t, format } = useTranslation();
+  const { t } = useTranslation();
   const { language } = useLocale();
   const { entries } = useAppData();
   const { profile, saveProfile } = useAuth();
