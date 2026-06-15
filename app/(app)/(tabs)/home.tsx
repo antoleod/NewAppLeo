@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -1493,155 +1494,143 @@ export default function HomeScreen() {
         }
       >
         <View style={{ paddingBottom: Math.max(140, insets.bottom + 120) }}>
-          {/* Premium Compact Header */}
-          <Animated.View entering={FadeIn.duration(300)} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 }}>
-            {/* Top row: greeting + settings */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{
-                  color: TEXT,
-                  fontSize: 12,
-                  fontWeight: '700',
-                  letterSpacing: 0.6,
-                  marginBottom: 3,
-                  opacity: 0.72,
-                  ...textShadow('rgba(255,255,255,0.10)', 0, 1, 2),
-                  textTransform: 'uppercase',
-                   shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-                }}>
-                  {t(`greeting.${getHourPeriod()}`)}
-                </Text>
-                <Text style={{
-                  color: TEXT,
-                  fontSize: 24,
-                  fontWeight: '800',
-                  letterSpacing: -0.6,
-                  ...textShadow('rgba(0,0,0,0.5)', 0, 1, 6),
-                }}>
-                  {resolvedDisplayName}
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <SyncStatusBadge />
-                <Pressable
-                  onPress={() => setShowHomeCustomizer(true)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={({ pressed }) => ({
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    borderWidth: 1,
-                    borderColor: BORDER,
-                    backgroundColor: pressed ? BORDER_SOFT : CARD,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transform: [{ scale: pressed ? 0.92 : 1 }],
-                  })}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('home.customizeHome')}
-                >
-                  <Ionicons name="options-outline" size={18} color={TEXT_SECONDARY} />
-                </Pressable>
-              </View>
-            </View>
 
-            {/* Baby chip - compact and premium */}
-            <Pressable
-              onPress={() => setShowBabySwitcher(true)}
-              accessibilityRole="button"
-              accessibilityLabel={activeBabyName}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 14,
+          {/* ── HERO CARD ─────────────────────────────────────────── */}
+          <Animated.View entering={FadeIn.duration(340)} style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 }}>
+            <LinearGradient
+              colors={[`${ACCENT}28`, `${ACCENT}10`, 'transparent']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={{
+                borderRadius: 24,
                 borderWidth: 1,
-                borderColor: BORDER,
-                backgroundColor: pressed ? BORDER_SOFT : CARD,
-              })}
+                borderColor: `${ACCENT}28`,
+                overflow: 'hidden',
+                ...shadow(ACCENT, 0.14, 24, 0, 8),
+              }}
             >
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: `${ACCENT}15`, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: ACCENT, fontSize: 14, fontWeight: '700' }}>{activeBabyName.charAt(0).toUpperCase()}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: TEXT, fontSize: 14, fontWeight: '600' }}>{activeBabyName}</Text>
-                {babyAge && (
-                  <Text style={{ color: MUTED, fontSize: 11, marginTop: 1 }}>
-                    {babyAge.months}{t('home.ageMonth')}{babyAge.days}{t('home.ageDay')}
-                    {lastMeasurement?.payload?.weightKg && ` · ${lastMeasurement.payload.weightKg} kg`}
-                    {lastMeasurement?.payload?.heightCm && ` · ${lastMeasurement.payload.heightCm} cm`}
-                  </Text>
-                )}
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={SOFT} />
-            </Pressable>
-          </Animated.View>
+              {/* top glass line */}
+              <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.12)', borderTopLeftRadius: 24, borderTopRightRadius: 24 }} />
 
-          {/* Primary actions — always visible */}
-          <Animated.View entering={FadeInDown.duration(260).delay(80)} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Pressable
-                onPress={() => (activeTimer?.kind === 'bottle' ? minimizeTimer() : startQuickTimer('bottle'))}
-                accessibilityRole="button"
-                accessibilityLabel={activeTimer?.kind === 'bottle' ? `${t('feeding.bottle')} · ${t('timer.running')}` : t('feeding.bottle')}
-                style={({ pressed }) => {
-                  const running = activeTimer?.kind === 'bottle';
-                  return {
-                    flex: 3,
-                    height: 58,
-                    borderRadius: 16,
-                    borderWidth: running ? 2 : 1.5,
-                    borderColor: running ? BLUE : (pressed ? BLUE + '80' : BORDER),
-                    backgroundColor: running ? BLUE + '12' : (pressed ? BLUE + '14' : CARD),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexDirection: 'row',
-                    gap: 6,
-                    transform: [{ scale: pressed ? 0.97 : 1 }],
-                  };
-                }}
-              >
-                <BottleIcon color={TEXT} size={24} />
-                <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('feeding.bottle')}</Text>
-                <Text style={{ color: TEXT_SECONDARY, fontSize: 12, fontWeight: '600', marginLeft: 2 }}>{quickAmount} ml</Text>
-                {activeTimer?.kind === 'bottle' ? (
-                  <View accessibilityElementsHidden style={{ position: 'absolute', top: 6, right: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: BLUE, borderWidth: 2, borderColor: CARD }} />
-                ) : null}
-              </Pressable>
-              <Pressable
-                onPress={() => (activeTimer?.kind === 'breast' ? minimizeTimer() : setShowNextFeedPicker(true))}
-                accessibilityRole="button"
-                accessibilityLabel={activeTimer?.kind === 'breast' ? `${t('feeding.breast')} · ${t('timer.running')}` : t('feeding.breast')}
-                style={({ pressed }) => {
-                  const running = activeTimer?.kind === 'breast';
-                  return {
-                    flex: 2,
-                    height: 58,
-                    borderRadius: 16,
-                    borderWidth: running ? 2 : 1.5,
-                    borderColor: running ? ACCENT : (pressed ? ACCENT + '80' : BORDER),
-                    backgroundColor: running ? ACCENT + '12' : (pressed ? ACCENT + '14' : CARD),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexDirection: 'row',
-                    gap: 6,
-                    transform: [{ scale: pressed ? 0.97 : 1 }],
-                  };
-                }}
-              >
-                <BreastfeedingIcon color={TEXT} size={24} />
-                <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('feeding.breast')}</Text>
-                {activeTimer?.kind === 'breast' ? (
-                  <View accessibilityElementsHidden style={{ position: 'absolute', top: 6, right: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT, borderWidth: 2, borderColor: CARD }} />
-                ) : null}
-              </Pressable>
-            </View>
+              <View style={{ padding: 18, backgroundColor: `${CARD}CC` }}>
+
+                {/* row 1 — greeting + actions */}
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: MUTED, fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
+                      {t(`greeting.${getHourPeriod()}`)}
+                    </Text>
+                    <Text style={{ color: TEXT, fontSize: 28, fontWeight: '900', letterSpacing: -0.8, lineHeight: 32 }}>
+                      {resolvedDisplayName}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                    <SyncStatusBadge />
+                    <Pressable
+                      onPress={() => setShowHomeCustomizer(true)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('home.customizeHome')}
+                      style={({ pressed }) => ({
+                        width: 38, height: 38, borderRadius: 19,
+                        borderWidth: 1, borderColor: BORDER,
+                        backgroundColor: pressed ? BORDER_SOFT : `${CARD}99`,
+                        alignItems: 'center', justifyContent: 'center',
+                        transform: [{ scale: pressed ? 0.92 : 1 }],
+                      })}
+                    >
+                      <Ionicons name="options-outline" size={16} color={TEXT_SECONDARY} />
+                    </Pressable>
+                  </View>
+                </View>
+
+                {/* row 2 — baby info pill */}
+                <Pressable
+                  onPress={() => setShowBabySwitcher(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={activeBabyName}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row', alignItems: 'center', gap: 10,
+                    paddingHorizontal: 12, paddingVertical: 9,
+                    borderRadius: 14, borderWidth: 1,
+                    borderColor: `${ACCENT}22`,
+                    backgroundColor: pressed ? `${ACCENT}12` : `${ACCENT}0A`,
+                    marginBottom: 16,
+                    alignSelf: 'flex-start',
+                  })}
+                >
+                  <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: `${ACCENT}20`, borderWidth: 1, borderColor: `${ACCENT}35`, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: ACCENT, fontSize: 13, fontWeight: '800' }}>{activeBabyName.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View>
+                    <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>{activeBabyName}</Text>
+                    {babyAge ? (
+                      <Text style={{ color: MUTED, fontSize: 11, fontWeight: '500', marginTop: 1 }}>
+                        {babyAge.months}{t('home.ageMonth')}{babyAge.days}{t('home.ageDay')}
+                        {lastMeasurement?.payload?.weightKg ? ` · ${lastMeasurement.payload.weightKg} kg` : null}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={{ marginLeft: 2 }}><Ionicons name="chevron-forward" size={14} color={MUTED} /></View>
+                </Pressable>
+
+                {/* row 3 — feeding actions */}
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Pressable
+                    onPress={() => (activeTimer?.kind === 'bottle' ? minimizeTimer() : startQuickTimer('bottle'))}
+                    accessibilityRole="button"
+                    accessibilityLabel={activeTimer?.kind === 'bottle' ? `${t('feeding.bottle')} · ${t('timer.running')}` : t('feeding.bottle')}
+                    style={({ pressed }) => {
+                      const running = activeTimer?.kind === 'bottle';
+                      return {
+                        flex: 3, height: 54, borderRadius: 14,
+                        borderWidth: running ? 2 : 1,
+                        borderColor: running ? BLUE : `${BLUE}40`,
+                        backgroundColor: running ? `${BLUE}18` : pressed ? `${BLUE}12` : `${BLUE}08`,
+                        alignItems: 'center', justifyContent: 'center',
+                        flexDirection: 'row', gap: 7,
+                        transform: [{ scale: pressed ? 0.97 : 1 }],
+                        ...shadow(BLUE, running ? 0.22 : 0.08, 12, 0, 4),
+                      };
+                    }}
+                  >
+                    <BottleIcon color={BLUE} size={22} />
+                    <View>
+                      <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('feeding.bottle')}</Text>
+                      <Text style={{ color: MUTED, fontSize: 11, fontWeight: '600' }}>{quickAmount} ml</Text>
+                    </View>
+                    {activeTimer?.kind === 'bottle' ? (
+                      <View accessibilityElementsHidden style={{ position: 'absolute', top: 7, right: 9, width: 8, height: 8, borderRadius: 4, backgroundColor: BLUE, borderWidth: 2, borderColor: CARD }} />
+                    ) : null}
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => (activeTimer?.kind === 'breast' ? minimizeTimer() : setShowNextFeedPicker(true))}
+                    accessibilityRole="button"
+                    accessibilityLabel={activeTimer?.kind === 'breast' ? `${t('feeding.breast')} · ${t('timer.running')}` : t('feeding.breast')}
+                    style={({ pressed }) => {
+                      const running = activeTimer?.kind === 'breast';
+                      return {
+                        flex: 2, height: 54, borderRadius: 14,
+                        borderWidth: running ? 2 : 1,
+                        borderColor: running ? ACCENT : `${ACCENT}40`,
+                        backgroundColor: running ? `${ACCENT}18` : pressed ? `${ACCENT}12` : `${ACCENT}08`,
+                        alignItems: 'center', justifyContent: 'center',
+                        flexDirection: 'row', gap: 7,
+                        transform: [{ scale: pressed ? 0.97 : 1 }],
+                        ...shadow(ACCENT, running ? 0.22 : 0.08, 12, 0, 4),
+                      };
+                    }}
+                  >
+                    <BreastfeedingIcon color={ACCENT} size={22} />
+                    <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('feeding.breast')}</Text>
+                    {activeTimer?.kind === 'breast' ? (
+                      <View accessibilityElementsHidden style={{ position: 'absolute', top: 7, right: 9, width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT, borderWidth: 2, borderColor: CARD }} />
+                    ) : null}
+                  </Pressable>
+                </View>
+
+              </View>
+            </LinearGradient>
           </Animated.View>
 
           {/* Dynamic ordered sections */}
