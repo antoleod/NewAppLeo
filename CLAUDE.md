@@ -103,6 +103,45 @@ Firebase Auth + Firestore profile at `users/{uid}`. Three modes:
 
 `AuthContext` exposes `user`, `profile`, `guestMode`. The `profile` object (`UserProfile`) holds theme mode, language, and onboarding status.
 
+### Source structure
+
+```
+src/
+  components/           # UI components organized by screen domain
+    entries/            # Per-type form sections (*Section.tsx, 11 types)
+    history/            # HistoryEntryRow, EntryEditSheet, ShareCard, …
+    home/               # FoodHistoryRow, NextFeedingCard, TimerModal, …
+    icons/              # Icon pack system (soft/classic/outline/bold)
+    insights/           # WeightHistoryChart
+    navigation/         # TabIcons
+    profile/            # BabyEditSheet, DataImporter/Exporter, …
+    shared/
+      ui/               # Design system: Page, Card, Button, Heading, Input, …
+      Chip, Toast, SyncStatusBadge, QuantityPicker, …
+    system/             # BabyFlowIcon
+  config/               # Third-party setup (firebase.ts)
+  context/              # React contexts: AppData, Auth, Locale, Theme, Timer
+  data/                 # Static JSON: medications, food-portions, seasonal-foods, leodata
+  hooks/                # Domain hooks: useNextFeeding, useFeedingSettings, useTemperatureEntry, …
+  i18n/                 # Translation engine (engine.ts) + translations.ts
+  lib/                  # Baby-tracking domain logic + sync/storage
+    entryComposer/      # Builds entry titles/payloads
+    patterns.ts         # Smart alerts and feeding analysis
+    sync.ts / storage.ts / sleepDraft.ts / …
+  locales/              # en/fr/es/nl JSON translation files
+  services/             # External / feature services
+    authService, localStore, notifications, photoStorage,
+    shareEntry, importExport, pdf, pairingService, …
+  utils/                # Pure helpers (no side effects)
+    date.ts, shadow.ts, haptics.ts, confirm.ts, crypto.ts, entries.ts
+    homeHelpers.ts      # Pure functions extracted from home.tsx
+    historyHelpers.ts   # Pure functions extracted from history.tsx
+    profileHelpers.ts   # Unit conversions and validation for profile.tsx
+  theme.ts              # Color tokens, spacing, radii
+  typography.ts         # Text style scale
+  types.ts              # EntryRecord, EntryType, UserProfile, AppLanguage, …
+```
+
 ### Key files
 
 | File | Purpose |
@@ -114,7 +153,9 @@ Firebase Auth + Firestore profile at `users/{uid}`. Three modes:
 | `src/services/localStore.ts` | CRUD for entries in AsyncStorage |
 | `src/lib/patterns.ts` | Smart alerts and feeding interval analysis |
 | `src/lib/entryComposer/` | Builds entry titles/payloads shared by the entry form and history |
-| `app/(app)/entry/[type].tsx` | Monolithic entry form — handles all 11 entry types via `type` route param; per-type UI lives in `src/components/entries/*Section.tsx` |
+| `src/config/firebase.ts` | Firebase app initialization |
+| `src/i18n/engine.ts` | i18n engine (dot-notation lookup, interpolation) |
+| `app/(app)/entry/[type].tsx` | Entry form — handles all 11 entry types via `type` route param; per-type UI lives in `src/components/entries/*Section.tsx` |
 
 ### Environment variables
 
