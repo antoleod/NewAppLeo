@@ -19,17 +19,31 @@ import { Button } from './primitives';
 
 export function Card({ children, style }: { children: React.ReactNode; style?: any }) {
   const { width } = useWindowDimensions();
-  const { theme } = useTheme();
+  const { theme, mode } = useTheme();
   const isDesktopWeb = Platform.OS === 'web' && width >= 1100;
+  const isDark = mode === 'dark';
   return (
     <View
       style={[
         styles.card,
         isDesktopWeb && styles.cardDesktop,
-        { backgroundColor: theme.bgCard, borderColor: theme.border, ...shadow(theme.textPrimary, 0.04, 10, 0, 6) },
+        {
+          backgroundColor: theme.bgCard,
+          borderColor: withColorOpacity(theme.accent, isDark ? 0.16 : 0.13),
+          ...shadow(theme.accent, isDark ? 0.13 : 0.09, 22, 0, 8),
+        },
         style,
       ]}
     >
+      {/* glass shelf — 1px top highlight */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute', left: 0, right: 0, top: 0, height: 1,
+          backgroundColor: withColorOpacity('#ffffff', isDark ? 0.07 : 0.65),
+          borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg,
+        }}
+      />
       {children}
     </View>
   );
@@ -139,7 +153,10 @@ export function SectionHeader({ title, action }: { title: string; action?: React
   const { theme } = useTheme();
   return (
     <View style={styles.sectionHeaderContainer}>
-      <Text style={[styles.sectionHeaderTitle, { color: theme.textPrimary }]}>{title}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+        <View style={{ width: 3, height: 15, borderRadius: 2, backgroundColor: theme.accent, opacity: 0.85 }} />
+        <Text style={[styles.sectionHeaderTitle, { color: theme.textPrimary }]}>{title}</Text>
+      </View>
       {action}
     </View>
   );
@@ -172,7 +189,7 @@ export function EntryCard({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }: any) => [styles.entryCard, { backgroundColor: theme.bgCard, borderColor: theme.border, opacity: pressed ? 0.92 : 1 }]}
+      style={({ pressed }: any) => [styles.entryCard, { backgroundColor: theme.bgCard, borderColor: withColorOpacity(theme.accent, 0.13), ...shadow(theme.accent, 0.09, 18, 0, 6), opacity: pressed ? 0.92 : 1 }]}
     >
       <View style={{ flex: 1, gap: 6 }}>
         <Text style={[styles.entryTitle, { color: theme.textPrimary }]}>{title}</Text>
@@ -187,7 +204,7 @@ export function EntryCard({
 export function SkeletonCard({ lines = 3 }: { lines?: number }) {
   const { theme } = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: theme.bgCard, borderColor: theme.border, ...shadow(theme.textPrimary, 0.04, 10, 0, 6), gap: 10 }]}>
+    <View style={[styles.card, { backgroundColor: theme.bgCard, borderColor: withColorOpacity(theme.accent, 0.13), ...shadow(theme.accent, 0.09, 18, 0, 6), gap: 10 }]}>
       <SkeletonLine width="60%" height={18} />
       {Array.from({ length: lines }).map((_, idx) => (
         <SkeletonLine key={idx} width={idx === lines - 1 ? '40%' : '100%'} height={12} />

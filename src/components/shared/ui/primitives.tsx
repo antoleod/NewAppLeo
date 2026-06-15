@@ -8,6 +8,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -55,17 +56,21 @@ export function Button({
     opacity: disabled ? 0.5 : 1 - press.value * 0.08,
   }));
 
-  let bg: string, borderColor: string, textColor: string, shadowOpacity = 0;
+  let bg: string, borderColor: string, textColor: string, shadowColor: string, shadowOpacity = 0;
   switch (tier) {
     case 'primary':
-      bg = theme.accent; borderColor = theme.accent; textColor = theme.accentText; shadowOpacity = 0.18; break;
+      bg = theme.accent; borderColor = theme.accent; textColor = theme.accentText;
+      shadowColor = theme.accent; shadowOpacity = 0.38; break;
     case 'secondary':
-      bg = withColorOpacity(theme.accent, 0.14); borderColor = withColorOpacity(theme.accent, 0.32); textColor = theme.accent; break;
+      bg = withColorOpacity(theme.accent, 0.14); borderColor = withColorOpacity(theme.accent, 0.32);
+      textColor = theme.accent; shadowColor = theme.accent; break;
     case 'danger':
-      bg = theme.red; borderColor = theme.red; textColor = '#ffffff'; shadowOpacity = 0.16; break;
+      bg = theme.red; borderColor = theme.red; textColor = '#ffffff';
+      shadowColor = theme.red; shadowOpacity = 0.32; break;
     case 'tertiary':
     default:
-      bg = 'transparent'; borderColor = theme.border; textColor = theme.textPrimary; break;
+      bg = 'transparent'; borderColor = theme.border; textColor = theme.textPrimary;
+      shadowColor = theme.textPrimary; break;
   }
 
   const sizeTokens = {
@@ -82,8 +87,17 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || loading }}
-      style={[{ minHeight: sizeTokens.h, width: fullWidth ? '100%' : undefined, paddingHorizontal: sizeTokens.padX, borderRadius: sizeTokens.radius, borderWidth: 1, backgroundColor: bg, borderColor, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: sizeTokens.gap, ...shadow(theme.textPrimary, shadowOpacity, 12, 0, 4) }, animStyle, style]}
+      style={[{ minHeight: sizeTokens.h, width: fullWidth ? '100%' : undefined, paddingHorizontal: sizeTokens.padX, borderRadius: sizeTokens.radius, borderWidth: 1, backgroundColor: bg, borderColor, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: sizeTokens.gap, overflow: 'hidden', ...shadow(shadowColor, shadowOpacity, 14, 0, 5) }, animStyle, style]}
     >
+      {/* shimmer overlay for primary/danger */}
+      {(tier === 'primary' || tier === 'danger') ? (
+        <LinearGradient
+          colors={[withColorOpacity('#ffffff', 0.18), 'transparent']}
+          start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+      ) : null}
       {loading ? (
         <ActivityIndicator color={tier === 'primary' || tier === 'danger' ? '#ffffff' : theme.accent} />
       ) : (
