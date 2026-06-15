@@ -15,11 +15,17 @@ const strokeProps = {
 export function DiaperIcon({ size = 24, color = '#E74C3C' }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M5 7.2C7 8.3 9.3 8.9 12 8.9C14.7 8.9 17 8.3 19 7.2" stroke={color} strokeWidth={1.8} {...strokeProps} />
-      <Path d="M5.5 7.5L7.1 17.4C7.3 18.7 8.4 19.6 9.7 19.6H14.3C15.6 19.6 16.7 18.7 16.9 17.4L18.5 7.5" stroke={color} strokeWidth={1.8} {...strokeProps} />
-      <Path d="M8.2 10.4L9.5 15.4C9.8 16.5 10.8 17.2 12 17.2C13.2 17.2 14.2 16.5 14.5 15.4L15.8 10.4" fill={color} opacity={0.14} />
-      <Circle cx={8.5} cy={7.2} r={1.1} fill={color} opacity={0.55} />
-      <Circle cx={15.5} cy={7.2} r={1.1} fill={color} opacity={0.55} />
+      <Rect x={1.5} y={7} width={4.5} height={2.8} rx={1.4} fill={color} opacity={0.7} />
+      <Rect x={18} y={7} width={4.5} height={2.8} rx={1.4} fill={color} opacity={0.7} />
+      <Circle cx={5.2} cy={8.4} r={0.9} fill={color} />
+      <Circle cx={18.8} cy={8.4} r={0.9} fill={color} />
+      <Path d="M6 8.2 C7.8 6.8 9.8 6.2 12 6.2 C14.2 6.2 16.2 6.8 18 8.2" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+      <Path
+        d="M6.2 8.4 C6.2 8.4 7.6 10.6 7.6 12.4 C7.6 14.2 6 16.8 5.8 18.4 C5.6 19.8 6.6 21 8 21 L16 21 C17.4 21 18.4 19.8 18.2 18.4 C18 16.8 16.4 14.2 16.4 12.4 C16.4 10.6 17.8 8.4 17.8 8.4 Z"
+        stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"
+        fill={color} fillOpacity={0.08}
+      />
+      <Path d="M9.2 11.2 C10.2 10.4 11.2 10 12 10 C12.8 10 13.8 10.4 14.8 11.2" stroke={color} strokeWidth={1.5} strokeLinecap="round" opacity={0.35} />
     </Svg>
   );
 }
@@ -100,9 +106,24 @@ export function MeasurementIcon({ size = 24, color = '#A371F7' }: IconProps) {
 export function SleepIcon({ size = 24, color = '#58A6FF' }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M17.8 14.5C14.2 14.5 11.3 11.6 11.3 8C11.3 6.8 11.6 5.6 12.2 4.6C8 5.1 4.8 8.6 4.8 12.9C4.8 17.5 8.5 21.2 13.1 21.2C16.5 21.2 19.4 19.2 20.7 16.3C19.8 16.2 18.8 15.8 17.8 14.5Z" stroke={color} strokeWidth={1.8} {...strokeProps} />
-      <Path d="M13.2 18.5C16 18.5 18.4 17.1 19.8 15" fill={color} opacity={0.14} />
-      <Path d="M16.8 4.8H20.4L16.8 8.6H20.4" stroke={color} strokeWidth={1.5} {...strokeProps} />
+      {/* crescent moon — filled solid shape */}
+      <Path
+        d="M12.2 2.6 C7.4 3.2 3.6 7.4 3.6 12.6 C3.6 17.8 7.6 22 12.6 22 C14.6 22 16.4 21.2 17.8 19.8 C16.2 20.4 14.2 20.2 12.6 19 C9.4 16.8 7.8 13 8.8 9.4 C9.4 7 10.8 5 12.8 3.8 C12.6 3.4 12.4 3 12.2 2.6 Z"
+        fill={color}
+        opacity={0.9}
+      />
+      {/* eyes closed — two soft arcs on the moon face */}
+      <Path d="M8.6 13 C9 12.4 9.8 12.2 10.4 12.6" stroke="white" strokeWidth={1.4} strokeLinecap="round" />
+      <Path d="M11 11.8 C11.4 11.2 12.2 11 12.8 11.4" stroke="white" strokeWidth={1.4} strokeLinecap="round" />
+      {/* gentle smile */}
+      <Path d="M9 15 C9.8 16 11 16.2 12 15.8" stroke="white" strokeWidth={1.2} strokeLinecap="round" fill="none" />
+      {/* cheek blushes */}
+      <Circle cx={8.4} cy={14.6} r={1} fill="white" fillOpacity={0.18} />
+      <Circle cx={12.8} cy={14.2} r={1} fill="white" fillOpacity={0.18} />
+      {/* stars */}
+      <Circle cx={20} cy={6} r={1.2} fill={color} />
+      <Circle cx={18.6} cy={10.6} r={0.7} fill={color} opacity={0.6} />
+      <Circle cx={21.6} cy={10} r={0.5} fill={color} opacity={0.45} />
     </Svg>
   );
 }
