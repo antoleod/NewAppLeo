@@ -1364,53 +1364,55 @@ export default function EntryComposerScreen() {
           )}
         </Pressable>
 
-        {editing && (
-          <View style={styles.secondaryActionsRow}>
-            <Pressable
-              onPress={() => {
-                if (router.canGoBack()) router.back();
-                else router.replace('/home');
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={t('common.cancel')}
-              style={({ pressed }) => [
-                styles.secondaryActionBtn,
-                { borderColor: colors.border, backgroundColor: pressed ? colors.border : 'transparent' },
-              ]}
-            >
-              <Ionicons name="arrow-back-outline" size={18} color={colors.muted} />
-              <Text style={[styles.secondaryActionLabel, { color: colors.muted }]}>
-                {t('common.cancel')}
-              </Text>
-            </Pressable>
+        <View style={styles.secondaryActionsRow}>
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace('/home');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.cancel')}
+            style={({ pressed }) => [
+              styles.secondaryActionBtn,
+              { borderColor: colors.border, backgroundColor: pressed ? colors.border : 'transparent' },
+            ]}
+          >
+            <Ionicons name="arrow-back-outline" size={18} color={colors.muted} />
+            <Text style={[styles.secondaryActionLabel, { color: colors.muted }]}>
+              {t('common.cancel')}
+            </Text>
+          </Pressable>
 
-            <Pressable
-              onPress={() => { if (editing) setShowSharePreview(true); }}
-              style={({ pressed }) => [
-                styles.secondaryActionBtn,
-                { borderColor: theme.accent, backgroundColor: pressed ? `${theme.accent}18` : 'transparent' },
-              ]}
-            >
-              <Ionicons name="share-social-outline" size={18} color={theme.accent} />
-              <Text style={[styles.secondaryActionLabel, { color: theme.accent }]}>
-                {t('common.share')}
-              </Text>
-            </Pressable>
+          {editing && (
+            <>
+              <Pressable
+                onPress={() => { if (editing) setShowSharePreview(true); }}
+                style={({ pressed }) => [
+                  styles.secondaryActionBtn,
+                  { borderColor: theme.accent, backgroundColor: pressed ? `${theme.accent}18` : 'transparent' },
+                ]}
+              >
+                <Ionicons name="share-social-outline" size={18} color={theme.accent} />
+                <Text style={[styles.secondaryActionLabel, { color: theme.accent }]}>
+                  {t('common.share')}
+                </Text>
+              </Pressable>
 
-            <Pressable
-              onPress={handleDelete}
-              style={({ pressed }) => [
-                styles.secondaryActionBtn,
-                { borderColor: theme.red, backgroundColor: pressed ? `${theme.red}18` : 'transparent' },
-              ]}
-            >
-              <Ionicons name="trash-outline" size={18} color={theme.red} />
-              <Text style={[styles.secondaryActionLabel, { color: theme.red }]}>
-                {t('common.delete')}
-              </Text>
-            </Pressable>
-          </View>
-        )}
+              <Pressable
+                onPress={handleDelete}
+                style={({ pressed }) => [
+                  styles.secondaryActionBtn,
+                  { borderColor: theme.red, backgroundColor: pressed ? `${theme.red}18` : 'transparent' },
+                ]}
+              >
+                <Ionicons name="trash-outline" size={18} color={theme.red} />
+                <Text style={[styles.secondaryActionLabel, { color: theme.red }]}>
+                  {t('common.delete')}
+                </Text>
+              </Pressable>
+            </>
+          )}
+        </View>
       </Animated.View>
     )}
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, RefreshControl, ScrollView, Share, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -282,6 +283,7 @@ export default function HistoryScreen() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const { isWideWeb } = useWideWeb();
+  const insets = useSafeAreaInsets();
   const { t, format, language } = useTranslation();
   const intlLocale = LOCALE_MAP[language] ?? 'fr-FR';
   const FILTERS = useMemo(
@@ -1193,42 +1195,117 @@ export default function HistoryScreen() {
       </Animated.View>
     ) : null;
 
+  const bottomNavHeight = 60 + insets.bottom;
+
   return (
-    <Page
-      scroll={!isWideWeb}
-      contentStyle={[{ width: '100%' }, isWideWeb && { flex: 1 }]}
-      refreshControl={
-        !isWideWeb ? (
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onPullToRefresh}
-            tintColor={GOLD}
-            colors={[GOLD]}
-          />
-        ) : undefined
-      }
-    >
-      {isWideWeb ? (
-        <View style={{ flex: 1, flexDirection: 'row', gap: 16, minHeight: 0, position: 'relative' }}>
-          <ScrollView
-            style={{ width: 400, flexShrink: 0 }}
-            contentContainerStyle={{ gap: 18, paddingBottom: 24 }}
-            showsVerticalScrollIndicator
-          >
+    <View style={{ flex: 1 }}>
+      <Page
+        scroll={!isWideWeb}
+        contentStyle={[{ width: '100%' }, isWideWeb && { flex: 1 }]}
+        refreshControl={
+          !isWideWeb ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onPullToRefresh}
+              tintColor={GOLD}
+              colors={[GOLD]}
+            />
+          ) : undefined
+        }
+      >
+        {isWideWeb ? (
+          <View style={{ flex: 1, flexDirection: 'row', gap: 16, minHeight: 0, position: 'relative' }}>
+            <ScrollView
+              style={{ width: 400, flexShrink: 0 }}
+              contentContainerStyle={{ gap: 18, paddingBottom: 24 }}
+              showsVerticalScrollIndicator
+            >
+              {historySidebar}
+            </ScrollView>
+            <GestureScrollView ref={historyScrollRef} style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ gap: 18, paddingBottom: 24 }} showsVerticalScrollIndicator>
+              {historyMain}
+            </GestureScrollView>
+            {undoBar}
+          </View>
+        ) : (
+          <View style={{ gap: 14, position: 'relative', paddingBottom: bottomNavHeight }}>
             {historySidebar}
-          </ScrollView>
-          <GestureScrollView ref={historyScrollRef} style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ gap: 18, paddingBottom: 24 }} showsVerticalScrollIndicator>
             {historyMain}
-          </GestureScrollView>
-          {undoBar}
-        </View>
-      ) : (
-        <View style={{ gap: 14, position: 'relative' }}>
-          {historySidebar}
-          {historyMain}
-          {undoBar}
+            {undoBar}
+          </View>
+        )}
+      </Page>
+
+      {/* Sticky bottom day navigation — mobile only, thumb-reachable */}
+      {!isWideWeb && (
+        <View style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 40,
+          backgroundColor: CARD,
+          borderTopWidth: 1, borderTopColor: BORDER,
+          paddingBottom: insets.bottom,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', height: 60, paddingHorizontal: 16, gap: 10 }}>
+            <Pressable
+              onPress={() => setSelectedDate((current) => subtractDays(current, 1))}
+              accessibilityRole="button"
+              accessibilityLabel={t('history.prevDay')}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                width: 48, height: 48, borderRadius: 24,
+                alignItems: 'center', justifyContent: 'center',
+                backgroundColor: pressed ? BORDER : BG,
+                borderWidth: 1, borderColor: BORDER,
+              })}
+            >
+              <Ionicons name="chevron-back" size={22} color={TEXT} />
+            </Pressable>
+
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              {dayRelativeLabel ? (
+                <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                  {dayRelativeLabel}
+                </Text>
+              ) : null}
+              <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
+                {new Intl.DateTimeFormat(intlLocale, { weekday: 'short', day: 'numeric', month: 'short' }).format(selectedDate)}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() => setSelectedDate(startOfDay(new Date()))}
+              accessibilityRole="button"
+              accessibilityLabel={t('history.today')}
+              disabled={isOnToday}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
+                borderWidth: 1, borderColor: isOnToday ? `${GOLD}88` : BORDER,
+                backgroundColor: isOnToday ? `${GOLD}1A` : (pressed ? BORDER : BG),
+                opacity: isOnToday ? 0.55 : 1,
+              })}
+            >
+              <Ionicons name="today-outline" size={16} color={isOnToday ? GOLD : TEXT} />
+            </Pressable>
+
+            <Pressable
+              onPress={() => setSelectedDate((current) => subtractDays(current, -1))}
+              accessibilityRole="button"
+              accessibilityLabel={t('history.nextDay')}
+              disabled={isOnToday}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                width: 48, height: 48, borderRadius: 24,
+                alignItems: 'center', justifyContent: 'center',
+                backgroundColor: pressed ? BORDER : BG,
+                borderWidth: 1, borderColor: BORDER,
+                opacity: isOnToday ? 0.35 : 1,
+              })}
+            >
+              <Ionicons name="chevron-forward" size={22} color={TEXT} />
+            </Pressable>
+          </View>
         </View>
       )}
-    </Page>
+    </View>
   );
 }
