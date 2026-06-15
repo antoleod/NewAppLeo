@@ -1,7 +1,7 @@
 import { EntryRecord } from '@/types';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { getMeanFeedingInterval } from './patterns';
+import { getMeanFeedingInterval } from '@/lib/patterns';
 
 export function buildDailySummary(entries: EntryRecord[]) {
   const feeds = entries.filter((entry) => entry.type === 'feed').length;

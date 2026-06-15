@@ -7,7 +7,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { createPairingSession, createCode, joinPairingSession, getLocalPairingSession, type PairingSession } from '@/services/pairingService';
 import { registerSessionForHost } from '@/services/sessionService';
-import { haptics } from '@/lib/haptics';
+import { haptics } from '@/utils/haptics';
 import { getDeviceDisplayName, setDeviceDisplayName } from '@/lib/storage';
 import { useTranslation } from '@/hooks/useTranslation';
 

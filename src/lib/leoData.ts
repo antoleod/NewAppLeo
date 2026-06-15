@@ -63,7 +63,7 @@ type LeoDataset = {
 };
 
 function getLeoDataset(): LeoDataset {
-  return require('../../leodata.json') as LeoDataset;
+  return require('../../src/data/leodata.json') as LeoDataset;
 }
 
 function toDurationMin(durationSec?: number) {

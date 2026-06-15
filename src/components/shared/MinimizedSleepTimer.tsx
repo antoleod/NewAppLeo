@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useActiveSleepDraft } from '@/hooks/useActiveSleepDraft';
-import { shadow } from '@/lib/shadow';
+import { shadow } from '@/utils/shadow';
 
 function pad(n: number) {
   return String(Math.max(0, Math.floor(n))).padStart(2, '0');

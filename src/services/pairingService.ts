@@ -1,6 +1,6 @@
 import { arrayUnion, collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { db } from '@/lib/firebase';
+import { db } from '@/config/firebase';
 
 export interface PairingSession {
   code: string;

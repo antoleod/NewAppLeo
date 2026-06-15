@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppData } from '@/context/AppDataContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
-import { haptics } from '@/lib/haptics';
+import { haptics } from '@/utils/haptics';
 
 /**
  * Compact sync indicator. Renders nothing in the steady "synced" state to

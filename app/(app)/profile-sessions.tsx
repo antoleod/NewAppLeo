@@ -7,7 +7,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { flushQueuedOperations, loadQueuedOperations } from '@/lib/sync';
-import { haptics } from '@/lib/haptics';
+import { haptics } from '@/utils/haptics';
 import {
   deleteSession,
   getCurrentSessionId,

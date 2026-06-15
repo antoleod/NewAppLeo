@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useLocale } from '@/context/LocaleContext';
-import { haptics } from '@/lib/haptics';
+import { haptics } from '@/utils/haptics';
 import { EntryRecord, FoodCategory } from '@/types';
 import { useIconPack } from '@/components/icons/IconPackContext';
 import { inferCategoryFromName } from '@/lib/food-suggestions';

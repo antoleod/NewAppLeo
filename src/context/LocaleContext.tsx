@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { AppLanguage } from '@/types';
-import { translate } from '@/lib/translations';
+import { translate } from '@/i18n/translations';
 
 interface LocaleContextValue {
   language: AppLanguage;

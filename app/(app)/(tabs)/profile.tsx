@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppState, Platform, Pressable, Share, Text, View } from 'react-native';
-import { confirmAction, alertInfo } from '@/lib/confirm';
+import { confirmAction, alertInfo } from '@/utils/confirm';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -26,7 +26,7 @@ import { getAgeInMonths, getWHORecommendation } from '@/lib/who-recommendations'
 import { getLocalPairingSession } from '@/services/pairingService';
 import { loadQueuedOperations } from '@/lib/sync';
 
-import { haptics } from '@/lib/haptics';
+import { haptics } from '@/utils/haptics';
 import type { UnitSystem } from '@/types';
 import { clearCurrentSession } from '@/services/sessionService';
 

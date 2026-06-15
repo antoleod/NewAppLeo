@@ -7,7 +7,7 @@ import {
   serverTimestamp,
   setDoc,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '@/config/firebase';
 import { OnboardingPayload, ThemeMode, UserProfile } from '@/types';
 import { encryptWithPin, generateSalt, hashPin, normalizeUsername } from '@/utils/crypto';
 import { getLocalProfile, getLocalProfileByUsername, putLocalProfile, putLocalUsername } from './localStore';

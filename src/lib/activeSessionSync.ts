@@ -8,7 +8,7 @@
  * Firestore acts as the cross-device fan-out layer.
  */
 import { doc, deleteDoc, onSnapshot, serverTimestamp, setDoc, type Unsubscribe } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '@/config/firebase';
 import type { ActiveTimer, TimerKind } from '@/context/TimerContext';
 
 const VALID_KINDS: ReadonlySet<TimerKind> = new Set(['breast', 'bottle', 'sleep', 'pump']);

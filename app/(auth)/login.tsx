@@ -22,7 +22,7 @@ import { Page , useToast } from '@/components/shared';
 import { useAuth } from '@/context/AuthContext';
 import { useLocale } from '@/context/LocaleContext';
 import { AppLanguage } from '@/types';
-import { shadow } from '@/lib/shadow';
+import { shadow } from '@/utils/shadow';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { storage } from './firebase';
+import { storage } from '@/config/firebase';
 
 const backgroundPhotoRef = (uid: string) => ref(storage, `users/${uid}/backgroundPhoto.jpg`);
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useLocale } from '@/context/LocaleContext';
-import { getTranslation, formatTranslation } from '@/lib/i18n';
+import { getTranslation, formatTranslation } from '@/i18n/engine';
 
 /**
  * Hook to access translations in components

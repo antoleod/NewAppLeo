@@ -9,7 +9,7 @@ import {
   type UserCredential,
 } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth, db } from '@/config/firebase';
 import { RegisterPayload } from '@/types';
 import {
   claimUsername,

@@ -27,10 +27,10 @@ import { BackgroundPhotoSelector , SettingsImporter , DataExporter } from '@/com
 
 import { defaultAppearanceSettings, getAppSettings, setAppSettings, type FeedingSettings } from '@/lib/storage';
 import { useFeedingSettings, saveFeedingSettings } from '@/hooks/useFeedingSettings';
-import { uploadBackgroundPhoto, deleteBackgroundPhoto } from '@/lib/photoStorage';
+import { uploadBackgroundPhoto, deleteBackgroundPhoto } from '@/services/photoStorage';
 import { useTranslation } from '@/hooks/useTranslation';
-import { confirmAction } from '@/lib/confirm';
-import { haptics } from '@/lib/haptics';
+import { confirmAction } from '@/utils/confirm';
+import { haptics } from '@/utils/haptics';
 
 const VARIANT_KEYS: readonly ThemeVariant[] = ['sage', 'mint', 'coral', 'plum', 'rose', 'navy', 'sand'];
 

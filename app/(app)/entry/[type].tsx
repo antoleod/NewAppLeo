@@ -33,18 +33,18 @@ import {
   TemperatureSection,
   VaccineSection,
 } from '@/components/entries';
-import { useTemperatureEntry } from '@/components/entries/useTemperatureEntry';
+import { useTemperatureEntry } from '@/hooks/useTemperatureEntry';
 import { getAppSettings, getSavedMedicines, upsertSavedMedicine, type SavedMedicine } from '@/lib/storage';
 import { clearSleepDraft, getSleepDraft, saveSleepDraft, type SleepDraft } from '@/lib/sleepDraft';
-import { scheduleVaccineReminder , scheduleMedicationReminder } from '@/lib/notifications';
+import { scheduleVaccineReminder , scheduleMedicationReminder } from '@/services/notifications';
 
 import { suggestFoodQuantities, inferCategoryFromName } from '@/lib/food-suggestions';
 import type { FoodCategory } from '@/types';
-import { haptics } from '@/lib/haptics';
+import { haptics } from '@/utils/haptics';
 
-import { shareEntryAsImage } from '@/lib/shareEntry';
+import { shareEntryAsImage } from '@/services/shareEntry';
 import { ShareCard } from '@/components/history';
-import { shadow } from '@/lib/shadow';
+import { shadow } from '@/utils/shadow';
 import {
   typeLabelsI18n,
   typeMeta,

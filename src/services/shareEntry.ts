@@ -1,7 +1,7 @@
 import { Share, Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import { EntryRecord } from '@/types';
-import { haptics } from './haptics';
+import { haptics } from '@/utils/haptics';
 import { GOOGLE_PLAY_URL } from '@/components/history';
 
 type Lang = 'fr' | 'es' | 'en' | 'nl';

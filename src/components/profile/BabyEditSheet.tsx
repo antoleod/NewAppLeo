@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Button, Input , DateTimeField } from '@/components/shared';
 import { useTheme } from '@/context/ThemeContext';
-import { haptics } from '@/lib/haptics';
+import { haptics } from '@/utils/haptics';
 import { spacing } from '@/theme';
 
 export interface BabyProfile {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { EntryRecord } from '@/types';
-import { shadow } from '@/lib/shadow';
+import { shadow } from '@/utils/shadow';
 
 const APP_ICON = require('../../../assets/branding/app-icon/babyflow-app-icon-192.png');
 

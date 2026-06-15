@@ -13,8 +13,8 @@ import { buildBabyFromProfile } from '@/lib/storage';
 
 import { useOnboarding, type OnboardingPath } from '@/hooks/useOnboarding';
 import { useTheme } from '@/context/ThemeContext';
-import { getTranslation } from '@/lib/i18n';
-import { confirmAction } from '@/lib/confirm';
+import { getTranslation } from '@/i18n/engine';
+import { confirmAction } from '@/utils/confirm';
 import { setOnboardingPin } from '@/services/userProfileService';
 import type { AppLanguage } from '@/types';
 import ConfettiCannon from 'react-native-confetti-cannon';

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth } from '@/config/firebase';
 import { OnboardingPayload, RegisterPayload, ThemeMode, UserProfile } from '@/types';
 import {
   completeOnboarding,

@@ -8,7 +8,7 @@ import Animated, {
   interpolateColor,
 } from 'react-native-reanimated';
 import { useTheme } from '@/context/ThemeContext';
-import { haptics } from '@/lib/haptics';
+import { haptics } from '@/utils/haptics';
 
 type Props = {
   /** Custom SVG glyph node (preferred). Falls back to `emoji` string if not provided. */

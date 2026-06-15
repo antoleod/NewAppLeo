@@ -30,7 +30,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/typography';
-import { shadow } from '@/lib/shadow';
+import { shadow } from '@/utils/shadow';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 

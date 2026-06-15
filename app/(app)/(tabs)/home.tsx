@@ -43,10 +43,10 @@ import { GetEntryIcon , BottleIcon, BreastfeedingIcon } from '@/components/histo
 
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
-import { confirmAction } from '@/lib/confirm';
-import { haptics } from '@/lib/haptics';
+import { confirmAction } from '@/utils/confirm';
+import { haptics } from '@/utils/haptics';
 import { mealTones } from '@/lib/entryComposer';
-import { shadow, textShadow } from '@/lib/shadow';
+import { shadow, textShadow } from '@/utils/shadow';
 
 const DEFAULT_SECTION_ORDER = [
   'nextFeed','statsStrip','quickAdd','smartSignals',
@@ -2219,49 +2219,6 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      {/* Sticky bottom quick-action bar — always reachable with thumb */}
-      <View style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 30,
-        backgroundColor: CARD,
-        borderTopWidth: 1, borderTopColor: BORDER,
-        paddingBottom: insets.bottom,
-        paddingHorizontal: 12,
-        paddingTop: 8,
-      }}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {([
-            { type: 'bottle', label: t('feeding.bottle'), color: ENTRY_COLORS.feed, onPress: () => (activeTimer?.kind === 'bottle' ? minimizeTimer() : startQuickTimer('bottle')) },
-            { type: 'diaper', label: t('entry.diaper'), color: ENTRY_COLORS.diaper, onPress: () => router.push('/entry/diaper' as any) },
-            { type: 'sleep', label: t('entry.sleep'), color: ENTRY_COLORS.sleep, onPress: () => router.push('/entry/sleep' as any) },
-            { type: 'food', label: t('entry.food'), color: ENTRY_COLORS.food, onPress: () => router.push('/entry/food' as any) },
-          ] as const).map((action) => {
-            const running = action.type === 'bottle' && activeTimer?.kind === 'bottle';
-            return (
-              <Pressable
-                key={action.type}
-                onPress={action.onPress}
-                accessibilityRole="button"
-                accessibilityLabel={running ? `${action.label} · ${t('timer.running')}` : action.label}
-                style={({ pressed }) => ({
-                  flex: 1, height: 52, borderRadius: 14,
-                  backgroundColor: pressed ? `${action.color}14` : 'transparent',
-                  borderWidth: running ? 2 : 1,
-                  borderColor: running ? action.color : (pressed ? `${action.color}55` : BORDER),
-                  alignItems: 'center', justifyContent: 'center', gap: 4,
-                })}
-              >
-                {GetEntryIcon(action.type === 'bottle' ? 'feed' : action.type, 22, action.color)}
-                {running ? (
-                  <View style={{ position: 'absolute', top: 5, right: 5, width: 8, height: 8, borderRadius: 4, backgroundColor: action.color, borderWidth: 1.5, borderColor: CARD }} />
-                ) : null}
-                <Text style={{ color: TEXT_SECONDARY, fontSize: 10, fontWeight: '600' }} numberOfLines={1}>
-                  {action.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
 
       <FullscreenTimerModal
         visible={Boolean(quickTimerMode && timerStartedAt && !showSaveSheet && !isTimerMinimized)}

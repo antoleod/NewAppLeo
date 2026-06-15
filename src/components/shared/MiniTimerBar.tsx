@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useTimer, TimerKind } from '@/context/TimerContext';
-import { shadow } from '@/lib/shadow';
+import { shadow } from '@/utils/shadow';
 import { BottleIcon, BreastfeedingIcon } from '@/components/history/FeedingIcons';
 import { PumpIcon, SleepIcon } from '@/components/history/EntryTypeIcons';
 

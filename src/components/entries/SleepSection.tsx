@@ -14,7 +14,7 @@ import {
   type SleepPeriod,
   type SleepSuggestion,
 } from '@/lib/sleep-suggestions';
-import { haptics } from '@/lib/haptics';
+import { haptics } from '@/utils/haptics';
 
 export type SleepQuality = 'calm' | 'restless' | 'interrupted';
 

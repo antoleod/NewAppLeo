@@ -4,7 +4,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { DiaperLevelPicker } from '@/components/home';
-import { haptics } from '@/lib/haptics';
+import { haptics } from '@/utils/haptics';
 import { useIconPack } from '@/components/icons/IconPackContext';
 
 export type PoopColor = 'yellow' | 'brown' | 'green' | 'dark' | 'red';

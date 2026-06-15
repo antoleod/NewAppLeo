@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { confirmAction, alertInfo } from '@/lib/confirm';
+import { confirmAction, alertInfo } from '@/utils/confirm';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';

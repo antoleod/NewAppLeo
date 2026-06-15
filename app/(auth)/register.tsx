@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { alertInfo } from '@/lib/confirm';
+import { alertInfo } from '@/utils/confirm';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Input, Page } from '@/components/shared';

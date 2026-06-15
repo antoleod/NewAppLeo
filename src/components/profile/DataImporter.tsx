@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Platform } from 'react-native';
-import { alertInfo } from '@/lib/confirm';
+import { alertInfo } from '@/utils/confirm';
 import { spacing, radii } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { typography } from '@/typography';
 import { Button, Card, SectionHeader } from '@/components/shared';
-import { parseImportData } from '@/lib/importExport';
+import { parseImportData } from '@/services/importExport';
 import { useAppData } from '@/context/AppDataContext';
 import { EntryType, EntryPayload } from '@/types';
 

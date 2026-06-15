@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '@/config/firebase';
 import { EntryRecord } from '@/types';
 import {
   BACKOFF_SCHEDULE_MS,
