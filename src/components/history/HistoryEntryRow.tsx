@@ -2,9 +2,12 @@ import React, { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { haptics } from '@/utils/haptics';
 import { EntryRecord } from '@/types';
 import { GetEntryIcon } from './EntryTypeIcons';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type RowTokens = {
   text: string; muted: string; soft: string; border: string; bg: string; tint: string; red: string; blue: string;
@@ -34,6 +37,8 @@ export const HistoryEntryRow = React.memo(function HistoryEntryRow({
   onToggle, onEdit, onDelete, scrollViewRef,
 }: HistoryEntryRowProps) {
   const swipeRef = useRef<SwipeableMethods | null>(null);
+  const pressScale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: pressScale.value }] }));
 
   const renderLeftAction = () => (
     <Pressable
@@ -67,17 +72,19 @@ export const HistoryEntryRow = React.memo(function HistoryEntryRow({
       friction={2}
       simultaneousHandlers={scrollViewRef}
     >
-      <Pressable
+      <AnimatedPressable
         onPress={() => onToggle(entry.id)}
+        onPressIn={() => { pressScale.value = withSpring(0.97, { damping: 20, stiffness: 400 }); }}
+        onPressOut={() => { pressScale.value = withSpring(1, { damping: 16, stiffness: 260 }); }}
         accessibilityRole="button"
         accessibilityLabel={`${typeLabel} · ${timeLabel}`}
         accessibilityState={{ expanded }}
-        style={({ pressed }) => ({
+        style={[{
           paddingVertical: 12, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1,
           borderColor: expanded ? tint : tokens.border,
-          backgroundColor: pressed ? tokens.border : tokens.bg,
+          backgroundColor: tokens.bg,
           gap: expanded ? 10 : 0,
-        })}
+        }, animStyle]}
       >
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
           <View style={{ width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: tint + '1F', borderWidth: 1, borderColor: tint + '38' }}>
@@ -97,7 +104,7 @@ export const HistoryEntryRow = React.memo(function HistoryEntryRow({
             <Text style={{ color: tokens.muted, fontSize: 13, lineHeight: 18 }}>{entry.notes || noNoteLabel}</Text>
           </View>
         ) : null}
-      </Pressable>
+      </AnimatedPressable>
     </ReanimatedSwipeable>
   );
 });

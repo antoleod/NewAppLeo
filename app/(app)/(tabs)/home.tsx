@@ -10,8 +10,11 @@ import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Page, SkeletonCard, SyncStatusBadge , QuantityPicker } from '@/components/shared';
 import { useIconPack } from '@/components/icons/IconPackContext';
@@ -394,6 +397,10 @@ export default function HomeScreen() {
   const hasAnyDiaper = useMemo(() => entries.some((e) => e.type === 'diaper'), [entries]);
 
   const milkProgress = useSharedValue(0);
+  const bottleScale = useSharedValue(1);
+  const breastScale = useSharedValue(1);
+  const bottleAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: bottleScale.value }] }));
+  const breastAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: breastScale.value }] }));
 
   const milkBarStyle = useAnimatedStyle(() => ({
     width: `${milkProgress.value}%`,
@@ -1575,23 +1582,24 @@ export default function HomeScreen() {
 
                 {/* row 3 — feeding actions */}
                 <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <Pressable
+                  <AnimatedPressable
                     onPress={() => (activeTimer?.kind === 'bottle' ? minimizeTimer() : startQuickTimer('bottle'))}
+                    onPressIn={() => { bottleScale.value = withSpring(0.96, { damping: 18, stiffness: 400 }); }}
+                    onPressOut={() => { bottleScale.value = withSpring(1, { damping: 14, stiffness: 260 }); }}
                     accessibilityRole="button"
                     accessibilityLabel={activeTimer?.kind === 'bottle' ? `${t('feeding.bottle')} · ${t('timer.running')}` : t('feeding.bottle')}
-                    style={({ pressed }) => {
+                    style={[(() => {
                       const running = activeTimer?.kind === 'bottle';
                       return {
                         flex: 3, height: 54, borderRadius: 14,
                         borderWidth: running ? 2 : 1,
                         borderColor: running ? BLUE : `${BLUE}40`,
-                        backgroundColor: running ? `${BLUE}18` : pressed ? `${BLUE}12` : `${BLUE}08`,
+                        backgroundColor: running ? `${BLUE}18` : `${BLUE}08`,
                         alignItems: 'center', justifyContent: 'center',
                         flexDirection: 'row', gap: 7,
-                        transform: [{ scale: pressed ? 0.97 : 1 }],
                         ...shadow(BLUE, running ? 0.22 : 0.08, 12, 0, 4),
                       };
-                    }}
+                    })(), bottleAnimStyle]}
                   >
                     <BottleIcon color={BLUE} size={22} />
                     <View>
@@ -1601,32 +1609,33 @@ export default function HomeScreen() {
                     {activeTimer?.kind === 'bottle' ? (
                       <View accessibilityElementsHidden style={{ position: 'absolute', top: 7, right: 9, width: 8, height: 8, borderRadius: 4, backgroundColor: BLUE, borderWidth: 2, borderColor: CARD }} />
                     ) : null}
-                  </Pressable>
+                  </AnimatedPressable>
 
-                  <Pressable
+                  <AnimatedPressable
                     onPress={() => (activeTimer?.kind === 'breast' ? minimizeTimer() : setShowNextFeedPicker(true))}
+                    onPressIn={() => { breastScale.value = withSpring(0.96, { damping: 18, stiffness: 400 }); }}
+                    onPressOut={() => { breastScale.value = withSpring(1, { damping: 14, stiffness: 260 }); }}
                     accessibilityRole="button"
                     accessibilityLabel={activeTimer?.kind === 'breast' ? `${t('feeding.breast')} · ${t('timer.running')}` : t('feeding.breast')}
-                    style={({ pressed }) => {
+                    style={[(() => {
                       const running = activeTimer?.kind === 'breast';
                       return {
                         flex: 2, height: 54, borderRadius: 14,
                         borderWidth: running ? 2 : 1,
                         borderColor: running ? ACCENT : `${ACCENT}40`,
-                        backgroundColor: running ? `${ACCENT}18` : pressed ? `${ACCENT}12` : `${ACCENT}08`,
+                        backgroundColor: running ? `${ACCENT}18` : `${ACCENT}08`,
                         alignItems: 'center', justifyContent: 'center',
                         flexDirection: 'row', gap: 7,
-                        transform: [{ scale: pressed ? 0.97 : 1 }],
                         ...shadow(ACCENT, running ? 0.22 : 0.08, 12, 0, 4),
                       };
-                    }}
+                    })(), breastAnimStyle]}
                   >
                     <BreastfeedingIcon color={ACCENT} size={22} />
                     <Text style={{ color: TEXT, fontSize: 13, fontWeight: '700' }}>{t('feeding.breast')}</Text>
                     {activeTimer?.kind === 'breast' ? (
                       <View accessibilityElementsHidden style={{ position: 'absolute', top: 7, right: 9, width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT, borderWidth: 2, borderColor: CARD }} />
                     ) : null}
-                  </Pressable>
+                  </AnimatedPressable>
                 </View>
 
               </View>

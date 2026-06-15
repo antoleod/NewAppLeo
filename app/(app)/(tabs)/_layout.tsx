@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocale } from '@/context/LocaleContext';
 import { useIconPackController } from '@/components/icons/IconPackContext';
@@ -80,18 +81,21 @@ export default function TabsLayout() {
             );
             if (!focused) return icon;
             return (
-              <View style={{
-                backgroundColor: activePillBg,
-                borderRadius: packId === 'outline' ? 999 : 10,
-                borderWidth: packId === 'outline' ? 1 : 0,
-                borderColor: packId === 'outline' ? `${color}66` : 'transparent',
-                paddingHorizontal: isDesktopWeb ? 14 : 16,
-                paddingVertical: 5,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
+              <Animated.View
+                entering={ZoomIn.springify().damping(18).stiffness(380)}
+                style={{
+                  backgroundColor: activePillBg,
+                  borderRadius: packId === 'outline' ? 999 : 10,
+                  borderWidth: packId === 'outline' ? 1 : 0,
+                  borderColor: packId === 'outline' ? `${color}66` : 'transparent',
+                  paddingHorizontal: isDesktopWeb ? 14 : 16,
+                  paddingVertical: 5,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
                 {icon}
-              </View>
+              </Animated.View>
             );
           },
           tabBarLabel: ({ color, focused }) => (
