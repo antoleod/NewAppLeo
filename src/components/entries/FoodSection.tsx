@@ -162,7 +162,7 @@ export const FoodSection = React.memo(function FoodSection({
               accessibilityLabel={fullLabel}
               style={({ pressed }) => ({
                 flex: 1, paddingHorizontal: 6, paddingVertical: 9,
-                borderRadius: 10, minHeight: 50,
+                borderRadius: 14, minHeight: 50,
                 alignItems: 'center', justifyContent: 'center', gap: 3,
                 borderWidth: active ? 2 : 1,
                 borderColor: active ? tone : colors.border,
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   qtyChip: { paddingHorizontal: 13, borderRadius: 999, borderWidth: 1, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   qtyChipText: { fontSize: 12, fontWeight: '600' },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  stepBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stepBtn: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   stepBtnText: { fontSize: 22, fontWeight: '700' },
   moreToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingVertical: 8 },
   reactionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },

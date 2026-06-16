@@ -1442,7 +1442,7 @@ const styles = StyleSheet.create({
   heroIcon: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -1551,7 +1551,7 @@ const styles = StyleSheet.create({
   medQuickBtn: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 14,
     paddingVertical: 8,
     paddingHorizontal: 10,
   },
@@ -1566,7 +1566,7 @@ const styles = StyleSheet.create({
   medManualBtn: {
     marginTop: 6,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 14,
     paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1644,7 +1644,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: '30%',
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
   },
@@ -1665,7 +1665,7 @@ const styles = StyleSheet.create({
   vaccineDoseButton: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1684,7 +1684,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1.5,
     marginTop: 16,
   },
@@ -1735,7 +1735,7 @@ const styles = StyleSheet.create({
     minWidth: '31%',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
   },
@@ -1819,7 +1819,7 @@ const styles = StyleSheet.create({
   reactionChip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
   },
   whoSuggestedBox: {
@@ -1921,7 +1921,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     minHeight: 44,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1939,7 +1939,7 @@ const styles = StyleSheet.create({
   tempButton: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1953,7 +1953,7 @@ const styles = StyleSheet.create({
   },
   tempStatus: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 14,
     padding: 10,
     gap: 2,
   },
@@ -2017,7 +2017,7 @@ const styles = StyleSheet.create({
   ageWarningBox: {
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     marginBottom: 12,
   },
@@ -2079,7 +2079,7 @@ const styles = StyleSheet.create({
   quickQuantityBtn: {
     flex: 1,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
   },

@@ -87,7 +87,7 @@ export const HistoryEntryRow = React.memo(function HistoryEntryRow({
         }, animStyle]}
       >
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-          <View style={{ width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: tint + '1F', borderWidth: 1, borderColor: tint + '38' }}>
+          <View style={{ width: 36, height: 36, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: tint + '1F', borderWidth: 1, borderColor: tint + '38' }}>
             {GetEntryIcon(entry.type, 18, tint)}
           </View>
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>

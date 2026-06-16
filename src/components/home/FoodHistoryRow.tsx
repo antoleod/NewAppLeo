@@ -43,7 +43,7 @@ export const FoodHistoryRow = React.memo(function FoodHistoryRow({
       accessibilityLabel={`${mealLabel} · ${name}`}
       style={({ pressed }) => ({
         flexDirection: 'row', alignItems: 'center', gap: 10,
-        paddingVertical: 10, paddingHorizontal: 10, borderRadius: 10, marginBottom: 2,
+        paddingVertical: 10, paddingHorizontal: 10, borderRadius: 14, marginBottom: 2,
         backgroundColor: pressed
           ? (hasAllergy ? 'rgba(231,76,60,0.10)' : tokens.gold + '22')
           : (isToday ? (hasAllergy ? 'rgba(231,76,60,0.08)' : tokens.gold + '14') : 'transparent'),

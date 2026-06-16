@@ -31,7 +31,7 @@ function makeStyles(theme: Theme) {
     reminderModalTitle: { color: theme.textPrimary, fontSize: 20, fontWeight: '900', marginBottom: 4 },
     reminderModalSubtitle: { fontSize: 12, fontWeight: '600' },
     reminderModalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-    reminderPresetBtn: { flex: 1, minWidth: '31%', paddingVertical: 12, paddingHorizontal: 8, borderRadius: 10, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.bgCardAlt, alignItems: 'center' },
+    reminderPresetBtn: { flex: 1, minWidth: '31%', paddingVertical: 12, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.bgCardAlt, alignItems: 'center' },
     reminderPresetText: { color: theme.textPrimary, fontSize: 11, fontWeight: '700', textAlign: 'center' },
     reminderCustomSection: { marginBottom: 20 },
     reminderLabel: { fontSize: 12, marginBottom: 8, fontWeight: '600' },

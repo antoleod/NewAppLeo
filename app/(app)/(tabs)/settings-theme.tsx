@@ -541,7 +541,7 @@ export default function ThemeSettings() {
                 variant="primary"
               />
             ) : (
-              <View style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 10, padding: 12 }}>
+              <View style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 14, padding: 12 }}>
                 <Text style={{ color: theme.textMuted, fontSize: 12, lineHeight: 20 }}>
                   {t('settings.pwaManualHelp')}
                 </Text>
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
   opacityScale: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   opacityScaleText: { fontSize: 11, fontWeight: '700' },
   controlLabel: { fontSize: 12, fontWeight: '800', marginTop: 16, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
-  pwaInstalledBadge: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' },
+  pwaInstalledBadge: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' },
   footerPreview: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -730,7 +730,7 @@ function FeedingSettingsCard() {
         >
           <View
             style={{
-              width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff',
+              width: 20, height: 20, borderRadius: 14, backgroundColor: '#fff',
               transform: [{ translateX: cfg.foodCountsAsFeeding ? 18 : 0 }],
             }}
           />

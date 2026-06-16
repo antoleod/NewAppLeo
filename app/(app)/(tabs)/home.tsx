@@ -1094,7 +1094,7 @@ export default function HomeScreen() {
             <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD, overflow: 'hidden' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <Text style={{ color: MUTED, fontSize: 10, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }}>{t('recent.recent')}</Text>
-                <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: `${ACCENT}15` }}>
+                <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 12, backgroundColor: `${ACCENT}15` }}>
                   <Text style={{ color: ACCENT, fontSize: 10, fontWeight: '700' }}>{recentEntries.length}</Text>
                 </View>
               </View>
@@ -1188,7 +1188,7 @@ export default function HomeScreen() {
                         })}
                       >
                         <View style={{
-                          width: 34, height: 34, borderRadius: 10,
+                          width: 34, height: 34, borderRadius: 14,
                           backgroundColor: `${color}18`,
                           borderWidth: 1, borderColor: `${color}28`,
                           alignItems: 'center', justifyContent: 'center',
@@ -1266,7 +1266,7 @@ export default function HomeScreen() {
                     <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700', letterSpacing: -0.3 }}>{mealsToday}</Text>
                     <Text style={{ color: SOFT, fontSize: 13, fontWeight: '500' }}>{t('food.today')}</Text>
                     {totalGramsToday > 0 ? (
-                      <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: GOLD + '22' }}>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, backgroundColor: GOLD + '22' }}>
                         <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700' }}>{totalGramsToday}g</Text>
                       </View>
                     ) : null}
@@ -1325,7 +1325,7 @@ export default function HomeScreen() {
                 style={({ pressed }) => ({
                   marginTop: 10,
                   paddingVertical: 10,
-                  borderRadius: 10,
+                  borderRadius: 14,
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexDirection: 'row',
@@ -1423,7 +1423,7 @@ export default function HomeScreen() {
                     style={({ pressed }) => ({
                       flex: 1,
                       height: 38,
-                      borderRadius: 10,
+                      borderRadius: 14,
                       backgroundColor: pressed ? `${BLUE}22` : CARD,
                       borderWidth: 1,
                       borderColor: BORDER,
@@ -1449,7 +1449,7 @@ export default function HomeScreen() {
                     accessibilityLabel={t('home.undoLast')}
                     style={({ pressed }) => ({
                       width: 38, height: 38,
-                      borderRadius: 10,
+                      borderRadius: 14,
                       backgroundColor: pressed ? `${RED}22` : `${RED}10`,
                       borderWidth: 1,
                       borderColor: `${RED}55`,
@@ -1656,12 +1656,12 @@ export default function HomeScreen() {
                   <Text style={{ color: TEXT, fontSize: 12, fontWeight: '700', marginBottom: 6 }}>{t('home.trackMoreTitle')}</Text>
                   <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                     {!hasAnySleep && (
-                      <Pressable onPress={() => router.push('/entry/sleep')} style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: pressed ? `${BLUE}25` : `${BLUE}15`, borderWidth: 1, borderColor: `${BLUE}40` })}>
+                      <Pressable onPress={() => router.push('/entry/sleep')} style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: pressed ? `${BLUE}25` : `${BLUE}15`, borderWidth: 1, borderColor: `${BLUE}40` })}>
                         <Text style={{ color: BLUE, fontSize: 11, fontWeight: '700' }}>😴 {t('entry.sleep')}</Text>
                       </Pressable>
                     )}
                     {!hasAnyDiaper && (
-                      <Pressable onPress={() => router.push('/entry/diaper')} style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: pressed ? `${ACCENT}25` : `${ACCENT}15`, borderWidth: 1, borderColor: `${ACCENT}40` })}>
+                      <Pressable onPress={() => router.push('/entry/diaper')} style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: pressed ? `${ACCENT}25` : `${ACCENT}15`, borderWidth: 1, borderColor: `${ACCENT}40` })}>
                         <Text style={{ color: ACCENT, fontSize: 11, fontWeight: '700' }}>🧷 {t('entry.diaper')}</Text>
                       </Pressable>
                     )}
@@ -1762,7 +1762,7 @@ export default function HomeScreen() {
                       style={({ pressed }) => ({
                         paddingHorizontal: 10,
                         paddingVertical: 5,
-                        borderRadius: 8,
+                        borderRadius: 12,
                         backgroundColor: pressed
                           ? (isEnabled ? `${ACCENT}30` : BORDER)
                           : (isEnabled ? `${ACCENT}18` : 'transparent'),

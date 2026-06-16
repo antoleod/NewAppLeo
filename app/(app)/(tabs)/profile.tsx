@@ -621,7 +621,7 @@ export default function ProfileScreen() {
             alignItems: 'center',
             gap: 6,
             backgroundColor: guestMode ? `${colors.muted}18` : `${colors.primary}18`,
-            borderRadius: 10,
+            borderRadius: 14,
             paddingHorizontal: 10,
             paddingVertical: 7,
             marginBottom: 14,
@@ -938,7 +938,7 @@ export default function ProfileScreen() {
           const ageLabel = `${ageMonths} ${t('profile.monthsShort')}`;
           if (!latestKg || !rec) {
             return (
-              <View style={{ marginTop: 12, padding: 10, borderRadius: 10, backgroundColor: `${colors.primary}10` }}>
+              <View style={{ marginTop: 12, padding: 10, borderRadius: 14, backgroundColor: `${colors.primary}10` }}>
                 <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17 }}>{t('profile.growthCalm')}</Text>
               </View>
             );
@@ -947,7 +947,7 @@ export default function ProfileScreen() {
           if (latestKg < rec.weight.min) msgKey = 'profile.growthBelowRange';
           else if (latestKg > rec.weight.max) msgKey = 'profile.growthAboveRange';
           return (
-            <View style={{ marginTop: 12, padding: 10, borderRadius: 10, backgroundColor: `${colors.primary}10` }}>
+            <View style={{ marginTop: 12, padding: 10, borderRadius: 14, backgroundColor: `${colors.primary}10` }}>
               <Text style={{ color: colors.text, fontSize: 12, lineHeight: 17 }}>
                 {format(msgKey, { age: ageLabel })}
               </Text>
@@ -1064,7 +1064,7 @@ export default function ProfileScreen() {
             marginTop: 14,
             paddingVertical: 10,
             paddingHorizontal: 12,
-            borderRadius: 10,
+            borderRadius: 14,
             borderWidth: 1,
             borderColor: colors.border,
             opacity: pressed ? 0.7 : 1,
@@ -1089,7 +1089,7 @@ export default function ProfileScreen() {
               alignItems: 'center',
               gap: 8,
               padding: 10,
-              borderRadius: 10,
+              borderRadius: 14,
               backgroundColor: `${colors.primary}10`,
               marginBottom: 10,
             }}
@@ -1107,7 +1107,7 @@ export default function ProfileScreen() {
               style={({ pressed }) => ({
                 paddingHorizontal: 12,
                 paddingVertical: 8,
-                borderRadius: 8,
+                borderRadius: 12,
                 backgroundColor: colors.primary,
                 opacity: pressed ? 0.7 : 1,
               })}
@@ -1153,7 +1153,7 @@ export default function ProfileScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                     <Text style={{ color: colors.text, fontWeight: '700', flex: 1 }}>{baby.name}</Text>
                     {activeBabyId === baby.id && (
-                      <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: `${colors.primary}22` }}>
+                      <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 12, backgroundColor: `${colors.primary}22` }}>
                         <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '800' }}>{t('profile.activeLabel')}</Text>
                       </View>
                     )}

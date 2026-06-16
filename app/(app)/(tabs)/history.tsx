@@ -742,10 +742,10 @@ export default function HistoryScreen() {
           <Card style={{ backgroundColor: CARD, borderColor: BORDER }}>
             <Heading eyebrow={t('history.insightsEyebrow')} title={t('history.insightsTitle')} subtitle={t('history.insightsSubtitle')} />
             <View style={{ gap: 8 }}>
-              <View style={{ borderRadius: 10, borderWidth: 1, borderColor: BORDER, backgroundColor: BG, padding: 10 }}>
+              <View style={{ borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: BG, padding: 10 }}>
                 <Text style={{ color: TEXT, fontSize: 13 }}>{format('history.feedsVsYesterday', { delta: feedDeltaStr })}</Text>
               </View>
-              <View style={{ borderRadius: 10, borderWidth: 1, borderColor: BORDER, backgroundColor: BG, padding: 10 }}>
+              <View style={{ borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: BG, padding: 10 }}>
                 <Text style={{ color: TEXT, fontSize: 13 }}>{format('history.longestFast', { hours: longestFeedGapHours ?? '--' })}</Text>
               </View>
             </View>
@@ -809,7 +809,7 @@ export default function HistoryScreen() {
                       style={{
                         flexDirection: 'row',
                         paddingVertical: 9,
-                        borderRadius: 8,
+                        borderRadius: 12,
                         backgroundColor: active ? `${GOLD}22` : 'transparent',
                       }}
                     >

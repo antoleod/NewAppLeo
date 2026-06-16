@@ -224,7 +224,7 @@ export const DiaperSection = React.memo(function DiaperSection({
                         accessibilityLabel={t(opt.tKey)}
                         style={({ pressed }) => ({
                           flex: 1, minHeight: 44,
-                          borderRadius: 10,
+                          borderRadius: 14,
                           alignItems: 'center', justifyContent: 'center', gap: 2,
                           paddingVertical: 4,
                           borderWidth: active ? 2 : 1,
@@ -272,7 +272,7 @@ export const DiaperSection = React.memo(function DiaperSection({
                         accessibilityLabel={t(opt.tKey)}
                         style={({ pressed }) => ({
                           flex: 1, minHeight: 44,
-                          borderRadius: 10,
+                          borderRadius: 14,
                           alignItems: 'center', justifyContent: 'center', gap: 2,
                           paddingVertical: 4,
                           borderWidth: active ? 2 : 1,
@@ -319,7 +319,7 @@ export const DiaperSection = React.memo(function DiaperSection({
           style={({ pressed }) => ({
             flexDirection: 'row', alignItems: 'center', gap: 8,
             paddingHorizontal: 12, paddingVertical: 10,
-            borderRadius: 10, borderWidth: 1,
+            borderRadius: 14, borderWidth: 1,
             borderColor: diaperLeaked ? '#E74C3C' : theme.border,
             backgroundColor: diaperLeaked
               ? 'rgba(231,76,60,0.10)'

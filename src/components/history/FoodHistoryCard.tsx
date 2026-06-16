@@ -141,7 +141,7 @@ const FoodHistoryRow = React.memo(function FoodHistoryRow({
         gap: 10,
         paddingVertical: 10,
         paddingHorizontal: 10,
-        borderRadius: 10,
+        borderRadius: 14,
         marginBottom: 2,
         backgroundColor: pressed
           ? (hasAllergy ? 'rgba(231,76,60,0.10)' : tokens.gold + '22')
@@ -266,7 +266,7 @@ export function FoodHistoryCard({ entries, showSeeAll = true, onSeeAll }: FoodHi
               <Text style={{ color: TEXT, fontSize: 22, fontWeight: '700', letterSpacing: -0.3 }}>{mealsToday}</Text>
               <Text style={{ color: SOFT, fontSize: 13, fontWeight: '500' }}>{t('food.today')}</Text>
               {totalGramsToday > 0 ? (
-                <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: GOLD + '22' }}>
+                <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, backgroundColor: GOLD + '22' }}>
                   <Text style={{ color: GOLD, fontSize: 11, fontWeight: '700' }}>{totalGramsToday}g</Text>
                 </View>
               ) : null}
@@ -326,7 +326,7 @@ export function FoodHistoryCard({ entries, showSeeAll = true, onSeeAll }: FoodHi
             style={({ pressed }) => ({
               marginTop: 10,
               paddingVertical: 10,
-              borderRadius: 10,
+              borderRadius: 14,
               alignItems: 'center',
               justifyContent: 'center',
               flexDirection: 'row',

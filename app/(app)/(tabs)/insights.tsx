@@ -498,7 +498,7 @@ export default function InsightsScreen() {
                       gap: 10,
                       paddingHorizontal: 10,
                       paddingVertical: 8,
-                      borderRadius: 8,
+                      borderRadius: 12,
                       backgroundColor: `${tone}15`,
                       borderWidth: 1,
                       borderColor: `${tone}40`,
@@ -659,7 +659,7 @@ export default function InsightsScreen() {
               </View>
 
               {stoolPattern.alertColor ? (
-                <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: `${RED}15`, borderWidth: 1, borderColor: `${RED}40` }}>
+                <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: `${RED}15`, borderWidth: 1, borderColor: `${RED}40` }}>
                   <Text style={{ color: RED, fontSize: 11, fontWeight: '700', lineHeight: 16 }}>
                     {t(stoolPattern.alertColor === 'red' ? 'diaper.alertColorRedBody' : 'diaper.alertColorDarkBody')}
                   </Text>
@@ -676,7 +676,7 @@ export default function InsightsScreen() {
               <Text style={titleStyle}>{t('insights.growth')}</Text>
 
               {whoSuggested && ageMonths !== null && (
-                <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: `${GREEN}15`, borderWidth: 1, borderColor: `${GREEN}40`, gap: 6, marginBottom: 4 }}>
+                <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: `${GREEN}15`, borderWidth: 1, borderColor: `${GREEN}40`, gap: 6, marginBottom: 4 }}>
                   <Text style={{ color: GREEN, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     {t('insights.whoReference')}
                   </Text>
@@ -726,7 +726,7 @@ export default function InsightsScreen() {
                   {weightCategory && (() => {
                     const c = categoryColor(weightCategory.category, GREEN, GOLD, RED);
                     return (
-                      <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: `${c}15`, borderWidth: 1, borderColor: `${c}40` }}>
+                      <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: `${c}15`, borderWidth: 1, borderColor: `${c}40` }}>
                         <Text style={{ color: c, fontSize: 11, fontWeight: '600', lineHeight: 16 }}>
                           {weightCategory.emoji} {weightCategory.message}
                         </Text>
@@ -737,7 +737,7 @@ export default function InsightsScreen() {
                   {heightCategory && (() => {
                     const c = categoryColor(heightCategory.category, GREEN, GOLD, RED);
                     return (
-                      <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: `${c}15`, borderWidth: 1, borderColor: `${c}40` }}>
+                      <View style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: `${c}15`, borderWidth: 1, borderColor: `${c}40` }}>
                         <Text style={{ color: c, fontSize: 11, fontWeight: '600', lineHeight: 16 }}>
                           {heightCategory.emoji} {heightCategory.message}
                         </Text>
@@ -790,7 +790,7 @@ export default function InsightsScreen() {
                 onPress={() => router.push('/entry/measurement')}
                 accessibilityRole="button"
                 accessibilityLabel={t('insights.addMeasurement')}
-                style={{ paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: `${GREEN}20`, borderWidth: 1, borderColor: `${GREEN}40`, marginTop: 4 }}
+                style={{ paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, backgroundColor: `${GREEN}20`, borderWidth: 1, borderColor: `${GREEN}40`, marginTop: 4 }}
               >
                 <Text style={{ color: GREEN, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>
                   {t('insights.addMeasurement')}

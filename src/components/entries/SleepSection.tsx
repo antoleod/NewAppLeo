@@ -267,7 +267,7 @@ export const SleepSection = React.memo(function SleepSection({
             accessibilityRole="button"
             accessibilityLabel={t('entry.sleepDraftResume')}
             style={({ pressed }) => ({
-              flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
+              flex: 1, paddingVertical: 12, borderRadius: 14, alignItems: 'center',
               borderWidth: 1, borderColor: colors.border,
               backgroundColor: pressed ? `${colors.border}60` : 'transparent',
             })}
@@ -282,7 +282,7 @@ export const SleepSection = React.memo(function SleepSection({
             accessibilityRole="button"
             accessibilityLabel={t('entry.sleepDraftDiscard')}
             style={({ pressed }) => ({
-              flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
+              flex: 1, paddingVertical: 12, borderRadius: 14, alignItems: 'center',
               borderWidth: 1, borderColor: colors.border,
               backgroundColor: pressed ? `${colors.border}60` : 'transparent',
             })}

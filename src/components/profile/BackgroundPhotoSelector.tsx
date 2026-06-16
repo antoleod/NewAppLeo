@@ -22,6 +22,47 @@ export interface BackgroundPhotoSelectorProps {
   isLoading?: boolean;
 }
 
+/**
+ * On web, expo-image-picker returns `URL.createObjectURL(file)` — a `blob:` URL
+ * that is session-scoped and becomes invalid as soon as the page reloads. If we
+ * stored that, the background would vanish on the next app open. So on web we
+ * downscale the picked image and re-encode it as a `data:` URI, which is a
+ * self-contained string that persists in AsyncStorage (localStorage). Native
+ * URIs (`file://`) are already persistent, so we pass them through untouched.
+ */
+async function toStorableUri(uri: string): Promise<string> {
+  if (Platform.OS !== 'web') return uri;
+  try {
+    return await downscaleToDataUri(uri, 1600, 0.82);
+  } catch {
+    return uri;
+  }
+}
+
+function downscaleToDataUri(srcUri: string, maxSize: number, quality: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Canvas 2D context unavailable'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => reject(new Error('Failed to load picked image'));
+    img.src = srcUri;
+  });
+}
+
 export function BackgroundPhotoSelector({
   currentPhotoUri,
   onPhotoSelected,
@@ -55,8 +96,8 @@ export function BackgroundPhotoSelector({
       });
 
       if (!result.canceled && result.assets[0]?.uri) {
-        const uri = result.assets[0].uri;
-        onPhotoSelected(uri);
+        const storableUri = await toStorableUri(result.assets[0].uri);
+        onPhotoSelected(storableUri);
         alertInfo(t('dataIO.successTitle'), t('dataIO.bgUpdated'));
       }
     } catch (error: any) {
