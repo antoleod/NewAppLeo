@@ -346,12 +346,14 @@ function applySurfaceStyle(theme: Theme, paletteMode: ThemePaletteMode, surfaceM
   }
 
   if (defaultMode) {
-    // "Frosted Glass" — professional blur effect with improved text contrast
+    // "Frosted Glass" — professional blur effect with improved text contrast.
+    // Cards are intentionally a bit more translucent than "photo" mode so the
+    // background image shows through; the blurred backdrop keeps text legible.
     return {
       ...theme,
       bg: isDark ? 'rgba(6, 8, 12, 0.08)' : 'rgba(255, 255, 255, 0.06)',
-      bgCard: isDark ? 'rgba(18, 24, 32, 0.84)' : 'rgba(255, 255, 255, 0.90)',
-      bgCardAlt: isDark ? 'rgba(26, 32, 42, 0.72)' : 'rgba(248, 246, 240, 0.82)',
+      bgCard: isDark ? 'rgba(18, 24, 32, 0.78)' : 'rgba(255, 255, 255, 0.82)',
+      bgCardAlt: isDark ? 'rgba(26, 32, 42, 0.66)' : 'rgba(248, 246, 240, 0.74)',
       border: isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(72, 92, 84, 0.30)',
       navBg: isDark ? 'rgba(14, 18, 26, 0.90)' : 'rgba(255, 255, 255, 0.94)',
       pillBg: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.68)',

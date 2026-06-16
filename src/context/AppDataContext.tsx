@@ -295,6 +295,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           // foreground reconnect.
           setEntries((current) => (sameEntryList(current, next) ? current : next));
           setLoading(false);
+          // A successful snapshot is definitive proof we're connected and up to
+          // date. Without this, syncState stays stuck on its initial 'syncing'
+          // value forever for a normal online user (empty queue) — the badge
+          // shows "Synchronisation…" permanently and its spinner pulses
+          // endlessly, which reads as constant blinking. Keep 'queued' if there
+          // are pending writes; refreshPendingCount re-flags it precisely below.
+          setSyncState((current) => (current === 'queued' ? 'queued' : 'synced'));
           void refreshPendingCount();
         },
         async (error) => {
