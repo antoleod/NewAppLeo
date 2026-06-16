@@ -33,7 +33,11 @@ export interface BackgroundPhotoSelectorProps {
 async function toStorableUri(uri: string): Promise<string> {
   if (Platform.OS !== 'web') return uri;
   try {
-    return await downscaleToDataUri(uri, 1600, 0.82);
+    // Keep the encoded string light: a full-screen backdrop sits behind a
+    // gradient overlay, so 1280px @ 0.7 quality looks fine while keeping the
+    // data: URI small (~100–250KB). A heavier image bloats localStorage and is
+    // slow to decode on every page, which made applying feel sluggish.
+    return await downscaleToDataUri(uri, 1280, 0.7);
   } catch {
     return uri;
   }
@@ -90,8 +94,9 @@ export function BackgroundPhotoSelector({
       setSelecting(true);
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        // No forced aspect: the backdrop is shown full-screen with `cover`, so a
+        // 16:9 pre-crop just fought the screen ratio and looked over-zoomed.
         allowsEditing: true,
-        aspect: [16, 9],
         quality: 0.8,
       });
 

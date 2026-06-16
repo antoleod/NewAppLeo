@@ -67,19 +67,21 @@ export default function ThemeSettings() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const handlePhotoSelected = async (localUri: string) => {
+    // Apply immediately for instant feedback. On web `localUri` is already a
+    // persistent `data:` URI, so this alone fully works. For signed-in users we
+    // then upload to Firebase in the background and silently swap to the CDN URL
+    // (so the photo syncs across devices) — without making the user wait for it.
+    await setBackgroundPhotoUri(localUri);
     if (user && !guestMode) {
       setUploadingPhoto(true);
       try {
         const downloadUrl = await uploadBackgroundPhoto(user.uid, localUri);
         await setBackgroundPhotoUri(downloadUrl);
       } catch {
-        // Upload failed — fall back to local URI so the feature still works
-        await setBackgroundPhotoUri(localUri);
+        // Upload failed — keep the local URI already applied above.
       } finally {
         setUploadingPhoto(false);
       }
-    } else {
-      await setBackgroundPhotoUri(localUri);
     }
   };
 
