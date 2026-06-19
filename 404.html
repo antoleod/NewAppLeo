@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>BabyFlow</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+  
+    <meta name="theme-color" content="#0D1117" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="BabyFlow" />
+    <link rel="manifest" href="/NewAppLeo/manifest.json" />
+    <link rel="apple-touch-icon" href="/NewAppLeo/apple-touch-icon.png?v=5" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/NewAppLeo/apple-touch-icon.png?v=5" />
+    <link rel="icon" type="image/png" href="/NewAppLeo/favicon.png?v=5" />
+    <link rel="shortcut icon" href="/NewAppLeo/favicon.png?v=5" />
+  </head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  <script src="/NewAppLeo/_expo/static/js/web/entry-c1bf5aa0b6f055bc6f95ac77693cdcdd.js" defer></script>
+
+    <script>
+      window.__pwaInstallPrompt = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__pwaInstallPrompt = e;
+      });
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/NewAppLeo/sw.js?v=8').catch(function () {});
+        });
+        navigator.serviceWorker.addEventListener('message', function(e) {
+          if (e.data && e.data.type === 'SW_UPDATED') window.location.reload();
+        });
+      }
+      // Reload when a lazy JS chunk fails (stale hashes after a new deploy)
+      window.addEventListener('unhandledrejection', function(e) {
+        var msg = e.reason && (e.reason.message || String(e.reason));
+        if (msg && (msg.includes('Loading chunk') || msg.includes('Failed to fetch dynamically imported module') || msg.includes('Importing a module script failed'))) {
+          window.location.reload();
+        }
+      });
+    </script>
+  </body>
+</html>
